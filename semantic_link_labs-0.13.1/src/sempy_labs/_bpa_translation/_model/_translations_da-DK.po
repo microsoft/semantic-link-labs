@@ -1,0 +1,945 @@
+#
+msgid ""
+msgstr ""
+"Language: da-DK\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Brug ikke flydende kommadatatyper"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Undgå at bruge beregnede kolonner"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Kontrollér, om tovejs- og mange-til-mange-relationer er gyldige"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Kontrollér, om sikkerhed på dynamisk rækkeniveau (RLS) er nødvendig"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Undgå at bruge mange til mange-relationer i tabeller, der bruges til "
+"dynamisk sikkerhed på rækkeniveau"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Mange til mange-relationer skal være enkeltrettede"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Indstil IsAvailableInMdx til false på kolonner, der ikke er attributter"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Angiv egenskaben \"Data Coverage Definition\" på DirectQuery-partitionen i "
+"en hybridtabel"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Dobbelttilstand er kun relevant for dimensionstabeller, hvis DirectQuery "
+"bruges til den tilsvarende faktatabel"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Indstil dimensionstabeller til dobbelttilstand i stedet for import, når du "
+"bruger DirectQuery på faktatabeller"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Minimer Power Query-transformationer"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Overvej et stjerneskema i stedet for en snefnugarkitektur"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Undgå at bruge visninger, når du bruger Direct Lake-tilstand"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Undgå at føje 0 til en måling"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Reducer brugen af beregnede tabeller"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Reducere brugen af beregnede kolonner, der bruger funktionen RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Undgå for mange tovejs- eller mange-til-mange-relationer"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Fjern tabel med automatisk datering"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Dato-/kalendertabeller skal markeres som en datotabel"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Store borde skal opdeles"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Begræns sikkerhed på rækkeniveau (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Modellen skal have en datotabel"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Beregningselementer skal have et udtryk"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Relationskolonner skal være af samme datatype"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Datakolonner skal have en kildekolonne"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Indstil IsAvailableInMdx til sand på de nødvendige kolonner"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Undgå funktionen USERELATIONSHIP og sikkerhed på rækkeniveau i forhold til "
+"den samme tabel"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Undgå at bruge funktionen HVISFEJL"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Brug funktionen BEHANDL i stedet for SKÆRING til virtuelle relationer"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG-funktionen bør ikke bruges i produktionsmodeller"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Foranstaltninger bør ikke være direkte henvisninger til andre "
+"foranstaltninger"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Ikke to foranstaltninger bør have samme definition"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Undgå addition eller subtraktion af konstante værdier til resultater af "
+"divisioner"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Undgå at bruge '1-(x/y)'-syntaks"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrere målingsværdier efter kolonner, ikke tabeller"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Filtrere kolonneværdier med korrekt syntaks"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Brug funktionen DIVIDER til division"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Kolonnereferencer skal være fuldt kvalificerede"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Referencer til målinger bør være ukvalificerede"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Inaktive relationer, der aldrig aktiveres"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Fjern unødvendige kolonner"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Fjern unødvendige foranstaltninger"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Sørg for, at tabeller har relationer"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Beregningsgrupper uden beregningselementer"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Synlige objekter uden beskrivelse"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Angiv formatstreng for kolonnerne \"Dato\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Opsummer ikke numeriske kolonner"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Angiv formatstreng for målinger"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Tilføj datakategori for kolonner"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Procenter skal formateres med tusindtalsseparatorer og 1 decimal"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Hele tal skal formateres med tusindtalsseparatorer og ingen decimaler"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Skjul fremmede nøgler"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Markér primære nøgler"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Måned (som en streng) skal sorteres"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Relationskolonner skal være af heltalsdatatypen"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Angiv formatstreng for kolonnerne \"Måned\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatere flagkolonner som Ja/Nej-værdistrenge"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Objekter må ikke starte eller slutte med et mellemrum"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Første bogstav i objekter skal skrives med stort"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Objektnavne må ikke indeholde specialtegn"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Præstation"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Præstation"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Præstation"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Præstation"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Præstation"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Præstation"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Præstation"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Præstation"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Præstation"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Præstation"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Præstation"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Præstation"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Præstation"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Præstation"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Præstation"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Præstation"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Præstation"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Præstation"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Præstation"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Præstation"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Præstation"
+
+# category
+msgid "Model should have a date table"
+msgstr "Præstation"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Forebyggelse af fejl"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Forebyggelse af fejl"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Forebyggelse af fejl"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Forebyggelse af fejl"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Forebyggelse af fejl"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX-udtryk"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX-udtryk"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX-udtryk"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX-udtryk"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX-udtryk"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Vedligeholdelse"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Vedligeholdelse"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Vedligeholdelse"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Vedligeholdelse"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Vedligeholdelse"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formatering"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formatering"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formatering"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formatering"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formatering"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formatering"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formatering"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formatering"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formatering"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formatering"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formatering"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatering"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formatering"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formatering"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Navngivningskonventioner"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Datatypen \"Dobbelt\" flydende kommaer bør undgås, da det kan resultere i "
+"uforudsigelige afrundingsfejl og nedsat ydeevne i visse scenarier. Brug "
+"\"Int64\" eller \"Decimal\", hvor det er relevant (men bemærk, at "
+"\"Decimal\" er begrænset til 4 cifre efter decimaltegnet)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Beregnede kolonner komprimeres ikke så godt som datakolonner, så de optager "
+"mere hukommelse. De forsinker også behandlingstiderne for både tabellen og "
+"procesgenberegningen. Overfør logikken for de beregnede kolonner til dit "
+"data warehouse, og omdan disse beregnede kolonner til datakolonner."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Brug af dynamisk sikkerhed på rækkeniveau (RLS) kan tilføje hukommelse og "
+"ydeevneomkostninger. Undersøg venligst fordele/ulemper ved at bruge det."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Brug af mange til mange-relationer på tabeller, der bruger dynamisk "
+"sikkerhed på rækkeniveau, kan medføre alvorlig forringelse af ydeevnen for "
+"forespørgsler. Dette mønsters problemer med ydeevnen forværres, når der "
+"snesnugs flere mange til mange-relationer mod en tabel, der indeholder "
+"sikkerhed på rækkeniveau. Brug i stedet et af de mønstre, der vises i "
+"artiklen nedenfor, hvor en enkelt dimensionstabel relaterer mange-til-en til"
+" en sikkerhedstabel."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"For at fremskynde behandlingstiden og spare hukommelse efter behandling bør "
+"der ikke oprettes attributhierarkier for kolonner, der aldrig bruges til "
+"udskæring af MDX-klienter. Med andre ord skal alle skjulte kolonner, der "
+"ikke bruges som en Sorter efter-kolonne eller refereres til i "
+"brugerhierarkier, have deres IsAvailableInMdx-egenskab angivet til false. "
+"Egenskaben IsAvailableInMdx er ikke relevant for Direct Lake-modeller."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Angivelse af egenskaben \"Data Coverage Definition\" kan føre til bedre "
+"ydeevne, fordi programmet ved, hvornår det kun kan forespørge på importdelen"
+" af tabellen, og hvornår det skal forespørge på DirectQuery-delen af "
+"tabellen."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Brug kun dobbelttilstand til dimensionstabeller/partitioner, hvor en "
+"tilsvarende faktatabel er i DirectQuery. Brug af dobbelttilstand under andre"
+" omstændigheder (dvs. resten af modellen er i importtilstand) kan føre til "
+"problemer med ydeevnen, især hvis antallet af målinger i modellen er højt."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Når du bruger DirectQuery, skal dimensionstabeller angives til Dobbelt "
+"tilstand for at forbedre forespørgslens ydeevne."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Minimer Power Query-transformationer for at forbedre ydeevnen for "
+"modelbehandling. Det er en bedste fremgangsmåde at overføre disse "
+"transformationer til data warehouset, hvis det er muligt. Kontroller også, "
+"om forespørgselsdelegering forekommer i din model. Se artiklen nedenfor for "
+"at få flere oplysninger om forespørgselsfoldning."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Generelt er et stjerneskema den optimale arkitektur for tabelmodeller. Når "
+"det er tilfældet, er der gyldige tilfælde til at bruge en snefnugtilgang. "
+"Tjek din model og overvej at flytte til en stjerneskemaarkitektur."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"I Direct Lake-tilstand vil visninger altid falde tilbage til DirectQuery. "
+"For at opnå den bedste ydeevne skal du bruge søhusborde i stedet for "
+"udsigter."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Hvis du føjer 0 til en måling, for at den ikke viser en tom værdi, kan det "
+"påvirke ydeevnen negativt."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Overfør logik i beregnet tabel til dit data warehouse. Afhængighed af "
+"beregnede tabeller vil føre til teknisk gæld og potentielle fejljusteringer,"
+" hvis du har flere modeller på din platform."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Beregnede kolonner komprimeres ikke lige så godt som datakolonner og kan "
+"medføre længere behandlingstider. Som sådan bør beregnede kolonner undgås, "
+"hvis det er muligt. Et scenarie, hvor de kan være nemmere at undgå, er, hvis"
+" de bruger funktionen RELATED."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Begræns brugen af b-di- og mange-til-mange-relationer. Denne regel markerer "
+"modellen, hvis mere end 30 % af relationerne er bi-di eller mange-til-mange."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Undgå at bruge tabeller med automatisk dato. Sørg for at deaktivere "
+"automatisk datotabel i indstillingerne i Power BI Desktop. Dette vil spare "
+"hukommelsesressourcer."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Denne regel søger efter tabeller, der indeholder ordene \"dato\" eller "
+"\"kalender\", da de sandsynligvis skal markeres som en datotabel."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Store tabeller bør opdeles for at optimere behandlingen. Dette er ikke "
+"relevant for semantiske modeller i Direct Lake-tilstand, da de kun kan have "
+"én partition pr. tabel."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Prøv at forenkle den DAX, der bruges til sikkerhed på rækkeniveau. Brug af "
+"funktionerne inden for denne regel kan sandsynligvis overføres til upstream-"
+"systemerne (data warehouse)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Generelt bør modeller generelt have en datotabel. Modeller, der ikke har en "
+"datotabel, udnytter generelt ikke funktioner som tidsintelligens eller har "
+"muligvis ikke en korrekt struktureret arkitektur."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Beregningselementer skal have et udtryk. Uden et udtryk vil de ikke vise "
+"nogen værdier."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Kolonner, der bruges i en relation, skal være af samme datatype. Ideelt set "
+"vil de være af heltalsdatatypen (se den relaterede regel '[Formatering] "
+"Relationskolonner skal være af heltalsdatatypen'). At have kolonner i en "
+"relation, der er af forskellige datatyper, kan føre til forskellige "
+"problemer."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Datakolonner skal have en kildekolonne. En datakolonne uden en kildekolonne "
+"vil medføre en fejl under behandling af modellen."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"For at undgå fejl skal du sikre dig, at attributhierarkier er aktiveret, "
+"hvis en kolonne bruges til at sortere en anden kolonne, bruges i et "
+"hierarki, bruges i variationer eller sorteres efter en anden kolonne. "
+"Egenskaben IsAvailableInMdx er ikke relevant for Direct Lake-modeller."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Funktionen USERELATIONSHIP kan ikke bruges i en tabel, der også udnytter "
+"sikkerhed på rækkeniveau (RLS). Dette genererer en fejl, når du bruger den "
+"bestemte måling i en visualisering. Denne regel fremhæver den tabel, der "
+"bruges i en målings USERELATIONSHIP-funktion samt sikkerhed på rækkeniveau."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Undgå at bruge funktionen HVISFEJL, da det kan forårsage forringelse af "
+"ydeevnen. Hvis du er bekymret for en divide-by-zero-fejl, skal du bruge "
+"DIVIDER-funktionen, da den naturligt løser sådanne fejl som tomme (eller du "
+"kan tilpasse, hvad der skal vises i tilfælde af en sådan fejl)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"TREATAS-funktionen er mere effektiv og giver bedre ydeevne end INTERSECT-"
+"funktionen, når den bruges i virutale relationer."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"EVALUATEANDLOG-funktionen er kun beregnet til at blive brugt i "
+"udviklings-/testmiljøer og bør ikke bruges i produktionsmodeller."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Denne regel identificerer foranstaltninger, der blot er en henvisning til en"
+" anden foranstaltning. Overvej f.eks. en model med to målinger: "
+"[ForanstaltningA] og [ForanstaltningB]. Denne regel udløses for MeasureB, "
+"hvis MeasureB's DAX var MeasureB:=[MeasureA]. Sådanne overlappende "
+"foranstaltninger bør fjernes."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"To målinger med forskellige navne og defineret af det samme DAX-udtryk bør "
+"undgås for at reducere redundansen."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Tilføjelse af en konstant værdi kan føre til forringelse af ydeevnen."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"I stedet for at bruge syntaksen '1-(x/y)' eller '1+(x/y)' til at opnå en "
+"procentberegning, skal du bruge de grundlæggende DAX-funktioner (som vist "
+"nedenfor). Brug af den forbedrede syntaks vil generelt forbedre ydeevnen. "
+"'1+/-...' Syntaks returnerer altid en værdi, hvorimod løsningen uden "
+"'1+/-...' ikke (da værdien kan være »tom«). Derfor er \"1+/-...\" Syntaks "
+"kan returnere flere rækker/kolonner, hvilket kan resultere i en langsommere "
+"forespørgselshastighed.    Lad os præcisere med et eksempel: Undgå dette: 1 "
+"- SUM ('Salg'[CostAmount] ) / SUM( 'Salg'[SalesAmount] ) Bedre: DIVIDE ( "
+"'Sales'[Sales'[SalesAmount] ) - SUM ('Sales'[CostAmount] ), SUM ( "
+"'Sales'[SalesAmount] ) ) Bedst: VAR x = SUM ( 'Sales'[SalesAmount] ) RETURN "
+"DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"I stedet for at bruge dette mønster FILTER('Tabel',[Mål]>Værdi) til filterparametrene for en CALCULATE- eller CALCULATETABLE-funktion, skal du bruge en af nedenstående muligheder (hvis det er muligt). Filtrering på en bestemt kolonne vil producere en mindre tabel, som programmet kan behandle, hvilket muliggør hurtigere ydeevne. Brug af funktionen VÆRDIER eller funktionen ALLE afhænger af det ønskede måleresultat.\n"
+"Mulighed 1: FILTER(VÆRDIER('Tabel'[kolonne]),[Måling] > værdi)\n"
+"Mulighed 2: FILTER(ALLE('Tabel'[kolonne]),[Måling] > værdi)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"I stedet for at bruge dette mønster FILTER('Tabel','Tabel'[Kolonne]=\"Værdi\") til filterparametrene for en CALCULATE- eller CALCULATETABLE-funktion, skal du bruge en af nedenstående muligheder. For så vidt angår om du vil bruge KEEPFILTERS-funktionen, se det andet referencelink nedenfor.\n"
+"Mulighed 1: KEEPFILTERS('Tabel'[Kolonne]=\"Værdi\")\n"
+"Mulighed 2: 'Tabel'[kolonne]=\"Værdi\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Brug funktionen DIVIDER i stedet for at bruge \"/\". Funktionen DIVIDE løser"
+" divider-for-nul-tilfælde. Som sådan anbefales det at bruge for at undgå "
+"fejl."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Brug af fuldt kvalificerede kolonnereferencer gør det nemmere at skelne "
+"mellem kolonne- og målingsreferencer og hjælper også med at undgå visse "
+"fejl. Når du refererer til en kolonne i DAX, skal du først angive "
+"tabelnavnet og derefter angive kolonnenavnet i kantede parenteser."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Brug af ukvalificerede målingsreferencer gør det nemmere at skelne mellem "
+"kolonne- og målingsreferencer og hjælper også med at undgå visse fejl. Når "
+"du refererer til en måling ved hjælp af DAX, skal du ikke angive "
+"tabelnavnet. Brug kun målingsnavnet i kantede parenteser."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Inaktive relationer aktiveres ved hjælp af funktionen USERELATIONSHIP. Hvis "
+"der ikke refereres til en inaktiv relation i nogen måling via denne "
+"funktion, vil relationen ikke blive brugt. Det bør afgøres, om forholdet "
+"ikke er nødvendigt eller at aktivere forholdet via denne metode."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Skjulte kolonner, der ikke refereres til af DAX-udtryk, relationer, "
+"hierarkiniveauer eller Sorter efter-egenskaber, skal fjernes."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Skjulte målinger, der ikke refereres til af nogen DAX-udtryk, skal fjernes "
+"for at kunne vedligeholdes."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Denne regel fremhæver tabeller, der ikke er forbundet med andre tabeller i "
+"modellen med en relation."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Beregningsgrupper har ingen funktion, medmindre de har beregningselementer."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Føj beskrivelser til objekter. Disse beskrivelser vises, når du peger på "
+"feltlisten i Power BI Desktop. Derudover kan du udnytte disse beskrivelser "
+"til at oprette en automatiseret dataordbog."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Kolonner af typen \"DateTime\", der har \"Måned\" i deres navne, skal "
+"formateres som \"mm/dd/åååå\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Numeriske kolonner (heltal, decimal, dobbelt) skal have deres egenskab "
+"SummarizeBy angivet til \"Ingen\" for at undgå utilsigtet opsummering i "
+"Power BI (opret målinger i stedet)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "Synlige målinger skal have deres formatstrengegenskab tildelt."
+
+# description
+msgid "Add data category for columns"
+msgstr "Tilføj egenskaben Datakategori for relevante kolonner."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"For at få en bedre brugeroplevelse bør percengage-målinger formateres med et"
+" '%'-tegn."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"For at få en bedre brugeroplevelse bør hele tal formateres med kommaer."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Fremmede nøgler skal altid være skjulte, da de ikke bør bruges af "
+"slutbrugere."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Angiv egenskaben \"Nøgle\" til \"Sand\" for primære nøglekolonner i "
+"kolonneegenskaberne."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Denne regel fremhæver månedskolonner, som er strenge og ikke er sorteret. "
+"Hvis de ikke sorteres, vil de sortere alfabetisk (dvs. april, august...). "
+"Sørg for at sortere sådanne kolonner, så de sorteres korrekt (januar, "
+"februar, marts...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Det er bedste praksis for relationskolonner at være af heltalsdatatypen. "
+"Dette gælder ikke kun for datalagring, men også datamodellering."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Kolonner af typen \"DateTime\", der har \"Måned\" i deres navne, skal "
+"formateres som \"MMMM åååå\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Flag skal være korrekt formateret som Ja/Nej, da dette er lettere at læse "
+"end at bruge 0/1 heltalsværdier."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Objekter bør ikke starte eller slutte med et mellemrum. Dette sker normalt "
+"ved et uheld og er svært at finde."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Det første bogstav i objektnavne skal skrives med stort for at opretholde "
+"professionel kvalitet."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Objektnavne bør ikke indeholde tabulatorer, linjeskift osv."

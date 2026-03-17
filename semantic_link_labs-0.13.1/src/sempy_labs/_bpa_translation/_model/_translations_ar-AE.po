@@ -1,0 +1,908 @@
+#
+msgid ""
+msgstr ""
+"Language: ar-AE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "لا تستخدم أنواع بيانات الفاصلة العائمة"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "تجنب استخدام الأعمدة المحسوبة"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"تحقق مما إذا كانت العلاقات ثنائية الاتجاه والعلاقات بين متعدد إلى متعدد "
+"صالحة"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "تحقق مما إذا كان الأمان الديناميكي على مستوى الصف (RLS) ضروريا"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"تجنب استخدام علاقات متعدد إلى متعدد على الجداول المستخدمة للأمان الديناميكي "
+"على مستوى الصف"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "يجب أن تكون العلاقات متعددة إلى متعددة أحادية الاتجاه"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "تعيين IsAvailableInMdx إلى false على أعمدة غير سمة"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "تعيين خاصية \"تعريف تغطية البيانات\" على قسم DirectQuery لجدول مختلط"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"يكون الوضع المزدوج مناسبا فقط لجداول الأبعاد إذا تم استخدام DirectQuery "
+"لجدول الحقائق المقابل"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"تعيين جداول الأبعاد إلى الوضع المزدوج بدلا من الاستيراد عند استخدام "
+"DirectQuery في جداول الحقائق"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "تقليل تحويلات استعلام الطاقة"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "ضع في اعتبارك مخطط النجوم بدلا من بنية ندفة الثلج"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "تجنب استخدام طرق العرض عند استخدام وضع Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "تجنب إضافة 0 إلى مقياس"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "تقليل استخدام الجداول المحسوبة"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "تقليل استخدام الأعمدة المحسوبة التي تستخدم الدالة RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "تجنب العلاقات المفرطة ثنائية الاتجاه أو العلاقات بين متعدد إلى متعدد"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "إزالة جدول التاريخ التلقائي"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "يجب وضع علامة على جداول التاريخ / التقويم كجدول تواريخ"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "يجب تقسيم الجداول الكبيرة"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "منطق الحد من الأمان على مستوى الصف (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "يجب أن يحتوي النموذج على جدول تواريخ"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "يجب أن تحتوي عناصر الحساب على تعبير"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "يجب أن تكون أعمدة العلاقة من نفس نوع البيانات"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "يجب أن تحتوي أعمدة البيانات على عمود مصدر"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "قم بتعيين IsAvailableInMdx إلى true على الأعمدة الضرورية"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "تجنب الدالة USERELATIONSHIP ومتلازمة تململ الساقين مقابل نفس الجدول"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "تجنب استخدام الدالة IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "استخدم الدالة TREATAS بدلا من INTERSECT للعلاقات الظاهرية"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "يجب عدم استخدام الدالة EVALUATEANDLOG في نماذج الإنتاج"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "وينبغي ألا تكون التدابير إشارات مباشرة إلى تدابير أخرى"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "لا ينبغي أن يكون لمقياسين نفس التعريف"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "تجنب جمع أو طرح القيم الثابتة لنتائج القسمة"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "تجنب استخدام بناء الجملة \"1- (x / y)\""
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "تصفية قياس القيم حسب الأعمدة، وليس الجداول"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "تصفية قيم الأعمدة ذات بناء الجملة المناسب"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "استخدم الدالة DIVIDE للتقسيم"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "يجب أن تكون مراجع الأعمدة مؤهلة تماما"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "يجب أن تكون مراجع القياس غير مشروطة"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "العلاقات غير النشطة التي لا يتم تنشيطها مطلقا"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "إزالة الأعمدة غير الضرورية"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "إزالة التدابير غير الضرورية"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "التأكد من وجود علاقات بين الجداول"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "مجموعات الحساب التي لا تحتوي على عناصر حسابية"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "كائنات مرئية بدون وصف"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "توفير سلسلة تنسيق لأعمدة \"التاريخ\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "عدم تلخيص الأعمدة الرقمية"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "توفير سلسلة تنسيق للمقاييس"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "إضافة فئة بيانات للأعمدة"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "يجب تنسيق النسب المئوية بآلاف الفواصل و 1 عشري"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "يجب تنسيق الأعداد الصحيحة بآلاف الفواصل وبدون كسور عشرية"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "إخفاء المفاتيح الخارجية"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "وضع علامة على المفاتيح الأساسية"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "يجب فرز الشهر (كسلسلة)"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "يجب أن تكون أعمدة العلاقة من نوع بيانات عدد صحيح"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "توفير سلسلة تنسيق لأعمدة \"الشهر\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "تنسيق أعمدة العلم كسلاسل قيم نعم / لا"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "يجب ألا تبدأ الكائنات أو تنتهي بمسافة"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "يجب كتابة الحرف الأول من الكائنات بأحرف كبيرة"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "يجب ألا تحتوي أسماء الكائنات على أحرف خاصة"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "اداء"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "اداء"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "اداء"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "اداء"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "اداء"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "اداء"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "اداء"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "اداء"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "اداء"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "اداء"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "اداء"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "اداء"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "اداء"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "اداء"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "اداء"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "اداء"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "اداء"
+
+# category
+msgid "Remove auto-date table"
+msgstr "اداء"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "اداء"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "اداء"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "اداء"
+
+# category
+msgid "Model should have a date table"
+msgstr "اداء"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "منع الأخطاء"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "منع الأخطاء"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "منع الأخطاء"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "منع الأخطاء"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "منع الأخطاء"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "تعبيرات DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "تعبيرات DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "صيانة"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "صيانة"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "صيانة"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "صيانة"
+
+# category
+msgid "Visible objects with no description"
+msgstr "صيانة"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "التنسيق"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "التنسيق"
+
+# category
+msgid "Provide format string for measures"
+msgstr "التنسيق"
+
+# category
+msgid "Add data category for columns"
+msgstr "التنسيق"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "التنسيق"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "التنسيق"
+
+# category
+msgid "Hide foreign keys"
+msgstr "التنسيق"
+
+# category
+msgid "Mark primary keys"
+msgstr "التنسيق"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "التنسيق"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "التنسيق"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "التنسيق"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "التنسيق"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "التنسيق"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "التنسيق"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "اصطلاحات التسمية"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"يجب تجنب نوع بيانات الفاصلة العائمة \"المزدوجة\" ، حيث يمكن أن يؤدي إلى "
+"أخطاء تقريب لا يمكن التنبؤ بها وانخفاض الأداء في سيناريوهات معينة. استخدم "
+"\"Int64\" أو \"Decimal\" عند الاقتضاء (ولكن لاحظ أن \"العلامة العشرية\" "
+"تقتصر على 4 أرقام بعد العلامة العشرية)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"لا يتم ضغط الأعمدة المحسوبة مثل أعمدة البيانات بحيث تشغل مساحة أكبر من "
+"الذاكرة. كما أنها تبطئ أوقات المعالجة لكل من الجدول وكذلك عملية recalc. قم "
+"بإلغاء تحميل منطق العمود المحسوب إلى مستودع البيانات الخاص بك وتحويل هذه "
+"الأعمدة المحسوبة إلى أعمدة بيانات."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"يمكن أن يؤدي استخدام الأمان الديناميكي على مستوى الصف (RLS) إلى إضافة ذاكرة "
+"وحمل على الأداء. يرجى البحث عن إيجابيات / سلبيات استخدامه."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"يمكن أن يؤدي استخدام علاقات متعدد إلى متعدد على الجداول التي تستخدم الأمان "
+"الديناميكي على مستوى الصف إلى حدوث تدهور خطير في أداء الاستعلام. تتفاقم "
+"مشاكل أداء هذا النمط عند تساقط الثلوج على علاقات متعددة متعدد إلى متعدد "
+"مقابل جدول يحتوي على أمان على مستوى الصف. بدلا من ذلك، استخدم أحد الأنماط "
+"الموضحة في المقالة أدناه حيث يربط جدول مكون واحد متعدد بواحد بجدول أمان."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"لتسريع وقت المعالجة والحفاظ على الذاكرة بعد المعالجة، يجب عدم إنشاء تدرجات "
+"هرمية للسمات للأعمدة التي لا يتم استخدامها مطلقا للتقطيع بواسطة عملاء MDX. "
+"بمعنى آخر ، يجب تعيين خاصية IsAvailableInMdx الخاصة بكافة الأعمدة المخفية "
+"التي لا يتم استخدامها كعمود فرز حسب أو المشار إليها في التسلسلات الهرمية "
+"للمستخدم إلى false. الخاصية IsAvailableInMdx غير ذات صلة بنماذج Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"قد يؤدي تعيين الخاصية \"تعريف تغطية البيانات\" إلى أداء أفضل لأن المحرك يعرف"
+" متى يمكنه فقط الاستعلام عن جزء الاستيراد من الجدول ومتى يحتاج إلى الاستعلام"
+" عن جزء DirectQuery من الجدول."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"استخدم الوضع المزدوج فقط لجداول/أقسام الأبعاد حيث يوجد جدول حقائق مطابق في "
+"DirectQuery. قد يؤدي استخدام الوضع المزدوج في ظروف أخرى (أي أن بقية النموذج "
+"في وضع الاستيراد) إلى حدوث مشكلات في الأداء خاصة إذا كان عدد المقاييس في "
+"النموذج مرتفعا."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"عند استخدام DirectQuery، يجب تعيين جداول الأبعاد إلى الوضع المزدوج لتحسين "
+"أداء الاستعلام."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"تقليل تحويلات Power Query من أجل تحسين أداء معالجة النموذج. من أفضل "
+"الممارسات إلغاء تحميل هذه التحويلات إلى مستودع البيانات إن أمكن. أيضا ، يرجى"
+" التحقق مما إذا كان طي الاستعلام يحدث داخل النموذج الخاص بك. يرجى الرجوع إلى"
+" المقالة أدناه للحصول على مزيد من المعلومات حول طي الاستعلام."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"بشكل عام ، مخطط النجوم هو البنية المثلى للنماذج الجدولية. في هذه الحالة ، "
+"هناك حالات صالحة لاستخدام نهج ندفة الثلج. يرجى التحقق من النموذج الخاص بك "
+"والنظر في الانتقال إلى بنية مخطط النجوم."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"في وضع Direct Lake، ستعود طرق العرض دائما إلى DirectQuery. وبالتالي ، من أجل"
+" الحصول على أفضل أداء ، استخدم طاولات البحيرة بدلا من المناظر."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr "قد تؤثر إضافة 0 إلى مقياس حتى لا يظهر قيمة فارغة سلبا على الأداء."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"ترحيل منطق الجدول المحسوب إلى مستودع البيانات. سيؤدي الاعتماد على الجداول "
+"المحسوبة إلى ديون فنية واختلالات محتملة إذا كان لديك نماذج متعددة على النظام"
+" الأساسي الخاص بك."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"لا يتم ضغط الأعمدة المحسوبة مثل أعمدة البيانات وقد تتسبب في أوقات معالجة "
+"أطول. على هذا النحو ، يجب تجنب الأعمدة المحسوبة إن أمكن. أحد السيناريوهات "
+"التي قد يكون من الأسهل تجنبها هو إذا استخدموا الدالة RELATED."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"الحد من استخدام b-di وعلاقات متعدد إلى متعدد. تشير هذه القاعدة إلى النموذج "
+"إذا كانت أكثر من 30٪ من العلاقات ثنائية أو متعددة إلى متعددة."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"تجنب استخدام جداول التأريخ التلقائي. تأكد من إيقاف تشغيل جدول التاريخ "
+"التلقائي في الإعدادات في Power BI Desktop. سيؤدي ذلك إلى توفير موارد "
+"الذاكرة."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"تبحث هذه القاعدة عن الجداول التي تحتوي على الكلمتين \"تاريخ\" أو \"تقويم\" "
+"حيث من المحتمل أن يتم تمييزها كجدول تواريخ."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"يجب تقسيم الجداول الكبيرة من أجل تحسين المعالجة. هذا غير مناسب للنماذج "
+"الدلالية في وضع Direct Lake حيث يمكن أن تحتوي على قسم واحد فقط لكل جدول."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"حاول تبسيط DAX المستخدم للأمان على مستوى الصف. من المحتمل أن يتم إلغاء تحميل"
+" استخدام الوظائف ضمن هذه القاعدة إلى أنظمة المنبع (مستودع البيانات)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"بشكل عام ، يجب أن تحتوي النماذج بشكل عام على جدول تواريخ. لا تستفيد النماذج "
+"التي لا تحتوي على جدول تواريخ بشكل عام من ميزات مثل ذكاء الوقت أو قد لا "
+"تحتوي على بنية منظمة بشكل صحيح."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr "يجب أن تحتوي عناصر الحساب على تعبير. بدون تعبير ، لن يظهروا أي قيم."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"يجب أن تكون الأعمدة المستخدمة في العلاقة من نفس نوع البيانات. من الناحية "
+"المثالية ، ستكون من نوع بيانات عدد صحيح (راجع القاعدة ذات الصلة \"يجب أن "
+"تكون أعمدة العلاقة [تنسيق] من نوع بيانات عدد صحيح\"). قد يؤدي وجود أعمدة "
+"داخل علاقة من أنواع بيانات مختلفة إلى مشاكل مختلفة."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"يجب أن تحتوي أعمدة البيانات على عمود مصدر. سيؤدي عمود البيانات الذي لا يحتوي"
+" على عمود مصدر إلى حدوث خطأ عند معالجة النموذج."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"لتجنب الأخطاء، تأكد من تمكين التدرجات الهرمية للسمات إذا تم استخدام عمود "
+"لفرز عمود آخر، أو استخدامه في تسلسل هيكلي، أو استخدامه في التباينات، أو فرزه"
+" بواسطة عمود آخر. الخاصية IsAvailableInMdx غير ذات صلة بنماذج Direct Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"لا يجوز استخدام الدالة USERELATIONSHIP مقابل جدول يستفيد أيضا من الأمان على "
+"مستوى الصف (RLS). سيؤدي هذا إلى حدوث خطأ عند استخدام مقياس معين في صورة "
+"مرئية. ستسلط هذه القاعدة الضوء على الجدول المستخدم في وظيفة USERELATIONSHIP "
+"الخاصة بالمقياس بالإضافة إلى RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"تجنب استخدام الدالة IFERROR لأنها قد تتسبب في تدهور الأداء. إذا كنت قلقا "
+"بشأن خطأ القسمة على صفر ، فاستخدم وظيفة DIVIDE لأنها تحل بشكل طبيعي أخطاء "
+"فارغة (أو يمكنك تخصيص ما يجب إظهاره في حالة حدوث مثل هذا الخطأ)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"وظيفة TREATAS أكثر كفاءة وتوفر أداء أفضل من وظيفة INTERSECT عند استخدامها في"
+" العلاقات الافتراضية."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"الغرض من وظيفة EVALUATEANDLOG هو استخدامها فقط في بيئات التطوير / الاختبار "
+"ويجب عدم استخدامها في نماذج الإنتاج."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"وتحدد هذه القاعدة التدابير التي هي مجرد إشارة إلى تدبير آخر. على سبيل المثال"
+" ، ضع في اعتبارك نموذجا بمقياسين: [التدبير أ] و [التدبير ب]. سيتم تشغيل هذه "
+"القاعدة للمقياس B إذا كان DAX الخاص ب MeasureB هو MeasureB:=[MeasureA]. "
+"وينبغي إزالة هذه التدابير المزدوجة."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr "يجب تجنب تدبيرين بأسماء مختلفة ومعرفين بنفس تعبير DAX لتقليل التكرار."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "قد تؤدي إضافة قيمة ثابتة إلى تدهور الأداء."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"بدلا من استخدام بناء الجملة \"1- (x / y)\" أو \"1 + (x / y)\" لتحقيق حساب "
+"النسبة المئوية ، استخدم وظائف DAX الأساسية (كما هو موضح أدناه). سيؤدي "
+"استخدام بناء الجملة المحسن إلى تحسين الأداء بشكل عام. \"1+/-...\" يقوم بناء "
+"الجملة دائما بإرجاع قيمة بينما الحل بدون \"1 + / -...\" لا (لأن القيمة قد "
+"تكون \"فارغة\"). لذلك فإن \"1 + / -...\" قد يرجع بناء الجملة المزيد من "
+"الصفوف / الأعمدة مما قد يؤدي إلى سرعة استعلام أبطأ.    دعنا نوضح بمثال: تجنب"
+" هذا: 1 - SUM ('المبيعات'[CostAmount]) / SUM ('المبيعات'[SalesAmount]) أفضل:"
+" DIVIDE (SUM ('المبيعات'[SalesAmount]) - SUM ('المبيعات'[CostAmount]) ، SUM "
+"('المبيعات'[SalesAmount])) الأفضل: VAR x = SUM ('المبيعات'[SalesAmount]) "
+"تقسيم العائد (x - SUM ('المبيعات'[CostAmount]) ، x)"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"بدلا من استخدام هذا النمط FILTER ('Table' ، [Measure] > Value) لمعلمات التصفية لدالة CALCULATE أو CALCULATETABLE ، استخدم أحد الخيارات أدناه (إن أمكن). ستنتج التصفية على عمود معين جدولا أصغر للمحرك لمعالجته ، مما يتيح أداء أسرع. يعتمد استخدام الدالة VALUES أو الدالة ALL على نتيجة القياس المطلوبة.\n"
+"الخيار 1: تصفية (القيم ('جدول' [عمود]) ، [قياس] > قيمة)\n"
+"الخيار 2: تصفية (ALL ('جدول' [عمود]) ، [قياس] > قيمة)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"بدلا من استخدام هذا النمط FILTER ('Table'، 'Table'[Column]=\"Value\") لمعلمات التصفية لدالة CALCULATE أو CALCULATETABLE، استخدم أحد الخيارات أدناه. فيما يتعلق باستخدام وظيفة KEEPFILTERS ، راجع الرابط المرجعي الثاني أدناه.\n"
+"الخيار 1: KEEPFILTERS (\"الجدول\" [العمود] = \"القيمة\")\n"
+"الخيار 2: \"جدول\" [عمود] = \"قيمة\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"استخدم الدالة DIVIDE بدلا من استخدام \"/\". تعمل الدالة DIVIDE على حل حالات "
+"القسمة على صفر. على هذا النحو ، يوصى باستخدامه لتجنب الأخطاء."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"يؤدي استخدام مراجع الأعمدة المؤهلة بالكامل إلى تسهيل التمييز بين مراجع "
+"الأعمدة والقياس ، كما يساعد أيضا في تجنب بعض الأخطاء. عند الرجوع إلى عمود في"
+" DAX، حدد اسم الجدول أولا، ثم حدد اسم العمود بين قوسين معقوفين."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"يؤدي استخدام مراجع القياس غير المؤهلة إلى تسهيل التمييز بين مراجع الأعمدة "
+"والقياس، كما يساعد أيضا على تجنب بعض الأخطاء. عند الرجوع إلى مقياس باستخدام "
+"DAX، لا تحدد اسم الجدول. استخدم اسم المقياس فقط بين قوسين معقوفين."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"يتم تنشيط العلاقات غير النشطة باستخدام وظيفة USERELATIONSHIP. إذا لم تتم "
+"الإشارة إلى علاقة غير نشطة بأي مقياس عبر هذه الوظيفة ، فلن يتم استخدام "
+"العلاقة. يجب تحديد ما إذا كانت العلاقة غير ضرورية أو لتنشيط العلاقة عبر هذه "
+"الطريقة."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"يجب إزالة الأعمدة المخفية التي لم تتم الإشارة إليها بواسطة أي تعبيرات DAX أو"
+" علاقات أو مستويات تسلسل هرمي أو خصائص فرز حسب."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"يجب إزالة التدابير المخفية التي لم تتم الإشارة إليها بواسطة أي تعبيرات DAX "
+"لإمكانية الصيانة."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"تبرز هذه القاعدة الجداول غير المتصلة بأي جدول آخر في النموذج له علاقة."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "مجموعات الحساب ليس لها وظيفة ما لم يكن لديها عناصر حسابية."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"إضافة أوصاف إلى الكائنات. تظهر هذه الأوصاف عند التمرير داخل قائمة الحقول في "
+"Power BI Desktop. بالإضافة إلى ذلك، يمكنك الاستفادة من هذه الأوصاف لإنشاء "
+"قاموس بيانات تلقائي."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"يجب تنسيق الأعمدة من النوع \"DateTime\" التي تحتوي على \"شهر\" في أسمائها ك "
+"\"mm / dd / yyyy\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"يجب تعيين خاصية SummaryBy للأعمدة الرقمية (عدد صحيح ، عشري ، مزدوج) إلى "
+"\"بلا\" لتجنب الجمع العرضي في Power BI (إنشاء مقاييس بدلا من ذلك)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "يجب تعيين خاصية سلسلة التنسيق الخاصة بالمقاييس المرئية."
+
+# description
+msgid "Add data category for columns"
+msgstr "إضافة خاصية فئة البيانات للأعمدة المناسبة."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "للحصول على تجربة مستخدم أفضل ، يجب تنسيق مقاييس percengage بعلامة \"٪\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "للحصول على تجربة مستخدم أفضل ، يجب تنسيق الأرقام الصحيحة بفواصل."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"يجب دائما إخفاء المفاتيح الخارجية حيث لا ينبغي استخدامها من قبل المستخدمين "
+"النهائيين."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"اضبط خاصية \"المفتاح\" على \"True\" لأعمدة المفاتيح الأساسية ضمن خصائص "
+"العمود."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"تسلط هذه القاعدة الضوء على أعمدة الشهر التي هي سلاسل ولم يتم فرزها. إذا تركت"
+" دون فرز ، فرزها أبجديا (أي أبريل ، أغسطس ...). تأكد من فرز هذه الأعمدة بحيث"
+" يتم فرزها بشكل صحيح (يناير ، فبراير ، مارس ...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"من أفضل الممارسات أن تكون أعمدة العلاقة من نوع بيانات عدد صحيح. هذا لا ينطبق"
+" فقط على تخزين البيانات ولكن نمذجة البيانات أيضا."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"يجب تنسيق الأعمدة من النوع \"DateTime\" التي تحتوي على \"شهر\" في أسمائها ك "
+"\"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"يجب تنسيق العلامات بشكل صحيح ك نعم / لا لأن هذا أسهل في القراءة من استخدام "
+"قيم عدد صحيح 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"يجب ألا تبدأ الكائنات أو تنتهي بمسافة. يحدث هذا عادة عن طريق الصدفة ويصعب "
+"العثور عليه."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"يجب كتابة الحرف الأول من أسماء الكائنات بأحرف كبيرة للحفاظ على الجودة "
+"المهنية."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "يجب ألا تتضمن أسماء الكائنات علامات تبويب وفواصل أسطر وما إلى ذلك."

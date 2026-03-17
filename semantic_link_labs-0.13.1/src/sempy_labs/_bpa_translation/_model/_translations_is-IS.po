@@ -1,0 +1,939 @@
+#
+msgid ""
+msgstr ""
+"Language: is-IS\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Ekki nota fljótandi gagnagerðir"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Forðastu að nota reiknaða dálka"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Athugaðu hvort tvíátta og margátta tengsl séu gild"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Athugaðu hvort breytilegt raðstigsöryggi (RLS) sé nauðsynlegt"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Forðastu að nota marga-til-marga vensl í töflum sem notaðar eru fyrir kvikt "
+"öryggi á línustigi"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Margir-til-margir sambönd ættu að vera í eina átt"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Stilltu IsAvailableInMdx á false í dálkum sem ekki eru eigindir"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Stilltu eiginleikann 'Skilgreining gagnaþekju' á DirectQuery skipting "
+"blandaðrar töflu"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Tvöföld stilling á aðeins við fyrir víddartöflur ef DirectQuery er notað "
+"fyrir samsvarandi staðreyndatöflu"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Stilltu víddartöflur á tvöfalda stillingu í stað innflutnings þegar "
+"DirectQuery er notað á staðreyndatöflum"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Lágmarka Power Query umbreytingar"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Lítum á stjörnuskema í stað snjókornaarkitektúrs"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Forðastu að nota útsýni þegar þú notar Direct Lake ham"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Forðastu að bæta 0 við mál"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Draga úr notkun á reiknuðum töflum"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Draga úr notkun reiknaðra dálka sem nota aðgerðina TENGT"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Forðastu óhófleg tvíátta eða margátta sambönd"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Fjarlægja sjálfvirka dagsetningartöflu"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Dagsetningar-/dagatalstöflur ættu að vera merktar sem dagsetningartafla"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Stórum borðum ætti að skipta"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Takmarka öryggi á raðstigi (RLS) rökfræði"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Líkan ætti að hafa dagsetningartöflu"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Reikniatriði verða að hafa segð"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Tengsladálkar ættu að vera af sömu gagnagerð"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Gagnadálkar verða að hafa upprunadálk"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Stilltu IsAvailableInMdx á true í nauðsynlegum dálkum"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Forðastu aðgerðina USERELATIONSHIP og RLS gegn sömu töflu"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Forðastu að nota aðgerðina IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Nota aðgerðina SKERA í stað SKERA fyrir sýndarvenslur"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Ekki má nota EVALUATEANDLOG aðgerðina í framleiðslulíkönum"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Ráðstafanir ættu ekki að vera beinar tilvísanir í aðrar ráðstafanir"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Engir tveir mælikvarðar ættu að hafa sömu skilgreiningu"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Forðastu að leggja saman eða draga föst gildi frá niðurstöðum deilinga"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Forðastu að nota \"1-(x/y)\" setningafræði"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Sía mæligildi eftir dálkum, ekki töflum"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Sía dálkgildi með réttri setningafræði"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Nota aðgerðina DEILA fyrir deilingu"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Dálkatilvísanir ættu að vera fullgildar"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Tilvísanir í mælikvarða ættu að vera óhæfar"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Óvirk sambönd sem eru aldrei virkjuð"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Fjarlægja óþarfa dálka"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Fjarlægðu óþarfa ráðstafanir"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Gakktu úr skugga um að töflur hafi tengsl"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Reikniflokkar án útreikningsatriða"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Sýnilegir hlutir án lýsingar"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Gefa upp sniðstreng fyrir dálka \"Dagsetning\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Ekki taka saman tölulega dálka"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Gefa upp sniðstreng fyrir mælingar"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Bæta við gagnaflokki fyrir dálka"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Prósentur ættu að vera sniðnar með þúsundaskiltáknum og 1 aukastaf"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Heilar tölur ættu að vera sniðnar með þúsundaskiltáknum og engum aukastöfum"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Fela erlenda lykla"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Merktu aðallykla"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Mánuður (sem strengur) verður að flokka"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Tengsladálkar ættu að vera af heiltölu gagnagerð"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Gefa upp sniðstreng fyrir dálka \"Mánuður\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Sníða flaggdálka sem Já/Nei gildisstrengi"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Hlutir ættu ekki að byrja eða enda á bili"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Fyrsti stafur hluta verður að vera með hástöfum"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Hlutaheiti mega ekki innihalda sérstafi"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Framkvæmd"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Framkvæmd"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Framkvæmd"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Framkvæmd"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Framkvæmd"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Framkvæmd"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Framkvæmd"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Framkvæmd"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Framkvæmd"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Framkvæmd"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Framkvæmd"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Framkvæmd"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Framkvæmd"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Framkvæmd"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Framkvæmd"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Framkvæmd"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Framkvæmd"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Framkvæmd"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Framkvæmd"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Framkvæmd"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Framkvæmd"
+
+# category
+msgid "Model should have a date table"
+msgstr "Framkvæmd"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Forvarnir gegn villum"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Forvarnir gegn villum"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Forvarnir gegn villum"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Forvarnir gegn villum"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Forvarnir gegn villum"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX-tjáningar"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX-tjáningar"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX-tjáningar"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Viðhald"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Viðhald"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Viðhald"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Viðhald"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Viðhald"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formatting"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formatting"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formatting"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formatting"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formatting"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formatting"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formatting"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formatting"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formatting"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formatting"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formatting"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatting"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formatting"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formatting"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Nafngiftir"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Forðast skal gagnagerðina \"Tvöfalt\" flotpunkt, þar sem það getur leitt til"
+" ófyrirsjáanlegra útbótaskekkja og minni frammistöðu í ákveðnum aðstæðum. "
+"Notaðu \"Int64\" eða \"Decimal\" þar sem við á (en athugaðu að \"Decimal\" "
+"er takmarkað við 4 tölustafi á eftir aukastafnum)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Reiknaðir dálkar þjappast ekki eins vel og gagnadálkar svo þeir taka meira "
+"minni. Þeir hægja einnig á vinnslutíma fyrir bæði töfluna sem og "
+"endurreikning ferlis. Losaðu reiknaða dálkarökfræði í gagnavöruhúsið þitt og"
+" breyttu þessum reiknuðu dálkum í gagnadálka."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Notkun á kraftmiklu öryggi á raðstigi (RLS) getur bætt við minni og "
+"afköstum. Vinsamlegast rannsakaðu kosti / galla þess að nota það."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Notkun margra á mörgum venslum í töflum sem nota kvikt öryggi á línustigi "
+"getur valdið alvarlegri rýrnun á afköstum fyrirspurna. Afkastavandamál þessa"
+" mynsturs aukast þegar mörg mörg til mörg sambönd eru sett á móti töflu sem "
+"inniheldur öryggi á línustigi. Notaðu þess í stað eitt af mynstrunum sem "
+"sýnt er í greininni hér að neðan þar sem ein víddartafla tengir marga við "
+"einn við öryggistöflu."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Til að flýta fyrir vinnslutíma og spara minni eftir vinnslu ætti ekki að búa"
+" til stigveldi eiginda fyrir dálka sem eru aldrei notaðir til sneiðar af MDX"
+" biðlarum. Með öðrum orðum, allir faldir dálkar sem ekki eru notaðir sem "
+"Raða eftir dálki eða vísað til í stigveldi notenda ættu að hafa eiginleikann"
+" IsAvailableInMdx stilltan á false. Eiginleikinn IsAvailableInMdx á ekki við"
+" fyrir Direct Lake gerðir."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Að stilla eiginleikann 'Skilgreining gagnaumfjöllunar' gæti leitt til betri "
+"frammistöðu vegna þess að vélin veit hvenær hún getur aðeins spurt um "
+"innflutningshluta töflunnar og hvenær hún þarf að spyrjast fyrir um "
+"DirectQuery hluta töflunnar."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Notaðu aðeins tvöfalda stillingu fyrir víddartöflur/skiptingar þar sem "
+"samsvarandi staðreyndatafla er í DirectQuery. Notkun tvískiptrar stillingar "
+"við aðrar kringumstæður (þ.e. restin af líkaninu er í innflutningsstillingu)"
+" getur leitt til afkastavandamála, sérstaklega ef fjöldi mælikvarða í "
+"líkaninu er mikill."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Þegar DirectQuery er notað ætti að stilla víddartöflur á Tvöfalda stillingu "
+"til að bæta afköst fyrirspurna."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Lágmarka Power Query umbreytingar til að bæta afköst líkanavinnslu. Það er "
+"best að hlaða þessum umbreytingum niður í gagnavöruhúsið ef mögulegt er. "
+"Vinsamlegast athugaðu einnig hvort fyrirspurnarbrot eigi sér stað innan "
+"líkansins þíns. Vinsamlegast skoðaðu greinina hér að neðan til að fá frekari"
+" upplýsingar um samanbrot fyrirspurna."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Almennt séð er stjörnuskema ákjósanlegur arkitektúr fyrir töflulíkön. Þar "
+"sem það er raunin eru gild dæmi til að nota snjókornaaðferð. Vinsamlegast "
+"athugaðu líkanið þitt og íhugaðu að færa þig yfir í stjörnuskemaarkitektúr."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Í Direct Lake-stillingu munu yfirlit alltaf falla aftur í DirectQuery. "
+"Þannig að til að ná sem bestum árangri skaltu nota lakehouse borð í stað "
+"útsýnis."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Ef 0 er bætt við mælikvarða til þess að hún sýni ekki autt gildi getur það "
+"haft neikvæð áhrif á afköst."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Flytja reiknaða töflu í gagnavöruhúsið þitt. Að treysta á reiknaðar töflur "
+"mun leiða til tæknilegra skulda og hugsanlegrar misræmis ef þú ert með "
+"margar gerðir á vettvangi þínum."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Reiknaðir dálkar þjappast ekki eins vel og gagnadálkar og geta valdið lengri"
+" vinnslutíma. Sem slíkur ætti að forðast reiknaða dálka ef mögulegt er. Ein "
+"atburðarás þar sem auðveldara gæti verið að forðast þær er ef þær nota "
+"aðgerðina TENGD."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Takmarkaðu notkun b-di og margra-til-margra tengsla. Þessi regla flaggar "
+"líkaninu ef meira en 30% tengsla eru tví-di eða margir-til-margir."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Forðastu að nota töflur með sjálfvirkri dagsetningu. Gakktu úr skugga um að "
+"slökkva á sjálfvirkri dagsetningartöflu í stillingunum í Power BI Desktop. "
+"Þetta mun spara minnisauðlindir."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Þessi regla leitar að töflum sem innihalda orðin \"dagsetning\" eða "
+"\"dagatal\" þar sem þær ættu líklega að vera merktar sem dagsetningartöflu."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Stórum töflum ætti að skipta upp til að hámarka vinnslu. Þetta á ekki við um"
+" merkingarlíkön í Direct Lake ham þar sem þau geta aðeins haft eina "
+"skiptingu í hverri töflu."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Reyndu að einfalda DAX sem notað er fyrir öryggi á línustigi. Notkun aðgerða"
+" innan þessarar reglu er líklega hægt að losa sig við andstreymiskerfin "
+"(gagnavöruhús)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Almennt séð ættu líkön almennt að hafa dagsetningartöflu. Líkön sem eru ekki"
+" með dagsetningartöflu eru almennt ekki að nýta sér eiginleika eins og "
+"tímagreind eða hafa kannski ekki rétt skipulagðan arkitektúr."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Reikniatriði verða að hafa segð. Án tjáningar munu þeir ekki sýna nein "
+"gildi."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Dálkar sem notaðir eru í venslum ættu að vera af sömu gagnagerð. Helst verða"
+" þeir af heiltölu gagnagerð (sjá tengda reglu '[Snið] Tengsladálkar ættu að "
+"vera af heiltölu gagnagerð'). Að hafa dálka innan sambands sem eru af "
+"mismunandi gagnagerðum getur leitt til ýmissa vandamála."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Gagnadálkar verða að hafa upprunadálk. Gagnadálkur án upprunadálks mun valda"
+" villu við vinnslu líkansins."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Til að forðast villur skal tryggja að stigveldi eiginda sé virkjað ef dálkur"
+" er notaður til að raða öðrum dálki, notaður í stigveldi, notaður í "
+"afbrigðum eða er flokkaður eftir öðrum dálki. Eiginleikinn IsAvailableInMdx "
+"á ekki við fyrir Direct Lake gerðir."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Ekki er hægt að nota aðgerðina USERELATIONSHIP gegn töflu sem nýtir einnig "
+"öryggi á línustigi (RLS). Þetta mun mynda villu þegar tilteknur mælikvarði "
+"er notaður í myndefni. Þessi regla mun auðkenna töfluna sem er notuð í "
+"USERELATIONSHIP aðgerð mælingar sem og RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Forðastu að nota IFERROR aðgerðina þar sem hún getur valdið rýrnun á "
+"afköstum. Ef þú hefur áhyggjur af deila-fyrir-núll villu skaltu nota DIVIDE "
+"aðgerðina þar sem hún leysir náttúrulega slíkar villur sem auðar (eða þú "
+"getur sérsniðið hvað ætti að sýna ef slík villa kemur upp)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"TREATAS aðgerðin er skilvirkari og veitir betri afköst en INTERSECT aðgerðin"
+" þegar hún er notuð í veirusamböndum."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"EVEVALUATIONANDLOG aðgerðin er aðeins ætluð til notkunar í "
+"þróunar-/prófunarumhverfi og ætti ekki að nota í framleiðslulíkönum."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Þessi regla auðkennir ráðstafanir sem eru einfaldlega tilvísun í aðra "
+"ráðstöfun. Sem dæmi, skoðum líkan með tveimur mælingum: [MeasureA] og "
+"[MeasureB]. Þessi regla yrði virkjuð fyrir MeasureB ef DAX MeasureB væri "
+"MeasureB:=[MeasureA]. Fjarlægja ætti slíkar tvíverknaðaraðgerðir."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Forðast skal tvær ráðstafanir með mismunandi nöfnum og skilgreindar með sömu"
+" DAX-tjáningu til að draga úr offramboðum."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Að bæta við föstu gildi getur leitt til rýrnunar á afköstum."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Í stað þess að nota \"1-(x/y)\" eða \"1+(x/y)\" setningaskipan til að ná "
+"prósentuútreikningi skaltu nota grunnaðgerðir DAX (eins og sýnt er hér að "
+"neðan). Notkun endurbættrar setningafræði mun almennt bæta frammistöðuna. "
+"\"1+/-...\" Setningafræði skilar alltaf gildi en lausnin án \"1+/-...\" "
+"gerir það ekki (þar sem gildið gæti verið 'autt'). Þess vegna er '1+/-...' "
+"Setningafræði getur skilað fleiri línum/dálkum sem getur leitt til hægari "
+"fyrirspurnarhraða.    Við skulum útskýra með dæmi: Forðastu þetta: 1 - SUMMA"
+" ( 'Sala'[CostAmount] ) / SUMMA ( 'Sala'[SalesAmount] ) Betri: DEILA ( "
+"'SUMMA ( 'Sala'[Sales'[SalesAmount] ) - SUMMA ( 'Sala'[CostAmount] ), SUMMA "
+"( 'Sala'[SalesAmount] ) ) Best: VAR x = SUM ( 'Sala'[SalesAmount] ) RETURN "
+"DIVIDE ( x - SUM ( 'Sala'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Í stað þess að nota þetta mynstur FILTER('Table',[Measure]>Value) fyrir síufæribreytur CALCULATE eða CALCULATETABLE falls, notaðu einn af valkostunum hér að neðan (ef mögulegt er). Síun á tilteknum dálki mun framleiða minni töflu fyrir vélina til að vinna úr og þar með gera hraðari afköst. Notkun VALUES aðgerðarinnar eða ALL aðgerðarinnar fer eftir æskilegri mælingu.\n"
+"Valkostur 1: SÍA(GILDI('Tafla'[Dálkur]),[Mælikvarði] > gildi)\n"
+"Valkostur 2: SÍA(ALL('Tafla'[Dálkur]),[Mælikvarði] > gildi)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Í stað þess að nota þetta mynstur FILTER('Table','Table'[Column]=\"Value\") fyrir síufæribreytur fyrir CALCULATE eða CALCULATETABLE fall, notaðu einn af valkostunum hér að neðan. Hvað varðar hvort nota eigi KEEPFILTERS aðgerðina, sjá annan tilvísunartengilinn hér að neðan.\n"
+"Valkostur 1: KEEPFILTERS('Tafla'[Dálkur]=\"Gildi\")\n"
+"Valkostur 2: 'Tafla'[Dálkur]=\"Gildi\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Notaðu aðgerðina DEILA í stað þess að nota \"/\". DIVIDE aðgerðin leysir "
+"deilt með núlli tilfellum. Sem slík er mælt með því að nota til að forðast "
+"villur."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Með því að nota fullgildar dálktilvísanir er auðveldara að greina á milli "
+"dálka- og mælitilvísana og hjálpar einnig til við að forðast ákveðnar "
+"villur. Þegar vísað er í dálk í DAX skaltu fyrst tilgreina heiti töflunnar "
+"og síðan dálkheitið í hornklofum."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Með því að nota óhæfar tilvísanir í mælikvarða er auðveldara að greina á "
+"milli dálka- og mælitilvísana og hjálpar einnig til við að forðast ákveðnar "
+"villur. Þegar vísað er í mælikvarða með DAX skaltu ekki tilgreina "
+"töfluheitið. Notaðu aðeins heiti mælikvarða í hornklofum."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Óvirk vensl eru virkjuð með aðgerðinni USERELATIONSHIP. Ef ekki er vísað til"
+" óvirks sambands í neinum mælikvarða í gegnum þessa aðgerð verður sambandið "
+"ekki notað. Það ætti að ákvarða hvort sambandið sé ekki nauðsynlegt eða að "
+"virkja sambandið með þessari aðferð."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Fjarlægja ætti falda dálka sem ekki er vísað í með DAX-segðim, venslum, "
+"stigveldisstigum eða eiginleikum raða eftir."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Faldar mælingar sem ekki er vísað í í DAX-segðir ætti að fjarlægja til að "
+"viðhalda þeim."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Þessi regla auðkennir töflur sem eru ekki tengdar neinni annarri töflu í "
+"líkaninu með vensl."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "Reikniflokkar hafa enga virkni nema þeir hafi reikniatriði."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Bættu lýsingum við hluti. Þessar lýsingar eru sýndar þegar bendillinn er í "
+"reitalistanum í Power BI Desktop. Að auki geturðu nýtt þér þessar lýsingar "
+"til að búa til sjálfvirka gagnaorðabók."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Dálkar af gerðinni \"DateTime\" sem hafa \"Mánuður\" í nöfnum sínum ættu að "
+"vera sniðnir sem \"mm/dd/yyyy\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Tölulegir dálkar (heiltala, tugabrot, tvöföld) ættu að hafa eiginleikann "
+"SummarizeBy stilltan á \"Enginn\" til að forðast óviljandi samantekt í Power"
+" BI (búa til mælingar í staðinn)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Sýnilegum mælikvörðum ætti að hafa sniðstrengseiginleika sínum úthlutað."
+
+# description
+msgid "Add data category for columns"
+msgstr "Bættu við Data Category eiginleika fyrir viðeigandi dálka."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Til að fá betri notendaupplifun ættu percengage mælingar að vera sniðnar með"
+" '%' merki."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Til að fá betri notendaupplifun ætti að forsníða heilar tölur með kommum."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Erlendir lyklar ættu alltaf að vera faldir þar sem þeir ættu ekki að vera "
+"notaðir af notendum."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Stilltu eiginleikann 'Key' á 'True' fyrir aðallykildálka innan "
+"dálkeiginleikanna."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Þessi regla undirstrikar mánaðardálka sem eru strengir og eru ekki "
+"flokkaðir. Ef þeir eru óflokkaðir munu þeir raða í stafrófsröð (þ.e. apríl, "
+"ágúst...). Gakktu úr skugga um að flokka slíka dálka þannig að þeir flokkist"
+" rétt (janúar, febrúar, mars...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Það er besta venjan fyrir tengsladálka að vera af heiltölu gagnagerð. Þetta "
+"á ekki aðeins við um gagnageymslu heldur einnig gagnalíkön."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Dálkar af gerðinni \"DateTime\" sem hafa \"Mánuður\" í nöfnum sínum ættu að "
+"vera sniðnir sem \"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Flögg verða að vera rétt sniðin sem Já/Nei þar sem það er auðveldara að lesa"
+" en að nota 0/1 heiltölugildi."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Hlutir ættu ekki að byrja eða enda á bili. Þetta gerist venjulega fyrir "
+"slysni og er erfitt að finna."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Fyrsti stafurinn í hlutanöfnum ætti að vera með hástöfum til að viðhalda "
+"faglegum gæðum."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Hlutanöfn ættu ekki að innihalda flipa, línuskil o.s.frv."

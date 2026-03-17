@@ -1,0 +1,967 @@
+#
+msgid ""
+msgstr ""
+"Language: mt-MT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Tużax tipi ta' dejta b'punt li jżomm f'wiċċ l-ilma"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Evita li tuża kolonni kkalkulati"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Iċċekkja jekk ir-relazzjonijiet bi-direzzjonali u ħafna għal ħafna humiex "
+"validi"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Iċċekkja jekk hijiex meħtieġa sigurtà dinamika tal-livell ta' ringiela (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Evita li tuża relazzjonijiet ħafna sa ħafna fuq tabelli użati għas-sigurtà "
+"tal-livell dinamiku tal-filliera"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Ħafna għal ħafna relazzjonijiet għandhom ikunu direzzjoni waħda"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Issettja IsAvailableInMdx għal falz fuq kolonni mhux tal-attributi"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Issettja l-proprjetà tad-\"Definizzjoni tal-Kopertura tad-Dejta\" fuq il-"
+"partizzjoni tad-DirectQuery ta' tabella ibrida"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Il-modalità doppja hija rilevanti biss għat-tabelli tad-dimensjoni jekk id-"
+"DirectQuery jintuża għat-tabella tal-fatti korrispondenti"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Issettja t-tabelli tad-dimensjonijiet għall-modalità doppja minflok timporta"
+" meta tuża DirectQuery fuq tabelli tal-fatti"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Imminimizza t-trasformazzjonijiet tal-Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Ikkunsidra schema stilla minflok arkitettura snowflake"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Evita li tuża veduti meta tuża l-modalità Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Evita li żżid 0 ma' miżura"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Naqqas l-użu tat-tabelli kkalkulati"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Naqqas l-użu ta' kolonni kkalkulati li jużaw il-funzjoni RELATATA"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Evita relazzjonijiet bi-direzzjonali eċċessivi jew ħafna għal ħafna"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Neħħi t-tabella tad-data awtomatika"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"It-tabelli tad-data/kalendarju għandhom jiġu mmarkati bħala tabella tad-data"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Tabelli kbar għandhom jinqasmu"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Illimita l-loġika tas-sigurtà tal-livell ta' ringiela (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Il-mudell għandu jkollu tabella tad-data"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "L-elementi ta' kalkolu għandu jkollhom espressjoni"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Il-kolonni tar-relazzjoni għandhom ikunu tal-istess tip ta' dejta"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Il-kolonni tad-dejta għandu jkollhom kolonna tas-sors"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Issettja IsAvailableInMdx għal veru fuq il-kolonni meħtieġa"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Evita l-funzjoni USERELATIONSHIP u RLS kontra l-istess tabella"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Evita li tuża l-funzjoni IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Uża l-funzjoni TREATAS minflok INTERSECT għal relazzjonijiet virtwali"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Il-funzjoni EVALUATEANDLOG m'għandhiex tintuża f'mudelli ta' produzzjoni"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Il-miżuri m'għandhomx ikunu referenzi diretti ta' miżuri oħra"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "L-ebda żewġ miżuri ma għandu jkollhom l-istess definizzjoni"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Evita żieda jew tnaqqis ta' valuri kostanti mar-riżultati tad-diviżjonijiet"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Evita li tuża s-sintassi \"1-(x/y)\""
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Iffiltra l-valuri tal-kejl bil-kolonni, mhux it-tabelli"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Valuri tal-kolonna tal-filtru b'sintassi xierqa"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Uża l-funzjoni DIVIDE għad-diviżjoni"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Ir-referenzi tal-kolonna għandhom ikunu kkwalifikati bis-sħiħ"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Ir-referenzi tal-miżura ma għandhomx jiġu kkwalifikati"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Relazzjonijiet inattivi li qatt ma jiġu attivati"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Neħħi kolonni mhux meħtieġa"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Neħħi miżuri mhux meħtieġa"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Kun żgur li t-tabelli għandhom relazzjonijiet"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Gruppi ta' kalkolu mingħajr partiti ta' kalkolu"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Oġġetti viżibbli mingħajr deskrizzjoni"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Ipprovdi s-sekwenza tal-format għall-kolonni \"Data\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Tiġborx fil-qosor il-kolonni numeriċi"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Ipprovdi s-sekwenza tal-format għall-miżuri"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Żid il-kategorija tad-dejta għall-kolonni"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Il-perċentwali għandhom jiġu fformattjati b'eluf ta' separaturi u deċimali 1"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"In-numri sħaħ għandhom jiġu fformattjati b'eluf ta' separaturi u mingħajr "
+"deċimali"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Aħbi ċ-ċwievet barranin"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Immarka t-tasti primarji"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Ix-xahar (bħala sekwenza) għandu jiġi ssortjat"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Il-kolonni tar-relazzjoni għandhom ikunu tat-tip ta' dejta interi"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Ipprovdi sekwenza ta 'format għal kolonni \"Xahar\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Kolonni tal-bandiera tal-format bħala kordi tal-valur Iva/Le"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "L-oġġetti m'għandhomx jibdew jew jispiċċaw bi spazju"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "L-ewwel ittra ta' oġġetti għandha tiġi kapitalizzata"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "L-ismijiet tal-oġġetti ma għandux ikun fihom karattri speċjali"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Twettieq"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Twettieq"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Twettieq"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Twettieq"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Twettieq"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Twettieq"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Twettieq"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Twettieq"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Twettieq"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Twettieq"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Twettieq"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Twettieq"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Twettieq"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Twettieq"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Twettieq"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Twettieq"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Twettieq"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Twettieq"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Twettieq"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Twettieq"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Twettieq"
+
+# category
+msgid "Model should have a date table"
+msgstr "Twettieq"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Prevenzjoni ta' Żbalji"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Prevenzjoni ta' Żbalji"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Prevenzjoni ta' Żbalji"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Prevenzjoni ta' Żbalji"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Prevenzjoni ta' Żbalji"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Manutenzjoni"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Manutenzjoni"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Manutenzjoni"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Manutenzjoni"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Manutenzjoni"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Ifformattjar"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Ifformattjar"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Ifformattjar"
+
+# category
+msgid "Add data category for columns"
+msgstr "Ifformattjar"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Ifformattjar"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Ifformattjar"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Ifformattjar"
+
+# category
+msgid "Mark primary keys"
+msgstr "Ifformattjar"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Ifformattjar"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Ifformattjar"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Ifformattjar"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Ifformattjar"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Ifformattjar"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Ifformattjar"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Konvenzjonijiet tal-ismijiet"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"It-tip ta' dejta b'punt li jżomm f'wiċċ l-ilma \"Doppju\" għandu jiġi "
+"evitat, peress li jista' jirriżulta fi żbalji imprevedibbli ta' roundoff u "
+"prestazzjoni mnaqqsa f'ċerti xenarji. Uża \"Int64\" jew \"Deċimali\" fejn "
+"xieraq (iżda innota li \"Deċimali\" huwa limitat għal 4 ċifri wara s-sinjal "
+"deċimali)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Il-kolonni kkalkulati ma jikkompressawx kif ukoll il-kolonni tad-dejta "
+"sabiex jieħdu aktar memorja. Huma jnaqqsu wkoll il-ħinijiet tal-ipproċessar "
+"kemm għat-tabella kif ukoll għar-recalc tal-proċess. Offload ikkalkulat il-"
+"loġika tal-kolonna għall-maħżen tad-dejta tiegħek u dawwar dawn il-kolonni "
+"kkalkulati f'kolonni tad-dejta."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"L-użu tas-sigurtà dinamika tal-livell tal-filliera (RLS) jista' jżid il-"
+"memorja u l-ispejjeż ġenerali tal-prestazzjoni. Jekk jogħġbok irriċerka "
+"l-vantaġġi / żvantaġġi li tużah."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"L-użu ta 'relazzjonijiet ħafna għal ħafna fuq tabelli li jużaw sigurtà "
+"dinamika tal-livell ta' ringiela jista 'jikkawża degradazzjoni serja tal-"
+"prestazzjoni tal-mistoqsija. Il-problemi ta 'prestazzjoni ta' dan il-mudell "
+"komposti meta snowflaking diversi relazzjonijiet ħafna għal ħafna kontra "
+"tabella li fiha sigurtà tal-livell ta 'ringiela. Minflok, uża waħda mill-"
+"mudelli murija fl-artikolu ta' hawn taħt fejn tabella ta' dimensjoni waħda "
+"tirrelata ħafna ma' waħda ma' tabella ta' sigurtà."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Biex jitħaffef il-ħin tal-ipproċessar u tiġi kkonservata l-memorja wara "
+"l-ipproċessar, il-ġerarkiji tal-attributi m'għandhomx jinbnew għal kolonni "
+"li qatt ma jintużaw għat-tqattigħ mill-klijenti tal-MDX. Fi kliem ieħor, il-"
+"kolonni moħbija kollha li ma jintużawx bħala Sort By Column jew referenzjati"
+" fil-ġerarkiji tal-utent għandu jkollhom il-proprjetà IsAvailableInMdx "
+"tagħhom issettjata għal falza. Il-proprjetà IsAvailableInMdx mhix rilevanti "
+"għall-mudelli tal-Lag Dirett."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"L-issettjar tal-proprjetà tad-\"Definizzjoni tal-Kopertura tad-Dejta\" "
+"jista' jwassal għal prestazzjoni aħjar minħabba li l-magna tkun taf meta "
+"tista' tfittex biss il-porzjon tal-importazzjoni tat-tabella u meta jkollha "
+"bżonn tfittex il-porzjon tad-DirectQuery tat-tabella."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Uża biss modalità Doppja għal tabelli / diviżorji tad-dimensjoni fejn "
+"tabella tal-fatti korrispondenti tinsab f'DirectQuery. L-użu tal-modalità "
+"Doppja f'ċirkostanzi oħra (jiġifieri l-bqija tal-mudell huwa fil-modalità "
+"Importazzjoni) jista' jwassal għal kwistjonijiet ta' prestazzjoni "
+"speċjalment jekk in-numru ta' miżuri fil-mudell ikun għoli."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Meta tintuża DirectQuery, it-tabelli tad-dimensjoni għandhom jiġu ssettjati "
+"għall-modalità Doppja sabiex tittejjeb il-prestazzjoni tal-mistoqsija."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Imminimizza t-trasformazzjonijiet tal-Power Query sabiex ittejjeb il-"
+"prestazzjoni tal-ipproċessar tal-mudell. Hija l-aħjar prattika li dawn it-"
+"trasformazzjonijiet jiġu offloaded fil-maħżen tad-dejta jekk possibbli. "
+"Ukoll, jekk jogħġbok iċċekkja jekk it-tiwi tal-mistoqsija hijiex qed isseħħ "
+"fil-mudell tiegħek. Jekk jogħġbok irreferi l-artiklu ta' hawn taħt għal "
+"aktar informazzjoni dwar it-tiwi tal-mistoqsija."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Ġeneralment, star-schema hija l-aħjar arkitettura għal mudelli tabulari. Dan"
+" huwa l-każ, hemm każijiet validi biex jintuża approċċ snowflake. Iċċekkja "
+"l-mudell tiegħek u ikkunsidra li timxi għal arkitettura star-schema."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Fil-modalità Direct Lake, il-veduti dejjem jaqgħu lura għal DirectQuery. "
+"Għalhekk, sabiex tikseb l-aħjar prestazzjoni uża tabelli lakehouse minflok "
+"veduti."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Iż-żieda ta' 0 ma' miżura sabiex ma turix valur vojt jista' jkollha impatt "
+"negattiv fuq il-prestazzjoni."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Emigra l-loġika kkalkulata tal-mejda għall-maħżen tad-dejta tiegħek. Id-"
+"dipendenza fuq tabelli kkalkulati twassal għal dejn tekniku u allinjamenti "
+"ħżiena potenzjali jekk għandek mudelli multipli fuq il-pjattaforma tiegħek."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Il-kolonni kkalkulati ma jikkompressawx kif ukoll il-kolonni tad-dejta u "
+"jistgħu jikkawżaw ħinijiet itwal ta' pproċessar. Bħala tali, il-kolonni "
+"kkalkulati għandhom jiġu evitati jekk possibbli. Xenarju wieħed fejn jistgħu"
+" jkunu aktar faċli biex jiġu evitati huwa jekk jużaw il-funzjoni RELATATA."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Illimita l-użu ta' b-di u ħafna relazzjonijiet ma' ħafna. Din ir-regola "
+"timmarka l-mudell jekk aktar minn 30% tar-relazzjonijiet huma bi-di jew "
+"ħafna għal ħafna."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Evita li tuża tabelli tad-data awtomatika. Kun żgur li titfi t-tabella tad-"
+"data awtomatika fis-settings fil-Power BI Desktop. Dan jissejvja r-riżorsi "
+"tal-memorja."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Din ir-regola tfittex tabelli li fihom il-kliem \"data\" jew \"kalendarju\" "
+"peress li x'aktarx ikunu mmarkati bħala tabella tad-data."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Tabelli kbar għandhom jinqasmu sabiex jiġi ottimizzat l-ipproċessar. Dan "
+"mhuwiex rilevanti għal mudelli semantiċi fil-modalità Direct Lake peress li "
+"jista 'jkollhom partizzjoni waħda biss għal kull tabella."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Ipprova ssimplifika d-DAX użat għas-sigurtà tal-livell tal-filliera. L-użu "
+"tal-funzjonijiet f'din ir-regola x'aktarx li jiġi offloaded għas-sistemi "
+"upstream (maħżen tad-dejta)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Ġeneralment, il-mudelli ġeneralment għandu jkollhom tabella tad-data. "
+"Mudelli li m'għandhomx tabella tad-data ġeneralment mhumiex qed jieħdu "
+"vantaġġ minn karatteristiċi bħall-intelliġenza tal-ħin jew jista' ma "
+"jkollhomx arkitettura strutturata kif suppost."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"L-elementi ta' kalkolu għandu jkollhom espressjoni. Mingħajr espressjoni, ma"
+" juru l-ebda valur."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Il-kolonni użati f'relazzjoni għandhom ikunu tal-istess tip ta' dejta. "
+"Idealment, dawn ikunu tat-tip ta' dejta interi (ara r-regola relatata "
+"\"[Formattjar] Il-kolonni tar-relazzjoni għandhom ikunu tat-tip ta' dejta "
+"interi\"). Li jkollok kolonni f'relazzjoni li huma ta' tipi differenti ta' "
+"dejta jistgħu jwasslu għal diversi kwistjonijiet."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Il-kolonni tad-dejta għandu jkollhom kolonna tas-sors. Kolonna tad-dejta "
+"mingħajr kolonna tas-sors tikkawża żball meta tipproċessa l-mudell."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Sabiex jiġu evitati żbalji, żgura li l-ġerarkiji tal-attributi jiġu attivati"
+" jekk tintuża kolonna għall-issortjar ta' kolonna oħra, użata f'ġerarkija, "
+"użata f'varjazzjonijiet, jew tiġi magħżula minn kolonna oħra. Il-proprjetà "
+"IsAvailableInMdx mhix rilevanti għall-mudelli tal-Lag Dirett."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Il-funzjoni USERELATIONSHIP ma tistax tintuża kontra tabella li tiggwida "
+"wkoll is-sigurtà fil-livell tal-filliera (RLS). Dan jiġġenera żball meta "
+"tintuża l-miżura partikolari f'viżwali. Din ir-regola se tenfasizza "
+"t-tabella li tintuża fil-funzjoni USERELATIONSHIP ta 'miżura kif ukoll RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Evita li tuża l-funzjoni IFERROR għax tista' tikkawża degradazzjoni tal-"
+"prestazzjoni. Jekk int imħasseb dwar żball diviżorju b'żero, uża l-funzjoni "
+"DIVIDE peress li naturalment issolvi żbalji bħal vojta (jew tista "
+"'tippersonalizza dak li għandu jintwera f'każ ta' żball bħal dan)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Il-funzjoni TREATAS hija aktar effiċjenti u tipprovdi prestazzjoni aħjar "
+"mill-funzjoni INTERSECT meta tintuża f'relazzjonijiet virutali."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Il-funzjoni EVALUATEANDLOG hija maħsuba biex tintuża biss f'ambjenti ta' "
+"żvilupp/test u m'għandhiex tintuża f'mudelli ta' produzzjoni."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Din ir-regola tidentifika miżuri li huma sempliċement referenza għal miżura "
+"oħra. Bħala eżempju, ikkunsidra mudell b'żewġ miżuri: [MeasureA] u "
+"[MeasureB]. Din ir-regola tiġi attivata għall-Miżura B jekk id-DAX tal-"
+"MiżuraB tkun il-MiżuraB:=[MiżuraA]. Tali miżuri duplikattivi għandhom "
+"jitneħħew."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Żewġ miżuri b'ismijiet differenti u definiti mill-istess espressjoni DAX "
+"għandhom jiġu evitati biex titnaqqas is-sensji."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Iż-żieda ta' valur kostanti tista' twassal għal degradazzjoni tal-"
+"prestazzjoni."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Minflok tuża s-sintassi \"1-(x/y)\" jew \"1+(x/y)\" biex tikseb kalkolu "
+"perċentwali, uża l-funzjonijiet bażiċi tad-DAX (kif jidher hawn taħt). L-użu"
+" tas-sintassi mtejba ġeneralment itejjeb il-prestazzjoni. Il-\"1+/-...\" "
+"sintassi dejjem tirritorna valur filwaqt li s-soluzzjoni mingħajr "
+"il-\"1+/-...\" le (peress li l-valur jista' jkun \"vojt\"). Għalhekk "
+"il-\"1+/-...\" Is-sintassi tista' tirritorna aktar ringieli/kolonni li "
+"jistgħu jirriżultaw f'veloċità ta' mistoqsija aktar bil-mod.    Ejja "
+"niċċaraw b'eżempju: Evita dan: 1 - SUM ( 'Sales'[CostAmount] ) / SUM ( "
+"'Sales'[SalesAmount] ) Aħjar: DIVIDE ( SUM ( 'Sales'[SalesAmount] ) - SUM ( "
+"'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) ) ) L-aħjar: VAR x = SUM"
+" ( 'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x"
+" )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Minflok ma tuża dan il-mudell FILTER (\"Tabella\", [Miżura]>Valur) għall-parametri tal-filtru ta' funzjoni CALCULATE jew CALCULATETABLE, uża waħda mill-għażliet ta' hawn taħt (jekk possibbli). L-iffiltrar fuq kolonna speċifika jipproduċi tabella iżgħar biex il-magna tipproċessa, u b'hekk tippermetti prestazzjoni aktar mgħaġġla. L-użu tal-funzjoni VALUES jew il-funzjoni ALL jiddependi fuq ir-riżultat mixtieq tal-miżura.\n"
+"Għażla 1: FILTRU (VALURI (\"tabella\"[kolonna]),[miżura] >valur)\n"
+"Għażla 2: FILTER (LL (\"Tabella\"[Kolonna]), [Miżura] > valur)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Minflok ma tuża dan il-mudell FILTER (\"Tabella\", \"Tabella\"[Kolonna]=\"Valur\") għall-parametri tal-filtru ta' funzjoni CALCULATE jew CALCULATETABLE, uża waħda mill-għażliet ta' hawn taħt. Sa fejn tuża l-funzjoni KEEPFILTERS, ara t-tieni link ta' referenza hawn taħt.\n"
+"Għażla 1: KEEPFILTERS (\"tabella\"[kolonna]=\"valur\")\n"
+"Għażla 2: \"Tabella\"[Kolonna]=\"Valur\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Uża l-funzjoni DIVIDE minflok tuża \"/\". Il-funzjoni DIVIDE tirriżolvi "
+"każijiet diviżi b'żero. Bħala tali, huwa rrakkomandat li jintuża biex jiġu "
+"evitati żbalji."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"L-użu ta' referenzi tal-kolonni kompletament kwalifikati jagħmilha aktar "
+"faċli li ssir distinzjoni bejn ir-referenzi tal-kolonna u tal-kejl, u jgħin "
+"ukoll biex jiġu evitati ċerti żbalji. Meta tirreferi kolonna f'DAX, l-ewwel "
+"speċifika l-isem tat-tabella, imbagħad speċifika l-isem tal-kolonna fil-"
+"parentesi kwadri."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"L-użu ta' referenzi ta' miżuri mhux kwalifikati jagħmilha aktar faċli li "
+"ssir distinzjoni bejn ir-referenzi tal-kolonna u tal-kejl, u jgħin ukoll "
+"biex jiġu evitati ċerti żbalji. Meta tirreferi miżura bl-użu ta' DAX, "
+"tispeċifikax l-isem tat-tabella. Uża biss l-isem tal-kejl f'parentesi "
+"kwadri."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Relazzjonijiet inattivi huma attivati bl-użu tal-funzjoni USERELATIONSHIP. "
+"Jekk relazzjoni inattiva ma tkunx imsemmija fl-ebda miżura permezz ta' din "
+"il-funzjoni, ir-relazzjoni ma tintużax. Għandu jiġi stabbilit jekk ir-"
+"relazzjoni hijiex meħtieġa jew biex tiġi attivata r-relazzjoni permezz ta' "
+"dan il-metodu."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Kolonni moħbija li mhumiex referenzjati b'xi espressjonijiet DAX, "
+"relazzjonijiet, livelli ta' ġerarkija jew Sort By-properties għandhom "
+"jitneħħew."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Miżuri moħbija li mhumiex referenzjati b'xi espressjonijiet DAX għandhom "
+"jitneħħew biex tinżamm il-manutenzjoni."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Din ir-regola tenfasizza tabelli li mhumiex konnessi ma 'xi tabella oħra "
+"fil-mudell b'relazzjoni."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Il-gruppi ta' kalkolu m'għandhom l-ebda funzjoni sakemm ma jkollhomx "
+"elementi ta' kalkolu."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Żid deskrizzjonijiet ma' oġġetti. Dawn id-deskrizzjonijiet jidhru fuq hover "
+"fil-Lista tal-Qasam fil-Power BI Desktop. Barra minn hekk, tista 'tisfrutta "
+"dawn id-deskrizzjonijiet biex toħloq dizzjunarju awtomatizzat tad-dejta."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Kolonni tat-tip \"DateTime\" li għandhom \"Xahar\" f'isimhom għandhom jiġu "
+"fformattjati bħala \"mm/jj/ssss\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Kolonni numeriċi (numru sħiħ, deċimali, doppju) għandu jkollhom il-proprjetà"
+" SummarizeBy tagħhom issettjata għal \"Xejn\" biex tevita somma aċċidentali "
+"fil-Power BI (toħloq miżuri minflok)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Miżuri viżibbli għandu jkollhom il-proprjetà tas-sekwenza tal-format tagħhom"
+" assenjata."
+
+# description
+msgid "Add data category for columns"
+msgstr "Żid proprjetà tal-Kategorija tad-Dejta għal kolonni xierqa."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Għal esperjenza aħjar tal-utent, il-miżuri ta' percengage għandhom jiġu "
+"fformattjati b'sinjal '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Għal esperjenza aħjar tal-utent, in-numri sħaħ għandhom jiġu fformattjati "
+"bil-virgoli."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"It-tasti barranin għandhom dejjem ikunu moħbija peress li m'għandhomx "
+"jintużaw mill-utenti finali."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Issettja l-proprjetà \"Ċavetta\" għal \"Veru\" għal kolonni ewlenin primarji"
+" fil-proprjetajiet tal-kolonna."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Din ir-regola tenfasizza kolonni tax-xahar li huma kordi u mhumiex magħżula."
+" Jekk jitħallew mhux magħżula, huma se jissortjaw alfabetikament (jiġifieri "
+"April, Awwissu ...). Kun żgur li ssortja kolonni bħal dawn sabiex jissortjaw"
+" kif suppost (Jannar, Frar, Marzu ...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Hija l-aħjar prattika biex il-kolonni tar-relazzjoni jkunu tat-tip ta 'dejta"
+" integer. Dan japplika mhux biss għall-ħażna tad-dejta iżda għall-immudellar"
+" tad-dejta wkoll."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Kolonni tat-tip \"DateTime\" li għandhom \"Xahar\" f'isimhom għandhom jiġu "
+"fformattjati bħala \"MMMM ssss\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Il-bnadar għandhom jiġu fformattjati kif suppost bħala Iva/Le peress li dan "
+"huwa aktar faċli biex jinqara milli jintużaw valuri interi 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"L-oġġetti m'għandhomx jibdew jew jispiċċaw bi spazju. Dan normalment jiġri "
+"b'aċċident u huwa diffiċli li ssib."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"L-ewwel ittra tal-ismijiet tal-oġġetti għandha tiġi kapitalizzata biex "
+"tinżamm il-kwalità professjonali."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "L-ismijiet tal-oġġetti m'għandhomx jinkludu tabs, line breaks, eċċ."

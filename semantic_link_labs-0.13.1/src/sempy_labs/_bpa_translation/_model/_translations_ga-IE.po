@@ -1,0 +1,967 @@
+#
+msgid ""
+msgstr ""
+"Language: ga-IE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Ná húsáid cineálacha sonraí snámhphointe"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Seachain colúin ríofa a úsáid"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Seiceáil an bhfuil caidrimh dhéthreoch agus go leor le go leor bailí"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Seiceáil an bhfuil slándáil dinimiciúil leibhéal as a chéile (RLS) "
+"riachtanach"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Seachain úsáid a bhaint as go leor caidrimh ar tháblaí a úsáidtear le "
+"haghaidh slándála dinimiciúil leibhéal as a chéile"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Ba chóir go mbeadh go leor caidrimh aon-treo"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Socraigh IsAvailableInMdx go bréagach ar cholúin neamh-tréith"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Socraigh maoin 'Sainmhíniú ar Chumhdach Sonraí' ar dheighilt DirectQuery de "
+"thábla hibrideach"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Níl démhodh ábhartha ach amháin le haghaidh táblaí toise má úsáidtear "
+"DirectQuery don tábla fíricí comhfhreagrach"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Socraigh táblaí toisí go mód dé in ionad allmhairiú agus DirectQuery á úsáid"
+" ar tháblaí fíricí"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Íoslaghdaigh claochluithe Iarratas Cumhachta"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Smaoinigh ar scéimre réalta in ionad ailtireacht snowflake"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Seachain tuairimí a úsáid agus mód Direct Lake á úsáid agat"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Seachain 0 a chur le beart"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Úsáid táblaí ríofa a laghdú"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Laghdaigh úsáid na gcolún ríofa a úsáideann an fheidhm GHAOLMHAR"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Seachain caidrimh iomarcacha dhéthreoch nó go leor le go leor"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Bain tábla uathoibríoch-dáta"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Ba chóir táblaí dáta/féilire a mharcáil mar thábla dáta"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Ba chóir táblaí móra a dheighilt"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Cuir teorainn le loighic slándála leibhéal an ró (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Ba chóir go mbeadh tábla dáta ag an tsamhail"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Ní mór slonn a bheith ag míreanna ríofa"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Ba cheart colúin chaidrimh a bheith den chineál céanna sonraí"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Ní mór colún foinseach a bheith ag colúin sonraí"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Socraigh IsAvailableInMdx le fíor ar cholúin riachtanacha"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Seachain an fheidhm USERELATIONSHIP agus RLS i gcoinne an tábla céanna"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Seachain an fheidhm IFERROR a úsáid"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Bain úsáid as an fheidhm TREATAS in ionad INTERSECT do chaidrimh fhíorúla"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Níor cheart feidhm EVALUATEANDLOG a úsáid i samhlacha táirgthe"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Níor cheart bearta a bheith ina dtagairtí díreacha do bhearta eile"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Níor cheart an sainmhíniú céanna a bheith ag aon dá bheart"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Seachain luachanna tairiseacha a chur le torthaí rannáin nó iad a dhealú"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Seachain comhréir '1-(x/y)' a úsáid"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Scag luachanna tomhais de réir colúin, ní táblaí"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Scag luachanna colúin le comhréir chuí"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Bain úsáid as an fheidhm DIVIDE le haghaidh roinnte"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Ba cheart tagairtí colúin a bheith láncháilithe"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Ba cheart tagairtí birt a bheith neamhcháilithe"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Caidrimh neamhghníomhacha nach ngníomhaítear riamh"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Bain colúin gan ghá"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Bain bearta neamhriachtanacha"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Cinntigh go bhfuil caidrimh ag táblaí"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Grúpaí ríofa gan aon ítimí ríofa"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Réada infheicthe gan tuairisc"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Cuir teaghrán formáide ar fáil do cholúin 'Dáta'"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Ná déan achoimre ar cholúin uimhriúla"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Tabhair teaghrán formáide do bhearta"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Cuir catagóir sonraí le haghaidh colúin"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Ba cheart céatadáin a fhormáidiú leis na mílte deighilteoirí agus 1 "
+"dheachúil"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Ba cheart slánuimhreacha a fhormáidiú leis na mílte deighilteoirí agus gan "
+"aon deachúlacha"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Folaigh eochracha eachtracha"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Marcáil eochracha príomhúla"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Ní mór mí (mar theaghrán) a shórtáil"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Ba chóir colúin Gaol a bheith de chineál slánuimhir sonraí"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Cuir teaghrán formáide ar fáil do cholúin \"Mí\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formáidigh colúin bratach mar Tá / Níl teaghráin luach"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Níor chóir go dtosódh nó go gcríochnódh réada le spás"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Ní mór an chéad litir rudaí a chaipitliú"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Ní ceadmhach carachtair speisialta a bheith in ainmneacha réada"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Feidhmíocht"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Feidhmíocht"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Feidhmíocht"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Feidhmíocht"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Model should have a date table"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Cosc Earráidí"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Cosc Earráidí"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Cosc Earráidí"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Cosc Earráidí"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Cosc Earráidí"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Nathanna DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Nathanna DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Nathanna DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Nathanna DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Cothabháil"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Cothabháil"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Cothabháil"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Cothabháil"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Cothabháil"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formáidiú"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formáidiú"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formáidiú"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formáidiú"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formáidiú"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formáidiú"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formáidiú"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formáidiú"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formáidiú"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formáidiú"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formáidiú"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formáidiú"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formáidiú"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formáidiú"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Coinbhinsiúin Ainmniúcháin"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Ba cheart an cineál sonraí snámhphointe \"Dúbailte\" a sheachaint, mar "
+"d'fhéadfadh earráidí comhchéime nach féidir a thuar a bheith mar thoradh air"
+" agus feidhmíocht laghdaithe i gcásanna áirithe. Bain úsáid as \"Int64\" nó "
+"\"Deachúil\" nuair is cuí (ach tabhair faoi deara go bhfuil \"Deachúil\" "
+"teoranta do 4 dhigit tar éis an chomhartha deachúil)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Ní dhéanann colúin ríofa comhbhrú chomh maith le colúin sonraí ionas go "
+"nglacfaidh siad níos mó cuimhne. Cuireann siad moill freisin ar amanna "
+"próiseála don tábla chomh maith le recalc próisis. Offload loighic colún "
+"ríofa le do stóras sonraí agus cas na colúin ríofa i gcolúin sonraí."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Is féidir le húsáid slándála dinimiciúil leibhéal as a chéile (RLS) cuimhne "
+"agus forchostais feidhmíochta a chur leis. Déan taighde ar na "
+"buntáistí/míbhuntáistí a bhaineann lena úsáid."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Ag baint úsáide as go leor-le-go leor caidrimh ar tháblaí a úsáideann "
+"slándáil leibhéal dinimiciúil as a chéile is féidir a chur faoi deara "
+"díghrádú feidhmíochta cheist tromchúiseach. Cumaisc fadhbanna feidhmíochta "
+"an phatrúin seo nuair a bhíonn caidrimh iomadúla go leor i gcoinne tábla ina"
+" bhfuil slándáil leibhéal as a chéile. Ina áit sin, bain úsáid as ceann de "
+"na patrúin a thaispeántar san alt thíos nuair a bhaineann tábla toise amháin"
+" go leor-le-duine le tábla slándála."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Chun dlús a chur leis an am próiseála agus cuimhne a chaomhnú tar éis "
+"próiseála, níor cheart ordlathais tréith a thógáil le haghaidh colúin nach "
+"n-úsáideann cliaint MDX riamh le haghaidh slicing. I bhfocail eile, ba chóir"
+" go mbeadh a gcuid maoine IsAvailableInMdx bréagach ag gach colún i bhfolach"
+" nach n-úsáidtear mar Shórtáil De réir Colúin nó a ndéantar tagairt dóibh in"
+" ordlathas úsáideora. Níl an mhaoin IsAvailableInMdx ábhartha do mhúnlaí "
+"Loch Díreach."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"D'fhéadfadh feidhmíocht níos fearr a bheith mar thoradh ar an maoin "
+"'Sainmhíniú Clúdaigh Sonraí' a shocrú toisc go bhfuil a fhios ag an inneall "
+"cathain nach féidir leis ach an chuid allmhairithe den tábla a fhiosrú agus "
+"nuair is gá dó an chuid DirectQuery den tábla a fhiosrú."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Ná húsáid ach modh Dual le haghaidh táblaí toise / deighiltí ina bhfuil "
+"tábla fíricí comhfhreagrach i DirectQuery. Ag baint úsáide as modh Dual i "
+"gcúinsí eile (i.e. tá an chuid eile den tsamhail i mód Iompórtáil) "
+"d'fhéadfadh saincheisteanna feidhmíochta a bheith mar thoradh air go "
+"háirithe má tá líon na mbeart sa tsamhail ard."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Agus DirectQuery á úsáid, ba chóir táblaí toise a shocrú go mód Dual chun "
+"feidhmíocht cheist a fheabhsú."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Íoslaghdaigh claochluithe Iarratas Cumhachta chun feidhmíocht próiseála "
+"múnla a fheabhsú. Is dea-chleachtas é na claochluithe seo a dhíluchtú chuig "
+"an stóras sonraí más féidir. Chomh maith leis sin, seiceáil le do thoil an "
+"bhfuil fillte cheist ag tarlú laistigh de do mhúnla. Déan tagairt don alt "
+"thíos le haghaidh tuilleadh eolais ar fhilleadh ceisteanna."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Go ginearálta, is é scéimre réalta an ailtireacht is fearr is féidir le "
+"haghaidh samhlacha tabular. Is é sin an cás, tá cásanna bailí ann chun cur "
+"chuige snowflake a úsáid. Seiceáil do mhúnla le do thoil agus smaoinigh ar "
+"bhogadh chuig ailtireacht scéimre réalta."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"I mód Loch Díreach, titfidh tuairimí ar ais go DirectQuery i gcónaí. Dá bhrí"
+" sin, d'fhonn a fháil ar an fheidhmíocht is fearr a úsáid táblaí Lakehouse "
+"in ionad tuairimí."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Má chuirtear 0 le beart ionas nach dtaispeánfaidh sé luach bán, d'fhéadfadh "
+"tionchar diúltach a bheith aige ar fheidhmíocht."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Imirce loighic tábla ríofa chuig do stóras sonraí. Beidh fiachas teicniúil "
+"agus mí-ailínithe féideartha mar thoradh ar spleáchas ar tháblaí ríofa má tá"
+" samhlacha éagsúla agat ar d'ardán."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Ní dhéanann colúin ríofa comhbhrú chomh maith le colúin sonraí agus "
+"d'fhéadfadh sé a bheith ina chúis le hamanna próiseála níos faide. Mar sin, "
+"ba cheart colúin ríofa a sheachaint más féidir. Cás amháin ina bhféadfadh sé"
+" a bheith níos éasca iad a sheachaint ná má úsáideann siad an fheidhm "
+"GHAOLMHAR."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Teorainn a chur le húsáid b-di agus go leor caidrimh. Bratacha an riail seo "
+"an tsamhail má tá níos mó ná 30% de chaidrimh bi-di nó go leor-le-go leor."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Seachain ag baint úsáide as táblaí uathoibríoch-dáta. Déan cinnte an tábla "
+"uathdháta a chasadh as sna socruithe i Power BI Desktop. Sábhálfaidh sé seo "
+"acmhainní cuimhne."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Lorgaíonn an riail seo táblaí ina bhfuil na focail 'dáta' nó 'féilire' mar "
+"is dócha gur chóir iad a mharcáil mar thábla dáta."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Ba chóir táblaí móra a dheighilt chun próiseáil a bharrfheabhsú. Níl sé seo "
+"ábhartha do mhúnlaí séimeantacha i mód Loch Díreach mar ní féidir leo ach "
+"laindéal amháin a bheith acu in aghaidh an tábla."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Bain triail as a shimpliú an DAX a úsáidtear le haghaidh slándála leibhéal "
+"as a chéile. Is dócha gur féidir úsáid na bhfeidhmeanna laistigh den riail "
+"seo a dhíluchtú chuig na córais réamhtheachtacha (stóras sonraí)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Go ginearálta, ba chóir go mbeadh tábla dáta ag samhlacha de ghnáth. De "
+"ghnáth ní bhíonn samhlacha nach bhfuil tábla dáta acu ag baint leasa as "
+"gnéithe cosúil le faisnéis ama nó b'fhéidir nach bhfuil ailtireacht "
+"struchtúrtha i gceart acu."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Ní mór slonn a bheith ag míreanna ríofa. Gan léiriú, ní thaispeánfaidh siad "
+"aon luachanna."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Ba chóir go mbeadh colúin a úsáidtear i gcaidreamh den chineál céanna "
+"sonraí. Go hidéalach, beidh siad de chineál sonraí slánuimhir (féach an "
+"riail ghaolmhar '[Formáidiú] Ba chóir colúin Gaol a bheith de chineál sonraí"
+" slánuimhir'). D'fhéadfadh saincheisteanna éagsúla a bheith mar thoradh ar "
+"cholúin a bheith agat laistigh de chaidreamh atá de chineálacha éagsúla "
+"sonraí."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Ní mór colún foinseach a bheith ag colúin sonraí. Beidh colún sonraí gan "
+"colún foinse ina chúis le earráid agus an tsamhail á próiseáil."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"D'fhonn earráidí a sheachaint, a chinntiú go bhfuil ordlathais tréith "
+"cumasaithe má úsáidtear colún chun colún eile a shórtáil, a úsáidtear in "
+"ordlathas, a úsáidtear i athruithe, nó má tá sé curtha in eagar ag colún "
+"eile. Níl an mhaoin IsAvailableInMdx ábhartha do mhúnlaí Loch Díreach."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Ní féidir an fheidhm USERELATIONSHIP a úsáid i gcoinne tábla a ghiaráil "
+"freisin slándála leibhéal as a chéile (RLS). Cruthóidh sé seo earráid agus "
+"an beart áirithe á úsáid in amharc. Cuirfidh an riail seo béim ar an tábla a"
+" úsáidtear i bhfeidhm USERELATIONSHIP birt chomh maith le RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Seachain an fheidhm IFERROR a úsáid mar d'fhéadfadh sé a bheith ina chúis le"
+" díghrádú feidhmíochta. Má tá imní ort faoi earráid deighilt-ar-nialas, bain"
+" úsáid as an fheidhm DIVIDE mar réitíonn sé go nádúrtha earráidí den sórt "
+"sin mar bán (nó is féidir leat a shaincheapadh cad ba chóir a thaispeáint i "
+"gcás earráid den sórt sin)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Tá feidhm TREATAS níos éifeachtaí agus soláthraíonn sé feidhmíocht níos "
+"fearr ná an fheidhm INTERSECT nuair a úsáidtear í i gcaidrimh virutal."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Tá sé i gceist an fheidhm EVALUATEANDLOG a úsáid ach amháin i "
+"dtimpeallachtaí forbartha / tástála agus níor cheart í a úsáid i samhlacha "
+"táirgthe."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Sainaithnítear sa riail seo bearta nach bhfuil iontu ach tagairt do bheart "
+"eile. Mar shampla, smaoinigh ar shamhail le dhá bheart: [MeasureA] agus "
+"[MeasureB]. Spreagfaí an riail seo do MeasureB dá mba é MeasureB DAX "
+"MeasureB:=[MeasureA]. Ba cheart deireadh a chur le bearta dúblacha den sórt "
+"sin."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Ba chóir dhá bheart le hainmneacha éagsúla agus a shainmhínítear leis an "
+"slonn DAX céanna a sheachaint chun iomarcaíocht a laghdú."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"D'fhéadfadh díghrádú feidhmíochta a bheith mar thoradh ar luach tairiseach a"
+" chur leis."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"In ionad an chomhréir '1-(x/y)' nó '1+(x/y)' a úsáid chun ríomh céatadáin a "
+"bhaint amach, bain úsáid as na feidhmeanna bunúsacha DAX (mar a thaispeántar"
+" thíos). Trí úsáid a bhaint as an comhréir fheabhsaithe, feabhsófar an "
+"fheidhmíocht go ginearálta. An '1+/-...' comhréir luach i gcónaí ach an "
+"réiteach gan an '1+/-...' (toisc go bhféadfadh an luach a bheith 'bán'). Dá "
+"bhrí sin, ba cheart an '1+/-...' D'fhéadfadh comhréir níos mó sraitheanna / "
+"colúin a thabhairt ar ais a bhféadfadh luas iarratais níos moille a bheith "
+"mar thoradh air.    A ligean ar shoiléiriú le sampla: Seachain seo: 1 - SUM "
+"( 'Díolacháin'[CostAmount] ) / SUM ('Díolacháin'[SalesAmount] ) Níos Fearr: "
+"DIVIDE ( SUM ( 'Díolacháin' [SalesAmount] ) - SUM ( 'Díolacháin' "
+"[CostAmount] ), SUM ( 'Díolacháin' [SalesAmount] ) ) Is Fearr: VAR x = SUM "
+"('Díolacháin'[SalesAmount] ) RETURN DIVIDE (x - SUM ('Sales'[CostAmount]), x"
+" )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"In ionad an patrún seo a úsáid FILTER ('Tábla', [Beart]>Luach) le haghaidh paraiméadair scagaire feidhm RÍOMH nó CALCULATETABLE, bain úsáid as ceann de na roghanna thíos (más féidir). Beidh scagadh ar cholún ar leith a tháirgeadh tábla níos lú don inneall a phróiseáil, rud a chumasú feidhmíocht níos tapúla. Ag baint úsáide as an fheidhm LUACHANNA nó braitheann an fheidhm ALL ar an toradh tomhais atá ag teastáil.\n"
+"Rogha 1: FILTER(LUACHANNA ('Tábla'[Colún]),[Beart] > Luach)\n"
+"Rogha 2: FILTER(ALL ('Tábla'[Colún]), [Beart] > Luach)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"In ionad an patrún seo a úsáid FILTER ('Tábla', 'Tábla'[Colún]=\"Luach\") le haghaidh paraiméadair scagaire feidhm RÍOMH nó CALCULATETABLE, bain úsáid as ceann de na roghanna thíos. Chomh fada agus is féidir an fheidhm KEEPFILTERS a úsáid, féach an dara nasc tagartha thíos.\n"
+"Rogha 1: KEEPFILTERS ('Tábla' [Colún]=\"Luach\")\n"
+"Rogha 2: 'Tábla' [Colún]=\"Luach\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Bain úsáid as an fheidhm DIVIDE in ionad \"/\" a úsáid. Réitíonn an fheidhm "
+"DIVIDE roinnt-ar-nialas cásanna. Mar sin, moltar é a úsáid chun earráidí a "
+"sheachaint."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Trí úsáid a bhaint as tagairtí colún láncháilithe, bíonn sé níos éasca "
+"idirdhealú a dhéanamh idir tagairtí colúin agus tagairtí a thomhas, agus "
+"cabhraíonn sé freisin le hearráidí áirithe a sheachaint. Nuair a dhéantar "
+"tagairt do cholún in DAX, sonraigh ainm an tábla ar dtús, ansin sonraigh "
+"ainm an cholúin idir lúibíní cearnacha."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Trí úsáid a bhaint as tagairtí tomhais neamhcháilithe, bíonn sé níos éasca "
+"idirdhealú a dhéanamh idir tagairtí colúin agus tagairtí a thomhas, agus "
+"cabhraíonn sé freisin le hearráidí áirithe a sheachaint. Agus tagairt á "
+"déanamh do bheart ag baint úsáide as DAX, ná sonraigh ainm an tábla. Ná "
+"húsáid ach ainm an bhirt idir lúibíní cearnacha."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Cuirtear caidrimh neamhghníomhacha i ngníomh ag baint úsáide as an bhfeidhm "
+"USERELATIONSHIP. Mura ndéantar tagairt do chaidreamh neamhghníomhach in aon "
+"bheart tríd an bhfeidhm seo, ní úsáidfear an caidreamh. Ba cheart a "
+"chinneadh an bhfuil an caidreamh riachtanach nó an caidreamh a ghníomhachtú "
+"tríd an modh seo."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Ba chóir colúin fholaithe nach ndéantar tagairt dóibh le haon nathanna DAX, "
+"caidrimh, leibhéil ordlathais nó Sórtáil De réir airíonna a bhaint."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Ba chóir bearta folaithe nach ndéantar tagairt dóibh le haon nathanna DAX a "
+"bhaint le haghaidh inchoimeádta."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Leagann an riail seo béim ar tháblaí nach bhfuil ceangailte le haon tábla "
+"eile sa tsamhail le caidreamh."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "Níl aon fheidhm ag grúpaí ríofa mura bhfuil míreanna ríofa acu."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Cuir tuairiscí le rudaí. Taispeántar na tuairiscí seo ar ainliú laistigh den"
+" Liosta Allamuigh i Power BI Desktop. Ina theannta sin, is féidir leat na "
+"tuairiscí seo a ghiaráil chun foclóir sonraí uathoibrithe a chruthú."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Ba chóir colúin den chineál \"DateTime\" a bhfuil \"Mí\" ina n-ainmneacha a "
+"fhormáidiú mar \"mm / dd / yyyy\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Ba chóir go mbeadh colúin uimhriúla (slánuimhir, deachúil, dúbailte) a "
+"n-Achoimre De réir maoine a leagtar ar \"None\" a sheachaint summation "
+"thaisme i Power BI (bearta a chruthú ina ionad)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "Ba cheart go sannfaí a maoin teaghrán formáide do bhearta infheicthe."
+
+# description
+msgid "Add data category for columns"
+msgstr "Cuir maoin Catagóir Sonraí leis le haghaidh colúin chuí."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Le haghaidh taithí úsáideora níos fearr, ba cheart bearta percengage a "
+"fhormáidiú le comhartha '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Le haghaidh taithí úsáideora níos fearr, ba cheart slánuimhreacha a "
+"fhormáidiú le camóga."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Ba chóir eochracha eachtracha a chur i bhfolach i gcónaí mar nár chóir "
+"d'úsáideoirí deiridh iad a úsáid."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Socraigh an mhaoin 'Eochair' go 'Fíor' le haghaidh príomhcholúin eochracha "
+"laistigh d'airíonna an cholúin."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Leagann an riail seo béim ar cholúin mhí ar teaghráin iad agus nach ndéantar"
+" iad a shórtáil. Má fhágtar gan réiteach iad, sórtálfaidh siad in ord "
+"aibítre (i.e. Aibreán, Lúnasa...). Bí cinnte na colúin sin a shórtáil ionas "
+"go mbeidh siad sórtáilte i gceart (Eanáir, Feabhra, Márta...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Is dea-chleachtas é do cholúin chaidrimh a bheith de chineál sonraí "
+"slánuimhir. Baineann sé seo ní hamháin le trádstóráil sonraí ach le samhaltú"
+" sonraí chomh maith."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Ba chóir colúin den chineál \"DateTime\" a bhfuil \"Mí\" ina n-ainmneacha a "
+"fhormáidiú mar \"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Ní mór bratacha a fhormáidiú i gceart mar Tá / Níl toisc go bhfuil sé seo "
+"níos éasca a léamh ná úsáid a bhaint as luachanna slánuimhir 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Níor chóir go dtosódh nó go gcríochnódh rudaí le spás. Tarlaíonn sé seo de "
+"ghnáth trí thimpiste agus tá sé deacair é a fháil."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Ba chóir an chéad litir d'ainmneacha réad a chaipitliú chun cáilíocht "
+"ghairmiúil a choinneáil."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr ""
+"Níor chóir go mbeadh cluaisíní, sosanna líne, etc. san áireamh in ainmneacha"
+" réada."

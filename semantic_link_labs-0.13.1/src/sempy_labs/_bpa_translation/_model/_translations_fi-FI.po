@@ -1,0 +1,942 @@
+#
+msgid ""
+msgstr ""
+"Language: fi-FI\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Älä käytä liukulukutietotyyppejä"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Laskettujen sarakkeiden käytön välttäminen"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Tarkista, ovatko kaksisuuntaiset ja monta-moneen-yhteydet kelvollisia"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Tarkista, tarvitaanko dynaamista rivitason suojausta (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Vältä monta-moneen-yhteyksien käyttämistä taulukoissa, joita käytetään "
+"dynaamiseen rivitason suojaukseen"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Monta-moneen-suhteiden tulisi olla yksisuuntaisia"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Määritä IsAvailableInMdx-arvoksi false muissa kuin määritesarakkeissa"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Tietojen kattavuuden määritysominaisuuden määrittäminen hybriditaulukon "
+"DirectQuery-osiossa"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Kaksoistila koskee dimensiotaulukoita vain, jos vastaavassa faktataulukossa "
+"käytetään DirectQueryä"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Dimensiotaulukoiden määrittäminen kaksoistilaan tuonnin sijaan, kun "
+"faktataulukoissa käytetään DirectQueryä"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Power Query -muunnosten minimointi"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Harkitse tähtikaaviota lumihiutalearkkitehtuurin sijaan"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Näkymien käyttämisen välttäminen Direct Lake -tilaa käytettäessä"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Vältä 0:n lisäämistä mittariin"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Laskettujen taulukoiden käytön vähentäminen"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"RELATED-funktiota käyttävien laskettujen sarakkeiden käytön vähentäminen"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Vältä liiallisia kaksisuuntaisia tai monta-moneen-suhteita"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Poista automaattinen päivämäärätaulukko"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Päivämäärä-/kalenteritaulukot on merkittävä päivämäärätaulukoksi"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Suuret taulukot tulee jakaa osiin"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Rajoita rivitason suojauslogiikkaa (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Mallissa on oltava päivämäärätaulukko"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Laskentanimikkeillä on oltava lauseke"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Suhdesarakkeiden on oltava samaa tietotyyppiä"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Tietosarakkeissa on oltava lähdesarake"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Määritä IsAvailableInMdx-arvoksi tosi tarvittavissa sarakkeissa"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Vältä USERELATIONSHIP-funktiota ja rivitason suojausta samassa taulukossa"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Vältä JOSERROR-funktion käyttöä"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Käytä näennäissuhteissa TREATAS-funktiota INTERSECT-funktion sijaan"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG-funktiota ei tule käyttää tuotantomalleissa"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Toimenpiteet eivät saisi olla suoria viittauksia muihin toimenpiteisiin"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Kahdella toimenpiteellä ei pitäisi olla samaa määritelmää"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Vältä vakioarvojen lisäämistä tai vähentämistä jakolaskujen tuloksiin"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Vältä syntaksin '1-(x/y)' käyttöä"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Suodata mitta-arvot sarakkeiden, ei taulukoiden mukaan"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Sarakearvojen suodattaminen erisnimen syntaksilla"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "DIVIDE-funktion käyttäminen jakamiseen"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Sarakeviittausten tulee olla täydellisiä"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Toimenpideviitteiden tulee olla varauksettomia"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Ei-aktiiviset suhteet, joita ei koskaan aktivoida"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Poista tarpeettomat sarakkeet"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Poista tarpeettomat toimenpiteet"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Varmista, että taulukoissa on suhteita"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Laskentaryhmät, joissa ei ole laskentanimikkeitä"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Näkyvät objektit, joilla ei ole kuvausta"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Anna muotoilumerkkijono Päivämäärä-sarakkeille"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Älä tee yhteenvetoa numeerisista sarakkeista"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Muotoile merkkijono mittareille"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Tietoluokan lisääminen sarakkeisiin"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Prosenttiosuudet on muotoiltava tuhaterottimilla ja 1 desimaalilla"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Kokonaisluvut on muotoiltava tuhaterottimilla ilman desimaaleja"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Piilota viiteavaimet"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Perusavainten merkitseminen"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Kuukausi (merkkijonona) on lajiteltava"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Suhdesarakkeiden tietotyypin on oltava kokonaisluku"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Anna Kuukausi-sarakkeiden muotoilumerkkijono"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Lippusarakkeiden muotoileminen Kyllä/Ei-arvomerkkijonoiksi"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Objektit eivät saa alkaa tai päättyä välilyönnillä"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Objektien ensimmäinen kirjain on kirjoitettava isolla alkukirjaimella"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Objektien nimet eivät saa sisältää erikoismerkkejä"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Suorituskyky"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Suorituskyky"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Suorituskyky"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Suorituskyky"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Suorituskyky"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Suorituskyky"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Suorituskyky"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Suorituskyky"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Suorituskyky"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Suorituskyky"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Suorituskyky"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Suorituskyky"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Suorituskyky"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Suorituskyky"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Suorituskyky"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Suorituskyky"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Suorituskyky"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Suorituskyky"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Suorituskyky"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Suorituskyky"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Suorituskyky"
+
+# category
+msgid "Model should have a date table"
+msgstr "Suorituskyky"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Virheiden ehkäisy"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Virheiden ehkäisy"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Virheiden ehkäisy"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Virheiden ehkäisy"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Virheiden ehkäisy"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Kunnossapito"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Kunnossapito"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Kunnossapito"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Kunnossapito"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Kunnossapito"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Alustaminen"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Alustaminen"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Alustaminen"
+
+# category
+msgid "Add data category for columns"
+msgstr "Alustaminen"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Alustaminen"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Alustaminen"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Alustaminen"
+
+# category
+msgid "Mark primary keys"
+msgstr "Alustaminen"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Alustaminen"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Alustaminen"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Alustaminen"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Alustaminen"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Alustaminen"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Alustaminen"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Nimeämiskäytännöt"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Kaksinkertaisen liukuluvun tietotyyppiä tulisi välttää, koska se voi johtaa "
+"arvaamattomiin pyöristysvirheisiin ja heikentää suorituskykyä tietyissä "
+"skenaarioissa. Käytä tarvittaessa \"Int64\" tai \"Desimaali\" (mutta huomaa,"
+" että \"Desimaali\" on rajoitettu 4 numeroon desimaalimerkin jälkeen)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Lasketut sarakkeet eivät pakkaa yhtä hyvin kuin tietosarakkeet, joten ne "
+"vievät enemmän muistia. Ne myös hidastavat sekä pöydän että prosessin "
+"käsittelyaikoja. Lataa laskettu sarakelogiikka tietovarastoosi ja muuta nämä"
+" lasketut sarakkeet tietosarakkeiksi."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Dynaamisen rivitason suojauksen (RLS) käyttö voi lisätä muistin ja "
+"suorituskyvyn yleiskustannuksia. Ole hyvä ja tutki sen käytön etuja / "
+"haittoja."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Monta-moneen-suhteiden käyttäminen dynaamista rivitason suojausta "
+"käyttävissä taulukoissa voi heikentää kyselyn suorituskykyä vakavasti. Tämän"
+" kuvion suorituskykyongelmat pahenevat, kun lumihiutaleita useita monta-"
+"moneen-suhteita verrataan taulukkoon, joka sisältää rivitason suojauksen. "
+"Käytä sen sijaan jotakin alla olevassa artikkelissa esitetyistä malleista, "
+"joissa yksittäinen dimensiotaulukko liittyy monta yhteen suojaustaulukkoon."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Käsittelyajan nopeuttamiseksi ja muistin säästämiseksi käsittelyn jälkeen "
+"määritehierarkioita ei pidä luoda sarakkeille, joita MDX-asiakkaat eivät "
+"koskaan käytä viipalointiin. Toisin sanoen kaikkien piilotettujen "
+"sarakkeiden, joita ei käytetä lajitteluperustesarakkeena tai joihin ei "
+"viitata käyttäjähierarkioissa, IsAvailableInMdx-ominaisuuden arvoksi on "
+"määritettävä false. IsAvailableInMdx-ominaisuus ei koske Direct Lake "
+"-malleja."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Tietojen kattavuuden määritys -ominaisuuden määrittäminen voi parantaa "
+"suorituskykyä, koska moduuli tietää, milloin se voi tehdä kyselyn vain "
+"taulukon tuontiosasta ja milloin sen on tehtävä kysely taulukon DirectQuery-"
+"osasta."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Käytä kaksoistilaa vain dimensiotaulukoissa/osioissa, joissa vastaava "
+"faktataulukko on DirectQueryssä. Kaksoistilan käyttäminen muissa "
+"olosuhteissa (ts. muu malli on tuontitilassa) voi aiheuttaa "
+"suorituskykyongelmia, varsinkin jos mallin mittareiden määrä on suuri."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Kun käytät DirectQueryä, dimensiotaulukot on määritettävä kaksoistilaan "
+"kyselyn suorituskyvyn parantamiseksi."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Minimoi Power Query -muunnokset mallin käsittelyn suorituskyvyn "
+"parantamiseksi. Paras käytäntö on siirtää nämä muunnokset tietovarastoon, "
+"jos mahdollista. Tarkista myös, tapahtuuko mallissasi kyselyn taittoa. Katso"
+" alla olevasta artikkelista lisätietoja kyselyn taittamisesta."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Yleisesti ottaen tähtikaavio on optimaalinen arkkitehtuuri "
+"taulukkomalleille. Näin ollen on päteviä tapauksia käyttää "
+"lumihiutalelähestymistapaa. Tarkista mallisi ja harkitse siirtymistä "
+"tähtiskeema-arkkitehtuuriin."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Direct Lake -tilassa näkymät palautuvat aina DirectQueryyn. Parhaan "
+"suorituskyvyn saavuttamiseksi käytä siis järvitalopöytiä näkymien sijaan."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"0:n lisääminen mittariin, jotta se ei näytä tyhjää arvoa, voi vaikuttaa "
+"negatiivisesti suorituskykyyn."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Siirrä lasketun taulukon logiikka tietovarastoosi. Laskettuihin taulukoihin "
+"luottaminen johtaa tekniseen velkaan ja mahdollisiin kohdistusvirheisiin, "
+"jos alustallasi on useita malleja."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Lasketut sarakkeet eivät pakkaa yhtä hyvin kuin tietosarakkeet ja voivat "
+"pidentää käsittelyaikoja. Näin ollen laskettuja sarakkeita olisi "
+"mahdollisuuksien mukaan vältettävä. Yksi skenaario, jossa niitä voi olla "
+"helpompi välttää, on, jos ne käyttävät RELATED-funktiota."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Rajoita b-di- ja monta-moneen-suhteiden käyttöä. Tämä sääntö merkitsee "
+"mallin, jos yli 30 % suhteista on bi-di- tai monta-moneen-suhteita."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Vältä automaattisten päiväystaulukoiden käyttöä. Muista poistaa "
+"automaattinen päivämäärätaulukko käytöstä Power BI Desktopin asetuksissa. "
+"Tämä säästää muistiresursseja."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Tämä sääntö etsii taulukoita, jotka sisältävät sanat \"päivämäärä\" tai "
+"\"kalenteri\", koska ne pitäisi todennäköisesti merkitä "
+"päivämäärätaulukoksi."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Suuret taulukot tulisi jakaa osiin käsittelyn optimoimiseksi. Tällä ei ole "
+"merkitystä Direct Lake -tilan semanttisissa malleissa, koska niissä voi olla"
+" vain yksi osio taulukkoa kohti."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Yritä yksinkertaistaa rivitason suojaukseen käytettävää DAX-kieltä. Tämän "
+"säännön mukaisten toimintojen käyttö voidaan todennäköisesti siirtää "
+"tuotantoketjun alkupään järjestelmiin (tietovarastoon)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Yleisesti ottaen malleissa tulisi yleensä olla päivämäärätaulukko. Mallit, "
+"joilla ei ole päivämäärätaulukkoa, eivät yleensä hyödynnä ominaisuuksia, "
+"kuten aikatietoja, tai niillä ei ehkä ole oikein jäsenneltyä arkkitehtuuria."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Laskentanimikkeillä on oltava lauseke. Ilman lauseketta ne eivät näytä "
+"mitään arvoja."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Suhteessa käytettävien sarakkeiden on oltava samaa tietotyyppiä. "
+"Ihannetapauksessa ne ovat kokonaislukutietotyyppiä (katso aiheeseen liittyvä"
+" sääntö '[Muotoilu] Suhdesarakkeiden tulee olla kokonaislukutietotyyppiä\")."
+" Jos suhteen sisällä on sarakkeita, jotka ovat erityyppisiä, se voi johtaa "
+"erilaisiin ongelmiin."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Tietosarakkeissa on oltava lähdesarake. Tietosarake, jossa ei ole "
+"lähdesaraketta, aiheuttaa virheen mallia käsiteltäessä."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Varmista virheiden välttämiseksi, että määritehierarkiat ovat käytössä, jos "
+"saraketta käytetään toisen sarakkeen lajitteluun, sitä käytetään "
+"hierarkiassa, käytetään muunnelmissa tai se lajitellaan toisen sarakkeen "
+"mukaan. IsAvailableInMdx-ominaisuus ei koske Direct Lake -malleja."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"USERELATIONSHIP-funktiota ei voi käyttää taulukossa, joka hyödyntää myös "
+"rivitason suojausta (RLS). Tämä aiheuttaa virheen, kun tiettyä mittaria "
+"käytetään visualisoinnissa. Tämä sääntö korostaa taulukon, jota käytetään "
+"mittarin USERELATIONSHIP-funktiossa sekä RLS:ssä."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Vältä JOSERROR-funktion käyttöä, koska se voi heikentää suorituskykyä. Jos "
+"olet huolissasi nollajakovirheestä, käytä DIVIDE-funktiota, koska se "
+"luonnollisesti ratkaisee tällaiset virheet tyhjinä (tai voit mukauttaa, mitä"
+" tällaisen virheen sattuessa pitäisi näyttää)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"TREATAS-funktio on tehokkaampi ja tarjoaa paremman suorituskyvyn kuin "
+"INTERSECT-funktio, kun sitä käytetään virutaalisissa suhteissa."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"EVALUATEANDLOG-toiminto on tarkoitettu käytettäväksi vain "
+"kehitys-/testiympäristöissä, eikä sitä tule käyttää tuotantomalleissa."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Tässä säännössä yksilöidään toimenpiteet, jotka ovat vain viittaus toiseen "
+"toimenpiteeseen. Tarkastellaan esimerkiksi mallia, jossa on kaksi mittaria: "
+"[MeasureA] ja [MeasureB]. Tämä sääntö käynnistyy MeasureB:lle, jos "
+"MeasureB:n DAX on MeasureB:=[MeasureA]. Tällaiset päällekkäiset toimenpiteet"
+" olisi poistettava."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Päällekkäisyyksien vähentämiseksi on vältettävä kahta mittaria, joilla on "
+"eri nimet ja jotka on määritelty samalla DAX-lausekkeella."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Vakioarvon lisääminen voi heikentää suorituskykyä."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Sen sijaan, että käyttäisit 1-(x/y)- tai 1+(x/y)-syntaksia "
+"prosenttilaskutoimituksen suorittamiseen, käytä DAX-perusfunktioita (kuten "
+"alla). Parannetun syntaksin käyttäminen parantaa yleensä suorituskykyä. "
+"\"1+/-...\" Syntaksi palauttaa aina arvon, kun taas ratkaisu, jossa ei ole "
+"arvoa 1+/-... ei (koska arvo voi olla tyhjä). Näin ollen \"1+/-...\" "
+"Syntaksi saattaa palauttaa enemmän rivejä/sarakkeita, mikä voi hidastaa "
+"kyselynopeutta.    Selvennetään esimerkillä: Vältä tätä: 1 - SUM ( "
+"'Myynti'[CostAmount] ) / SUM ( 'Myynti'[SalesAmount] ) Parempi: JAA ( SUM "
+"('Myynti'[SalesAmount] ) - SUM ( 'Myynti'[CostAmount] ), SUM ( "
+"'Myynti'[SalesAmount] ) ) Paras: VAR x = SUM ( 'Myynti'[SalesAmount] ) "
+"RETURN DIVIDE ( x - SUM ('Myynti'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Sen sijaan, että käyttäisit tätä kuviota FILTER('Table',[Measure]>Value) CALCULATE- tai CALCULATETABLE-funktion suodatinparametreille, käytä jotakin alla olevista vaihtoehdoista (jos mahdollista). Tietyn sarakkeen suodatus tuottaa pienemmän taulukon moottorin käsiteltäväksi, mikä mahdollistaa nopeamman suorituskyvyn. VALUES- tai ALL-funktion käyttäminen riippuu halutusta mittaustuloksesta.\n"
+"Vaihtoehto 1: FILTER(VALUES('Taulukko'[Sarake]),[Mittaa] > Arvo)\n"
+"Vaihtoehto 2: FILTER(ALL('Taulukko'[Sarake]),[Mittaa] > Arvo)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Sen sijaan, että käyttäisit tätä kuviota FILTER('Table','Table'[Column]=\"Value\") CALCULATE- tai CALCULATETABLE-funktion suodatinparametreille, käytä jotakin alla olevista vaihtoehdoista. Mitä tulee KEEPFILTERS-toiminnon käyttöön, katso toinen viitelinkki alla.\n"
+"Vaihtoehto 1: KEEPFILTERS('Taulukko'[Sarake]=\"Arvo\")\n"
+"Vaihtoehto 2: 'Taulukko'[Sarake]=\"Arvo\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Käytä DIVIDE-funktiota /-merkin sijaan. DIVIDE-funktio ratkaisee nollalla "
+"jakamisen tapaukset. Siksi on suositeltavaa käyttää virheiden välttämiseksi."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Täydellisten sarakeviittausten käyttäminen helpottaa sarake- ja "
+"mittaviittausten erottamista toisistaan ja auttaa myös välttämään tiettyjä "
+"virheitä. Kun viittaat sarakkeeseen DAX-kielessä, määritä ensin taulukon "
+"nimi ja määritä sitten sarakkeen nimi hakasulkeissa."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Kvalifioimattomien mittariviittausten käyttäminen helpottaa sarake- ja "
+"mittayksikköviittausten erottamista toisistaan ja auttaa myös välttämään "
+"tiettyjä virheitä. Kun viittaat mittariin DAX-kielellä, älä määritä taulukon"
+" nimeä. Käytä vain mittarin nimeä hakasulkeissa."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Ei-aktiiviset suhteet aktivoidaan USERELATIONSHIP-funktiolla. Jos "
+"passiiviseen suhteeseen ei viitata millään mittarilla tämän funktion kautta,"
+" suhdetta ei käytetä. Olisi määritettävä, onko suhde tarpeeton vai "
+"aktivoidaanko suhde tällä menetelmällä."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Piilotetut sarakkeet, joihin DAX-lausekkeet, suhteet, hierarkiatasot tai "
+"lajitteluperusteominaisuudet eivät viittaa, on poistettava."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Piilotetut mittarit, joihin DAX-lausekkeet eivät viittaa, on poistettava "
+"ylläpidettävyyden vuoksi."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Tämä sääntö korostaa taulukot, joita ei ole yhdistetty mihinkään muuhun "
+"mallin taulukkoon, jolla on yhteys."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Laskentaryhmillä ei ole funktiota, ellei niillä ole laskentanimikkeitä."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Lisää objekteihin kuvauksia. Nämä kuvaukset näkyvät viemällä hiiren osoitin "
+"Power BI Desktopin kenttäluettelossa. Lisäksi voit hyödyntää näitä kuvauksia"
+" luodaksesi automaattisen tietosanakirjan."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"DateTime-tyyppiset sarakkeet, joiden nimessä lukee \"Month\", on muotoiltava"
+" muodossa \"kk/pp/v\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Numeeristen sarakkeiden (kokonaisluku, desimaali, kaksinkertainen) "
+"SummarizeBy-ominaisuuden arvoksi on määritettävä Ei mitään, jotta vältetään "
+"vahingossa tapahtuvat summat Power BI:ssä (luo sen sijaan mittareita)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "Näkyville mittareille on määritettävä muotoilumerkkijono-ominaisuus."
+
+# description
+msgid "Add data category for columns"
+msgstr "Lisää Tietoluokka-ominaisuus sopiville sarakkeille."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Käyttökokemuksen parantamiseksi percengagement-mittarit tulisi muotoilla "
+"%-merkillä."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Käyttökokemuksen parantamiseksi kokonaisluvut tulisi muotoilla pilkuilla."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Vieraat avaimet on aina piilotettava, koska loppukäyttäjät eivät saa käyttää"
+" niitä."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Määritä Key-ominaisuuden arvoksi True sarakkeen ominaisuuksien "
+"perusavainsarakkeissa."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Tämä sääntö korostaa kuukausisarakkeet, jotka ovat merkkijonoja ja joita ei "
+"ole lajiteltu. Jos ne jätetään lajittelematta, ne lajitellaan "
+"aakkosjärjestykseen (eli huhtikuu, elokuu...). Muista lajitella tällaiset "
+"sarakkeet niin, että ne lajitellaan oikein (tammikuu, helmikuu, "
+"maaliskuu...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Paras käytäntö on, että suhdesarakkeiden tietotyyppi on kokonaisluku. Tämä "
+"ei koske vain tietovarastointia, vaan myös tietomallinnusta."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"DateTime-tyyppiset sarakkeet, joiden nimessä on \"Month\", on muotoiltava "
+"muotoon \"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Liput on muotoiltava oikein Kyllä/Ei-muotoon, koska se on helpompi lukea "
+"kuin 0/1-kokonaislukuarvojen käyttäminen."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Objektit eivät saa alkaa tai päättyä välilyöntiin. Tämä tapahtuu yleensä "
+"vahingossa ja sitä on vaikea löytää."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Objektien nimien ensimmäinen kirjain tulee kirjoittaa isolla alkukirjaimella"
+" ammattimaisen laadun ylläpitämiseksi."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Objektien nimet eivät saa sisältää välilehtiä, rivinvaihtoja jne."

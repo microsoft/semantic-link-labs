@@ -1,0 +1,968 @@
+#
+msgid ""
+msgstr ""
+"Language: ro-RO\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Nu utilizați tipuri de date în virgulă mobilă"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Evitați să folosiți coloane calculate"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Verificați dacă relațiile bidirecționale și multe-la-mai multe sunt valide"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Verificați dacă este necesară securitatea dinamică la nivel de rând (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Evitați utilizarea relațiilor mai-mulți-la-mai mulți în tabelele utilizate "
+"pentru securitatea dinamică la nivel de rând"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Relațiile mulți-la-mai mulți ar trebui să fie cu o singură direcție"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Setați IsAvailableInMdx la false pe coloanele non-atribute"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Setarea proprietății \"Data Coverage Definition\" pe partiția DirectQuery a "
+"unui tabel hibrid"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Modul dual este relevant numai pentru tabelele de parametri dacă se "
+"utilizează DirectQuery pentru tabelul de fapte corespunzător"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Setarea tabelelor de parametri în modul dual în loc de import atunci când "
+"utilizați DirectQuery în tabele de fapte"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Minimizarea transformărilor Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Luați în considerare o schemă în stea în loc de o arhitectură cu fulgi de "
+"zăpadă"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Evitați utilizarea vizualizărilor atunci când utilizați modul Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Evitați adăugarea de 0 la o măsură"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Reducerea utilizării tabelelor calculate"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Reducerea utilizării coloanelor calculate care utilizează funcția RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Evitați relațiile bidirecționale excesive sau mulți-la-mai mulți"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Eliminați tabelul cu dată automată"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Tabelele de date/calendar trebuie marcate ca tabel de date"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Tabelele mari ar trebui să fie partiționate"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Logica de limitare a securității la nivel de rând (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Modelul ar trebui să aibă un tabel de date"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Elementele de calcul trebuie să aibă o expresie"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Coloanele de relații trebuie să aibă același tip de date"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Coloanele de date trebuie să aibă o coloană sursă"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Setați IsAvailableInMdx la true pe coloanele necesare"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Evitați funcția USERELATIONSHIP și RLS în același tabel"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Evitați utilizarea funcției IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Utilizați funcția TREATAS în loc de INTERSECT pentru relațiile virtuale"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Funcția EVALUATEANDLOG nu trebuie utilizată în modelele de producție"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Măsurile nu ar trebui să fie trimiteri directe la alte măsuri"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Nu există două măsuri care să aibă aceeași definiție"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Evitați adunarea sau scăderea valorilor constante la rezultatele "
+"diviziunilor"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Evitați utilizarea sintaxei \"1-(x/y)\""
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrarea valorilor măsurătorilor în funcție de coloane, nu de tabele"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Filtrarea valorilor coloanelor cu sintaxa corespunzătoare"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Utilizați funcția DIVIDE pentru divizare"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Referințele de coloană trebuie să fie pe deplin calificate"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Referințele la măsuri ar trebui să fie fără rezerve"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Relații inactive care nu sunt niciodată activate"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Eliminați coloanele inutile"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Eliminați măsurile inutile"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Asigurați-vă că tabelele au relații"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Grupuri de calcul fără elemente de calcul"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Obiecte vizibile fără descriere"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Furnizați șirul de format pentru coloanele \"Dată\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Nu rezumați coloanele numerice"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Furnizați șirul de format pentru măsuri"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Adăugați o categorie de date pentru coloane"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Procentele trebuie formatate cu separatoare de mii și 1 zecimală"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Numerele întregi ar trebui să fie formatate cu separatoare de mii și fără "
+"zecimale"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Ascundeți cheile străine"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Marcarea cheilor primare"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Luna (ca șir) trebuie sortată"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Coloanele de relație trebuie să fie de tip de date întreg"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Furnizați șirul de format pentru coloanele \"Lună\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatarea coloanelor de steag ca șiruri de valori Da/Nu"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Obiectele nu trebuie să înceapă sau să se termine cu un spațiu"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Prima literă a obiectelor trebuie să fie scrisă cu majuscule"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Numele obiectelor nu trebuie să conțină caractere speciale"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Performanță"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Performanță"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Performanță"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Performanță"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Performanță"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Performanță"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Performanță"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Performanță"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Performanță"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Performanță"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Performanță"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Performanță"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Performanță"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Performanță"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Performanță"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Performanță"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Performanță"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Performanță"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Performanță"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Performanță"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Performanță"
+
+# category
+msgid "Model should have a date table"
+msgstr "Performanță"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Prevenirea erorilor"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Prevenirea erorilor"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Prevenirea erorilor"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Prevenirea erorilor"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Prevenirea erorilor"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Expresii DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Expresii DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Expresii DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Expresii DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Expresii DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Expresii DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Expresii DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Expresii DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Expresii DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Expresii DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Expresii DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Expresii DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Expresii DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Întreținere"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Întreținere"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Întreținere"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Întreținere"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Întreținere"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formatare"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formatare"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formatare"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formatare"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formatare"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formatare"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formatare"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formatare"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formatare"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formatare"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formatare"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatare"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formatare"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formatare"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Convenții de denumire"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Tipul de date în virgulă mobilă \"Dublu\" trebuie evitat, deoarece poate "
+"duce la erori imprevizibile de rotunjire și la scăderea performanței în "
+"anumite scenarii. Utilizați \"Int64\" sau \"Zecimal\" acolo unde este cazul "
+"(dar rețineți că \"Zecimal\" este limitat la 4 cifre după semnul zecimal)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Coloanele calculate nu se comprimă la fel de bine ca coloanele de date, "
+"astfel încât ocupă mai multă memorie. De asemenea, încetinesc timpii de "
+"procesare atât pentru masă, cât și pentru recalcularea procesului. "
+"Descărcați logica coloanei calculate în depozitul de date și transformați "
+"aceste coloane calculate în coloane de date."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Utilizarea securității dinamice la nivel de rând (RLS) poate adăuga "
+"supraîncărcare de memorie și performanță. Vă rugăm să cercetați avantajele /"
+" dezavantajele utilizării acestuia."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Utilizarea relațiilor mai-mulți-la-mai mulți în tabelele care utilizează "
+"securitatea dinamică la nivel de rând poate cauza o degradare gravă a "
+"performanței interogărilor. Problemele de performanță ale acestui model se "
+"agravează atunci când se amestecă mai multe relații mai-mulți-la-mulți pe un"
+" tabel care conține securitate la nivel de rând. În schimb, utilizați unul "
+"dintre modelele afișate în articolul de mai jos, unde un tabel cu un singur "
+"parametru face legătura între mai mulți la unu și un tabel de securitate."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Pentru a accelera timpul de procesare și a economisi memoria după procesare,"
+" ierarhiile de atribute nu trebuie construite pentru coloane care nu sunt "
+"niciodată utilizate pentru feliere de către clienții MDX. Cu alte cuvinte, "
+"toate coloanele ascunse care nu sunt utilizate ca coloană de sortare după "
+"sau la care se face referire în ierarhiile utilizatorilor ar trebui să aibă "
+"proprietatea IsAvailableInMdx setată la false. Proprietatea IsAvailableInMdx"
+" nu este relevantă pentru modelele Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Setarea proprietății \"Data Coverage Definition\" poate duce la o "
+"performanță mai bună, deoarece motorul știe când poate interoga doar "
+"porțiunea de import a tabelului și când trebuie să interogheze porțiunea "
+"DirectQuery a tabelului."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Utilizați modul Dual numai pentru tabelele/partițiile de parametri în care "
+"un tabel de fapte corespunzător este în DirectQuery. Utilizarea modului Dual"
+" în alte circumstanțe (adică restul modelului este în modul Import) poate "
+"duce la probleme de performanță, mai ales dacă numărul de măsuri din model "
+"este mare."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Atunci când utilizați DirectQuery, tabelele de parametri trebuie setate în "
+"modul dublu pentru a îmbunătăți performanța interogării."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Minimizați transformările Power Query pentru a îmbunătăți performanța de "
+"procesare a modelului. Este o bună practică să descărcați aceste "
+"transformări în depozitul de date, dacă este posibil. De asemenea, vă rugăm "
+"să verificați dacă plierea interogărilor are loc în modelul dvs. Vă rugăm să"
+" consultați articolul de mai jos pentru mai multe informații despre plierea "
+"interogărilor."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"În general, o schemă stea este arhitectura optimă pentru modelele tabelare. "
+"Așa stând lucrurile, există cazuri valide pentru a utiliza o abordare a "
+"fulgului de zăpadă. Vă rugăm să verificați modelul și să luați în "
+"considerare trecerea la o arhitectură cu schemă în stea."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"În modul Direct Lake, vizualizările vor reveni întotdeauna la DirectQuery. "
+"Astfel, pentru a obține cele mai bune performanțe, folosiți mese lakehouse "
+"în loc de vederi."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Adăugarea 0 la o măsură pentru ca aceasta să nu afișeze o valoare "
+"necompletată poate avea un impact negativ asupra performanței."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Migrați logica tabelului calculat în depozitul de date. Dependența de "
+"tabelele calculate va duce la datorii tehnice și potențiale nealinieri dacă "
+"aveți mai multe modele pe platforma dvs."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Coloanele calculate nu se comprimă la fel de bine ca coloanele de date și "
+"pot cauza timpi de procesare mai lungi. Ca atare, coloanele calculate ar "
+"trebui evitate dacă este posibil. Un scenariu în care pot fi mai ușor de "
+"evitat este dacă utilizează funcția RELATED."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Limitați utilizarea relațiilor b-di și multe-la-mulți. Această regulă "
+"semnalizează modelul dacă mai mult de 30% din relații sunt bi-di sau mulți-"
+"la-mulți."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Evitați utilizarea tabelelor cu datare automată. Asigurați-vă că dezactivați"
+" tabelul de datare automată în setările din Power BI Desktop. Acest lucru va"
+" economisi resurse de memorie."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Această regulă caută tabele care conțin cuvintele \"dată\" sau \"calendar\","
+" deoarece acestea ar trebui probabil marcate ca tabel de date."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Tabelele mari ar trebui să fie partiționate pentru a optimiza procesarea. "
+"Acest lucru nu este relevant pentru modelele semantice în modul Direct Lake,"
+" deoarece pot avea o singură partiție pe tabel."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Încercați să simplificați DAX utilizat pentru securitatea la nivel de rând. "
+"Utilizarea funcțiilor din această regulă poate fi probabil descărcată în "
+"sistemele din amonte (depozit de date)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"În general, modelele ar trebui să aibă în general un tabel de date. Modelele"
+" care nu au un tabel de date, în general, nu profită de caracteristici "
+"precum inteligența timpului sau pot să nu aibă o arhitectură structurată "
+"corespunzător."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Elementele de calcul trebuie să aibă o expresie. Fără o expresie, acestea nu"
+" vor afișa nicio valoare."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Coloanele utilizate într-o relație trebuie să aibă același tip de date. În "
+"mod ideal, acestea vor fi de tip de date întreg (a se vedea regula aferentă "
+"\"[Formatare] Coloanele de relație ar trebui să fie de tip de date "
+"întreg\"). A avea coloane într-o relație care sunt de diferite tipuri de "
+"date poate duce la diverse probleme."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Coloanele de date trebuie să aibă o coloană sursă. O coloană de date fără o "
+"coloană sursă va cauza o eroare la procesarea modelului."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Pentru a evita erorile, asigurați-vă că ierarhiile de atribute sunt activate"
+" dacă o coloană este utilizată pentru sortarea unei alte coloane, utilizată "
+"într-o ierarhie, utilizată în variante sau este sortată după o altă coloană."
+" Proprietatea IsAvailableInMdx nu este relevantă pentru modelele Direct "
+"Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Funcția USERELATIONSHIP nu poate fi utilizată împotriva unui tabel care "
+"utilizează și securitatea la nivel de rând (RLS). Acest lucru va genera o "
+"eroare atunci când utilizați măsura respectivă într-un element vizual. "
+"Această regulă va evidenția tabelul care este utilizat în funcția "
+"USERELATIONSHIP a unei măsuri, precum și RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Evitați utilizarea funcției IFERROR, deoarece poate provoca degradarea "
+"performanței. Dacă sunteți îngrijorat de o eroare de împărțire la zero, "
+"utilizați funcția DIVIDE, deoarece rezolvă în mod natural astfel de erori ca"
+" gol (sau puteți personaliza ceea ce ar trebui afișat în cazul unei astfel "
+"de erori)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Funcția TREATAS este mai eficientă și oferă performanțe mai bune decât "
+"funcția INTERSECT atunci când este utilizată în relațiile virutale."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Funcția EVALUATEANDLOG este menită să fie utilizată numai în medii de "
+"dezvoltare/testare și nu ar trebui utilizată în modele de producție."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Această regulă identifică măsurile care sunt pur și simplu o trimitere la o "
+"altă măsură. Ca exemplu, luați în considerare un model cu două măsuri: "
+"[MeasureA] și [MeasureB]. Această regulă ar fi declanșată pentru MeasureB "
+"dacă DAX-ul MeasureB ar fi MeasureB:=[MeasureA]. Astfel de măsuri duble ar "
+"trebui eliminate."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Două măsuri cu nume diferite și definite de aceeași expresie DAX ar trebui "
+"evitate pentru a reduce redundanța."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Adăugarea unei valori constante poate duce la degradarea performanței."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"În loc să utilizați sintaxa \"1-(x/y)\" sau \"1+(x/y)\" pentru a obține un "
+"calcul procentual, utilizați funcțiile DAX de bază (așa cum se arată mai "
+"jos). Utilizarea sintaxei îmbunătățite va îmbunătăți în general performanța."
+" \"1+/-...\" sintaxa returnează întotdeauna o valoare, în timp ce soluția "
+"fără \"1+/-...\" nu (deoarece valoarea poate fi \"goală\"). Prin urmare, "
+"\"1+/-...\" sintaxa poate returna mai multe rânduri/coloane, ceea ce poate "
+"duce la o viteză de interogare mai mică.    Să clarificăm cu un exemplu: "
+"Evitați acest lucru: 1 - SUM ( 'Sales'[CostAmount] ) / SUM( "
+"'Sales'[SalesAmount] ) Mai bine: DIVIDE ( SUM ( 'Sales'[SalesAmount] ) - SUM"
+" ( 'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) ) Cel mai bun: VAR x "
+"= SUM ( 'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUMA ( "
+"'Sales'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"În loc să utilizați acest model FILTER('Table',[Measure]>Value) pentru parametrii de filtrare ai unei funcții CALCULATE sau CALCULATETABLE, utilizați una dintre opțiunile de mai jos (dacă este posibil). Filtrarea pe o anumită coloană va produce un tabel mai mic pentru procesarea motorului, permițând astfel performanțe mai rapide. Utilizarea funcției VALUES sau a funcției ALL depinde de rezultatul măsurii dorite.\n"
+"Opțiunea 1: FILTER(VALUES('Table'[Column]),[Measure] > Value)\n"
+"Opțiunea 2: FILTER(ALL('Table'[Column]),[Measure] > Value)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"În loc să utilizați acest model FILTER('Table','Table'[Column]=\"Value\") pentru parametrii de filtrare ai unei funcții CALCULATE sau CALCULATETABLE, utilizați una dintre opțiunile de mai jos. În ceea ce privește utilizarea funcției KEEPFILTERS, consultați al doilea link de referință de mai jos.\n"
+"Opțiunea 1: KEEPFILTERS('Table'[Column]=\"Value\")\n"
+"Opțiunea 2: 'Tabel'[coloană]=\"Valoare\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Utilizați funcția DIVIDE în loc să utilizați \"/\". Funcția DIVIDE rezolvă "
+"cazurile de divizare la zero. Ca atare, se recomandă utilizarea pentru a "
+"evita erorile."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Utilizarea referințelor de coloană complet calificate facilitează distincția"
+" între referințele de coloană și de măsură și, de asemenea, ajută la "
+"evitarea anumitor erori. Când faceți referire la o coloană în DAX, "
+"specificați mai întâi numele tabelului, apoi specificați numele coloanei "
+"între paranteze pătrate."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Utilizarea referințelor de măsură necalificate facilitează distincția între "
+"referințele de coloană și de măsură și ajută la evitarea anumitor erori. "
+"Când faceți referire la o măsură utilizând DAX, nu specificați numele "
+"tabelului. Utilizați numai numele măsurii între paranteze pătrate."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Relațiile inactive sunt activate folosind funcția USERELATIONSHIP. Dacă o "
+"relație inactivă nu este menționată în nicio măsură prin această funcție, "
+"relația nu va fi utilizată. Ar trebui să se stabilească dacă relația nu este"
+" necesară sau să se activeze relația prin această metodă."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Coloanele ascunse care nu sunt menționate de expresii DAX, relații, niveluri"
+" de ierarhie sau proprietăți de sortare după ar trebui eliminate."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Măsurile ascunse la care nu se face referire nicio expresie DAX ar trebui "
+"eliminate pentru întreținere."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Această regulă evidențiază tabelele care nu sunt conectate la niciun alt "
+"tabel din model cu o relație."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Grupurile de calcul nu au nicio funcție decât dacă au elemente de calcul."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Adăugați descrieri la obiecte. Aceste descrieri sunt afișate la trecerea cu "
+"mouse-ul în Lista de câmpuri din Power BI Desktop. În plus, puteți utiliza "
+"aceste descrieri pentru a crea un dicționar automat de date."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Coloanele de tip \"DateTime\" care au \"Lună\" în numele lor ar trebui să "
+"fie formatate ca \"ll/zz/aaaa\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Coloanele numerice (întreg, zecimal, dublu) ar trebui să aibă proprietatea "
+"SummarizeBy setată la \"None\" pentru a evita însumarea accidentală în Power"
+" BI (creați în schimb măsurători)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Măsurile vizibile ar trebui să aibă atribuit proprietatea șir de format."
+
+# description
+msgid "Add data category for columns"
+msgstr ""
+"Adăugați proprietatea Categorie de date pentru coloanele corespunzătoare."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Pentru o experiență mai bună a utilizatorului, măsurile percengage ar trebui"
+" formatate cu un semn \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Pentru o experiență mai bună a utilizatorului, numerele întregi ar trebui "
+"formatate cu virgule."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Cheile străine ar trebui să fie întotdeauna ascunse, deoarece nu ar trebui "
+"să fie utilizate de utilizatorii finali."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Setați proprietatea \"Cheie\" la \"Adevărat\" pentru coloanele cheie primară"
+" din proprietățile coloanei."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Această regulă evidențiază coloanele de lună care sunt șiruri și nu sunt "
+"sortate. Dacă sunt lăsate nesortate, acestea vor fi sortate în ordine "
+"alfabetică (adică aprilie, august...). Asigurați-vă că sortați astfel de "
+"coloane astfel încât să fie sortate corect (ianuarie, februarie, martie...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Este o bună practică ca coloanele de relații să fie de tip de date întreg. "
+"Acest lucru se aplică nu numai depozitării datelor, ci și modelării datelor."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Coloanele de tip \"DateTime\" care au \"Month\" în numele lor ar trebui să "
+"fie formatate ca \"MMMM aaaa\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Steagurile trebuie să fie formatate corect ca Da/Nu, deoarece acest lucru "
+"este mai ușor de citit decât utilizarea valorilor întregi 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Obiectele nu trebuie să înceapă sau să se termine cu un spațiu. Acest lucru "
+"se întâmplă de obicei din întâmplare și este greu de găsit."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Prima literă a numelor de obiecte ar trebui să fie scrisă cu majuscule "
+"pentru a menține calitatea profesională."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr ""
+"Numele obiectelor nu ar trebui să includă tabulatori, sfârșituri de linie "
+"etc."

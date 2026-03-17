@@ -1,0 +1,869 @@
+#
+msgid ""
+msgstr ""
+"Language: am-ET\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "ተንሳፋፊ ነጥብ የመረጃ አይነቶች አይጠቀሙ"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "የተሰሉ ዓምዶችን ከመጠቀም ተቆጠቡ"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "ባለትዳሮች እና ብዙ-ብዙ ግንኙነቶች ተቀባይነት ያላቸው መሆናቸውን ያረጋግጡ"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "ቀጣይ ረድፍ ደረጃ ደህንነት (RLS) አስፈላጊ መሆኑን ያረጋግጡ"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "ለቀጣይ ረድፍ ደረጃ ደህንነት በሚጠቀሙ ጠረጴዛዎች ላይ ብዙ-ብዙ ግንኙነቶችን ከመጠቀም ይቆጠቡ"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "ብዙ-ወደ-ብዙ ግንኙነት ነጠላ-አቅጣጫ መሆን አለበት"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx በማያጠያይቅ ዓምዶች ላይ ወደ ሐሰት ይምረጥ"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "የውሂብ ጠረጴዛ በDirectQuery ክፍፍሉ ላይ 'የዳታ ሽፋን ፍቺ' ንብረት ያስቀምጡ"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"ድርብ ዘዴ ለስፋት ሠንጠረዦች ብቻ ጠቃሚ ነው DirectQuery ለተመጣጣኝ እውነታ ሠንጠረዥ ጥቅም ላይ የዋለ ከሆነ"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"DirectQuery በእውነታ ሠንጠረዦች ላይ ስትጠቀም ከውጭ ከማስገባት ይልቅ ስፋት ጠረጴዛዎችን ወደ ድርብ ዘዴ አስቀምጥ"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "የኃይል ጥያቄ ለውጥ መቀነስ"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "የበረዶ ቅንጣቶችን ንድፍ ከመሥራት ይልቅ ኮከብ-ሴማ እንደ ምሳሌ እንውሰድ"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Direct Lake mode በሚጠቀሙበት ጊዜ እይታዎች መጠቀም ያስወግዱ"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "ወደ መለኪያ 0 ከመጨመር ተቆጠብ"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "የስሌት ሠንጠረዦችን አጠቃቀም መቀነስ"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "ተዛማጅ ተግባርን የሚጠቀሙ የስሌት ዓምዶች አጠቃቀም መቀነስ"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "ከልክ ያለፈ ባለት-አቅጣጫ ወይም ብዙ-ወደ-ብዙ ግንኙነት አስወግድ"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "የመኪና-ቀን ጠረጴዛ አስወግድ"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "የቀን/ቀን መቁጠሪያ ሠንጠረዦች የቀን ሠንጠረዥ ሆነው መታወቅ ይኖርባቸዋል"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "ትላልቅ ጠረጴዛዎች መከፋፈል አለባቸው"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "ረድፍ ደረጃ ደህንነት (RLS) ሎጂክ ገደብ"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "ሞዴል ቀን ጠረጴዛ ሊኖረው ይገባል"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "የስሌት እቃዎች መግለጫ ሊኖራቸው ይገባል"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "የግንኙነት ዓምዶች ተመሳሳይ የመረጃ አይነት መሆን አለባቸው"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "የዳታ አምዶች ምንጭ ዓምድ ሊኖራቸው ይገባል"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx ን በአስፈላጊ ዓምዶች ላይ ወደ እውነት አስቀምጥ"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "የ USERELATIONSHIP ተግባር እና RLS በተመሳሳይ ጠረጴዛ ላይ ያስወግዱ"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "የ IFERROR ተግባርን ከመጠቀም ይቆጠቡ"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "የመተግበሪን ግንኙነት ኢንተርሴክት ይልቅ የ TREATAS ተግባር ይጠቀሙ"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "የEVALUATEANDLOG ተግባር በምርት ሞዴሎች ውስጥ ጥቅም ላይ መዋል የለበትም"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "እርምጃዎች ሌሎች እርምጃዎች ቀጥተኛ ማጣቀሻ መሆን የለባቸውም"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "ሁለት መለኪያዎች አንድ አይነት ፍቺ ሊኖራቸው አይገባም"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "የማያቋርጥ የሥነ ምግባር እሴቶችን በመከፋፈል ውጤት ላይ ከመጨመር ወይም ከማስቀረት ተቆጠቡ"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' ሲንታክስ ከመጠቀም ተቆጠቡ"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "ማጣሪያ እሴት የሚለካው በዓምዶች እንጂ በጠረጴዛዎች አይደለም"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "ትክክለኛ syntax ጋር የማጣሪያ ዓምድ እሴት"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "ለመከፋፈል የ ክፍፍል አሰራር ይጠቀሙ"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "የዓምድ ማጣቀሻዎች ሙሉ ብቃት ሊኖራቸው ይገባል"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "የመለኪያ ማጣቀሻዎች ብቃት የሌላቸው መሆን አለባቸው"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "ፈጽሞ የማይንቀሳቀሱ የቀዘቀዙ ግንኙነቶች"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "አላስፈላጊ ዓምዶችን አስወግድ"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "አላስፈላጊ እርምጃዎችን አስወግድ"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "ጠረጴዛዎች ግንኙነት እንዳላቸው አረጋግጥ"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "የስሌት ዕቃዎች የሌሉባቸው የስሌት ቡድኖች"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "ምንም መግለጫ የሌላቸው የሚታዩ ነገሮች"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "ለ 'ቀን' ዓምዶች ፎርማት አውታረ መረብ ን ያቅርበው"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "የቁጥር ዓምዶችን አታጠቃልል"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "ለመለኪያ ፎርማት አውታረ መረብ አቅርበው"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "ለዓምዶች የመረጃ ምድብ ጨምር"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "በመቶ አሃዝ በሺህ የሚቆጠሩ ሴፓራቶሮች እና 1 ዴሲማል መሰል መሆን አለበት"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "ሙሉ ቁጥሮች በሺህ የሚቆጠሩ ሴፓራቶሮች ና ምንም ዴሲማል የሌላቸው መሆን አለባቸው"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "የውጭ ቁልፎችን መደበቅ"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "የማርቆስ ዋና ቁልፍ"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "ወር (እንደ አውታር) መለየት አለበት"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "የግንኙነት ዓምዶች integer data type መሆን አለባቸው"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "ለ\"ወር\" ዓምዶች ፎርማት አውታረ መረብ አቅርበው"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ፎርማት የባንዲራ ዓምዶች እንደ አዎ/አይደለም ዋጋ አውታረ መረብ"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "እቃዎች በቦታ መጀመር ወይም ማብቃት የለባቸውም"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "የእቃዎች የመጀመሪያ ፊደል መጠቀም አለበት"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "የግዕዝ ስሞች ልዩ ፊደሎችን መያዝ የለባቸውም"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "አፈጻጸም"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "አፈጻጸም"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "አፈጻጸም"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "አፈጻጸም"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Remove auto-date table"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Model should have a date table"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "የስህተት መከላከያ"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "የስህተት መከላከያ"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "የስህተት መከላከያ"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "የስህተት መከላከያ"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "የስህተት መከላከያ"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "ጥገና"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "ጥገና"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "ጥገና"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "ጥገና"
+
+# category
+msgid "Visible objects with no description"
+msgstr "ጥገና"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Provide format string for measures"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Add data category for columns"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Hide foreign keys"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Mark primary keys"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "ፎርማት (formatting)"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "የአውራጃ ስብሰባዎችን ስም ማውጣት"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"\"ድርብ\" ተንሳፋፊ የነጥብ አይነት ማስወገድ አለበት, ይህም በአንዳንድ ሁኔታዎች ውስጥ ያልተጠበቁ የዙር ስህተቶችን "
+"ሊያስከትል እና አፈጻጸም እንዲቀንስ ሊያደርግ ይችላል. አስፈላጊ በሚሆንበት ጊዜ \"Int64\" ወይም \"Decimal\""
+" ይጠቀሙ (ነገር ግን \"Decimal\" ከ አስረጅ ምልክት በኋላ በ 4 ዲጂት ብቻ የተወሰነ መሆኑን ልብ በሉ)።"
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"የተሰላባቸው ዓምዶች ተጨማሪ ትውስታ ለማግኘት ሲሉ የዳታ ዓምዶችን አይጨብጡም። በተጨማሪም ለሠንጠረዥም ሆነ ለሂደቱ ሂደት"
+" ጊዜን ይቀንሱታል። Offload የተሰላ አምድ ሎጂክ ወደ መረጃ ማከማቻዎ እና እነዚህን የተሰሉ ዓምዶች ወደ ዳታ አምዶች"
+" ይለውጣሉ."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"የቀጣይ ረድፍ ደረጃ ደህንነት (RLS) አጠቃቀም ከላይ ትውስታ እና አፈጻጸም ሊጨምር ይችላል. እባክዎ ን በመጠቀም "
+"ጥቅም/cons ላይ ምርምር ያድርጉ."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"በሠንጠረዦች ላይ ብዙ-ብዙ ግንኙነቶችን መጠቀም ቀጣይነት ያለው ረድፍ ደረጃ ደህንነት መጠቀም ከባድ የጥያቄ አፈጻጸም "
+"መበላሸት ሊያስከትል ይችላል. ይህ ንድፍ የአፈጻጸም ችግሮች ተባብሶ snowflaking multiple multiple "
+"multiple-to-many-many-ብዙ ግንኙነቶች በረድፍ ደረጃ ደህንነት ንክክሮችን ከያዘ ሠንጠረዥ ጋር ሲቃረኑ. ከዚህ"
+" ይልቅ ከታች ባለው ርዕስ ላይ ከተዘረዘሩት ንድፎች መካከል አንዱን ተጠቅመህ አንድ ስፋት ያለው ጠረጴዛ ከደኅንነቱ "
+"ጠረጴዛ ጋር ይዛመዳል።"
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"የሂደት ጊዜን ለማፋጠን እና ከሂደት በኋላ የማስታወስ ችሎታን ለመጠበቅ, የባህርይ ማዕቀፍ በMDX ደንበኞች ፈጽሞ ጥቅም "
+"ላይ ያልዋሉ ዓምዶች መገንባት የለበትም. በሌላ አነጋገር፣ እንደ ሶርት ባይ ዓምድ ያልተጠቀሙ ወይም በተጠቃሚ ባለ "
+"ሥልጣናት ላይ የተጠቀሱት ስውር ዓምዶች በሙሉ IsavailableInMdx ንብረታቸውን ሐሰት ማድረግ ይኖርባቸዋል። "
+"IsavailableInMdx ንብረት ለቀጥታ ሐይቅ ሞዴሎች ምንም አያጠያይቅም."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ሞተሩ የጠረጴዛውን አስገባ-ክፍል ብቻ መቼ ሊጠይቅ እንደሚችል ስለሚያውቅ እና የጠረጴዛውን የDirectQuery ክፍል መቼ"
+" መጠየቂያ እንደሚያስፈልገው ስለሚያውቅ 'የData Coverage Definition' የሚለውን ንብረት ማመቻቸት የተሻለ "
+"አፈጻጸም ሊያስከትል ይችላል።"
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"ተመሳሳዩ እውነታ ሠንጠረዥ በDirectQuery ውስጥ የሚገኝበትን ስፋት tables/partitions ለማግኘት ብቻ "
+"Dual mode ይጠቀሙ. በሌሎች ሁኔታዎች ሁለት ዓይነት ዘዴን መጠቀም (ማለትም የቀረው ሞዴል በኢምፖርት ሞድ ውስጥ "
+"ነው) በተለይ በሞዴሉ ውስጥ ያለው የመለኪያ ቁጥር ከፍተኛ ከሆነ ወደ አፈጻጸም ችግር ሊያመራ ይችላል."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "DirectQuery በሚጠቀሙበት ጊዜ የመጠየቂያ አፈጻጸም ለማሻሻል ወደ Dual mode መመደብ አለበት."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"የሞዴል የስራ አፈጻጸም ለማሻሻል የኃይል ጥያቄ ሽግግርን መቀነስ. የሚቻል ከሆነ እነዚህን ለውጦች ወደ ዳታ ማከማቻው "
+"ማውረድ የተሻለ ነው። በተጨማሪም በእርስዎ ሞዴል ውስጥ የጥያቄ ማጠፍ እየተከሰተ እንደሆነ እባክዎ ያረጋግጡ. ስለ ጥያቄ "
+"ማጠፍ ተጨማሪ መረጃ ለማግኘት እባክዎ ከታች ያለውን ርዕስ ይመልከቱ."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"በጥቅሉ ሲታይ ኮከብ-ሴማ ለታቡላር ሞዴሎች የተሻለ ንድፍ ነው። እንደሁኔታው ከሆነ የበረዶ ቅንጣቶችን ለመጠቀም የሚያስችሉ"
+" በቂ ሁኔታዎች አሉ ። እባክዎን ሞዴልዎን ይመልከቱ እና ወደ ኮከብ-ሴማ ንድፍ ለመዛወር ያስቡ."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"የቀጥታ ሐይቅ ዘዴ ውስጥ, እይታዎች ሁልጊዜ ወደ DirectQuery ይመለሳሉ. በመሆኑም የተሻለ ውጤት ለማግኘት ከእይታ "
+"ይልቅ በሐይቅ ውስጥ በሚገኙ ጠረጴዛዎች ተጠቀም።"
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr "ባዶ ዋጋ እንዳያሳይ 0 ወደ መለኪያ መጨመር በአፈጻጸም ላይ አሉታዊ ተጽዕኖ ሊያሳድር ይችላል."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"የተሰላ የጠረጴዛ ሎጂክ ወደ መረጃ ማከማቻዎ ይሂዱ. በስሌት ሠንጠረዦች ላይ መተማመን በእርስዎ መድረክ ላይ በርካታ "
+"ሞዴሎች ካሉዎት ቴክኒካዊ ዕዳ እና ሊሳሳት ይችላል."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"የተሰላባቸው ዓምዶች የዳታ ዓምዶችን አይጨምሩም፤ እንዲሁም ረዘም ላለ ጊዜ እንዲሰሩ ሊያደርጉ ይችላሉ። በመሆኑም ከተቻለ "
+"የተሰሉ ዓምዶችን ማስወገድ ያስፈልጋል። በቀላሉ ሊያገለግሏቸው ከሚችሉ ሁኔታዎች አንዱ ተዛማጅ ተግባርን የሚጠቀሙ ከሆነ "
+"ነው።"
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"የ b-di እና ብዙ-ብዙ ግንኙነቶች መጠቀም ይገድቡ. ይህ ደንብ ከ 30% በላይ ግንኙነቶች ቢ-ዲ ወይም ብዙ-ብዙ-ብዙ "
+"ከሆኑ ሞዴሉን ያሰንቃል."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"አውቶማቲክ ቀን ጠረጴዛዎችን ከመጠቀም ተቆጠቡ። በፓወር ቢ አይ ዴስክቶፕ ውስጥ ባሉት አቀማመጦች ውስጥ የመኪና-ቀን "
+"ጠረጴዛ ማጥፋትን ያረጋግጡ. ይህም የማስታወስ ችሎታን ያድናል።"
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "ይህ ደንብ 'ቀን' ወይም 'የቀን መቁጠሪያ' የሚሉትን ቃላት የያዙ ሠንጠረዦች ይመልከቱ።"
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"አሰራሩ የተሻለ እንዲሆን ትላልቅ ጠረጴዛዎች መከፋፈል ይኖርባቸዋል። ይህ በእያንዳንዱ ሠንጠረዥ ውስጥ አንድ ክፍል ብቻ "
+"ሊኖራቸው ስለሚችል በቀጥታ ሐይቅ ሞዴል ውስጥ ለሚገኙ ሴማንቲክ ሞዴሎች ምንም አይጠቅምም።"
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"ለረድፍ ደረጃ ደህንነት ጥቅም ላይ የሚውለውን DAX ቀላል ለማድረግ ሞክር. በዚህ ደንብ ውስጥ ያሉ ተግባራትን አጠቃቀም "
+"ወደ ላይኛው ስርዓት (ዳታ ማከማቻ) ሊጭኑ ይችላሉ።"
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"በአጠቃላይ ሲታይ ሞዴሎች የቀን ጠረጴዛ ሊኖራቸው ይገባል። የቀን ጠረጴዛ የሌላቸው ሞዴሎች በአብዛኛው እንደ ጊዜ የማሰብ "
+"ችሎታ ወይም በተገቢው መንገድ የተሠራ ንድፍ ላይኖራቸው ይችላል።"
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"የስሌት እቃዎች መግለጫ ሊኖራቸው ይገባል። ምንም ዓይነት መግለጫ ሳይሰጥ ምንም ዓይነት የሥነ ምግባር እሴት አያሳዩም።"
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"ግንኙነት ውስጥ ጥቅም ላይ የዋሉ ዓምዶች ተመሳሳይ የመረጃ አይነት መሆን አለባቸው. በመሠረቱ, የኢንቴጀር ዳታ ዓይነት "
+"ይሆናሉ (ተዛማጅ ደንብ '[ፎርማትቲንግ] ግንኙነት ዓምዶች integer data type መሆን አለባቸው ይመልከቱ). "
+"የተለያየ ዓይነት መረጃ ባላቸው ግንኙነቶች ውስጥ ዓምዶች መኖራቸው ወደተለያዩ ጉዳዮች ሊመራ ይችላል።"
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"የዳታ አምዶች ምንጭ ዓምድ ሊኖራቸው ይገባል። ምንጭ የሌለው የመረጃ ዓምድ ሞዴሉን በሚሰራበት ጊዜ ስህተት ይፈጥራል።"
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"ስህተቶችን ለማስወገድ አንድ ዓምድ ሌላ ረድፍ ለመለየት የሚያገለግል፣ በልዩነት ጥቅም ላይ የዋለ ወይም በሌላ ረድፍ "
+"የሚለየው ከሆነ የባሕርይ ባለ ሥልጣኖች እንዲፈጠሩ ማድረግ ይቻላል። IsavailableInMdx ንብረት ለቀጥታ ሐይቅ "
+"ሞዴሎች ምንም አያጠያይቅም."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"የ USERELATIONSHIP ተግባር በረድፍ ደረጃ ደህንነት (RLS) በሚጠቀም ሠንጠረዥ ላይ ላይሰራ ይችላል. ይህ ደግሞ"
+" አንድን መለኪያ በዓይነ ሕሊናህ ስንጠቀም ስህተት እንዲከሰት ያደርጋል። ይህ ደንብ የ USERELATIONSHIP ተግባር "
+"እንዲሁም RLS ውስጥ ጥቅም ላይ የሚውለውን ሠንጠረዥ ያጎላል."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"የአፈጻጸም መበላሽ ሊያስከትል እንደሚችል IFERROR ተግባርን ከመጠቀም ይቆጠቡ. ስለ መከፋፈል-በዜሮ ስህተት ከሆነ "
+"እንደ ባዶ ያሉ ስህተቶችን በተፈጥራዊ መንገድ እንደሚፈታ (ወይም እንዲህ ያለ ስህተት ቢፈፀም መታየት ያለበትን ማስተካከል"
+" ትችላለህ) የሚለውን የ ክፍፍል ተግባር ተጠቀም።"
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"የ TREATAS ተግባር ይበልጥ ውጤታማ እና በvirutal ግንኙነት ውስጥ ጥቅም ላይ በሚውልበት ጊዜ INTERSECT "
+"ተግባር የተሻለ አፈጻጸም ይሰጣል."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"የEVALUATEANDLOG ተግባር በልማት/በፈተና አከባቢዎች ብቻ ጥቅም ላይ እንዲውል ታስቦ ነው እናም በምርት ሞዴሎች "
+"ውስጥ መጠቀም የለበትም."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"ይህ ደንብ ሌላ እርምጃ የሚያመለክቱትን እርምጃዎች ያመለክታል። ለምሳሌ ያህል ሁለት መለኪያዎችን የያዘ ሞዴል እንመልከት፤"
+" እነዚህም [መለካት] እና [መለካትቢ] ናቸው። ይህ ደንብ ለ መለኪያቢ ይቀሰቀስ ነበር። የMeasureB DAX መለኪያ "
+"ቢኾን ==[መርካዐ]። እንደነዚህ ያሉት የመደመር እርምጃዎች መወገድ ይኖርባቸዋል ።"
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"የተለያዩ ስሞች ያሏቸው እና በተመሳሳይ የ DAX አገላለጽ የተገለፁ ሁለት መለኪያዎች የተትረፍርፈውን ለመቀነስ ማስወገድ "
+"አለባቸው."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "የማያቋርጥ ዋጋ መጨመር የሥራ ውርጅና ሊያስከትል ይችላል።"
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"'1-(x/y)' ወይም '1+(x/y)' syntax በመጠቀም የመቶ ስሌትን ለማሳካት ከመጠቀም ይልቅ መሠረታዊ የሆኑትን የ "
+"ዳክስ ተግባራት (ከታች እንደሚታየው) ይጠቀሙ. የተሻሻለውን ሲንታክስ መጠቀም በአብዛኛው አፈጻጸሙን ያሻሽላል. "
+"'1+/-...' syntax ሁልጊዜ እሴት ሲመልስ መፍትሄው ግን ያለ '1+/-...' አይሆንም (ዋጋው 'ባዶ' ሊሆን "
+"እንደሚችል)። እንግዲህ '1+/-...' ሲንታክስ የጥያቄ ፍጥነት እንዲቀንስ ሊያደርጉ የሚችሉ ተጨማሪ ረድፎችን/ዓምዶችን "
+"ሊመልስ ይችላል።    በምሳሌ እናስረዳ፦ ይህን አስወግዱ 1 - SUM ('Sales'[CostAmount] ) / SUM ( "
+"'ሽያጭ'[SalesAmount] ) የተሻለ ክፍፍል ( 'ሽያጭ'[SalesAmount] ) - SUM ( 'የሽያጭ'[Sales "
+"Amount] ) ) ) ምርጥ VAR x = SUM ('Sales'[Sales Amount] ) የመለስ (x - "
+"ሽያጭ'[CostAmount] ( x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"ይህን ንድፍ FILTER ('ሰሌዳ',,[መለኪያ],[መለኪያ]>ዋጋ) ለአንድ የካልኩልወይም የካልኩሌቴሽን አሰራር ማጣሪያ መለኪያዎች ከመጠቀም ይልቅ ከታች (ከተቻለ) አንዱን አማራጭ ይጠቀሙ. በአንድ ረድፍ ላይ ማጣራት ሞተሩ ለመሥራት የሚያስችል አነስተኛ ሠንጠረዥ ስለሚያስገኝ ፈጣን አፈጻጸም እንዲኖር ያስችላል። የሥነ ምግባር እሴቶችን ወይም የሁሉንም ተግባር መጠቀም በሚፈለገው የመለኪያ ውጤት ላይ የተመካ ነው ።\n"
+"አማራጭ 1 ማጣሪያ (እሴት('ገበታ'[Column])፣[መለኪያ] > እሴት)\n"
+"አማራጭ 2 ማጣሪያ (ALL('Table'[Column])፣[መለኪያ] > እሴት)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"ይህን ንድፍ FILTER (','table',,',',Table',Column]=\"Value\") ለአንድ የካልኩል ወይም የካልኩሌቴብል አሰራር የማጣሪያ ማዕቀፎችን ከመጠቀም ይልቅ ከታች ከተዘረዘሩት አማራጮች አንዱን ይጠቀሙ. KEEPFILTERSን ለመጠቀም ወይም ላለመጠቀም ከታች ያለውን ሁለተኛውን የማጣቀሻ አገናኝ ይመልከቱ።\n"
+"አማራጭ 1 KEEPFILTERS ('ሠንጠረዥ'[Column]=\"ዋጋ\")\n"
+"አማራጭ 2፦ 'ገበታ'[Column]=\"እሴት\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"\"/\" ከመጠቀም ይልቅ የ DIVIDE አሰራርይጠቀሙ። የ DIVIDE ተግባር ክፍፍል-በ-ዜሮ ጉዳዮች ይፈታል. በመሆኑም "
+"ስህተቶችን ለማስወገድ መጠቀም ጥሩ ነው።"
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"ሙሉ ብቃት ያላቸው የዓምድ ማጣቀሻዎችን መጠቀም በአምድ እና በማመሳከሪያዎች መካከል ያለውን ልዩነት በቀላሉ ለመለየት "
+"ያስችላል, እንዲሁም አንዳንድ ስህተቶችን ለማስወገድ ይረዳል. በዳክስ ውስጥ ያለውን ዓምድ በምትጠቅስበት ጊዜ በመጀመሪያ "
+"የሠንጠረዥን ስም ለይተን ግለጽ፤ ከዚያም የሠንጠረዥን ስም በካሬ ቅንብሮች ላይ ለይ።"
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"ብቃት የሌላቸው የመለኪያ ማጣቀሻዎችን መጠቀም በአምድ እና በማመሳከሪያዎች መካከል ያለውን ልዩነት በቀላሉ ለመለየት "
+"ያስችላል, እንዲሁም አንዳንድ ስህተቶችን ለማስወገድ ይረዳል. ዳክስን በመጠቀም አንድን መለኪያ በምትጠቅስበት ጊዜ "
+"የሠንጠረዥን ስም አትግለጽ። በካሬ ቅንብሮች ውስጥ የመለኪያ ስም ብቻ ይጠቀሙ."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"በ USERELATIONSHIP ተግባር በመጠቀም የእንቅስቃሴ ግንኙነት አንቀሳቅሷል. በዚህ ተግባር አማካኝነት የቀዘቀዘ "
+"ግንኙነት በምንም ዓይነት መልኩ ካልተጠቀሰ ግንኙነቱ ጥቅም ላይ አይውልም። ግንኙነቱ አስፈላጊ አለመሆኑን ወይም በዚህ ዘዴ"
+" አማካኝነት ግንኙነቱን ማንቀሳቀስ እንዳለበት መወሰን ይኖርበታል።"
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"በማንኛውም የ DAX መግለጫዎች ያልተጠቀሱ ስውር ዓምዶች, ግንኙነቶች, የባለስልጣን ደረጃዎች ወይም Sort By-ባህሪያት"
+" መወገድ አለባቸው."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr "በማንኛውም የ DAX አገላለጽ ያልተጠቀሱ ስውር እርምጃዎች ለዘላቂነት መወገድ አለባቸው."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr "ይህ ደንብ በሞዴሉ ውስጥ ከማንኛውም ሌላ ጠረጴዛ ጋር ግንኙነት የሌላቸው ሠንጠረዦች ጎላ አድርጎ ይገልጻል።"
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "የስሌት ቡድኖች የስሌት እቃዎች ካልኖራቸው በስተቀር ምንም ተግባር የላቸውም።"
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"በዕቃዎች ላይ መግለጫዎችን ይጨምሩ. እነዚህ መግለጫዎች በፓወር ቢ አይ ዴስክቶፕ ውስጥ በሚገኘው የመስክ ዝርዝር ውስጥ "
+"በhover ላይ ይታያሉ. በተጨማሪም እነዚህን መግለጫዎች አውቶማቲክ የመረጃ መዝገበ ቃላት ለመፍጠር መጠቀም ትችላለህ።"
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr "በስማቸው \"ወር\" ያላቸው የአይነት \"DateTime\" ዓምዶች \"mm/dd/yyyy\" ተብለው ሊሰሩ ይገባል።"
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"የቁጥር ዓምዶች (integer, Decimal, እጥፍ) በPower BI ውስጥ ድንገተኛ ማጠቃለያ እንዳይኖር (በፋንታ ፋንታ"
+" እርምጃዎችን መፍጠር) የSummarizeBy ንብረታቸው ወደ \"ምንም\" እንዲወሰን ማድረግ አለባቸው."
+
+# description
+msgid "Provide format string for measures"
+msgstr "የሚታዩ እርምጃዎች የእነሱ ቅርጽ አውታር ንብረት መመደብ አለባቸው."
+
+# description
+msgid "Add data category for columns"
+msgstr "ለተስማሚ ዓምዶች የዳታ መደብ ርብርብ ይጨምሩ."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "የተሻለ የተጠቃሚ ልምድ ለማግኘት, የመተግበሪያ መለኪያዎች በ a '%' ምልክት መሰራት አለባቸው."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "የተሻለ የተጠቃሚ ተሞክሮ ለማግኘት, ሙሉ ቁጥሮች commas ጋር መሰራት አለበት."
+
+# description
+msgid "Hide foreign keys"
+msgstr "የውጭ ቁልፎች መጨረሻ ተጠቃሚዎች ሊጠቀሙባቸው ስለማይገባ ምንጊዜም መደበቅ ይኖርባቸዋል።"
+
+# description
+msgid "Mark primary keys"
+msgstr "በአምድ ባህሪያት ውስጥ ለዋና ዋና ዋና ዓምዶች 'ቁልፍ' ንብረት ወደ 'እውነተኛ' አስቀምጥ."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"ይህ ደንብ የወር ዓምዶችን ያጎላል። ሳይለዩ ከቀሩ በፊደል (ለምሳሌ ሚያዝያ፣ ነሐሴ ...) ይለዋወጣሉ። እንደነዚህ "
+"ያሉትን ዓምዶች በትክክል ለመለየት (ጥር፣ የካቲት፣ መጋቢት...)"
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"ከሌሎች ጋር ግንኙነት ያላቸው ዓምዶች የመረጃ ዓይነት እንዲኖራቸው ማድረግ የተሻለ ነው። ይህም መረጃዎችን ለመጋዘን ብቻ "
+"ሳይሆን መረጃዎችን ለሞዴልነትም ይሠራል ።"
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr "በስማቸው \"ወር\" ያላቸው የአይነት \"DateTime\" ዓምዶች \"ኤም ኤም ኤም yy\" ተብለው ሊሰሩ ይገባል።"
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"ሰንደቅ አላማዎች ልክ አዎ/አይደለም ተብለው በተገቢው መልኩ መሰል መሆን አለባቸው። ምክንያቱም ይህ 0/1 integer "
+"እሴት ከመጠቀም ይልቅ ለማንበብ ቀላል ነው።"
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"እቃዎች በቦታ መጀመርም ሆነ ማብቃት የለባቸውም። አብዛኛውን ጊዜ ይህ የሚሆነው በአጋጣሚ ስለሆነ ማግኘት አስቸጋሪ ነው ።"
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr "የእቃ ስሞች የመጀመሪያ ፊደል የሙያ ጥራትን ለማስጠበቅ ሊጠቀሙበት ይገባል."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "የObject ስሞች መክተቻዎች, የመስመር መሰበር, ወዘተ ማካተት የለባቸውም."

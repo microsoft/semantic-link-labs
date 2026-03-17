@@ -1,0 +1,28 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+# Set the OS, Python version and other tools you might need
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "mambaforge-23.11"
+  jobs:
+    pre_build:
+      - sphinx-apidoc -f -o docs/source src/sempy_labs/
+
+# Build documentation in the "docs/" directory with Sphinx
+sphinx:
+  configuration: docs/source/conf.py
+
+# Optionally build your docs in additional formats such as PDF and ePub
+# formats:
+#    - pdf
+#    - epub
+
+# See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
+conda:
+  environment: docs/environment.yml

@@ -1,0 +1,953 @@
+#
+msgid ""
+msgstr ""
+"Language: tr-TR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Kayan nokta veri türlerini kullanmayın"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Hesaplanmış sütunları kullanmaktan kaçının"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Çift yönlü ve çoka çok ilişkilerin geçerli olup olmadığını denetleyin"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Dinamik satır düzeyi güvenliğin (RLS) gerekli olup olmadığını denetleyin"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Dinamik satır düzeyi güvenlik için kullanılan tablolarda çoka çok ilişkiler "
+"kullanmaktan kaçının"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Çoka çok ilişkiler tek yönlü olmalıdır"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Öznitelik olmayan sütunlarda IsAvailableInMdx değerini false olarak "
+"ayarlayın"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Karma tablonun DirectQuery bölümünde 'Veri Kapsamı Tanımı' özelliğini "
+"ayarlayın"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"İkili mod, yalnızca ilgili olgu tablosu için DirectQuery kullanılıyorsa "
+"boyut tabloları için geçerlidir"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Olgu tablolarında DirectQuery kullanırken içe aktarma yerine boyut "
+"tablolarını ikili moda ayarlayın"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Power Query dönüşümlerini en aza indirme"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Kar tanesi mimarisi yerine bir yıldız şeması düşünün"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Direct Lake modunu kullanırken görünümleri kullanmaktan kaçının"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Bir hesaplamaya 0 eklemekten kaçının"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Hesaplanan tabloların kullanımını azaltın"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "RELATED işlevini kullanan hesaplanmış sütunların kullanımını azaltma"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Aşırı çift yönlü veya çoktan çoğa ilişkilerden kaçının"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Otomatik tarih tablosunu kaldır"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Tarih/takvim tabloları, tarih tablosu olarak işaretlenmelidir"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Büyük tablolar bölümlenmelidir"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Satır düzeyi güvenlik (RLS) mantığını sınırla"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Modelin bir tarih tablosu olmalıdır"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Hesaplama öğelerinin bir ifadesi olmalıdır"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "İlişki sütunları aynı veri türünde olmalıdır"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Veri sütunlarının bir kaynak sütunu olmalıdır"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Gerekli sütunlarda IsAvailableInMdx öğesini true olarak ayarlayın"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"USERELATIONSHIP işlevini ve RLS'yi aynı tabloya karşı kullanmaktan kaçının"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "EĞERHATA işlevini kullanmaktan kaçının"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Sanal ilişkiler için INTERSECT yerine TREATAS işlevini kullanın"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG işlevi üretim modellerinde kullanılmamalıdır"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Önlemler, diğer önlemlerin doğrudan referansları olmamalıdır"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "İki ölçü aynı tanıma sahip olmamalıdır"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Bölme sonuçlarına sabit değerlerin eklenmesinden veya çıkarılmasından "
+"kaçının"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' sözdizimini kullanmaktan kaçının"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Ölçü değerlerini tablolara göre değil sütunlara göre filtreleme"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Sütun değerlerini uygun sözdizimiyle filtreleme"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Bölme için DIVIDE işlevini kullanın"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Sütun başvuruları tam olarak nitelendirilmelidir"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Ölçü başvuruları nitelendirilmemiş olmalıdır"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Hiçbir zaman etkinleştirilmeyen etkin olmayan ilişkiler"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Gereksiz sütunları kaldırın"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Gereksiz önlemleri kaldırın"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Tabloların ilişkileri olduğundan emin olun"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Hesaplama öğesi olmayan hesaplama grupları"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Açıklaması olmayan görünür nesneler"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "'Date' sütunları için biçim dizesi sağlayın"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Sayısal sütunları özetleme"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Ölçüler için biçim dizesi sağlama"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Sütunlar için veri kategorisi ekleme"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Yüzdeler binlik ayırıcı ve 1 ondalık sayı ile biçimlendirilmelidir"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Tam sayılar binlik ayırıcı ile biçimlendirilmeli ve ondalık basamak "
+"kullanılmamalıdır"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Yabancı anahtarları gizle"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Birincil anahtarları işaretleme"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Ay (dize olarak) sıralanmalıdır"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "İlişki sütunları tamsayı veri türünde olmalıdır"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"Ay\" sütunları için biçim dizesi sağlayın"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Bayrak sütunlarını Evet/Hayır değer dizeleri olarak biçimlendirme"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Nesneler bir boşlukla başlamamalı veya bitmemelidir"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Nesnelerin ilk harfi büyük yazılmalıdır"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Nesne adları özel karakterler içermemelidir"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Performans"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Performans"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Performans"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Performans"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Performans"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Performans"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Performans"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Performans"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Performans"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Performans"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Performans"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Performans"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Performans"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Performans"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Performans"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Performans"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Performans"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Performans"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Performans"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Performans"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Performans"
+
+# category
+msgid "Model should have a date table"
+msgstr "Performans"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Hata Önleme"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Hata Önleme"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Hata Önleme"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Hata Önleme"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Hata Önleme"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX İfadeleri"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX İfadeleri"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX İfadeleri"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Bakım"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Bakım"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Bakım"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Bakım"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Bakım"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Add data category for columns"
+msgstr "Biçimlendirme"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Biçimlendirme"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Mark primary keys"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Biçimlendirme"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Biçimlendirme"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Adlandırma Kuralları"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"\"Çift\" kayan nokta veri türünden kaçınılmalıdır, çünkü bu, belirli "
+"senaryolarda öngörülemeyen yuvarlama hatalarına ve düşük performansa neden "
+"olabilir. Uygun olduğunda \"Int64\" veya \"Ondalık\" kullanın (ancak "
+"\"Ondalık\" ifadesinin ondalık işaretten sonra 4 basamakla sınırlı olduğunu "
+"unutmayın)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Hesaplanan sütunlar, veri sütunları kadar iyi sıkıştırılmaz, bu nedenle daha"
+" fazla bellek kaplarlar. Ayrıca hem tablo hem de işlem yeniden hesaplaması "
+"için işlem sürelerini yavaşlatırlar. Hesaplanmış sütun mantığını veri "
+"ambarınıza boşaltın ve bu hesaplanmış sütunları veri sütunlarına dönüştürün."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Dinamik satır düzeyi güvenlik (RLS) kullanımı, bellek ve performans yükü "
+"ekleyebilir. Lütfen kullanmanın artılarını/eksilerini araştırın."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Dinamik satır düzeyi güvenlik kullanan tablolarda çoka çok ilişkiler "
+"kullanmak, sorgu performansında ciddi düşüşlere neden olabilir. Bu desenin "
+"performans sorunları, satır düzeyi güvenlik içeren bir tabloya karşı birden "
+"çok çoka çok ilişki kar tanesi oluştururken birleşir. Bunun yerine, "
+"aşağıdaki makalede gösterilen ve tek boyutlu bir tablonun çoka bir ile bir "
+"arasında bir güvenlik tablosuyla ilişkili olduğu desenlerden birini "
+"kullanın."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"İşlem süresini hızlandırmak ve işlemden sonra belleği korumak için, MDX "
+"istemcileri tarafından dilimleme için hiçbir zaman kullanılmayan sütunlar "
+"için öznitelik hiyerarşileri oluşturulmamalıdır. Başka bir deyişle, Sıralama"
+" Ölçütü Sütunu olarak kullanılmayan veya kullanıcı hiyerarşilerinde "
+"başvurulan tüm gizli sütunların IsAvailableInMdx özelliği false olarak "
+"ayarlanmalıdır. IsAvailableInMdx özelliği Direct Lake modelleri için geçerli"
+" değildir."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"'Veri Kapsamı Tanımı' özelliğinin ayarlanması daha iyi performansa yol "
+"açabilir çünkü altyapı ne zaman tablonun yalnızca içeri aktarma bölümünü "
+"sorgulayabileceğini ve tablonun DirectQuery bölümünü ne zaman sorgulaması "
+"gerektiğini bilir."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"DirectQuery'de karşılık gelen bir olgu tablosunun bulunduğu boyut "
+"tabloları/bölümleri için yalnızca İkili modu kullanın. Diğer durumlarda "
+"İkili modun kullanılması (yani modelin geri kalanının İçe Aktarma modunda "
+"olması), özellikle modeldeki hesaplama sayısı yüksekse performans "
+"sorunlarına yol açabilir."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"DirectQuery kullanılırken, sorgu performansını artırmak için boyut "
+"tablolarının İkili moda ayarlanması gerekir."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Model işleme performansını artırmak için Power Query dönüşümlerini en aza "
+"indirin. Mümkünse bu dönüştürmeleri veri ambarına boşaltmak en iyi "
+"uygulamadır. Ayrıca, lütfen modelinizde sorguyu katlamanın gerçekleşip "
+"gerçekleşmediğini kontrol edin. Sorguyu katlama hakkında daha fazla bilgi "
+"için lütfen aşağıdaki makaleye bakın."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Genel olarak konuşursak, bir yıldız şeması, tablo modelleri için en uygun "
+"mimaridir. Bu durumda, kar tanesi yaklaşımını kullanmak için geçerli "
+"durumlar vardır. Lütfen modelinizi kontrol edin ve yıldız şeması mimarisine "
+"geçmeyi düşünün."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Direct Lake modunda, görünümler her zaman DirectQuery'ye geri döner. Bu "
+"nedenle, en iyi performansı elde etmek için manzaralar yerine göl evi "
+"masalarını kullanın."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Boş bir değer göstermemesi için bir hesaplamaya 0 eklenmesi performansı "
+"olumsuz etkileyebilir."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Hesaplanan tablo mantığını veri ambarınıza geçirin. Hesaplanmış tablolara "
+"güvenmek, platformunuzda birden fazla modeliniz varsa teknik borca ve olası "
+"yanlış hizalamalara yol açacaktır."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Hesaplanmış sütunlar, veri sütunları kadar iyi sıkıştırılmaz ve daha uzun "
+"işlem sürelerine neden olabilir. Bu nedenle, mümkünse hesaplanmış "
+"sütunlardan kaçınılmalıdır. Kaçınılmasının daha kolay olabileceği bir "
+"senaryo, İLGİLİ işlevini kullanmalarıdır."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"b-di ve çoka çok ilişkilerin kullanımını sınırlayın. Bu kural, ilişkilerin "
+"%30'undan fazlası bi-di veya çok-çok ise modeli işaretler."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Otomatik tarih tablolarını kullanmaktan kaçının. Power BI Desktop'taki "
+"ayarlarda otomatik tarih tablosunu devre dışı bıraktığınızdan emin olun. Bu,"
+" bellek kaynaklarını koruyacaktır."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Bu kural, büyük olasılıkla tarih tablosu olarak işaretlenmeleri gereken "
+"'tarih' veya 'takvim' sözcüklerini içeren tabloları arar."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"İşlemeyi optimize etmek için büyük tablolar bölümlenmelidir. Bu, Direct Lake"
+" modundaki anlamsal modeller için geçerli değildir, çünkü tablo başına "
+"yalnızca bir bölüme sahip olabilirler."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Satır düzeyi güvenlik için kullanılan DAX'ı basitleştirmeyi deneyin. Bu "
+"kuraldaki işlevlerin kullanımı büyük olasılıkla yukarı akış sistemlerine "
+"(veri ambarı) boşaltılabilir."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Genel olarak konuşursak, modellerin genellikle bir tarih tablosu olmalıdır. "
+"Tarih tablosuna sahip olmayan modeller genellikle akıllı zaman gösterimi "
+"gibi özelliklerden yararlanamaz veya düzgün yapılandırılmış bir mimariye "
+"sahip olmayabilir."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Hesaplama öğelerinin bir ifadesi olmalıdır. İfade olmadan herhangi bir değer"
+" göstermezler."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Bir ilişkide kullanılan sütunlar aynı veri türünde olmalıdır. İdeal olarak, "
+"tamsayı veri türünde olacaklardır ('[Biçimlendirme] İlişki sütunları tamsayı"
+" veri türünde olmalıdır' ilgili kuralına bakın). Bir ilişki içinde farklı "
+"veri türlerinde sütunlara sahip olmak çeşitli sorunlara yol açabilir."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Veri sütunlarının bir kaynak sütunu olmalıdır. Kaynak sütunu olmayan bir "
+"veri sütunu, model işlenirken hataya neden olur."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Hatalardan kaçınmak için, bir sütun başka bir sütunu sıralamak için "
+"kullanılıyorsa, bir hiyerarşide kullanılıyorsa, varyasyonlarda "
+"kullanılıyorsa veya başka bir sütuna göre sıralanıyorsa öznitelik "
+"hiyerarşilerinin etkinleştirildiğinden emin olun. IsAvailableInMdx özelliği "
+"Direct Lake modelleri için geçerli değildir."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"USERELATIONSHIP işlevi, satır düzeyi güvenlikten (RLS) de yararlanan bir "
+"tabloya karşı kullanılamaz. Bu, bir görselde belirli bir ölçü kullanılırken "
+"bir hataya neden olur. Bu kural, bir hesaplamanın USERELATIONSHIP işlevinde "
+"ve RLS'de kullanılan tabloyu vurgular."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Performans düşüşüne neden olabileceğinden EĞERHATA işlevini kullanmaktan "
+"kaçının. Sıfıra bölme hatası konusunda endişeleriniz varsa, boş gibi "
+"hataları doğal olarak çözdüğü için DIVIDE işlevini kullanın (veya böyle bir "
+"hata durumunda neyin gösterilmesi gerektiğini özelleştirebilirsiniz)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"TREATAS işlevi, virütal ilişkilerde kullanıldığında INTERSECT işlevinden "
+"daha verimlidir ve daha iyi performans sağlar."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"EVALUATEANDLOG işlevinin yalnızca geliştirme/test ortamlarında kullanılması "
+"amaçlanmıştır ve üretim modellerinde kullanılmamalıdır."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Bu kural, yalnızca başka bir ölçüme referans olan hesaplamaları tanımlar. "
+"Örnek olarak, iki hesaplamalı bir model düşünün: [MeasureA] ve [MeasureB]. "
+"MeasureB'nin DAX'ı MeasureB:=[MeasureA] ise bu kural MeasureB için "
+"tetiklenir. Bu tür mükerrer önlemler kaldırılmalıdır."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Yedekliliği azaltmak için farklı adlara sahip ve aynı DAX ifadesiyle "
+"tanımlanan iki ölçümden kaçınılmalıdır."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Sabit bir değer eklemek performans düşüşüne neden olabilir."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Yüzde hesaplaması elde etmek için '1-(x/y)' veya '1+(x/y)' sözdizimini "
+"kullanmak yerine, temel DAX işlevlerini (aşağıda gösterildiği gibi) "
+"kullanın. Geliştirilmiş sözdizimini kullanmak genellikle performansı "
+"artıracaktır. '1+/-...' sözdizimi her zaman bir değer döndürürken, '1+/-...'"
+" olmayan çözüm değil (çünkü değer 'boş' olabilir). Bu nedenle '1+/-...' Söz "
+"dizimi daha fazla satır/sütun döndürebilir ve bu da sorgu hızının düşmesine "
+"neden olabilir.    Bir örnekle açıklayalım: Bundan kaçının: 1 - SUM ( "
+"'Sales'[CostAmount] ) / SUM( 'Sales'[SalesAmount] ) Daha iyi: DIVIDE ( SUM ("
+" 'Sales'[SalesAmount] ) - SUM ( 'Sales'[CostAmount] ), SUM ( "
+"'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) ) Best: VAR x = SUM ( "
+"'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"CALCULATE veya CALCULATETABLE işlevinin filtre parametreleri için bu FILTER('Table',[Measure]>Value) modelini kullanmak yerine, aşağıdaki seçeneklerden birini kullanın (mümkünse). Belirli bir sütuna göre filtreleme, motorun işlemesi için daha küçük bir tablo oluşturur ve böylece daha hızlı performans sağlar. VALUES işlevinin veya ALL işlevinin kullanılması, istenen hesaplama sonucuna bağlıdır.\n"
+"Seçenek 1: FILTER(VALUES('Table'[Sütun]),[Ölçü] > Value)\n"
+"Seçenek 2: FILTER(ALL('Tablo'[Sütun]),[Ölçü] > Değeri)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"CALCULATE veya CALCULATETABLE işlevinin filtre parametreleri için bu FILTER('Table','Table'[Column]=\"Value\") modelini kullanmak yerine aşağıdaki seçeneklerden birini kullanın. KEEPFILTERS işlevinin kullanılıp kullanılmayacağı konusunda, aşağıdaki ikinci referans bağlantısına bakın.\n"
+"Seçenek 1: KEEPFILTERS('Table'[Column]=\"Value\")\n"
+"Seçenek 2: 'Tablo'[Sütun]=\"Değer\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"\"/\" kullanmak yerine DIVIDE işlevini kullanın. DIVIDE işlevi, sıfıra bölme"
+" durumlarını çözer. Bu nedenle, hatalardan kaçınmak için kullanılması "
+"önerilir."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Tam sütun başvurularının kullanılması, sütun ve ölçü başvuruları arasında "
+"ayrım yapmayı kolaylaştırır ve belirli hataların önlenmesine de yardımcı "
+"olur. DAX'ta bir sütuna başvururken, önce tablo adını belirtin, ardından "
+"sütun adını köşeli parantez içinde belirtin."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Niteleyici olmayan ölçü başvurularının kullanılması, sütun ve ölçü "
+"başvuruları arasında ayrım yapmayı kolaylaştırır ve belirli hataların "
+"önlenmesine yardımcı olur. DAX kullanarak bir ölçüye başvururken tablo adını"
+" belirtmeyin. Yalnızca köşeli parantez içinde hesaplama adını kullanın."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Etkin olmayan ilişkiler USERELATIONSHIP işlevi kullanılarak etkinleştirilir."
+" Etkin olmayan bir ilişkiye bu işlev aracılığıyla herhangi bir ölçüde "
+"başvurulmazsa, ilişki kullanılmaz. İlişkinin gerekli olup olmadığı ya da bu "
+"yöntemle ilişkinin aktif hale getirilip getirilmediği belirlenmelidir."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Herhangi bir DAX ifadesi, ilişkisi, hiyerarşi düzeyi veya Sıralama Ölçütü "
+"özelliği tarafından başvurulmayan gizli sütunlar kaldırılmalıdır."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Herhangi bir DAX ifadesi tarafından başvurulmayan gizli ölçüler, "
+"sürdürülebilirlik için kaldırılmalıdır."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Bu kural, modeldeki başka bir tabloya bir ilişkiyle bağlı olmayan tabloları "
+"vurgular."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Hesaplama grupları, hesaplama öğelerine sahip olmadıkça hiçbir işleve sahip "
+"değildir."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Nesnelere açıklamalar ekleyin. Bu açıklamalar, Power BI Desktop'taki Alan "
+"Listesi'nde üzerine gelindiğinde gösterilir. Ayrıca, otomatik bir veri "
+"sözlüğü oluşturmak için bu açıklamalardan yararlanabilirsiniz."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Adlarında \"Month\" ifadesi bulunan \"DateTime\" türündeki sütunlar "
+"\"aa/gg/yyyy\" olarak biçimlendirilmelidir."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Sayısal sütunların (tamsayı, ondalık, çift) Power BI'da yanlışlıkla "
+"toplanmasını önlemek için SummarizeBy özelliği \"Yok\" olarak ayarlanmalıdır"
+" (bunun yerine ölçüler oluşturun)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "Görünür ölçülere biçim dizesi özelliği atanmış olmalıdır."
+
+# description
+msgid "Add data category for columns"
+msgstr "Uygun sütunlar için Veri Kategorisi özelliği ekleyin."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Daha iyi bir kullanıcı deneyimi için, percengage ölçüleri '%' işaretiyle "
+"biçimlendirilmelidir."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Daha iyi bir kullanıcı deneyimi için tam sayılar virgülle "
+"biçimlendirilmelidir."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Yabancı anahtarlar, son kullanıcılar tarafından kullanılmaması gerektiği "
+"için her zaman gizlenmelidir."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Sütun özellikleri içindeki birincil anahtar sütunları için 'Anahtar' "
+"özelliğini 'True' olarak ayarlayın."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Bu kural, dize olan ve sıralanmayan ay sütunlarını vurgular. Sıralanmadan "
+"bırakılırsa, alfabetik olarak sıralanırlar (yani Nisan, Ağustos...). Bu tür "
+"sütunları düzgün bir şekilde sıralayacak şekilde sıraladığınızdan emin olun "
+"(Ocak, Şubat, Mart...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"İlişki sütunlarının tamsayı veri türünde olması en iyi uygulamadır. Bu "
+"sadece veri ambarı için değil, aynı zamanda veri modelleme için de "
+"geçerlidir."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Adlarında \"Month\" ifadesi geçen \"DateTime\" türündeki sütunlar \"AAAA "
+"yyyy\" olarak biçimlendirilmelidir."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Bayraklar Evet/Hayır olarak düzgün bir şekilde biçimlendirilmelidir, çünkü "
+"bu, 0/1 tamsayı değerlerini kullanmaktan daha kolay okunur."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Nesneler boşlukla başlamamalı veya bitmemelidir. Bu genellikle kazayla olur "
+"ve bulunması zordur."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Profesyonel kaliteyi korumak için nesne adlarının ilk harfi büyük "
+"yazılmalıdır."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Nesne adları sekmeler, satır sonları vb. içermemelidir."

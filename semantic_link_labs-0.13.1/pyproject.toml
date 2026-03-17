@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="semantic-link-labs"
+authors = [
+    { name = "Microsoft Corporation" },
+]
+version="0.13.1"
+description="Semantic Link Labs for Microsoft Fabric"
+readme="README.md"
+requires-python=">=3.10,<3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+    "Framework :: Jupyter"
+]
+license= { text = "MIT License" }
+
+dependencies = [
+    "semantic-link-sempy>=0.13.0",
+    "anytree",
+    "polib",
+    "jsonpath_ng",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.*"]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.2.1",
+]
+
+[project.urls]
+Repository = "https://github.com/microsoft/semantic-link-labs.git"
+
+[[tool.mypy.overrides]]
+module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,jsonpath_ng.*"
+ignore_missing_imports = true
+
+[tool.flake8]
+max-line-length = 200

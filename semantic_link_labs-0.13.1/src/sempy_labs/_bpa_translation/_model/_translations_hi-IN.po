@@ -1,0 +1,944 @@
+#
+msgid ""
+msgstr ""
+"Language: hi-IN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "फ़्लोटिंग पॉइंट डेटा प्रकारों का उपयोग न करें"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "परिकलित स्तंभों का उपयोग करने से बचें"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "जांचें कि क्या द्वि-दिशात्मक और कई-से-कई संबंध मान्य हैं"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "जांचें कि डायनेमिक पंक्ति स्तर सुरक्षा (RLS) आवश्यक है या नहीं"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"डायनेमिक पंक्ति स्तर सुरक्षा के लिए उपयोग की जाने वाली तालिकाओं पर "
+"कई-से-अनेक संबंधों का उपयोग करने से बचें"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "कई-से-कई रिश्ते एकल-दिशा वाले होने चाहिए"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx को गैर-विशेषता स्तंभों पर false पर सेट करें"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"हाइब्रिड तालिका के DirectQuery विभाजन पर 'डेटा कवरेज परिभाषा' गुण सेट करें"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"डुअल मोड केवल आयाम तालिकाओं के लिए प्रासंगिक है यदि DirectQuery का उपयोग "
+"संबंधित तथ्य तालिका के लिए किया जाता है"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"तथ्य तालिकाओं पर DirectQuery का उपयोग करते समय आयाम तालिकाओं को आयात करने के"
+" बजाय दोहरे मोड में सेट करें"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Power Query रूपांतरणों को छोटा करना"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "स्नोफ्लेक आर्किटेक्चर के बजाय स्टार-स्कीमा पर विचार करें"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "डायरेक्ट लेक मोड का उपयोग करते समय दृश्यों का उपयोग करने से बचें"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "माप में 0 जोड़ने से बचें"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "परिकलित तालिकाओं का उपयोग कम करें"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "RELATED फ़ंक्शन का उपयोग करने वाले परिकलित स्तंभों का उपयोग कम करें"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "अत्यधिक द्वि-दिशात्मक या कई-से-कई संबंधों से बचें"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "ऑटो-डेट टेबल हटाएं"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"दिनांक/कैलेंडर तालिकाओं को दिनांक तालिका के रूप में चिह्नित किया जाना चाहिए"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "बड़ी तालिकाओं का विभाजन किया जाना चाहिए"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "पंक्ति स्तर सुरक्षा (RLS) तर्क सीमित करें"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "मॉडल में डेट टेबल होना चाहिए"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "परिकलन आइटम्स में एक व्यंजक होना आवश्यक है"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "संबंध स्तंभ समान डेटा प्रकार के होने चाहिए"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "डेटा स्तंभों में स्रोत स्तंभ होना आवश्यक है"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx को आवश्यक स्तंभों पर सही पर सेट करें"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "USERELATIONSHIP फ़ंक्शन और RLS को समान तालिका के विरुद्ध टालें"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR फ़ंक्शन का उपयोग करने से बचें"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"वर्चुअल संबंधों के लिए INTERSECT के बजाय TREATAS फ़ंक्शन का उपयोग करें"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG फ़ंक्शन का उपयोग उत्पादन मॉडल में नहीं किया जाना चाहिए"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "उपाय अन्य उपायों के प्रत्यक्ष संदर्भ नहीं होने चाहिए"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "किसी भी दो उपायों की परिभाषा समान नहीं होनी चाहिए"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "विभाजन के परिणामों के लिए निरंतर मूल्यों के जोड़ या घटाव से बचें"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' सिंटैक्स का उपयोग करने से बचें"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "मानों को स्तंभों के आधार पर फ़िल्टर करें, तालिकाओं के अनुसार नहीं"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "उचित सिंटैक्स के साथ स्तंभ मानों को फ़िल्टर करें"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "विभाजन के लिए DIVIDE फ़ंक्शन का उपयोग करें"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "स्तंभ संदर्भ पूरी तरह योग्य होने चाहिए"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "माप संदर्भ अयोग्य होने चाहिए"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "निष्क्रिय संबंध जो कभी सक्रिय नहीं होते हैं"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "अनावश्यक कॉलम निकालें"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "अनावश्यक उपायों को हटा दें"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "सुनिश्चित करें कि तालिकाओं में संबंध हैं"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "बिना परिकलन आइटम्स वाले परिकलन समूह"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "बिना विवरण के दृश्यमान वस्तुएं"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "'दिनांक' स्तंभों के लिए स्वरूप स्ट्रिंग प्रदान करें"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "सांख्यिक स्तंभों को सारांशित न करें"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "उपायों के लिए प्रारूप स्ट्रिंग प्रदान करें"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "स्तंभों के लिए डेटा श्रेणी जोड़ना"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "प्रतिशत को हजारों विभाजक और 1 दशमलव के साथ स्वरूपित किया जाना चाहिए"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"पूर्ण संख्याओं को हजारों विभाजकों के साथ स्वरूपित किया जाना चाहिए और दशमलव "
+"नहीं होना चाहिए"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "विदेशी कुंजी छुपाएं"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "प्राथमिक कुंजियों को चिह्नित करें"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "माह (स्ट्रिंग के रूप में) सॉर्ट किया जाना चाहिए"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "संबंध स्तंभ पूर्णांक डेटा प्रकार के होने चाहिए"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"महीना\" स्तंभों के लिए स्वरूप स्ट्रिंग प्रदान करें"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ध्वज स्तंभों को हाँ/नहीं मान स्ट्रिंग के रूप में स्वरूपित करें"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "ऑब्जेक्ट को किसी स्थान से प्रारंभ या समाप्त नहीं होना चाहिए"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "वस्तुओं के पहले अक्षर को कैपिटल किया जाना चाहिए"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "ऑब्जेक्ट नामों में विशेष वर्ण नहीं होने चाहिए"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "प्रदर्शन"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "प्रदर्शन"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "प्रदर्शन"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "प्रदर्शन"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Remove auto-date table"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Model should have a date table"
+msgstr "प्रदर्शन"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "त्रुटि निवारण"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "त्रुटि निवारण"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "त्रुटि निवारण"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "त्रुटि निवारण"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "त्रुटि निवारण"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX व्यंजक"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX व्यंजक"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX व्यंजक"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "अनुरक्षण"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "अनुरक्षण"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "अनुरक्षण"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "अनुरक्षण"
+
+# category
+msgid "Visible objects with no description"
+msgstr "अनुरक्षण"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "स्वरूपण"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "स्वरूपण"
+
+# category
+msgid "Provide format string for measures"
+msgstr "स्वरूपण"
+
+# category
+msgid "Add data category for columns"
+msgstr "स्वरूपण"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "स्वरूपण"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "स्वरूपण"
+
+# category
+msgid "Hide foreign keys"
+msgstr "स्वरूपण"
+
+# category
+msgid "Mark primary keys"
+msgstr "स्वरूपण"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "स्वरूपण"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "स्वरूपण"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "स्वरूपण"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "स्वरूपण"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "स्वरूपण"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "स्वरूपण"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "नामकरण सम्मेलन"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"\"डबल\" फ़्लोटिंग पॉइंट डेटा प्रकार से बचा जाना चाहिए, क्योंकि इसके "
+"परिणामस्वरूप अप्रत्याशित राउंडऑफ़ त्रुटियां हो सकती हैं और कुछ परिदृश्यों "
+"में प्रदर्शन में कमी आ सकती है। जहां उपयुक्त हो वहां \"Int64\" या \"दशमलव\" "
+"का उपयोग करें (लेकिन ध्यान दें कि \"दशमलव\" दशमलव चिह्न के बाद 4 अंकों तक "
+"सीमित है)।"
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"परिकलित कॉलम डेटा कॉलम के साथ-साथ संपीड़ित नहीं होते हैं, इसलिए वे अधिक "
+"मेमोरी लेते हैं। वे तालिका के साथ-साथ प्रक्रिया पुनर्गणना दोनों के लिए "
+"प्रसंस्करण समय को भी धीमा कर देते हैं। परिकलित स्तंभ तर्क को अपने डेटा "
+"वेयरहाउस में ऑफ़लोड करें और इन परिकलित स्तंभों को डेटा स्तंभों में बदलें."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"डायनेमिक पंक्ति स्तर सुरक्षा (RLS) का उपयोग स्मृति और प्रदर्शन ओवरहेड जोड़ "
+"सकता है। कृपया इसका उपयोग करने के पेशेवरों/विपक्षों पर शोध करें।"
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"डायनेमिक पंक्ति स्तर सुरक्षा का उपयोग करने वाली तालिकाओं पर कई-से-अनेक "
+"संबंधों का उपयोग करने से क्वेरी प्रदर्शन में गंभीर गिरावट आ सकती है. इस "
+"पैटर्न की प्रदर्शन समस्याएं तब मिश्रित होती हैं जब एक तालिका के खिलाफ "
+"कई-से-कई रिश्तों को स्नोफ्लेक किया जाता है जिसमें पंक्ति स्तर की सुरक्षा "
+"होती है। इसके बजाय, नीचे दिए गए आलेख में दिखाए गए प्रतिमानों में से एक का "
+"उपयोग करें जहां एक एकल आयाम तालिका कई-से-एक सुरक्षा तालिका से संबंधित है।"
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"संसाधन समय को तेज करने और संसाधन के बाद स्मृति को संरक्षित करने के लिए, "
+"विशेषता पदानुक्रम उन स्तंभों के लिए नहीं बनाया जाना चाहिए जिनका उपयोग MDX "
+"क्लाइंट द्वारा स्लाइसिंग के लिए कभी नहीं किया जाता है. अन्य शब्दों में, सभी "
+"छुपे हुए स्तंभ जो किसी द्वारा सॉर्ट स्तंभ के रूप में उपयोग नहीं किए जाते हैं"
+" या उपयोगकर्ता पदानुक्रम में संदर्भित उनके IsAvailableInMdx गुण false करने "
+"के लिए सेट होना चाहिए। IsAvailableInMdx गुण डायरेक्ट लेक मॉडल के लिए "
+"प्रासंगिक नहीं है।"
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"'डेटा कवरेज परिभाषा' गुण सेट करने से बेहतर प्रदर्शन हो सकता है क्योंकि इंजन "
+"जानता है कि वह केवल तालिका के आयात-भाग को क्वेरी कर सकता है और कब उसे तालिका"
+" के DirectQuery भाग को क्वेरी करने की आवश्यकता होती है।"
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"आयाम तालिकाओं/विभाजनों के लिए केवल दोहरे मोड का उपयोग करें जहां एक संबंधित "
+"तथ्य तालिका DirectQuery में है। अन्य परिस्थितियों में दोहरे मोड का उपयोग "
+"करना (यानी शेष मॉडल आयात मोड में है) प्रदर्शन के मुद्दों को जन्म दे सकता है,"
+" खासकर यदि मॉडल में उपायों की संख्या अधिक है।"
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"DirectQuery का उपयोग करते समय, क्वेरी प्रदर्शन को बेहतर बनाने के लिए आयाम "
+"तालिकाओं को दोहरे मोड पर सेट किया जाना चाहिए।"
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"मॉडल संसाधन प्रदर्शन को बेहतर बनाने के लिए Power Query रूपांतरणों को छोटा "
+"करें. यदि संभव हो तो इन परिवर्तनों को डेटा वेयरहाउस में लोड करना सबसे अच्छा "
+"अभ्यास है। साथ ही, कृपया जांचें कि आपके मॉडल के भीतर क्वेरी फोल्डिंग हो रही "
+"है या नहीं। क्वेरी फोल्डिंग के बारे में अधिक जानकारी के लिए कृपया नीचे दिए "
+"गए लेख का संदर्भ लें।"
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"सामान्यतया, एक स्टार-स्कीमा सारणीबद्ध मॉडल के लिए इष्टतम वास्तुकला है। ऐसा "
+"होने के नाते, स्नोफ्लेक दृष्टिकोण का उपयोग करने के लिए वैध मामले हैं। कृपया "
+"अपने मॉडल की जांच करें और स्टार-स्कीमा आर्किटेक्चर में जाने पर विचार करें।"
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"डायरेक्ट लेक मोड में, दृश्य हमेशा DirectQuery पर वापस आ जाएंगे। इस प्रकार, "
+"सर्वश्रेष्ठ प्रदर्शन प्राप्त करने के लिए विचारों के बजाय लेकहाउस टेबल का "
+"उपयोग करें।"
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"किसी माप में 0 जोड़ना ताकि वह रिक्त मान न दिखाए, प्रदर्शन को नकारात्मक रूप "
+"से प्रभावित कर सकता है."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"परिकलित तालिका तर्क को अपने डेटा वेयरहाउस में माइग्रेट करें. गणना की गई "
+"तालिकाओं पर निर्भरता तकनीकी ऋण और संभावित मिसलिग्न्मेंट को जन्म देगी यदि "
+"आपके प्लेटफॉर्म पर कई मॉडल हैं।"
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"परिकलित स्तंभ डेटा स्तंभों के साथ-साथ संपीड़ित नहीं करते हैं और लंबे संसाधन "
+"समय का कारण बन सकते हैं. जैसे, यदि संभव हो तो गणना किए गए कॉलम से बचा जाना "
+"चाहिए। एक परिदृश्य जहां उनसे बचना आसान हो सकता है, यदि वे संबंधित फ़ंक्शन का"
+" उपयोग करते हैं।"
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"b-di और कई-से-अनेक संबंधों का उपयोग सीमित करें। यह नियम मॉडल को ध्वजांकित "
+"करता है यदि 30% से अधिक रिश्ते द्वि-दी या कई-से-कई हैं।"
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"ऑटो-डेट टेबल का उपयोग करने से बचें। Power BI Desktop में सेटिंग्स में "
+"ऑटो-दिनांक तालिका को बंद करना सुनिश्चित करें. यह मेमोरी संसाधनों को बचाएगा।"
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"यह नियम उन तालिकाओं की खोज करता है जिनमें 'दिनांक' या 'कैलेंडर' शब्द होते "
+"हैं क्योंकि उन्हें संभवतः दिनांक तालिका के रूप में चिह्नित किया जाना चाहिए."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"प्रसंस्करण को अनुकूलित करने के लिए बड़ी तालिकाओं को विभाजित किया जाना चाहिए।"
+" यह डायरेक्ट लेक मोड में सिमेंटिक मॉडल के लिए प्रासंगिक नहीं है क्योंकि उनके"
+" पास प्रति टेबल केवल एक विभाजन हो सकता है।"
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"पंक्ति स्तर सुरक्षा के लिए उपयोग किए गए DAX को सरल बनाने का प्रयास करें. इस "
+"नियम के भीतर कार्यों का उपयोग संभवतः अपस्ट्रीम सिस्टम (डेटा वेयरहाउस) में "
+"ऑफलोड किया जा सकता है।"
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"सामान्यतया, मॉडल में आम तौर पर एक तिथि तालिका होनी चाहिए। जिन मॉडलों के पास "
+"दिनांक तालिका नहीं होती है, वे आमतौर पर समय खुफिया जैसी सुविधाओं का लाभ नहीं"
+" उठा रहे हैं या उनमें ठीक से संरचित वास्तुकला नहीं हो सकती है।"
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"परिकलन आइटम्स में एक व्यंजक होना आवश्यक है. अभिव्यक्ति के बिना, वे कोई मूल्य"
+" नहीं दिखाएंगे।"
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"किसी संबंध में उपयोग किए गए स्तंभ समान डेटा प्रकार के होने चाहिए. आदर्श रूप "
+"से, वे पूर्णांक डेटा प्रकार के होंगे (संबंधित नियम '[स्वरूपण] संबंध स्तंभ "
+"पूर्णांक डेटा प्रकार के होने चाहिए' देखें). एक रिश्ते के भीतर कॉलम होने से "
+"जो विभिन्न डेटा प्रकार के होते हैं, विभिन्न मुद्दों को जन्म दे सकते हैं।"
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"डेटा स्तंभों में स्रोत स्तंभ होना आवश्यक है. स्रोत कॉलम के बिना एक डेटा कॉलम"
+" मॉडल को संसाधित करते समय एक त्रुटि का कारण होगा।"
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"त्रुटियों से बचने के लिए, सुनिश्चित करें कि विशेषता पदानुक्रम सक्षम हैं यदि "
+"किसी स्तंभ का उपयोग किसी अन्य स्तंभ को सॉर्ट करने के लिए किया जाता है, "
+"पदानुक्रम में उपयोग किया जाता है, विविधताओं में उपयोग किया जाता है, या किसी "
+"अन्य स्तंभ द्वारा सॉर्ट किया जाता है. IsAvailableInMdx गुण डायरेक्ट लेक मॉडल"
+" के लिए प्रासंगिक नहीं है।"
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"USERELATIONSHIP फ़ंक्शन का उपयोग किसी ऐसी तालिका के विरुद्ध नहीं किया जा "
+"सकता जो पंक्ति-स्तर सुरक्षा (RLS) का भी लाभ उठाती है. यह एक दृश्य में विशेष "
+"माप का उपयोग करते समय एक त्रुटि उत्पन्न करेगा। यह नियम उस तालिका को हाइलाइट "
+"करेगा जिसका उपयोग माप के USERELATIONSHIP फ़ंक्शन के साथ-साथ RLS में भी किया "
+"जाता है।"
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"IFERROR फ़ंक्शन का उपयोग करने से बचें क्योंकि इससे प्रदर्शन में गिरावट आ "
+"सकती है। यदि आप शून्य से विभाजित करें त्रुटि के बारे में चिंतित हैं, तो "
+"DIVIDE फ़ंक्शन का उपयोग करें क्योंकि यह स्वाभाविक रूप से रिक्त के रूप में "
+"ऐसी त्रुटियों का समाधान करता है (या आप अनुकूलित कर सकते हैं कि ऐसी त्रुटि के"
+" मामले में क्या दिखाया जाना चाहिए)।"
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"TREATAS फ़ंक्शन अधिक कुशल होता है और विरुताल संबंधों में उपयोग किए जाने पर "
+"INTERSECT फ़ंक्शन की तुलना में बेहतर प्रदर्शन प्रदान करता है."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"EVALUATEANDLOG फ़ंक्शन का उपयोग केवल विकास/परीक्षण वातावरण में किया जाना है "
+"और इसका उपयोग उत्पादन मॉडल में नहीं किया जाना चाहिए।"
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"यह नियम उन उपायों की पहचान करता है जो केवल किसी अन्य उपाय का संदर्भ हैं। एक "
+"उदाहरण के रूप में, दो उपायों के साथ एक मॉडल पर विचार करें: [MeasureA] और "
+"[MeasureB]। यह नियम MeasureB के लिए ट्रिगर किया जाएगा यदि MeasureB का DAX "
+"MeasureB:=[MeasureA] था। इस तरह के दोहराव उपायों को हटा दिया जाना चाहिए।"
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"अतिरेक को कम करने के लिए अलग-अलग नामों वाले और समान DAX व्यंजक द्वारा "
+"परिभाषित दो उपायों से बचा जाना चाहिए."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "एक स्थिर मान जोड़ने से प्रदर्शन में गिरावट आ सकती है।"
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"प्रतिशत परिकलन प्राप्त करने के लिए '1-(x/y)' या '1+(x/y)' सिंटैक्स का उपयोग "
+"करने के बजाय, मूल DAX फ़ंक्शंस का उपयोग करें (जैसा कि नीचे दिखाया गया है). "
+"बेहतर सिंटैक्स का उपयोग करने से आम तौर पर प्रदर्शन में सुधार होगा। '1+/-...'"
+" सिंटैक्स हमेशा एक मान लौटाता है जबकि समाधान '1+/-...' के बिना नहीं करता है "
+"(क्योंकि मान 'रिक्त' हो सकता है)। इसलिए '1+/-...' सिंटैक्स अधिक "
+"पंक्तियाँ/स्तंभ लौटा सकता है जिसके परिणामस्वरूप क्वेरी की गति धीमी हो सकती "
+"है.    आइए एक उदाहरण के साथ स्पष्ट करें: इससे बचें: 1 - SUM ( 'Sales' "
+"[CostAmount] ) / SUM( 'Sales' [SalesAmount]) बेहतर: DIVIDE ( SUM ( 'Sales' "
+"[SalesAmount] ) - SUM ( 'Sales' [CostAmount] ), SUM ( 'Sales' [SalesAmount] "
+") ) ) बेस्ट: VAR x = SUM ( 'Sales' [SalesAmount] ) रिटर्न डिवाइड ( x - SUM ("
+" 'Sales' [CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"CALCULATE या CALCULATETABLE फ़ंक्शन के फ़िल्टर पैरामीटर के लिए इस पैटर्न FILTER('Table',[Measure]>Value) का उपयोग करने के बजाय, नीचे दिए गए विकल्पों में से किसी एक का उपयोग करें (यदि संभव हो). एक विशिष्ट कॉलम पर फ़िल्टरिंग इंजन को संसाधित करने के लिए एक छोटी तालिका का उत्पादन करेगी, जिससे तेजी से प्रदर्शन सक्षम होगा। VALUES फ़ंक्शन या ALL फ़ंक्शन का उपयोग करना इच्छित माप परिणाम पर निर्भर करता है.\n"
+"विकल्प 1: फ़िल्टर (मान ('तालिका' [स्तंभ]),[माप] > मान)\n"
+"विकल्प 2: फ़िल्टर (सभी ('तालिका' [स्तंभ]),[माप] > मान)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"CALCULATE या CALCULATETABLE फ़ंक्शन के फ़िल्टर पैरामीटर के लिए इस पैटर्न FILTER('Table','Table'[Column]=\"Value\") का उपयोग करने के बजाय, नीचे दिए गए विकल्पों में से किसी एक का उपयोग करें. जहाँ तक KEEPFILTERS फ़ंक्शन का उपयोग करने की बात है, नीचे दूसरा संदर्भ लिंक देखें।\n"
+"विकल्प 1: KEEPFILTERS('तालिका' [स्तंभ] = \"मान\")\n"
+"विकल्प 2: 'तालिका' [स्तंभ] = \"मान\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"\"/\" का उपयोग करने के बजाय DIVIDE फ़ंक्शन का उपयोग करें। DIVIDE फ़ंक्शन "
+"शून्य से विभाजित मामलों का समाधान करता है. जैसे, त्रुटियों से बचने के लिए "
+"उपयोग करने की अनुशंसा की जाती है।"
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"पूर्णतः योग्य स्तंभ संदर्भों का उपयोग करने से स्तंभ और माप संदर्भों के बीच "
+"अंतर करना आसान हो जाता है और कुछ त्रुटियों से बचने में भी मदद मिलती है. DAX "
+"में किसी स्तंभ को संदर्भित करते समय, पहले तालिका नाम निर्दिष्ट करें, फिर "
+"वर्ग कोष्ठक में स्तंभ नाम निर्दिष्ट करें।"
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"अयोग्य माप संदर्भों का उपयोग करने से स्तंभ और माप संदर्भों के बीच अंतर करना "
+"आसान हो जाता है और कुछ त्रुटियों से बचने में भी मदद मिलती है. DAX का उपयोग "
+"करके माप का संदर्भ देते समय, तालिका नाम निर्दिष्ट न करें. वर्ग कोष्ठक में "
+"केवल माप नाम का प्रयोग करें।"
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"निष्क्रिय संबंध USERELATIONSHIP फ़ंक्शन का उपयोग करके सक्रिय किए जाते हैं. "
+"यदि इस फ़ंक्शन के माध्यम से किसी भी उपाय में एक निष्क्रिय संबंध को संदर्भित "
+"नहीं किया जाता है, तो संबंध का उपयोग नहीं किया जाएगा। यह निर्धारित किया जाना"
+" चाहिए कि क्या संबंध आवश्यक नहीं है या इस विधि के माध्यम से संबंध को सक्रिय "
+"करना है।"
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"छुपे हुए स्तंभ जो किसी DAX व्यंजक, संबंधों, पदानुक्रम स्तरों या इसके द्वारा "
+"सॉर्ट करें-गुणों द्वारा संदर्भित नहीं हैं, उन्हें निकाल दिया जाना चाहिए."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"छुपे हुए उपाय जो किसी DAX व्यंजक द्वारा संदर्भित नहीं हैं, उन्हें रखरखाव के "
+"लिए निकाल दिया जाना चाहिए."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"यह नियम उन तालिकाओं को हाइलाइट करता है जो संबंध के साथ मॉडल में किसी अन्य "
+"तालिका से जुड़ी नहीं हैं।"
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"परिकलन समूहों का कोई कार्य नहीं होता है जब तक कि उनके पास गणना आइटम न हों।"
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"ऑब्जेक्ट्स में विवरण जोड़ें। ये विवरण Power BI Desktop में फ़ील्ड सूची में "
+"होवर करने पर दिखाए जाते हैं. इसके अतिरिक्त, आप एक स्वचालित डेटा शब्दकोश "
+"बनाने के लिए इन विवरणों का लाभ उठा सकते हैं।"
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"\"DateTime\" प्रकार के स्तंभ जिनके नाम में \"Month\" है, उन्हें "
+"\"mm/dd/yyyy\" के रूप में फ़ॉर्मैट किया जाना चाहिए."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"सांख्यिक स्तंभों (पूर्णांक, दशमलव, डबल) में Power BI में आकस्मिक योग से बचने"
+" के लिए उनके SummarizeBy गुण को \"कोई नहीं\" पर सेट करना चाहिए (इसके बजाय "
+"माप बनाएँ)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"दृश्यमान उपायों में उनकी प्रारूप स्ट्रिंग संपत्ति असाइन की जानी चाहिए।"
+
+# description
+msgid "Add data category for columns"
+msgstr "उपयुक्त स्तंभों के लिए डेटा श्रेणी गुण जोड़ें."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"बेहतर उपयोगकर्ता अनुभव के लिए, percengage उपायों को '%' चिह्न के साथ "
+"स्वरूपित किया जाना चाहिए।"
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"बेहतर उपयोगकर्ता अनुभव के लिए, पूर्ण संख्याओं को अल्पविराम के साथ स्वरूपित "
+"किया जाना चाहिए।"
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"विदेशी कुंजी हमेशा छिपी होनी चाहिए क्योंकि उनका उपयोग अंतिम उपयोगकर्ताओं "
+"द्वारा नहीं किया जाना चाहिए।"
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"स्तंभ गुणों के भीतर प्राथमिक कुंजी स्तंभों के लिए 'कुंजी' गुण को 'सही' पर "
+"सेट करें।"
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"यह नियम महीने के स्तंभों को हाइलाइट करता है जो स्ट्रिंग हैं और सॉर्ट नहीं "
+"किए गए हैं। यदि क्रमबद्ध नहीं किया जाता है, तो वे वर्णानुक्रम में क्रमबद्ध "
+"करेंगे (यानी अप्रैल, अगस्त ...)। ऐसे स्तंभों को सॉर्ट करना सुनिश्चित करें "
+"ताकि वे ठीक से सॉर्ट करें (जनवरी, फरवरी, मार्च ...)।"
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"संबंध स्तंभों के पूर्णांक डेटा प्रकार का होना श्रेष्ठ अभ्यास है. यह न केवल "
+"डेटा वेयरहाउसिंग बल्कि डेटा मॉडलिंग पर भी लागू होता है।"
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"\"DateTime\" प्रकार के कॉलम जिनके नाम में \"Month\" है, उन्हें \"MMMM yyyy\""
+" के रूप में स्वरूपित किया जाना चाहिए।"
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"झंडे को हां / नहीं के रूप में ठीक से स्वरूपित किया जाना चाहिए क्योंकि यह 0/1"
+" पूर्णांक मानों का उपयोग करने की तुलना में पढ़ना आसान है।"
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"वस्तुओं को एक स्थान के साथ शुरू या समाप्त नहीं होना चाहिए। यह आमतौर पर "
+"दुर्घटना से होता है और इसे ढूंढना मुश्किल होता है।"
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"व्यावसायिक गुणवत्ता बनाए रखने के लिए ऑब्जेक्ट नामों के पहले अक्षर को कैपिटल "
+"किया जाना चाहिए।"
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "ऑब्जेक्ट नामों में टैब, लाइन ब्रेक आदि शामिल नहीं होने चाहिए।"

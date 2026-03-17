@@ -1,0 +1,964 @@
+#
+msgid ""
+msgstr ""
+"Language: ru-RU\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Не используйте типы данных с плавающей запятой"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Избегайте использования вычисляемых столбцов"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Проверка допустимости отношений «многонаправленный» и «многие ко многим»"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Проверьте, необходима ли динамическая безопасность на уровне строк (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Избегайте использования связей \"многие ко многим\" в таблицах, используемых"
+" для динамической безопасности на уровне строк"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Отношения \"многие ко многим\" должны быть односторонними"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Задайте для IsAvailableInMdx значение false для столбцов, не являющихся "
+"атрибутами"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Установка свойства \"Data Coverage Definition\" в разделе DirectQuery "
+"гибридной таблицы"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Двойной режим применим только для таблиц измерений, если для соответствующей"
+" таблицы фактов используется DirectQuery"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Установка двойного режима таблиц измерений вместо импорта при использовании "
+"DirectQuery в таблицах фактов"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Сведите к минимуму преобразования Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Рассмотрите схему типа «звезда» вместо архитектуры в виде снежинки"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Избегайте использования видов при использовании режима Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Избегайте добавления 0 к мере"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Сокращение использования вычисляемых таблиц"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Сокращение использования вычисляемых столбцов, использующих функцию RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Избегайте чрезмерных двунаправленных отношений или отношений «многие ко "
+"многим»"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Удаление таблицы автодат"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Таблицы дат/календаря должны быть помечены как таблица дат"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Большие таблицы должны быть секционированы"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Ограничение логики безопасности на уровне строк (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Модель должна иметь таблицу дат"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Элементы вычислений должны иметь выражение"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Столбцы отношений должны иметь один и тот же тип данных"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Столбцы данных должны иметь исходный столбец"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Установите IsAvailableInMdx в значение true для необходимых столбцов"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Избегайте использования функции USERELATIONSHIP и RLS для одной и той же "
+"таблицы"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Избегайте использования функции IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Использование функции TREATAS вместо INTERSECT для виртуальных отношений"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Функцию EVALUATEANDLOG не следует использовать в производственных моделях"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Меры не должны быть прямыми ссылками на другие меры"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Никакие две меры не должны иметь одинаковое определение"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Избегайте сложения или вычитания константных значений к результатам делений"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Избегайте использования синтаксиса '1-(x/y)'"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Фильтрация значений мер по столбцам, а не по таблицам"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Фильтруйте значения столбцов с правильным синтаксисом"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Использование функции РАЗДЕЛИТЬ для деления"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Ссылки на столбцы должны быть полностью квалифицированными"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Ссылки на меры должны быть неквалифицированными"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Неактивные отношения, которые никогда не активируются"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Удалите ненужные столбцы"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Избавьтесь от ненужных мер"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Убедитесь, что у таблиц есть связи"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Группы расчетов без элементов расчета"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Видимые объекты без описания"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Укажите строку формата для столбцов \"Дата\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Не суммируйте числовые столбцы"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Предоставление строки формата для мер"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Добавление категории данных для столбцов"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Проценты должны быть отформатированы с помощью разделителей тысяч и 1 знака "
+"после запятой"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Целые числа должны быть отформатированы с помощью разделителей тысяч и без "
+"десятичных дробей"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Скрыть внешние ключи"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Маркировка первичных ключей"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Месяц (в виде строки) должен быть отсортирован"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Столбцы отношений должны иметь целочисленный тип данных"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Укажите строку формата для столбцов \"Месяц\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Форматирование столбцов флагов в виде строк значений «Да/Нет»"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Объекты не должны начинаться или заканчиваться пробелом"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Первая буква дополнения должна быть заглавной"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Имена объектов не должны содержать специальных символов"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Производительность"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Производительность"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Производительность"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Производительность"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Производительность"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Производительность"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Производительность"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Производительность"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Производительность"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Производительность"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Производительность"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Производительность"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Производительность"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Производительность"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Производительность"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Производительность"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Производительность"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Производительность"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Производительность"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Производительность"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Производительность"
+
+# category
+msgid "Model should have a date table"
+msgstr "Производительность"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Предотвращение ошибок"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Предотвращение ошибок"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Предотвращение ошибок"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Предотвращение ошибок"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Предотвращение ошибок"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Выражения DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Выражения DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Выражения DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Выражения DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Выражения DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Выражения DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Выражения DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Выражения DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Выражения DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Выражения DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Выражения DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Выражения DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Выражения DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Содержание"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Содержание"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Содержание"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Содержание"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Содержание"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Форматирование"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Форматирование"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Форматирование"
+
+# category
+msgid "Add data category for columns"
+msgstr "Форматирование"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Форматирование"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Форматирование"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Форматирование"
+
+# category
+msgid "Mark primary keys"
+msgstr "Форматирование"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Форматирование"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Форматирование"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Форматирование"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Форматирование"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Форматирование"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Форматирование"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Соглашения об именовании"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Следует избегать типа данных \"Double\" с плавающей запятой, так как это "
+"может привести к непредсказуемым ошибкам округления и снижению "
+"производительности в определенных сценариях. Используйте \"Int64\" или "
+"\"Decimal\" там, где это уместно (но обратите внимание, что \"Decimal\" "
+"ограничен 4 цифрами после знака запятой)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Вычисляемые столбцы не сжимаются так же хорошо, как столбцы данных, поэтому "
+"они занимают больше памяти. Они также замедляют время обработки как таблицы,"
+" так и процесса пересчета. Выгрузите логику вычисляемых столбцов в хранилище"
+" данных и преобразуйте эти вычисляемые столбцы в столбцы данных."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Использование динамической безопасности на уровне строк (RLS) может привести"
+" к увеличению нагрузки на память и производительность. Пожалуйста, изучите "
+"плюсы и минусы его использования."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Использование отношений \"многие ко многим\" в таблицах, использующих "
+"динамическую безопасность на уровне строк, может привести к серьезному "
+"снижению производительности запросов. Проблемы с производительностью этого "
+"шаблона усугубляются при создании нескольких связей \"многие ко многим\" в "
+"таблице, содержащей безопасность на уровне строк. Вместо этого используйте "
+"один из шаблонов, показанных в статье ниже, где таблица с одним измерением "
+"связывает таблицу безопасности как «многие-к-одному»."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Чтобы ускорить время обработки и сэкономить память после обработки, не "
+"следует создавать иерархии атрибутов для столбцов, которые никогда не "
+"используются клиентами многомерных выражений для срезов. Другими словами, "
+"для всех скрытых столбцов, которые не используются в качестве столбца "
+"сортировки по столбцу или не упоминаются в пользовательских иерархиях, "
+"свойство IsAvailableInMdx должно иметь значение false. Свойство "
+"IsAvailableInMdx неактуально для моделей Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Настройка свойства \"Data Coverage Definition\" может привести к повышению "
+"производительности, так как подсистема знает, когда она может запрашивать "
+"только импортируемую часть таблицы, а когда ей нужно запросить часть таблицы"
+" DirectQuery."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Используйте двойной режим только для таблиц измерений или секций, в которых "
+"соответствующая таблица фактов находится в DirectQuery. Использование "
+"двойного режима в других обстоятельствах (т. е. остальная часть модели "
+"находится в режиме импорта) может привести к проблемам с "
+"производительностью, особенно если в модели много мер."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"При использовании DirectQuery таблицы измерений должны быть переведены в "
+"двойной режим, чтобы повысить производительность запросов."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Сведите к минимуму преобразования Power Query, чтобы повысить "
+"производительность обработки модели. По возможности рекомендуется выгрузить "
+"эти преобразования в хранилище данных. Кроме того, проверьте, происходит ли "
+"свертывание запросов в вашей модели. Пожалуйста, обратитесь к статье ниже "
+"для получения дополнительной информации о свертывании запросов."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Вообще говоря, схема типа \"звезда\" является оптимальной архитектурой для "
+"табличных моделей. В этом случае существуют допустимые случаи использования "
+"подхода «снежинка». Проверьте свою модель и рассмотрите возможность перехода"
+" на архитектуру схемы типа \"звезда\"."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"В режиме Direct Lake представления всегда будут возвращаться к DirectQuery. "
+"Таким образом, для получения наилучшей производительности используйте столы "
+"lakehouse вместо видов."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Добавление 0 к мере для того, чтобы в ней не отображалось пустое значение, "
+"может отрицательно сказаться на производительности."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Перенесите логику вычисляемой таблицы в хранилище данных. Использование "
+"вычисляемых таблиц приведет к возникновению технического долга и "
+"потенциальных несоответствий, если на вашей платформе есть несколько "
+"моделей."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Вычисляемые столбцы не сжимаются так же хорошо, как столбцы данных, и могут "
+"привести к увеличению времени обработки. Таким образом, по возможности "
+"следует избегать вычисляемых столбцов. Один из сценариев, в котором их может"
+" быть легче избежать, — это использование функции СВЯЗАННЫЙ."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Ограничьте использование отношений b-di и «многие ко многим». Это правило "
+"помечает модель, если более 30% отношений являются би-ди или многими-ко-"
+"многим."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Избегайте использования таблиц автодатирования. Обязательно отключите "
+"автоматическую датировку таблицы в параметрах в Power BI Desktop. Это "
+"позволит сэкономить ресурсы памяти."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Это правило ищет таблицы, содержащие слова «дата» или «календарь», так как "
+"они, скорее всего, должны быть помечены как таблица дат."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Большие таблицы должны быть секционированы для оптимизации обработки. Это не"
+" относится к семантическим моделям в режиме Direct Lake, так как они могут "
+"иметь только одну секцию на таблицу."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Попытайтесь упростить DAX, используемый для обеспечения безопасности на "
+"уровне строк. Использование функций в рамках этого правила, скорее всего, "
+"может быть переложено на вышестоящие системы (хранилище данных)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Вообще говоря, модели обычно должны иметь таблицу дат. Модели, в которых нет"
+" таблицы дат, как правило, не используют такие функции, как логика операций "
+"со временем, или могут не иметь правильно структурированной архитектуры."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Элементы вычислений должны иметь выражение. Без выражения они не будут "
+"отображать никаких значений."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Столбцы, используемые в связи, должны иметь один и тот же тип данных. В "
+"идеале они должны иметь целочисленный тип данных (см. соответствующее "
+"правило «[Форматирование] Столбцы отношений должны иметь целочисленный тип "
+"данных»). Наличие столбцов в связи с разными типами данных может привести к "
+"различным проблемам."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Столбцы данных должны иметь исходный столбец. Столбец данных без исходного "
+"столбца вызовет ошибку при обработке модели."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Чтобы избежать ошибок, убедитесь, что иерархии атрибутов включены, если "
+"столбец используется для сортировки другого столбца, используется в "
+"иерархии, используется в вариациях или сортируется по другому столбцу. "
+"Свойство IsAvailableInMdx неактуально для моделей Direct Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Функция USERELATIONSHIP не может использоваться для таблицы, которая также "
+"использует безопасность на уровне строк (RLS). Это приведет к ошибке при "
+"использовании определенной меры в визуальном элементе. Это правило выделяет "
+"таблицу, которая используется в функции USERELATIONSHIP меры, а также в RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Избегайте использования функции IFERROR, так как это может привести к "
+"снижению производительности. Если вас беспокоит ошибка деления на ноль, "
+"используйте функцию DIVIDE, так как она естественным образом разрешает такие"
+" ошибки как пустые (или вы можете настроить, что должно отображаться в "
+"случае такой ошибки)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Функция TREATAS более эффективна и обеспечивает лучшую производительность, "
+"чем функция INTERSECT, при использовании в вирутальных отношениях."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Функция EVALUATEANDLOG предназначена для использования только в средах "
+"разработки/тестирования и не должна использоваться в производственных "
+"моделях."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Это правило определяет меры, которые являются просто ссылкой на другую меру."
+" В качестве примера рассмотрим модель с двумя мерами: [MeasureA] и "
+"[MeasureB]. Это правило будет активировано для MeasureB, если DAX MeasureB "
+"будет MeasureB:=[MeasureA]. Такие дублирующие меры должны быть устранены."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Для уменьшения избыточности следует избегать двух мер с разными именами и "
+"определенными одним и тем же выражением DAX."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Добавление постоянного значения может привести к снижению "
+"производительности."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Вместо использования синтаксиса \"1-(x/y)\" или \"1+(x/y)\" для вычисления "
+"процента используйте базовые функции DAX (как показано ниже). Использование "
+"улучшенного синтаксиса в целом повысит производительность. Система «1+/-...»"
+" Синтаксис всегда возвращает значение, тогда как решение без '1+/-...' не "
+"имеет (так как значение может быть 'blank'). Таким образом, «1+/-...» "
+"Синтаксис может возвращать больше строк/столбцов, что может привести к "
+"снижению скорости запроса.    Давайте уточним на примере: Избегайте этого: 1"
+" - SUM ( 'Sales'[CostAmount] ) / SUM( 'Sales'[SalesAmount] ) Лучше: DIVIDE ("
+" SUM ( 'Sales'[SalesAmount] ) - SUM ( 'Sales'[CostAmount] ), SUM ( "
+"'Sales'[SalesAmount] ) ) Наилучший: VAR x = SUM ( 'Sales'[SalesAmount] ) "
+"RETURN DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Вместо использования этого шаблона FILTER('Table',[Measure]>Value) для параметров фильтра функции CALCULATE или CALCULATETABLE, используйте один из вариантов ниже (если это возможно). Фильтрация по определенному столбцу создаст меньшую таблицу для обработки модулем, что обеспечит более высокую производительность. Использование функции VALUES или функции ALL зависит от желаемого результата измерения.\n"
+"Вариант 1: FILTER(VALUES('Таблица'[Столбец]),[Измерение] > значение)\n"
+"Вариант 2: FILTER(ALL('Таблица'[Столбец]),[Измерение] > значение)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Вместо использования этого шаблона FILTER('Table','Table'[Column]=\"Value\") для параметров фильтра функции CALCULATE или CALCULATETABLE, используйте один из вариантов ниже. Что касается использования функции KEEPFILTERS, см. вторую ссылку ниже.\n"
+"Вариант 1: KEEPFILTERS('таблица'[столбец]=\"значение\")\n"
+"Вариант 2: 'Таблица'[Столбец]=\"Значение\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Используйте функцию DIVIDE вместо \"/\". Функция DIVIDE разрешает случаи "
+"деления на ноль. Как таковой, рекомендуется использовать во избежание "
+"ошибок."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Использование полных ссылок на столбцы упрощает различение ссылок на столбцы"
+" и меры, а также помогает избежать некоторых ошибок. При ссылке на столбец в"
+" DAX сначала укажите имя таблицы, а затем укажите имя столбца в квадратных "
+"скобках."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Использование неполных ссылок на меры облегчает различение ссылок на столбцы"
+" и меры, а также помогает избежать некоторых ошибок. При ссылке на меру с "
+"помощью DAX не указывайте имя таблицы. Используйте только название меры в "
+"квадратных скобках."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Неактивные связи активируются с помощью функции USERELATIONSHIP. Если эта "
+"функция не ссылается на неактивное отношение, оно не будет использоваться. "
+"Следует определить, является ли связь ненужной или активировать связь с "
+"помощью этого метода."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Скрытые столбцы, на которые не ссылаются какие-либо выражения DAX, связи, "
+"уровни иерархии или свойства сортировки по, должны быть удалены."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Скрытые меры, на которые не ссылаются какие-либо выражения DAX, должны быть "
+"удалены для удобства обслуживания."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Это правило выделяет таблицы, которые не связаны с какой-либо другой "
+"таблицей в модели с помощью связи."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "Группы вычислений не имеют функции, если у них нет элементов расчета."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Добавляйте описания к объектам. Эти описания отображаются при наведении "
+"указателя мыши в списке полей в Power BI Desktop. Кроме того, вы можете "
+"использовать эти описания для создания автоматического словаря данных."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Столбцы типа \"DateTime\", в названии которых есть слово \"Month\", должны "
+"быть отформатированы как \"mm/dd/yyyy\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Для числовых столбцов (целочисленных, десятичных, двойных) свойство "
+"SummarizeBy должно иметь значение \"None\", чтобы избежать случайного "
+"суммирования в Power BI (вместо этого создайте меры)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "Видимым мерам должно быть назначено свойство format string."
+
+# description
+msgid "Add data category for columns"
+msgstr "Добавьте свойство Data Category для соответствующих столбцов."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Чтобы улучшить взаимодействие с пользователем, показатели percengage должны "
+"иметь знак «%»."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Для лучшего пользовательского опыта целые числа должны быть отформатированы "
+"с помощью запятых."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Внешние ключи всегда должны быть скрыты, так как они не должны "
+"использоваться конечными пользователями."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Установите для свойства Ключ значение True для столбцов первичного ключа в "
+"свойствах столбца."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Это правило выделяет столбцы месяца, которые являются строками и не "
+"сортируются. Если их не отсортировать, они будут отсортированы в алфавитном "
+"порядке (т.е. апрель, август...). Обязательно отсортируйте такие столбцы, "
+"чтобы они были правильно отсортированы (январь, февраль, март...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Рекомендуется иметь целочисленный тип данных для столбцов отношений. Это "
+"относится не только к хранилищам данных, но и к моделированию данных."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Столбцы типа \"DateTime\", в названии которых есть слово \"Month\", должны "
+"быть отформатированы как \"MMMM yyyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Флаги должны быть правильно отформатированы как Да/Нет, так как это легче "
+"читается, чем использование целочисленных значений 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Объекты не должны начинаться или заканчиваться пробелом. Обычно это "
+"происходит случайно и его трудно обнаружить."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Первая буква в названиях объектов должна быть заглавной, чтобы сохранить "
+"профессиональное качество."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Имена объектов не должны содержать табуляцию, переносы строк и т.д."

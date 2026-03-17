@@ -1,0 +1,969 @@
+#
+msgid ""
+msgstr ""
+"Language: zu-ZA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Ungasebenzisi izinhlobo zedatha yephuzu elintantayo"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Gwema ukusebenzisa amakholomu abalwe"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Hlola ukuthi ubudlelwane be-bi-directional kanye nobuningi obuningi "
+"buqinisekisiwe"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Hlola ukuthi ukuphepha kwezinga le-row ashukumisayo (RLS) kuyadingeka yini"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Gwema ukusebenzisa ubudlelwane obuningi kumatafula asetshenziselwa ukuphepha"
+" kwezinga le-row ashukumisayo"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Ubudlelwane obuningi kufanele kube isiqondiso esisodwa"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Setha i-IsAvailableInMdx ku-false kumakholomu angewona ama-attribute"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Setha impahla 'ye-Data Coverage Definition' ku-DirectQuery ukwahlukanisa "
+"itafula le-hybrid"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Imodi emibili ihambelana kuphela namatafula obukhulu uma i-DirectQuery "
+"isetshenziselwa itafula leqiniso elihambisanayo"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Setha ubukhulu amatafula kwimodi emibili esikhundleni sokungenisa uma "
+"usebenzisa i-DirectQuery kumathebula amaqiniso"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Nciphisa izinguquko ze-Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Cabanga nge-star-schema esikhundleni sesakhiwo seqhwa"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Gwema ukusebenzisa imibono uma usebenzisa imodi ye-Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Gwema ukwengeza i-0 esilinganisweni"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Nciphisa ukusetshenziswa kwamatafula abalwe"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Nciphisa ukusetshenziswa kwamakholomu abalwe asebenzisa umsebenzi we-RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Gwema ubudlelwane ngokweqile be-bi-directional noma obuningi"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Susa ithebula losuku oluzenzakalelayo"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Amatafula osuku/ikhalenda kufanele aphawulwe njengethebula losuku"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Amatafula amakhulu kufanele ahlukaniswe"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Umkhawulo wezinga lokugwedla ukuphepha (RLS) logic"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Imodeli kufanele ibe netafula losuku"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Izinto zokubala kumele zibe nenkulumo"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Amakholomu obudlelwane kufanele abe uhlobo olufanayo lwedatha"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Amakholomu wedatha kumele abe nekholomu yomthombo"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Setha IsAvailableInMdx kuyiqiniso kumakholomu adingekayo"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Gwema umsebenzi we-USERELATIONSHIP kanye ne-RLS ngokumelene netafula "
+"elifanayo"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Gwema ukusebenzisa umsebenzi we-IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Sebenzisa umsebenzi we-TREATAS esikhundleni se-INTERSECT yobudlelwane "
+"obubonakalayo"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Umsebenzi we-EXPLOREANDLOG akufanele usetshenziswe kumamodeli wokukhiqiza"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Izinyathelo akufanele zibe izinkomba eziqondile zezinye izinyathelo"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Azikho izinyathelo ezimbili okufanele zibe nencazelo efanayo"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Gwema ukwengeza noma ukukhipha amanani ahlala njalo emiphumeleni yokuhlukana"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Gwema ukusebenzisa i-syntax '1- (x / y)'"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Hlunga amanani okulinganisa ngamakholomu, hhayi amatafula"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Hlunga amanani ekholomu nge-syntax efanele"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Sebenzisa umsebenzi we-DIVIDE wokuhlukanisa"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Izinkomba zekholomu kufanele zifaneleke ngokugcwele"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Izinkomba zesilinganiso kufanele zingafaneleki"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Ubudlelwano obungasebenzi obungakaze busebenze"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Susa amakholomu angadingekile"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Susa izinyathelo ezingadingekile"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Qinisekisa ukuthi amatafula anobudlelwano"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Amaqembu okubala ngaphandle kwezinto zokubala"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Izinto ezibonakalayo ngaphandle kwencazelo"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Nikeza umucu wefomethi yamakholomu 'Osuku'"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Ungafingqi amakholomu ezinombolo"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Nikeza umucu wefomethi yezinyathelo"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Engeza isigaba sedatha yamakholomu"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Amaphesenti kufanele ahlelwe ngezinkulungwane zezihlukanisi kanye ne-1 "
+"decimal"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Izinombolo eziphelele kufanele zihlelwe ngezinkulungwane zezihlukanisi futhi"
+" akukho ama-decimals"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Fihla okhiye bangaphandle"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Phawula okhiye abaphambili"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Inyanga (njengentambo) kumele ihlelwe"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Amakholomu obudlelwane kufanele abe ngohlobo lwedatha ye-integer"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Nikeza umucu wefomethi yamakholomu \"Inyanga\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Hlela amakholomu efulegi njengezintambo zenani likaYebo / Cha"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Izinto akufanele ziqale noma ziphele ngesikhala"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Incwadi yokuqala yezinto kumele i-capitalized"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Amagama ento akumele ibe nezinhlamvu ezikhethekile"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Ukusebenza"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Ukusebenza"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Ukusebenza"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Ukusebenza"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Ukusebenza"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Ukusebenza"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Ukusebenza"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Ukusebenza"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Ukusebenza"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Ukusebenza"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Ukusebenza"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Ukusebenza"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Ukusebenza"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Ukusebenza"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Ukusebenza"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Ukusebenza"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Ukusebenza"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Ukusebenza"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Ukusebenza"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Ukusebenza"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Ukusebenza"
+
+# category
+msgid "Model should have a date table"
+msgstr "Ukusebenza"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Ukuvimbela iphutha"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Ukuvimbela iphutha"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Ukuvimbela iphutha"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Ukuvimbela iphutha"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Ukuvimbela iphutha"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Maintenance"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Maintenance"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Maintenance"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Maintenance"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Maintenance"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Ukuhlela"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Ukuhlela"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Ukuhlela"
+
+# category
+msgid "Add data category for columns"
+msgstr "Ukuhlela"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Ukuhlela"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Ukuhlela"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Ukuhlela"
+
+# category
+msgid "Mark primary keys"
+msgstr "Ukuhlela"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Ukuhlela"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Ukuhlela"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Ukuhlela"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Ukuhlela"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Ukuhlela"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Ukuhlela"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Izingqungquthela Zokuqamba Amagama"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Uhlobo lwedatha yephuzu elintantayo \"Double\" kufanele lugwenywe, njengoba "
+"kungaholela emaphutheni okujikeleza okungalindelekile kanye nokwehla "
+"kokusebenza ezimweni ezithile. Sebenzisa \"Int64\" noma \"Decimal\" lapho "
+"kufanele khona (kodwa qaphela ukuthi \"Decimal\" kukhawulelwe 4 amadijithi "
+"ngemva uphawu idesimali)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Amakholomu abalwe awacindezeli kanye namakholomu wedatha ngakho-ke athatha "
+"inkumbulo eningi. Baphinde banciphise izikhathi zokucubungula kokubili "
+"itafula kanye ne-process recalc. Khipha i-logic yekholomu ebalwe endaweni "
+"yakho yokugcina idatha bese uguqula la makholomu abalwe abe amakholomu "
+"wedatha."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Ukusetshenziswa kokuphepha kwezinga le-row ashukumisayo (RLS) kungangeza "
+"inkumbulo nokusebenza ngaphezulu. Sicela ucwaninge izinzuzo / izingozi "
+"zokuyisebenzisa."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Ukusebenzisa ubudlelwane obuningi kuya kokuningi ematafuleni asebenzisa "
+"ukuphepha kwezinga le-row ashukumisayo kungabangela ukuchithwa okukhulu "
+"kokusebenza kombuzo. Izinkinga zokusebenza zaleli phethini zihlangene lapho "
+"iqhwa liqhaqhazela ubudlelwane obuningi obuningi ngokumelene netafula "
+"eliqukethe ukuphepha kwezinga lomugqa. Esikhundleni salokho, sebenzisa enye "
+"yamaphethini aboniswe esihlokweni esingezansi lapho itafula elilodwa "
+"lobukhulu lihlobene nabaningi etafuleni lokuphepha."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Ukusheshisa isikhathi sokucubungula nokulondoloza inkumbulo ngemuva "
+"kokucubungula, ama-hierarchies wesici akufanele akhiwe amakholomu angakaze "
+"asetshenziselwe ukusika ngamaklayenti e-MDX. Ngamanye amazwi, wonke "
+"amakholomu afihliwe angasetshenziswa njenge-Sort By Column noma abhekiswe "
+"kuma-hierarchies omsebenzisi kufanele abe nempahla yawo ye-IsAvailableInMdx "
+"ebekwe amanga. Impahla ye-IsAvailableInMdx ayifanelekile kumamodeli we-"
+"Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Ukubeka impahla ye-'Data Coverage Definition 'kungaholela ekusebenzeni "
+"okungcono ngoba injini iyazi ukuthi ingakwazi nini ukubuza kuphela ingxenye "
+"yokungenisa itafula nokuthi idinga nini ukubuza ingxenye ye-DirectQuery "
+"yetafula."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Sebenzisa kuphela imodi ye-Dual yamatafula wobukhulu / ukwahlukanisa lapho "
+"itafula lamaqiniso elihambisanayo ku-DirectQuery. Ukusebenzisa imodi Dual "
+"kwezinye izimo (okungukuthi ukuphumula imodeli kwimodi Import) kungaholela "
+"ezindabeni ukusebenza ikakhulukazi uma inani izinyathelo imodeli "
+"okusezingeni eliphezulu."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Lapho usebenzisa i-DirectQuery, amatafula obukhulu kufanele abekwe kwimodi "
+"ye-Dual ukuze kuthuthukiswe ukusebenza kombuzo."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Nciphisa izinguquko ze-Power Query ukuze kuthuthukiswe ukusebenza "
+"kokucubungula imodeli. Kuwumkhuba omuhle kakhulu ukukhipha lezi zinguquko "
+"endaweni yokugcina idatha uma kungenzeka. Futhi, sicela uhlole ukuthi "
+"ukugoqa umbuzo kwenzeka ngaphakathi kwemodeli yakho. Sicela ubheke "
+"i-athikili engezansi ukuze uthole olunye ulwazi ngokugoqa imibuzo."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Ngokuvamile, i-star-schema iyisakhiwo esihle kakhulu samamodeli we-tabular. "
+"Lokho kunjalo, kunamacala asebenzayo okusebenzisa indlela yeqhwa. Sicela "
+"uhlole imodeli yakho futhi ucabangele ukuthuthela ekwakhiweni kwe-star-"
+"schema."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Kwimodi ye-Direct Lake, ukubukwa kuyohlale kubuyela emuva ku-DirectQuery. "
+"Ngakho, ukuze uthole ukusebenza best sebenzisa amatafula lakehouse "
+"esikhundleni ukubukwa."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Ukwengeza i-0 esilinganisweni ukuze ingabonisi inani elingenalutho kungaba "
+"nomthelela omubi ekusebenzeni."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Fuduka i-logic yetafula ebalwe endaweni yakho yokugcina idatha. Ukuthembela "
+"kumathebula abalwe kuzoholela ezikweletini zobuchwepheshe kanye nokungahambi"
+" kahle okungenzeka uma unezimodeli eziningi epulatifomu yakho."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Amakholomu abalwe awacindezeli kanye namakholomu wedatha futhi angabangela "
+"izikhathi ezinde zokucubungula. Njengoba kunjalo, amakholomu abalwe kufanele"
+" agwenywe uma kungenzeka. Esinye isimo lapho kungase kube lula ukugwema uma "
+"besebenzisa umsebenzi we-RELATED."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Umkhawulo ukusetshenziswa b-di futhi ubudlelwane abaningi-to-abaningi. Lo "
+"mthetho amafulegi imodeli uma ezingaphezu kuka-30% ubudlelwane bi-di noma "
+"abaningi-to-abaningi."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Gwema ukusebenzisa amatafula osuku oluzenzakalelayo. Qiniseka ukuthi uvala "
+"ithebula losuku oluzenzakalelayo kuzilungiselelo ku-Power BI Desktop. Lokhu "
+"kuzosindisa imithombo yenkumbulo."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Lo mthetho ubheka amatafula aqukethe amagama athi 'usuku' noma 'ikhalenda' "
+"njengoba kungenzeka ukuthi aphawulwe njengetafula losuku."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Amatafula amakhulu kufanele ahlukaniswe ukuze kulungiswe ukucubungula. Lokhu"
+" akufanelekile kumamodeli we-semantic kwimodi ye-Direct Lake njengoba angaba"
+" nokwahlukanisa okukodwa kuphela etafuleni ngalinye."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Zama ukwenza lula i-DAX esetshenziselwa ukuphepha kwezinga lokugwedla. "
+"Ukusetshenziswa kwemisebenzi ngaphakathi kwalo mthetho kungenzeka ukuthi "
+"kukhishwe ezinhlelweni eziphezulu (indawo yokugcina idatha)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Ngokuvamile, amamodeli kufanele ngokuvamile abe netafula losuku. Amamodeli "
+"angabi netafula losuku ngokuvamile awasebenzisi izici ezifana nobuhlakani "
+"besikhathi noma angase angabi nesakhiwo esakhiwe kahle."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Izinto zokubala kumele zibe nenkulumo. Ngaphandle kwenkulumo, ngeke babonise"
+" noma yimaphi amagugu."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Amakholomu asetshenziswa ebudlelwaneni kufanele abe uhlobo olufanayo "
+"lwedatha. Ngokufanelekile, bazoba ngohlobo lwedatha ye-integer (bheka "
+"umthetho ohlobene '[Ukufometha] Amakholomu obudlelwane kufanele abe uhlobo "
+"lwedatha ye-integer'). Ukuba namakholomu ngaphakathi kobudlelwane okuyizinto"
+" zezinhlobo ezahlukene zedatha kungaholela ezindabeni ezihlukahlukene."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Amakholomu wedatha kumele abe nekholomu yomthombo. Ikholomu yedatha "
+"ngaphandle kwekholomu yomthombo izobangela iphutha lapho ucubungula imodeli."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Ukuze ugweme amaphutha, qinisekisa ukuthi ama-hierarchies wesici avunyelwe "
+"uma ikholomu isetshenziselwa ukuhlunga elinye ikholomu, elisetshenziswa ku-"
+"hierarchy, elisetshenziswa ngokuhlukahluka, noma lihlelwe ngenye ikholomu. "
+"Impahla ye-IsAvailableInMdx ayifanelekile kumamodeli we-Direct Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Umsebenzi we-USERELATIONSHIP kungenzeka ungasetshenziswa ngokumelene "
+"netafula eliphinde lisebenzise ukuphepha kwezinga le-row (RLS). Lokhu "
+"kuzokhiqiza iphutha uma usebenzisa isilinganiso esithile ekubukeni. Lo "
+"mthetho uzoqhakambisa itafula elisetshenziswa emsebenzini we-USERELATIONSHIP"
+" wesilinganiso kanye ne-RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Gwema ukusebenzisa umsebenzi we-IFERROR njengoba ungadala ukuchithwa "
+"kokusebenza. Uma ukhathazekile ngephutha lokuhlukanisa-by-zero, sebenzisa "
+"umsebenzi we-DIVIDE njengoba ngokwemvelo uxazulula amaphutha anjalo "
+"njengokungenalutho (noma ungenza ngokwezifiso lokho okufanele kuboniswe uma "
+"kwenzeka iphutha elinjalo)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Umsebenzi we-TREATAS usebenza kahle futhi unikeza ukusebenza okungcono "
+"kunomsebenzi we-INTERSECT uma usetshenziswa ebudlelwaneni be-virutal."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Umsebenzi we-EXPLOREANDLOG uhloselwe ukusetshenziswa kuphela ezindaweni "
+"zokuthuthukiswa / zokuhlola futhi akufanele usetshenziswe kumamodeli "
+"wokukhiqiza."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Lo mthetho ukhomba izinyathelo okuyinto nje ukubhekisela kwesinye "
+"isilinganiso. Njengesibonelo, cabanga ngemodeli enezinyathelo ezimbili: "
+"[MeasureA] kanye [ne-MeasureB]. Lo mthetho uzovuswa ku-MeasureB uma i-DAX "
+"ye-MeasureB yayiyi-MeasureB:=[MeasureA]. Izinyathelo ezinjalo "
+"zokuphindaphinda kufanele zisuswe."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Izinyathelo ezimbili ezinamagama ahlukene futhi ezichazwe yinkulumo efanayo "
+"ye-DAX kufanele zigwenywe ukunciphisa ukungasebenzi."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Ukwengeza inani elihlala njalo kungaholela ekuwohlokeni kokusebenza."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Esikhundleni sokusebenzisa i-syntax '1- (x / y)' noma '1 +(x / y)' ukufeza "
+"ukubalwa kwamaphesenti, sebenzisa imisebenzi eyisisekelo ye-DAX (njengoba "
+"kuboniswe ngezansi). Ukusebenzisa i-syntax ethuthukisiwe ngokuvamile "
+"kuzothuthukisa ukusebenza. I '1+/-...' i-syntax ihlala ibuyisela inani kanti"
+" isixazululo ngaphandle kwe-'1 +/-...' akusho (njengoba inani lingase libe "
+"'yize'). Ngakho-ke '1+/-...' i-syntax ingabuyisela imigqa / amakholomu "
+"amaningi okungase kuholele ekutheni kube nesivinini sombuzo esihamba "
+"kancane.    Ake sicacise ngesibonelo: Gwema lokhu: 1 - SUM ( "
+"'Sales'[CostAmount] ) / SUM( 'Sales'[SalesAmount] ) Kungcono: DIVIDE ( SUM ("
+" 'Sales'[SalesAmount] ) - SUM ( 'Sales'[CostAmount] ), SUM ( "
+"'Sales'[SalesAmount] ) ) Best: VAR x = SUM ( 'Sales'[SalesAmount] ) RETURN "
+"DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Esikhundleni sokusebenzisa leli phethini FILTER ('Ithebula', [Linganisa] >Value) yemingcele yokuhlunga yomsebenzi we-CALCULATE noma we-CALCULATETABLE, sebenzisa enye yezinketho ezingezansi (uma kungenzeka). Ukuhlunga kwikholomu ethile kuzokhiqiza itafula elincane ukuze injini icubungule, ngaleyo ndlela yenze ukusebenza okusheshayo. Ukusebenzisa umsebenzi we-VALUES noma umsebenzi WONKE kuncike kumphumela wesilinganiso oyifunayo.\n"
+"Inketho 1: FILTER (VALUES ('Ithebula'[Ikholomu]), [Linganisa] inani >)\n"
+"Inketho 2: FILTER (KONKE ('Ithebula'[Ikholomu]), [Linganisa] inani >)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Esikhundleni sokusebenzisa leli phethini FILTER ('Ithebula', 'Ithebula'[Ikholomu] = \"Inani\") lemingcele yokuhlunga yomsebenzi we-CALCULATE noma we-CALCULATETABLE, sebenzisa enye yezinketho ezingezansi. Ngokuqondene nokuthi usebenzise umsebenzi we-KEEPFILTERS, bheka isixhumanisi sesibili sokubhekisela ngezansi.\n"
+"Inketho 1: KEEPFILTERS('Ithebula'[Ikholomu]=\"Inani\")\n"
+"Inketho 2: 'Ithebula'[Ikholomu]=\"Inani\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Sebenzisa umsebenzi we-DIVIDE esikhundleni sokusebenzisa \"/\". Umsebenzi "
+"we-DIVIDE uxazulula amacala okuhlukanisa-by-zero. Njengoba kunjalo, "
+"kunconywa ukusebenzisa ukugwema amaphutha."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Ukusebenzisa izinkomba zekholomu ezifanele ngokugcwele kwenza kube lula "
+"ukuhlukanisa phakathi kwekholomu nokulinganisa izinkomba, futhi futhi kusiza"
+" ukugwema amaphutha athile. Uma ubhekisela kwikholomu ku-DAX, qala ucacise "
+"igama lethebula, bese ucacisa igama lekholomu kuma-bracket square."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Ukusebenzisa izinkomba zesilinganiso esingafanelekile kwenza kube lula "
+"ukuhlukanisa phakathi kwekholomu nokulinganisa izinkomba, futhi futhi kusiza"
+" ukugwema amaphutha athile. Uma ubhekisela esilinganisweni usebenzisa i-DAX,"
+" ungacacisi igama lethebula. Sebenzisa kuphela igama lokulinganisa kuma-"
+"brackets wesikwele."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Ubudlelwane obungasebenzi busebenza ngokusebenzisa umsebenzi we-"
+"USERELATIONSHIP. Uma ubuhlobo obungasebenzi bungabhekisiswa kunoma yisiphi "
+"isilinganiso ngalo msebenzi, ubuhlobo ngeke busetshenziswe. Kufanele "
+"kunqunywe ukuthi ubuhlobo akudingekile noma ukwenza kusebenze ubuhlobo ngale"
+" ndlela."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Amakholomu afihliwe angabhekisiswa yinoma yiziphi izinkulumo ze-DAX, "
+"ubudlelwano, amazinga abaphathi noma i-Sort By-properties kufanele asuswe."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Izinyathelo ezifihliwe ezingabhekisiswa yinoma yiziphi izinkulumo ze-DAX "
+"kufanele zisuswe ukuze zigcinwe."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Lo mthetho uqokomisa amatafula angaxhunyiwe kunoma yiliphi elinye itafula "
+"kumodeli enobudlelwano."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Amaqembu okubala awanawo umsebenzi ngaphandle kokuthi anezinto zokubala."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Engeza izincazelo ezintweni. Lezi zincazelo ziboniswa ku-hover ngaphakathi "
+"koHlu Lwensimu ku-Power BI Desktop. Ngaphezu kwalokho, ungasebenzisa lezi "
+"zincazelo ukudala isichazamazwi sedatha esizenzakalelayo."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Amakholomu ohlobo \"DateTime\" ukuthi babe \"Inyanga\" amagama abo kufanele "
+"formatted njengoba \"mm / dd / yyyy\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Amakholomu ezinombolo (integer, idesimali, kabili) kufanele abe nempahla "
+"yawo ye-SummarizeBy isethwe ku- \"None\" ukugwema ukufingqa ngengozi ku-"
+"Power BI (dala izinyathelo esikhundleni)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Izinyathelo ezibonakalayo kufanele zabelwe impahla yazo yezintambo "
+"zefomethi."
+
+# description
+msgid "Add data category for columns"
+msgstr "Engeza isici seSigaba Sedatha samakholomu afanele."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Ukuze uthole isipiliyoni esingcono somsebenzisi, izinyathelo ze-percengage "
+"kufanele zihlelwe ngophawu lwe-'%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Ukuze uthole isipiliyoni esingcono somsebenzisi, izinombolo eziphelele "
+"kufanele zihlelwe ngama-commas."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Izihluthulelo zakwamanye amazwe kufanele zifihlwe ngaso sonke isikhathi "
+"njengoba kungafanele zisetshenziswe ngabasebenzisi bokugcina."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Setha impahla 'Key' ku 'Yiqiniso' amakholomu ukhiye eyinhloko ngaphakathi "
+"izakhiwo ikholomu."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Lo mthetho uqokomisa amakholomu enyanga okuyizintambo futhi angahlelwanga. "
+"Uma beshiywe bengahleliwe, bazohlela nge-alfabhethi (okungukuthi ngo-"
+"Ephreli, Agasti ...). Qiniseka ukuhlunga amakholomu anjalo ukuze ahlele "
+"kahle (Januwari, Februwari, Mashi ...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Kuwumkhuba omuhle kakhulu wamakholomu obudlelwane ukuba abe uhlobo lwedatha "
+"ye-integer. Lokhu akusebenzi kuphela ukugcinwa kwedatha kodwa ukumodeliswa "
+"kwedatha kanye."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Amakholomu ohlobo \"DateTime\" ukuthi babe \"Inyanga\" ngamagama abo "
+"kufanele ahlelwe njengoba \"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Amafulegi kumele ahlelwe kahle njengoYebo / Cha njengoba lokhu kulula "
+"ukufunda kunokusebenzisa amanani we-0/1 integer."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Izinto akufanele ziqale noma ziphele ngesikhala. Lokhu kuvame ukwenzeka "
+"ngengozi futhi kunzima ukuthola."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Uhlamvu lokuqala lwamagama ento kufanele lufakwe imali yokugcina ikhwalithi "
+"yobungcweti."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Amagama ento akufanele afake amathebhu, ikhefu lomugqa, njll."

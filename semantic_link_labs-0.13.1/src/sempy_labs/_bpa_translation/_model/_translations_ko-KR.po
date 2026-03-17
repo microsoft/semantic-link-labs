@@ -1,0 +1,839 @@
+#
+msgid ""
+msgstr ""
+"Language: ko-KR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "부동 소수점 데이터 형식을 사용하지 마십시오."
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "계산된 열을 사용하지 마십시오."
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "양방향 및 다대다 관계가 유효한지 확인"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "RLS(동적 행 수준 보안)가 필요한지 확인"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "동적 행 수준 보안에 사용되는 테이블에서 다대다 관계를 사용하지 마십시오."
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "다대다 관계는 단방향이어야 합니다"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "비특성 열에서 IsAvailableInMdx를 false로 설정합니다."
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"하이브리드 테이블의 DirectQuery 파티션에 대한 '데이터 커버리지 정의' 속성 설정Set 'Data Coverage "
+"Definition' property on the DirectQuery partition of a hybrid table"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "이중 모드는 DirectQuery가 해당 팩트 테이블에 사용되는 경우에만 차원 테이블과 관련이 있습니다"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "팩트 테이블에서 DirectQuery를 사용할 때 가져오기 대신 차원 테이블을 이중 모드로 설정합니다."
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Power Query 변환 최소화"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "snowflake 아키텍처 대신 스타 스키마를 고려합니다"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Direct Lake 모드를 사용할 때 보기를 사용하지 마십시오."
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "측정값에 0을 추가하지 마십시오."
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "계산된 테이블 사용 줄이기"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "RELATED 함수를 사용하는 계산 열의 사용 줄이기"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "과도한 양방향 또는 다대다 관계를 피합니다."
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "자동 날짜 표 제거"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "날짜/달력 테이블은 날짜 테이블로 표시해야 합니다."
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "큰 테이블은 분할해야 합니다."
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "RLS(행 수준 보안) 논리 제한"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "모델에는 날짜 테이블이 있어야 합니다."
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "계산 항목에는 표현식이 있어야 합니다."
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "관계 열은 동일한 데이터 형식이어야 합니다"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "데이터 열에는 원본 열이 있어야 합니다."
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "필요한 열에서 IsAvailableInMdx를 true로 설정합니다."
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "동일한 테이블에 대해 USERELATIONSHIP 함수와 RLS를 사용하지 마십시오."
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR 함수를 사용하지 마십시오."
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "가상 관계의 경우 INTERSECT 대신 TREATAS 함수를 사용합니다."
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG 함수는 프로덕션 모델에서 사용하면 안 됩니다"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "측정값은 다른 측정값을 직접 참조해서는 안 됩니다."
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "두 측정값의 정의가 동일해서는 안 됩니다"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "나눗셈 결과에 상수 값을 더하거나 빼지 마십시오."
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' 구문 사용 안 함"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "측정값을 테이블이 아닌 열로 필터링Filter measure values by columns not tables"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "적절한 구문으로 열 값 필터링Filter column values with proper syntax"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "나눗셈에 DIVIDE 함수 사용"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "컬럼 참조는 완전해야 합니다."
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "측정값 참조는 정규화되지 않아야 합니다."
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "활성화되지 않는 비활성 관계"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "불필요한 열 제거"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "불필요한 조치 제거"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "테이블에 관계가 있는지 확인"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "계산 항목이 없는 계산 그룹"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "설명이 없는 보이는 개체"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "'Date' 열에 대한 형식 문자열 제공"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "숫자 열을 요약하지 마십시오."
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "측정값에 대한 형식 문자열 제공"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "열에 대한 데이터 범주 추가Add data category for columns"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "백분율은 1000 단위 구분 기호와 소수점 이하 1자리로 형식화해야 합니다."
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "정수는 소수 없이 천 단위 구분 기호로 형식화해야 합니다"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "외래 키 숨기기"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "기본 키 표시"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "월(문자열)을 정렬해야 합니다."
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "관계 열은 정수 데이터 형식이어야 합니다"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"Month\" 열에 대한 형식 문자열 제공"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "플래그 열을 Yes/No 값 문자열로 형식화Format flag columns as Yes/No value strings"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "개체는 공백으로 시작하거나 끝나서는 안 됩니다."
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "개체의 첫 글자는 대문자로 표시해야 합니다."
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "개체 이름에는 특수 문자가 포함되어서는 안 됩니다."
+
+# category
+msgid "Do not use floating point data types"
+msgstr "공연"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "공연"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "공연"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "공연"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "공연"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "공연"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "공연"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "공연"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "공연"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "공연"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "공연"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "공연"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "공연"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "공연"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "공연"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "공연"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "공연"
+
+# category
+msgid "Remove auto-date table"
+msgstr "공연"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "공연"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "공연"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "공연"
+
+# category
+msgid "Model should have a date table"
+msgstr "공연"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "오류 방지"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "오류 방지"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "오류 방지"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "오류 방지"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "오류 방지"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX 식"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX 식"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX 식"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX 식"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX 식"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX 식"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX 식"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX 식"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX 식"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX 식"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX 식"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX 식"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX 식"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "정비"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "정비"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "정비"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "정비"
+
+# category
+msgid "Visible objects with no description"
+msgstr "정비"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "서식"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "서식"
+
+# category
+msgid "Provide format string for measures"
+msgstr "서식"
+
+# category
+msgid "Add data category for columns"
+msgstr "서식"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "서식"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "서식"
+
+# category
+msgid "Hide foreign keys"
+msgstr "서식"
+
+# category
+msgid "Mark primary keys"
+msgstr "서식"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "서식"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "서식"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "서식"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "서식"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "서식"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "서식"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "명명 규칙"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"\"Double\" 부동 소수점 데이터 형식은 특정 시나리오에서 예측할 수 없는 반올림 오류가 발생하고 성능이 저하될 수 있으므로 피해야"
+" 합니다. 적절한 경우 \"Int64\" 또는 \"Decimal\"을 사용합니다(단, \"Decimal\"은 소수 자릿수 뒤에 4자리로 "
+"제한됨)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"계산 열은 데이터 열과 마찬가지로 압축되지 않으므로 더 많은 메모리를 차지합니다. 또한 테이블과 프로세스 recalc의 처리 시간을 "
+"늦춥니다. 계산된 열 논리를 데이터 웨어하우스로 오프로드하고 이러한 계산된 열을 데이터 열로 변환합니다."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "RLS(동적 행 수준 보안)를 사용하면 메모리 및 성능 오버헤드가 추가될 수 있습니다. 사용의 장단점을 조사하십시오."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"동적 행 수준 보안을 사용하는 테이블에서 다대다 관계를 사용하면 쿼리 성능이 심각하게 저하될 수 있습니다. 이 패턴의 성능 문제는 행 "
+"수준 보안이 포함된 테이블에 대해 여러 many-to-many 관계를 스노우플레이킹할 때 복잡해집니다. 대신 아래 문서에 나와 있는 단일"
+" 차원 테이블이 보안 테이블과 다대일로 관련되는 패턴 중 하나를 사용합니다."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"처리 시간을 단축하고 처리 후 메모리를 절약하려면 MDX 클라이언트에서 조각화하는 데 사용되지 않는 열에 대해 특성 계층을 작성해서는 안"
+" 됩니다. 즉, 열 정렬 기준으로 사용되지 않거나 사용자 계층에서 참조되지 않는 모든 숨겨진 열은 IsAvailableInMdx 속성을 "
+"false로 설정해야 합니다. IsAvailableInMdx 속성은 Direct Lake 모델과 관련이 없습니다."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"'데이터 커버리지 정의' 속성을 설정하면 엔진이 테이블의 가져오기 부분만 쿼리할 수 있는 경우와 테이블의 DirectQuery 부분을 "
+"쿼리해야 하는 경우를 알고 있기 때문에 성능이 향상될 수 있습니다."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"해당 팩트 테이블이 DirectQuery에 있는 차원 테이블/파티션에 대해서만 이중 모드를 사용합니다. 다른 상황(즉, 모델의 나머지 "
+"부분이 가져오기 모드에 있는 경우)에서 이중 모드를 사용하면 특히 모델의 측정값 수가 많은 경우 성능 문제가 발생할 수 있습니다."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "DirectQuery를 사용하는 경우 쿼리 성능을 향상시키기 위해 차원 테이블을 이중 모드로 설정해야 합니다."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"모델 처리 성능을 향상시키기 위해 Power Query 변환을 최소화합니다. 가능한 경우 이러한 변환을 데이터 웨어하우스로 오프로드하는 "
+"것이 가장 좋습니다. 또한 모델 내에서 쿼리 폴딩이 발생하고 있는지 확인하십시오. 쿼리 폴딩에 대한 자세한 내용은 아래 문서를 "
+"참조하십시오."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"일반적으로 스타 스키마는 테이블 형식 모델에 대한 최적의 아키텍처입니다. 이 경우 눈송이 접근 방식을 사용할 수 있는 유효한 경우가 "
+"있습니다. 모델을 확인하고 스타 스키마 아키텍처로 이동하는 것을 고려하십시오."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Direct Lake 모드에서 보기는 항상 DirectQuery로 대체됩니다. 따라서 최상의 성능을 얻으려면 뷰 대신 레이크하우스 "
+"테이블을 사용합니다."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr "빈 값이 표시되지 않도록 측정값에 0을 추가하면 성능에 부정적인 영향을 줄 수 있습니다."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"계산된 테이블 논리를 데이터 웨어하우스로 마이그레이션합니다. 계산된 테이블에 대한 의존은 플랫폼에 여러 모델이 있는 경우 기술 부채와 "
+"잠재적인 정렬 불일치로 이어질 수 있습니다."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"계산 열은 데이터 열만큼 압축되지 않으며 처리 시간이 더 길어질 수 있습니다. 따라서 가능한 한 계산 열을 사용하지 않아야 합니다. 더 "
+"쉽게 피할 수 있는 한 가지 시나리오는 RELATED 함수를 사용하는 경우입니다."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"b-di 및 다대다 관계의 사용을 제한합니다. 이 규칙은 관계의 30% 이상이 이원형 또는 다대다인 경우 모델에 플래그를 지정합니다."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"자동 날짜 테이블을 사용하지 마십시오. Power BI Desktop의 설정에서 자동 날짜 테이블을 해제해야 합니다. 이렇게 하면 메모리"
+" 리소스가 절약됩니다."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"이 규칙은 날짜 테이블로 표시되어야 할 가능성이 높으므로 'date' 또는 'calendar'라는 단어가 포함된 테이블을 찾습니다."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"큰 테이블은 처리를 최적화하기 위해 분할해야 합니다. 이는 Direct Lake 모드의 의미 체계 모델에는 테이블당 하나의 파티션만 가질"
+" 수 있으므로 관련이 없습니다."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"행 수준 보안에 사용되는 DAX를 간소화해 보세요. 이 규칙 내의 함수 사용은 업스트림 시스템(데이터 웨어하우스)으로 오프로드될 수 "
+"있습니다."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"일반적으로 모델에는 일반적으로 날짜 테이블이 있어야 합니다. 날짜 테이블이 없는 모델은 일반적으로 시간 인텔리전스와 같은 기능을 활용하지"
+" 않거나 적절하게 구조화된 아키텍처가 없을 수 있습니다."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr "계산 항목에는 표현식이 있어야 합니다. 표현식이 없으면 값이 표시되지 않습니다."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"관계에 사용되는 열은 동일한 데이터 형식이어야 합니다. 이상적으로는 정수 데이터 형식이 됩니다(관련 규칙 '[서식] 관계 열은 정수 "
+"데이터 형식이어야 함' 참조). 관계 내에 데이터 형식이 다른 열이 있으면 다양한 문제가 발생할 수 있습니다."
+
+# description
+msgid "Data columns must have a source column"
+msgstr "데이터 열에는 원본 열이 있어야 합니다. 원본 열이 없는 데이터 열은 모델을 처리할 때 오류를 일으킵니다."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"오류를 방지하려면 열이 다른 열을 정렬하는 데 사용되거나, 계층에서 사용되거나, 변형에 사용되거나, 다른 열을 기준으로 정렬되는 경우 "
+"속성 계층이 활성화되어 있는지 확인하십시오. IsAvailableInMdx 속성은 Direct Lake 모델과 관련이 없습니다."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"RLS(행 수준 보안)를 활용하는 테이블에는 USERELATIONSHIP 함수를 사용할 수 없습니다. 이렇게 하면 시각적 개체에서 특정 "
+"측정값을 사용할 때 오류가 발생합니다. 이 규칙은 RLS뿐만 아니라 측정값의 USERELATIONSHIP 함수에 사용되는 테이블을 강조 "
+"표시합니다."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"IFERROR 함수는 성능 저하를 유발할 수 있으므로 사용하지 마십시오. 0으로 나누기 오류가 우려되는 경우 DIVIDE 함수를 사용하면"
+" 이러한 오류가 공백으로 자연스럽게 해결됩니다(또는 이러한 오류가 발생할 경우 표시해야 하는 내용을 사용자 지정할 수 있음)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "TREATAS 함수는 가상 관계에서 사용될 때 INTERSECT 함수보다 더 효율적이며 더 나은 성능을 제공합니다."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG 함수는 개발/테스트 환경에서만 사용하기 위한 것이며 프로덕션 모델에서는 사용해서는 안 됩니다."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"이 규칙은 단순히 다른 측정값에 대한 참조인 측정값을 식별합니다. 예를 들어 [MeasureA]와 [MeasureB]라는 두 개의 "
+"측정값이 있는 모델을 고려합니다. MeasureB의 DAX가 MeasureB:=[MeasureA]인 경우 MeasureB에 대해 이 "
+"규칙이 트리거됩니다. 이러한 중복 조치는 제거되어야 합니다."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr "이름이 다르고 동일한 DAX 식으로 정의된 두 측정값은 중복을 줄이기 위해 피해야 합니다."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "상수 값을 추가하면 성능이 저하될 수 있습니다."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"백분율 계산을 위해 '1-(x/y)' 또는 '1+(x/y)' 구문을 사용하는 대신 기본 DAX 함수를 사용합니다(아래 그림 참조). "
+"개선된 구문을 사용하면 일반적으로 성능이 향상됩니다. '1+/-...' 구문은 항상 값을 반환하는 반면 '1+/-...'가 없는 해는 "
+"그렇지 않습니다(값이 'blank'일 수 있음). 따라서 '1+/-...' 구문은 더 많은 행/열을 반환할 수 있으며, 이로 인해 쿼리 "
+"속도가 느려질 수 있습니다.    예를 들어 명확히하십시오 : 이것을 피하십시오 : 1 - SUM ( 'Sales'[CostAmount]"
+" ) / SUM ( 'Sales'[SalesAmount] ) 더 나은: DIVIDE ( SUM ( 'Sales'[SalesAmount] "
+") - SUM ( 'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) ) 최고: VAR x = "
+"SUM ( 'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUM ( 'Sales'[CostAmount] "
+"), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"CALCULATE 또는 CALCULATETABLE 함수의 필터 매개 변수에 대해 이 패턴 FILTER('Table',[Measure]>Value)를 사용하는 대신 아래 옵션 중 하나를 사용합니다(가능한 경우). 특정 열을 필터링하면 엔진에서 처리할 테이블이 더 작아지므로 성능이 향상됩니다. VALUES 함수 또는 ALL 함수를 사용하는 것은 원하는 측정 결과에 따라 다릅니다.\n"
+"옵션 1: FILTER(VALUES('Table'[Column]),[Measure] > Value)\n"
+"옵션 2: FILTER(ALL('Table'[열]),[측정값] > 값)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"CALCULATE 또는 CALCULATETABLE 함수의 필터 매개 변수에 대해 이 패턴 FILTER('Table','Table'[Column]=\"Value\")를 사용하는 대신 아래 옵션 중 하나를 사용합니다. KEEPFILTERS 함수를 사용할지 여부는 아래의 두 번째 참조 링크를 참조하십시오.\n"
+"옵션 1: KEEPFILTERS('Table'[Column]=\"Value\")\n"
+"옵션 2: 'Table'[Column]=\"값\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"\"/\"를 사용하는 대신 DIVIDE 함수를 사용합니다. DIVIDE 함수는 0으로 나누기 사례를 해결합니다. 따라서 오류를 방지하기 "
+"위해 사용하는 것이 좋습니다."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"정규화된 열 참조를 사용하면 열 참조와 측정값 참조를 더 쉽게 구분할 수 있으며 특정 오류를 방지하는 데도 도움이 됩니다. DAX에서 "
+"열을 참조할 때는 먼저 테이블 이름을 지정한 다음 대괄호로 묶어 열 이름을 지정합니다."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"정규화되지 않은 측정값 참조를 사용하면 열 참조와 측정값 참조를 쉽게 구분할 수 있으며 특정 오류를 방지하는 데도 도움이 됩니다. "
+"DAX를 사용하여 측정값을 참조할 때는 테이블 이름을 지정하지 마십시오. 대괄호 안의 측정값 이름만 사용합니다."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"비활성 관계는 USERELATIONSHIP 함수를 사용하여 활성화됩니다. 비활성 관계가 이 함수를 통해 어떤 측정값에서도 참조되지 않으면"
+" 관계가 사용되지 않습니다. 관계가 필요하지 않은지 또는 이 방법을 통해 관계를 활성화하는지 여부를 결정해야 합니다."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr "DAX 식, 관계, 계층 수준 또는 정렬 기준 속성에서 참조하지 않는 숨겨진 열은 제거해야 합니다."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr "DAX 식에서 참조하지 않는 숨겨진 측정값은 유지 관리를 위해 제거해야 합니다."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr "이 규칙은 관계가 있는 모델의 다른 테이블에 연결되지 않은 테이블을 강조 표시합니다."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "계산 그룹에는 계산 항목이 없으면 기능이 없습니다."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"개체에 설명을 추가합니다. 이러한 설명은 Power BI Desktop의 필드 목록 내에서 마우스로 가리키면 표시됩니다. 또한 이러한 "
+"설명을 활용하여 자동화된 데이터 사전을 만들 수 있습니다."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr "이름에 \"Month\"가 있는 \"DateTime\" 형식의 열은 \"mm/dd/yyyy\"로 형식이 지정되어야 합니다."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"숫자 열(integer, decimal, double)은 Power BI에서 실수로 합계가 발생하지 않도록 SummarizeBy 속성을 "
+"\"None\"으로 설정해야 합니다(대신 측정값 만들기)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "표시되는 측정값에는 형식 문자열 속성이 할당되어 있어야 합니다."
+
+# description
+msgid "Add data category for columns"
+msgstr "적절한 열에 대한 데이터 범주 속성을 추가합니다."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "더 나은 사용자 경험을 위해 percengage 측정은 '%' 기호로 형식을 지정해야 합니다."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "더 나은 사용자 경험을 위해 정수는 쉼표로 서식을 지정해야 합니다."
+
+# description
+msgid "Hide foreign keys"
+msgstr "외래 키는 최종 사용자가 사용해서는 안 되므로 항상 숨겨야 합니다."
+
+# description
+msgid "Mark primary keys"
+msgstr "열 속성 내의 기본 키 열에 대해 'Key' 속성을 'True'로 설정합니다."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"이 규칙은 문자열이며 정렬되지 않은 월 열을 강조 표시합니다. 정렬하지 않은 상태로 두면 알파벳순으로 정렬됩니다(예: 4월, 8월 등)."
+" 이러한 열은 제대로 정렬되도록 정렬해야 합니다(1월, 2월, 3월 등)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr "관계 열은 정수 데이터 형식이 되는 것이 가장 좋습니다. 이는 데이터 웨어하우징뿐만 아니라 데이터 모델링에도 적용됩니다."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr "이름에 \"Month\"가 있는 \"DateTime\" 형식의 열은 \"MMMM yyyy\"로 형식이 지정되어야 합니다."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr "플래그는 0/1 정수 값을 사용하는 것보다 읽기 쉽기 때문에 Yes/No로 올바르게 형식화해야 합니다."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr "개체는 공백으로 시작하거나 끝나서는 안 됩니다. 이것은 일반적으로 우연히 발생하며 찾기가 어렵습니다."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr "개체 이름의 첫 글자는 전문적인 품질을 유지하기 위해 대문자로 표시해야 합니다."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "개체 이름에는 탭, 줄 바꿈 등이 포함되어서는 안 됩니다."

@@ -1,0 +1,993 @@
+#
+msgid ""
+msgstr ""
+"Language: el-GR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Μην χρησιμοποιείτε τύπους δεδομένων κινητής υποδιαστολής"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Αποφύγετε τη χρήση υπολογιζόμενων στηλών"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Ελέγξτε εάν οι αμφίδρομες σχέσεις και οι σχέσεις πολλά-προς-πολλά είναι "
+"έγκυρες"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Ελέγξτε εάν είναι απαραίτητη η δυναμική ασφάλεια σε επίπεδο γραμμών (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Αποφύγετε τη χρήση σχέσεων πολλά-προς-πολλά σε πίνακες που χρησιμοποιούνται "
+"για δυναμική ασφάλεια σε επίπεδο γραμμών"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Οι σχέσεις πολλά-προς-πολλά πρέπει να είναι μονής κατεύθυνσης"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Ορισμός της τιμής IsAvailableInMdx σε false σε στήλες που δεν είναι "
+"χαρακτηριστικά"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Ορισμός ιδιότητας \"Ορισμός κάλυψης δεδομένων\" στο διαμέρισμα DirectQuery "
+"ενός υβριδικού πίνακα"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Η διπλή λειτουργία είναι σχετική μόνο για πίνακες διαστάσεων εάν το "
+"DirectQuery χρησιμοποιείται για τον αντίστοιχο πίνακα δεδομένων"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Ορισμός πινάκων διαστάσεων σε διπλή λειτουργία αντί για εισαγωγή κατά τη "
+"χρήση του DirectQuery σε πίνακες δεδομένων"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Ελαχιστοποίηση μετασχηματισμών Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Σκεφτείτε ένα αστρικό σχήμα αντί για μια αρχιτεκτονική νιφάδας χιονιού"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Αποφύγετε τη χρήση προβολών κατά τη χρήση της λειτουργίας Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Αποφύγετε την προσθήκη 0 σε μια μέτρηση"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Μειώστε τη χρήση των υπολογιζόμενων πινάκων"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Μειώστε τη χρήση των υπολογιζόμενων στηλών που χρησιμοποιούν τη συνάρτηση "
+"RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Αποφύγετε τις υπερβολικές αμφίδρομες σχέσεις ή σχέσεις πολλά-προς-πολλά"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Κατάργηση πίνακα αυτόματης ημερομηνίας"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Οι πίνακες ημερομηνιών/ημερολογίου πρέπει να επισημαίνονται ως πίνακας "
+"ημερομηνιών"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Τα μεγάλα τραπέζια πρέπει να χωριστούν"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Λογική ασφάλειας ορίου επιπέδου γραμμών (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Το μοντέλο πρέπει να έχει πίνακα ημερομηνιών"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Τα στοιχεία υπολογισμού πρέπει να έχουν μια έκφραση"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Οι στήλες σχέσεων πρέπει να είναι του ίδιου τύπου δεδομένων"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Οι στήλες δεδομένων πρέπει να έχουν μια στήλη προέλευσης"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Ορίστε το IsAvailableInMdx σε true στις απαραίτητες στήλες"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Αποφύγετε τη συνάρτηση USERELATIONSHIP και το RLS στον ίδιο πίνακα"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Αποφύγετε τη χρήση της συνάρτησης IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Χρησιμοποιήστε τη συνάρτηση TREATAS αντί για τη συνάρτηση INTERSECT για "
+"εικονικές σχέσεις"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Η συνάρτηση EVALUATEANDLOG δεν πρέπει να χρησιμοποιείται σε μοντέλα "
+"παραγωγής"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Τα μέτρα δεν θα πρέπει να αποτελούν άμεσες αναφορές σε άλλα μέτρα"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Κανένα μέτρο δεν πρέπει να έχει τον ίδιο ορισμό"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Αποφύγετε την πρόσθεση ή την αφαίρεση σταθερών τιμών στα αποτελέσματα των "
+"διαιρέσεων"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Αποφύγετε τη χρήση σύνταξης '1-(x/y)'"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Φιλτράρισμα τιμών μέτρησης κατά στήλες και όχι κατά πίνακες"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Φιλτράρισμα τιμών στηλών με σωστή σύνταξη"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Χρήση της συνάρτησης DIVIDE για διαίρεση"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Οι αναφορές στηλών θα πρέπει να είναι πλήρως εξειδικευμένες"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Οι αναφορές στα μέτρα δεν πρέπει να είναι έγκυρες"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Ανενεργές σχέσεις που δεν ενεργοποιούνται ποτέ"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Κατάργηση περιττών στηλών"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Κατάργηση περιττών μέτρων"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Βεβαιωθείτε ότι οι πίνακες έχουν σχέσεις"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Ομάδες υπολογισμού χωρίς στοιχεία υπολογισμού"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Ορατά αντικείμενα χωρίς περιγραφή"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Παροχή συμβολοσειράς μορφής για στήλες \"Ημερομηνία\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Χωρίς σύνοψη αριθμητικών στηλών"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Παροχή συμβολοσειράς μορφής για μετρήσεις"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Προσθήκη κατηγορίας δεδομένων για στήλες"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Τα ποσοστά πρέπει να μορφοποιούνται με διαχωριστικά χιλιάδων και 1 δεκαδικό"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Οι ακέραιοι αριθμοί πρέπει να μορφοποιούνται με διαχωριστικά χιλιάδων και "
+"χωρίς δεκαδικά ψηφία"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Απόκρυψη ξένων κλειδιών"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Σήμανση πρωτευόντων κλειδιών"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Ο μήνας (ως συμβολοσειρά) πρέπει να ταξινομηθεί"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Οι στήλες σχέσεων πρέπει να είναι ακέραιου τύπου δεδομένων"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Παροχή συμβολοσειράς μορφής για στήλες \"Μήνας\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Μορφοποίηση στηλών σημαίας ως συμβολοσειρές τιμών Ναι/Όχι"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Τα αντικείμενα δεν πρέπει να ξεκινούν ή να τελειώνουν με κενό διάστημα"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Το πρώτο γράμμα των αντικειμένων πρέπει να είναι κεφαλαίο"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Τα ονόματα αντικειμένων δεν πρέπει να περιέχουν ειδικούς χαρακτήρες"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Εκτέλεση"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Εκτέλεση"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Εκτέλεση"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Εκτέλεση"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Model should have a date table"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Αποτροπή σφαλμάτων"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Αποτροπή σφαλμάτων"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Αποτροπή σφαλμάτων"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Αποτροπή σφαλμάτων"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Αποτροπή σφαλμάτων"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Συντήρηση"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Συντήρηση"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Συντήρηση"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Συντήρηση"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Συντήρηση"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Add data category for columns"
+msgstr "Μορφοποίηση"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Μορφοποίηση"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Mark primary keys"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Μορφοποίηση"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Συμβάσεις ονοματοδοσίας"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Ο τύπος δεδομένων \"διπλής\" κινητής υποδιαστολής θα πρέπει να αποφεύγεται, "
+"καθώς μπορεί να οδηγήσει σε απρόβλεπτα σφάλματα στρογγυλοποίησης και "
+"μειωμένη απόδοση σε ορισμένα σενάρια. Χρησιμοποιήστε \"Int64\" ή \"Decimal\""
+" όπου χρειάζεται (αλλά σημειώστε ότι το \"Decimal\" περιορίζεται σε 4 ψηφία "
+"μετά το δεκαδικό σύμβολο)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Οι υπολογιζόμενες στήλες δεν συμπιέζονται τόσο καλά όσο οι στήλες δεδομένων,"
+" επομένως καταλαμβάνουν περισσότερη μνήμη. Επιβραδύνουν επίσης τους χρόνους "
+"επεξεργασίας τόσο για τον πίνακα όσο και για την απείθαρχη διαδικασία. "
+"Μειώστε τη λογική υπολογιζόμενων στηλών στην αποθήκη δεδομένων σας και "
+"μετατρέψτε αυτές τις υπολογιζόμενες στήλες σε στήλες δεδομένων."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Η χρήση της δυναμικής ασφάλειας σε επίπεδο γραμμών (RLS) μπορεί να προσθέσει"
+" μνήμη και επιβάρυνση επιδόσεων. Ερευνήστε τα πλεονεκτήματα / μειονεκτήματα "
+"της χρήσης του."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Η χρήση σχέσεων πολλά-προς-πολλά σε πίνακες που χρησιμοποιούν δυναμική "
+"ασφάλεια σε επίπεδο γραμμών μπορεί να προκαλέσει σοβαρή υποβάθμιση των "
+"επιδόσεων του ερωτήματος. Τα προβλήματα επιδόσεων αυτού του μοτίβου "
+"επιδεινώνονται όταν ξεφλουδίζετε πολλές σχέσεις πολλά-προς-πολλά σε έναν "
+"πίνακα που περιέχει ασφάλεια σε επίπεδο γραμμών. Αντί για αυτό, "
+"χρησιμοποιήστε ένα από τα μοτίβα που εμφανίζονται στο παρακάτω άρθρο, όπου "
+"ένας πίνακας μίας διάστασης συσχετίζει πολλά-προς-ένα με έναν πίνακα "
+"ασφαλείας."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Για να επιταχυνθεί ο χρόνος επεξεργασίας και να διατηρηθεί η μνήμη μετά την "
+"επεξεργασία, δεν πρέπει να δημιουργούνται ιεραρχίες χαρακτηριστικών για "
+"στήλες που δεν χρησιμοποιούνται ποτέ για τεμαχισμό από υπολογιστές-πελάτες "
+"MDX. Με άλλα λόγια, όλες οι κρυφές στήλες που δεν χρησιμοποιούνται ως στήλη "
+"ταξινόμησης κατά ή δεν αναφέρονται σε ιεραρχίες χρηστών θα πρέπει να έχουν "
+"την ιδιότητά τους IsAvailableInMdx ρυθμισμένη σε false. Η ιδιότητα "
+"IsAvailableInMdx δεν σχετίζεται με μοντέλα Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Η ρύθμιση της ιδιότητας \"Ορισμός κάλυψης δεδομένων\" μπορεί να οδηγήσει σε "
+"καλύτερες επιδόσεις, επειδή ο μηχανισμός γνωρίζει πότε μπορεί να υποβάλει "
+"ερώτημα μόνο στο τμήμα εισαγωγής του πίνακα και πότε χρειάζεται να υποβάλει "
+"ερώτημα στο τμήμα DirectQuery του πίνακα."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Χρησιμοποιήστε τη διπλή λειτουργία μόνο για πίνακες/διαμερίσματα διαστάσεων "
+"όπου ένας αντίστοιχος πίνακας δεδομένων βρίσκεται στο DirectQuery. Η χρήση "
+"διπλής λειτουργίας σε άλλες περιπτώσεις (π.χ. το υπόλοιπο μοντέλο βρίσκεται "
+"σε κατάσταση εισαγωγής) μπορεί να οδηγήσει σε προβλήματα επιδόσεων, ειδικά "
+"εάν ο αριθμός των μετρήσεων στο μοντέλο είναι υψηλός."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Όταν χρησιμοποιείτε το DirectQuery, οι πίνακες διαστάσεων πρέπει να "
+"ορίζονται σε διπλή λειτουργία, προκειμένου να βελτιωθούν οι επιδόσεις του "
+"ερωτήματος."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Ελαχιστοποιήστε τους μετασχηματισμούς Power Query για να βελτιώσετε την "
+"απόδοση επεξεργασίας του μοντέλου. Είναι μια βέλτιστη πρακτική να "
+"εκφορτώσετε αυτούς τους μετασχηματισμούς στην αποθήκη δεδομένων, εάν είναι "
+"δυνατόν. Επίσης, ελέγξτε εάν πραγματοποιείται αναδίπλωση ερωτήματος στο "
+"μοντέλο σας. Ανατρέξτε στο παρακάτω άρθρο για περισσότερες πληροφορίες "
+"σχετικά με την αναδίπλωση ερωτημάτων."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Σε γενικές γραμμές, ένα αστρικό σχήμα είναι η βέλτιστη αρχιτεκτονική για "
+"πινακοποιημένα μοντέλα. Σε αυτήν την περίπτωση, υπάρχουν έγκυρες περιπτώσεις"
+" για τη χρήση προσέγγισης νιφάδας χιονιού. Ελέγξτε το μοντέλο σας και "
+"εξετάστε το ενδεχόμενο να μεταβείτε σε μια αρχιτεκτονική αστεροειδούς "
+"σχήματος."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Στη λειτουργία άμεσης λίμνης, οι προβολές θα επιστρέφουν πάντα στο "
+"DirectQuery. Έτσι, για να έχετε την καλύτερη απόδοση, χρησιμοποιήστε "
+"τραπέζια lakehouse αντί για προβολές."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Η προσθήκη 0 σε μια μέτρηση προκειμένου να μην εμφανίζει κενή τιμή μπορεί να"
+" επηρεάσει αρνητικά την απόδοση."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Μετεγκατάσταση λογικής υπολογιζόμενου πίνακα στην αποθήκη δεδομένων σας. Η "
+"εξάρτηση από υπολογισμένους πίνακες θα οδηγήσει σε τεχνικό χρέος και πιθανές"
+" αποκλίσεις εάν έχετε πολλά μοντέλα στην πλατφόρμα σας."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Οι υπολογιζόμενες στήλες δεν συμπιέζονται τόσο καλά όσο οι στήλες δεδομένων "
+"και ενδέχεται να προκαλέσουν μεγαλύτερους χρόνους επεξεργασίας. Ως εκ "
+"τούτου, οι υπολογιζόμενες στήλες θα πρέπει να αποφεύγονται, εάν είναι "
+"δυνατόν. Ένα σενάριο όπου μπορεί να είναι ευκολότερο να αποφευχθούν είναι "
+"εάν χρησιμοποιούν τη συνάρτηση ΣΧΕΤΙΖΕΤΑΙ."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Περιορίστε τη χρήση των σχέσεων b-di και πολλά-προς-πολλά. Αυτός ο κανόνας "
+"επισημαίνει το μοντέλο εάν περισσότερο από το 30% των σχέσεων είναι bi-di ή "
+"πολλά-προς-πολλά."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Αποφύγετε τη χρήση πινάκων αυτόματης ημερομηνίας. Βεβαιωθείτε ότι έχετε "
+"απενεργοποιήσει τον πίνακα αυτόματης ημερομηνίας στις ρυθμίσεις του Power BI"
+" Desktop. Αυτό θα εξοικονομήσει πόρους μνήμης."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Αυτός ο κανόνας αναζητά πίνακες που περιέχουν τις λέξεις \"ημερομηνία\" ή "
+"\"ημερολόγιο\", καθώς πιθανότατα θα πρέπει να επισημανθούν ως πίνακας "
+"ημερομηνιών."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Οι μεγάλοι πίνακες πρέπει να χωριστούν προκειμένου να βελτιστοποιηθεί η "
+"επεξεργασία. Αυτό δεν ισχύει για σημασιολογικά μοντέλα σε λειτουργία άμεσης "
+"λίμνης, καθώς μπορούν να έχουν μόνο μία κατάτμηση ανά πίνακα."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Προσπαθήστε να απλοποιήσετε το DAX που χρησιμοποιείται για την ασφάλεια σε "
+"επίπεδο γραμμών. Η χρήση των λειτουργιών στο πλαίσιο αυτού του κανόνα μπορεί"
+" πιθανώς να εκφορτωθεί στα ανάντη συστήματα (αποθήκη δεδομένων)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Σε γενικές γραμμές, τα μοντέλα πρέπει γενικά να έχουν πίνακα ημερομηνιών. Τα"
+" μοντέλα που δεν διαθέτουν πίνακα ημερομηνιών γενικά δεν εκμεταλλεύονται "
+"δυνατότητες όπως η χρονική ευφυΐα ή ενδέχεται να μην έχουν σωστά δομημένη "
+"αρχιτεκτονική."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Τα στοιχεία υπολογισμού πρέπει να έχουν μια έκφραση. Χωρίς έκφραση, δεν θα "
+"δείξουν τιμές."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Οι στήλες που χρησιμοποιούνται σε μια σχέση πρέπει να είναι του ίδιου τύπου "
+"δεδομένων. Ιδανικά, θα είναι ακέραιου τύπου δεδομένων (ανατρέξτε στον "
+"σχετικό κανόνα \"[Μορφοποίηση] Οι στήλες σχέσεων πρέπει να είναι ακέραιου "
+"τύπου δεδομένων\"). Η ύπαρξη στηλών μέσα σε μια σχέση που είναι διαφορετικών"
+" τύπων δεδομένων μπορεί να οδηγήσει σε διάφορα ζητήματα."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Οι στήλες δεδομένων πρέπει να έχουν μια στήλη προέλευσης. Μια στήλη "
+"δεδομένων χωρίς στήλη προέλευσης θα προκαλέσει σφάλμα κατά την επεξεργασία "
+"του μοντέλου."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Για να αποφύγετε σφάλματα, βεβαιωθείτε ότι οι ιεραρχίες χαρακτηριστικών "
+"είναι ενεργοποιημένες εάν μια στήλη χρησιμοποιείται για την ταξινόμηση μιας "
+"άλλης στήλης, χρησιμοποιείται σε ιεραρχία, χρησιμοποιείται σε παραλλαγές ή "
+"ταξινομείται κατά άλλη στήλη. Η ιδιότητα IsAvailableInMdx δεν σχετίζεται με "
+"μοντέλα Direct Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Η συνάρτηση USERELATIONSHIP δεν μπορεί να χρησιμοποιηθεί σε έναν πίνακα που "
+"αξιοποιεί επίσης την ασφάλεια σε επίπεδο γραμμών (RLS). Αυτό θα δημιουργήσει"
+" ένα σφάλμα κατά τη χρήση της συγκεκριμένης μέτρησης σε μια απεικόνιση. "
+"Αυτός ο κανόνας θα επισημάνει τον πίνακα που χρησιμοποιείται στη συνάρτηση "
+"USERELATIONSHIP μιας μέτρησης καθώς και στο RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Αποφύγετε τη χρήση της συνάρτησης IFERROR, καθώς μπορεί να προκαλέσει "
+"υποβάθμιση των επιδόσεων. Εάν ανησυχείτε για ένα σφάλμα διαίρεσης με το "
+"μηδέν, χρησιμοποιήστε τη συνάρτηση DIVIDE καθώς επιλύει φυσικά τέτοια "
+"σφάλματα ως κενό (ή μπορείτε να προσαρμόσετε τι πρέπει να εμφανίζεται σε "
+"περίπτωση τέτοιου σφάλματος)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Η συνάρτηση TREATAS είναι πιο αποτελεσματική και παρέχει καλύτερη απόδοση "
+"από τη συνάρτηση INTERSECT όταν χρησιμοποιείται σε ιογενείς σχέσεις."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Η συνάρτηση EVALUATEANDLOG προορίζεται να χρησιμοποιείται μόνο σε "
+"περιβάλλοντα ανάπτυξης/δοκιμής και δεν πρέπει να χρησιμοποιείται σε μοντέλα "
+"παραγωγής."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Ο κανόνας αυτός προσδιορίζει μέτρα που αποτελούν απλώς αναφορά σε άλλο "
+"μέτρο. Για παράδειγμα, εξετάστε ένα μοντέλο με δύο μέτρα: [Μέτρο Α] και "
+"[Μέτρο Β]. Αυτός ο κανόνας θα ενεργοποιούνταν για το MeasureB εάν το DAX του"
+" MeasureB ήταν MeasureB:=[MeasureA]. Αυτά τα αλληλεπικαλυπτόμενα μέτρα θα "
+"πρέπει να καταργηθούν."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Δύο μετρήσεις με διαφορετικά ονόματα και οριζόμενοι από την ίδια έκφραση DAX"
+" θα πρέπει να αποφεύγονται για να μειωθεί ο πλεονασμός."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Η προσθήκη μιας σταθερής τιμής μπορεί να οδηγήσει σε υποβάθμιση των "
+"επιδόσεων."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Αντί να χρησιμοποιήσετε τη σύνταξη '1-(x/y)' ή '1+(x/y)' για να επιτύχετε "
+"έναν υπολογισμό ποσοστού, χρησιμοποιήστε τις βασικές συναρτήσεις DAX (όπως "
+"φαίνεται παρακάτω). Η χρήση της βελτιωμένης σύνταξης θα βελτιώσει γενικά τις"
+" επιδόσεις. Το «1+/-...» Η σύνταξη επιστρέφει πάντα μια τιμή, ενώ η λύση "
+"χωρίς το '1+/-...' δεν το κάνει (καθώς η τιμή μπορεί να είναι «κενή»). Ως εκ"
+" τούτου, το «1+/-...» Η σύνταξη ενδέχεται να επιστρέψει περισσότερες "
+"γραμμές/στήλες, γεγονός που μπορεί να οδηγήσει σε χαμηλότερη ταχύτητα "
+"ερωτήματος.    Ας διευκρινίσουμε με ένα παράδειγμα: Αποφύγετε αυτό: 1 - SUM "
+"( 'Πωλήσεις'[Ποσό_κόστους] ) / SUM( 'Πωλήσεις'[Ποσό_πωλήσεων] ) Καλύτερα: "
+"DIVIDE ( 'Πωλήσεις'[Ποσό_πωλήσεων] ) - SUM ( 'Πωλήσεις'[Ποσό_κόστους] ), SUM"
+" ( 'Πωλήσεις'[Ποσό_πωλήσεων] ) ) ) Καλύτερο: VAR x = SUM ( "
+"'Πωλήσεις'[Ποσό_πωλήσεων] ) ΔΙΑΙΡΕΣΗ ΕΠΙΣΤΡΟΦΗΣ ( x - SUM ( "
+"'Πωλήσεις'[Ποσό_κόστους]), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Αντί να χρησιμοποιήσετε αυτό το μοτίβο FILTER('Table';[Measure]>Value) για τις παραμέτρους φίλτρου μιας συνάρτησης CALCULATE ή CALCULATETABLE, χρησιμοποιήστε μία από τις παρακάτω επιλογές (αν είναι δυνατόν). Το φιλτράρισμα σε μια συγκεκριμένη στήλη θα παράγει έναν μικρότερο πίνακα για επεξεργασία από τον κινητήρα, επιτρέποντας έτσι ταχύτερη απόδοση. Η χρήση της συνάρτησης VALUES ή της συνάρτησης ALL εξαρτάται από το επιθυμητό αποτέλεσμα μέτρησης.\n"
+"Επιλογή 1: FILTER(VALUES('Πίνακας'[Στήλη]);[Μέτρηση] > Τιμή)\n"
+"Επιλογή 2: FILTER(ALL('Πίνακας'[Στήλη]);[Μέτρηση] > Τιμή)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Αντί να χρησιμοποιήσετε αυτό το μοτίβο FILTER('Table';'Table'[Column]=\"Value\") για τις παραμέτρους φίλτρου μιας συνάρτησης CALCULATE ή CALCULATETABLE, χρησιμοποιήστε μία από τις παρακάτω επιλογές. Όσον αφορά τη χρήση της συνάρτησης KEEPFILTERS, ανατρέξτε στον δεύτερο σύνδεσμο αναφοράς παρακάτω.\n"
+"Επιλογή 1: KEEPFILTERS('Πίνακας'[Στήλη]=\"Τιμή\")\n"
+"Επιλογή 2: 'Πίνακας'[Στήλη]=\"Τιμή\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Χρησιμοποιήστε τη συνάρτηση DIVIDE αντί να χρησιμοποιήσετε το \"/\". Η "
+"συνάρτηση DIVIDE επιλύει υποθέσεις διαίρεσης με το μηδέν. Ως εκ τούτου, "
+"συνιστάται να χρησιμοποιείται για την αποφυγή σφαλμάτων."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Η χρήση πλήρως προσαρμοσμένων αναφορών στηλών διευκολύνει τη διάκριση μεταξύ"
+" αναφορών στηλών και μετρήσεων και βοηθά επίσης στην αποφυγή ορισμένων "
+"σφαλμάτων. Όταν γίνεται αναφορά σε μια στήλη στο DAX, καθορίστε πρώτα το "
+"όνομα του πίνακα και, στη συνέχεια, καθορίστε το όνομα της στήλης σε "
+"αγκύλες."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Η χρήση ακατάλληλων αναφορών μέτρησης διευκολύνει τη διάκριση μεταξύ "
+"αναφορών στηλών και αναφορών μέτρησης και βοηθά επίσης στην αποφυγή "
+"ορισμένων σφαλμάτων. Όταν γίνεται αναφορά σε μια μέτρηση που χρησιμοποιεί "
+"DAX, μην καθορίζετε το όνομα του πίνακα. Χρησιμοποιήστε μόνο το όνομα της "
+"μέτρησης σε αγκύλες."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Οι ανενεργές σχέσεις ενεργοποιούνται χρησιμοποιώντας τη συνάρτηση "
+"USERELATIONSHIP. Εάν μια ανενεργή σχέση δεν αναφέρεται σε κανένα μέτρο μέσω "
+"αυτής της συνάρτησης, η σχέση δεν θα χρησιμοποιηθεί. Θα πρέπει να καθοριστεί"
+" εάν η σχέση δεν είναι απαραίτητη ή να ενεργοποιηθεί η σχέση μέσω αυτής της "
+"μεθόδου."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Οι κρυφές στήλες που δεν αναφέρονται από παραστάσεις, σχέσεις, επίπεδα "
+"ιεραρχίας ή ιδιότητες ταξινόμησης DAX πρέπει να καταργηθούν."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Οι κρυφές μετρήσεις που δεν αναφέρονται από καμία έκφραση DAX πρέπει να "
+"καταργηθούν για λόγους διατηρησιμότητας."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Αυτός ο κανόνας επισημαίνει πίνακες που δεν είναι συνδεδεμένοι με κανέναν "
+"άλλο πίνακα του μοντέλου με σχέση."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Οι ομάδες υπολογισμού δεν έχουν συνάρτηση, εκτός εάν έχουν στοιχεία "
+"υπολογισμού."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Προσθέστε περιγραφές σε αντικείμενα. Αυτές οι περιγραφές εμφανίζονται στο "
+"δείκτη του ποντικιού μέσα στη λίστα πεδίων στο Power BI Desktop. Επιπλέον, "
+"μπορείτε να αξιοποιήσετε αυτές τις περιγραφές για να δημιουργήσετε ένα "
+"αυτοματοποιημένο λεξικό δεδομένων."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Οι στήλες τύπου \"DateTime\" που έχουν \"Month\" στα ονόματά τους θα πρέπει "
+"να μορφοποιούνται ως \"μμ/ηη/εεεε\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Οι αριθμητικές στήλες (ακέραιος, δεκαδικός, διπλός) θα πρέπει να έχουν την "
+"ιδιότητά τους ΣύνοψηΚατά ρυθμισμένη σε \"Καμία\" για να αποφευχθεί η τυχαία "
+"άθροιση στο Power BI (δημιουργία μετρήσεων)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Στις ορατές μετρήσεις θα πρέπει να έχει εκχωρηθεί η ιδιότητα συμβολοσειράς "
+"μορφής."
+
+# description
+msgid "Add data category for columns"
+msgstr "Προσθήκη ιδιότητας Κατηγορία δεδομένων για κατάλληλες στήλες."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Για καλύτερη εμπειρία χρήστη, οι μετρήσεις percengage θα πρέπει να "
+"μορφοποιούνται με το σύμβολο «%»."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Για καλύτερη εμπειρία χρήστη, οι ακέραιοι αριθμοί πρέπει να μορφοποιούνται "
+"με κόμματα."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Τα ξένα κλειδιά πρέπει πάντα να είναι κρυμμένα, καθώς δεν πρέπει να "
+"χρησιμοποιούνται από τους τελικούς χρήστες."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Ορίστε την ιδιότητα 'Κλειδί' σε 'True' για στήλες πρωτεύοντος κλειδιού εντός"
+" των ιδιοτήτων στήλης."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Αυτός ο κανόνας επισημαίνει τις στήλες μηνών που είναι συμβολοσειρές και δεν"
+" ταξινομούνται. Εάν αφεθούν αταξινόμητα, θα ταξινομηθούν αλφαβητικά (π.χ. "
+"Απρίλιος, Αύγουστος...). Φροντίστε να ταξινομήσετε αυτές τις στήλες έτσι "
+"ώστε να ταξινομούνται σωστά (Ιανουάριος, Φεβρουάριος, Μάρτιος...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Η βέλτιστη πρακτική είναι οι στήλες σχέσεων να είναι ακέραιου τύπου "
+"δεδομένων. Αυτό ισχύει όχι μόνο για την αποθήκευση δεδομένων αλλά και για τη"
+" μοντελοποίηση δεδομένων."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Οι στήλες τύπου \"DateTime\" που έχουν \"Month\" στα ονόματά τους θα πρέπει "
+"να μορφοποιούνται ως \"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Οι σημαίες πρέπει να είναι σωστά μορφοποιημένες ως Ναι/Όχι, καθώς αυτό είναι"
+" πιο ευανάγνωστο από τη χρήση ακέραιων τιμών 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Τα αντικείμενα δεν πρέπει να ξεκινούν ή να τελειώνουν με κενό διάστημα. Αυτό"
+" συμβαίνει συνήθως τυχαία και είναι δύσκολο να βρεθεί."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Το πρώτο γράμμα των ονομάτων αντικειμένων πρέπει να είναι κεφαλαίο για να "
+"διατηρηθεί η επαγγελματική ποιότητα."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr ""
+"Τα ονόματα αντικειμένων δεν πρέπει να περιλαμβάνουν στηλοθέτες, αλλαγές "
+"γραμμών κ.λπ."

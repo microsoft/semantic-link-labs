@@ -1,0 +1,976 @@
+#
+msgid ""
+msgstr ""
+"Language: ta-IN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "ஃப்ளோட்டிங் பாயிண்ட் டேட்டா வகைகளைப் பயன்படுத்த வேண்டாம்"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "கணக்கிடப்பட்ட நெடுவரிசைகளைப் பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"இரு திசை மற்றும் பல முதல் பல உறவுகள் செல்லுபடியாகுமா என்று சரிபார்க்கவும்"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "டைனமிக் வரிசை நிலை பாதுகாப்பு (RLS) தேவையா என சரிபார்க்கவும்"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"டைனமிக் வரிசை நிலை பாதுகாப்பிற்காக பயன்படுத்தப்படும் அட்டவணைகளில் பல முதல் "
+"பல உறவுகளைப் பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "பல முதல் பல உறவுகள் ஒற்றை திசையில் இருக்க வேண்டும்"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx ஐ பண்புக்கூறு அல்லாத நெடுவரிசைகளில் தவறாக அமைக்கவும்"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ஒரு கலப்பின அட்டவணையின் DirectQuery பகிர்வில் 'தரவு கவரேஜ் வரையறை' குணத்தை "
+"அமைக்கவும்"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"தொடர்புடைய உண்மை அட்டவணைக்கு DirectQuery பயன்படுத்தப்பட்டால் பரிமாண "
+"அட்டவணைகளுக்கு மட்டுமே இரட்டை பயன்முறை பொருந்தும்"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"உண்மை அட்டவணைகளில் DirectQuery ஐப் பயன்படுத்தும் போது இறக்குமதிக்கு பதிலாக "
+"பரிமாண அட்டவணைகளை இரட்டை பயன்முறைக்கு அமைக்கவும்"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "சக்தி வினவல் மாற்றங்களை குறைக்கவும்"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"ஸ்னோஃப்ளேக் கட்டிடக்கலைக்கு பதிலாக ஒரு நட்சத்திர-திட்டத்தைக் கவனியுங்கள்"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"நேரடி ஏரி பயன்முறையைப் பயன்படுத்தும் போது காட்சிகளைப் பயன்படுத்துவதைத் "
+"தவிர்க்கவும்"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "ஒரு நடவடிக்கையில் 0 ஐச் சேர்ப்பதைத் தவிர்க்கவும்"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "கணக்கிடப்பட்ட அட்டவணைகளின் பயன்பாட்டைக் குறைக்கவும்"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"தொடர்புடைய செயல்பாட்டைப் பயன்படுத்தும் கணக்கிடப்பட்ட நெடுவரிசைகளின் "
+"பயன்பாட்டைக் குறைக்கவும்"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "அதிகப்படியான இரு-திசை அல்லது பல உறவுகளைத் தவிர்க்கவும்"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "தானியங்கு தேதி அட்டவணையை அகற்று"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "தேதி / காலண்டர் அட்டவணைகள் தேதி அட்டவணையாக குறிக்கப்பட வேண்டும்"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "பெரிய அட்டவணைகள் பகிரப்பட வேண்டும்"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "வரம்பு வரிசை நிலை பாதுகாப்பு (RLS) தர்க்கம்"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "மாடலில் தேதி அட்டவணை இருக்க வேண்டும்"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "கணக்கீட்டு உருப்படிகளில் ஒரு வெளிப்பாடு இருக்க வேண்டும்"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "உறவு பத்திகள் ஒரே தரவினத்தில் இருக்க வேண்டும்"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "தரவு நெடுவரிசைகள் மூல நெடுவரிசையைக் கொண்டிருக்க வேண்டும்"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx ஐ தேவையான நெடுவரிசைகளில் உண்மையாக அமைக்கவும்"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"ஒரே டேபிளுக்கு எதிராக USERELATIONSHIP செயல்பாடு மற்றும் RLS ஐ தவிர்க்கவும்"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR செயல்பாட்டைப் பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"மெய்நிகர் உறவுகளுக்கு INTERSECT க்கு பதிலாக TREATAS செயல்பாட்டைப் "
+"பயன்படுத்தவும்"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG செயல்பாடு உற்பத்தி மாதிரிகளில் பயன்படுத்தப்படக்கூடாது"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "நடவடிக்கைகள் மற்ற நடவடிக்கைகளின் நேரடி குறிப்புகளாக இருக்கக்கூடாது"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "எந்த இரண்டு நடவடிக்கைகளும் ஒரே வரையறையைக் கொண்டிருக்கக்கூடாது"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"வகுத்தலின் முடிவுகளுடன் மாறிலி மதிப்புகளைக் கூட்டுவதையோ அல்லது கழிப்பதையோ "
+"தவிர்க்கவும்"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' syntax பயன்படுத்துவதை தவிர்க்கவும்"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"வடிகட்டி அளவீட்டு மதிப்புகளை அட்டவணைகளால் அல்ல, நெடுவரிசைகளால் வடிகட்டவும்"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "நெடுவரிசை மதிப்புகளை சரியான தொடரியல் மூலம் வடிகட்டவும்"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "வகுத்தலுக்கு DIVIDE செயல்பாட்டைப் பயன்படுத்தவும்"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "நெடுவரிசை குறிப்புகள் முழுமையாக தகுதி பெற்றிருக்க வேண்டும்"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "அளவீட்டு குறிப்புகள் தகுதியற்றதாக இருக்க வேண்டும்"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "ஒருபோதும் செயல்படுத்தப்படாத செயலற்ற உறவுகள்"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "தேவையற்ற பத்திகளை அகற்றவும்"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "தேவையற்ற நடவடிக்கைகளை நீக்கவும்"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "அட்டவணைகள் உறவுகளைக் கொண்டிருப்பதை உறுதிப்படுத்தவும்"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "கணக்கீட்டு உருப்படிகள் இல்லாத கணக்கீட்டு குழுக்கள்"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "விளக்கம் இல்லாமல் காணக்கூடிய பொருள்கள்"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "'தேதி' நெடுவரிசைகளுக்கான வடிவமைப்பு சரத்தை வழங்கவும்"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "எண் நெடுவரிசைகளை சுருக்க வேண்டாம்"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "அளவீடுகளுக்கு வடிவமைப்பு சரத்தை வழங்கவும்"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "நெடுவரிசைகளுக்கான தரவு வகையைச் சேர்க்கவும்"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"சதவீதங்கள் ஆயிரக்கணக்கான பிரிப்பான்கள் மற்றும் 1 தசமத்துடன் வடிவமைக்கப்பட "
+"வேண்டும்"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"முழு எண்கள் ஆயிரக்கணக்கான பிரிப்பான்களுடன் வடிவமைக்கப்பட வேண்டும், தசமங்கள் "
+"இல்லாமல் இருக்க வேண்டும்"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "வெளிநாட்டு விசைகளை மறை"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "முதன்மை விசைகளை குறிக்கவும்"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "மாதம் (ஒரு சரமாக) வரிசைப்படுத்தப்பட வேண்டும்"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "உறவு நெடுவரிசைகள் முழுஎண் தரவினமாக இருக்க வேண்டும்"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"மாதம்\" நெடுவரிசைகளுக்கான வடிவமைப்பு சரத்தை வழங்கவும்"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "கொடி நெடுவரிசைகளை ஆம்/இல்லை மதிப்பு சரங்களாக வடிவமைக்கவும்"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "பொருள்கள் இடைவெளியுடன் தொடங்கவோ அல்லது முடிவடையவோ கூடாது"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "பொருள்களின் முதல் எழுத்து பெரியதாக இருக்க வேண்டும்"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "பொருள் பெயர்களில் சிறப்பு கேரக்டர்கள் இருக்கக்கூடாது"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "செயல்திறன்"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "செயல்திறன்"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "செயல்திறன்"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "செயல்திறன்"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Remove auto-date table"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Model should have a date table"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "பிழை தடுப்பு"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "பிழை தடுப்பு"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "பிழை தடுப்பு"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "பிழை தடுப்பு"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "பிழை தடுப்பு"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "பராமரிப்பு"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "பராமரிப்பு"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "பராமரிப்பு"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "பராமரிப்பு"
+
+# category
+msgid "Visible objects with no description"
+msgstr "பராமரிப்பு"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Provide format string for measures"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Add data category for columns"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Hide foreign keys"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Mark primary keys"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "வடிவமைத்தல்"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "பெயரிடும் மரபுகள்"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"\"இரட்டை\" மிதக்கும் புள்ளி தரவு வகை தவிர்க்கப்பட வேண்டும், ஏனெனில் இது "
+"கணிக்க முடியாத ரவுண்டாஃப் பிழைகள் மற்றும் சில சூழ்நிலைகளில் செயல்திறன் "
+"குறையும். பொருத்தமான இடங்களில் \"Int64\" அல்லது \"தசமம்\" பயன்படுத்தவும் "
+"(ஆனால் \"தசமம்\" என்பது தசம அடையாளத்திற்குப் பிறகு 4 இலக்கங்களுக்கு "
+"மட்டுப்படுத்தப்பட்டுள்ளது என்பதை நினைவில் கொள்ளவும்)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"கணக்கிடப்பட்ட நெடுவரிசைகள் தரவு நெடுவரிசைகளைப் போலவே சுருக்கப்படுவதில்லை, "
+"எனவே அவை அதிக நினைவகத்தை எடுத்துக்கொள்கின்றன. அவை அட்டவணை மற்றும் செயல்முறை "
+"ரெகால்க் இரண்டிற்கும் செயலாக்க நேரங்களையும் மெதுவாக்குகின்றன. கணக்கிடப்பட்ட "
+"நெடுவரிசை தர்க்கத்தை உங்கள் தரவு கிடங்கில் ஏற்றவும், இந்த கணக்கிடப்பட்ட "
+"நெடுவரிசைகளை தரவு நெடுவரிசைகளாக மாற்றவும்."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"டைனமிக் வரிசை நிலை பாதுகாப்பு (ஆர்.எல்.எஸ்) பயன்பாடு நினைவகம் மற்றும் "
+"செயல்திறன் மேல்நிலை சேர்க்க முடியும். அதைப் பயன்படுத்துவதன் நன்மை தீமைகளை "
+"ஆராயுங்கள்."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"டைனமிக் வரிசை நிலை பாதுகாப்பைப் பயன்படுத்தும் அட்டவணைகளில் பல முதல் பல "
+"உறவுகளைப் பயன்படுத்துவது கடுமையான வினவல் செயல்திறன் சீரழிவை ஏற்படுத்தும். "
+"வரிசை நிலை பாதுகாப்பைக் கொண்ட ஒரு அட்டவணைக்கு எதிராக பல முதல் பல உறவுகளை "
+"பனிப்பொழிவு செய்யும் போது இந்த வடிவத்தின் செயல்திறன் சிக்கல்கள் "
+"அதிகரிக்கின்றன. அதற்கு பதிலாக, கீழேயுள்ள கட்டுரையில் காட்டப்பட்டுள்ள "
+"வடிவங்களில் ஒன்றைப் பயன்படுத்தவும், அங்கு ஒற்றை பரிமாண அட்டவணை பலவற்றை "
+"பாதுகாப்பு அட்டவணையுடன் தொடர்புபடுத்துகிறது."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"செயலாக்க நேரத்தை விரைவுபடுத்துவதற்கும், செயலாக்கத்திற்குப் பிறகு "
+"நினைவகத்தைப் பாதுகாப்பதற்கும், எம்.டி.எக்ஸ் வாடிக்கையாளர்களால் வெட்டுவதற்கு "
+"ஒருபோதும் பயன்படுத்தப்படாத நெடுவரிசைகளுக்கு பண்புக்கூறு படிநிலைகள் "
+"கட்டப்படக்கூடாது. வேறு வார்த்தைகளில் கூறுவதானால், நெடுவரிசை மூலம் "
+"வரிசைப்படுத்தலாகப் பயன்படுத்தப்படாத அல்லது பயனர் படிநிலைகளில் "
+"குறிப்பிடப்படாத அனைத்து மறைக்கப்பட்ட நெடுவரிசைகளும் அவற்றின் "
+"IsAvailableInMdx சொத்து தவறாக அமைக்கப்பட வேண்டும். IsAvailableInMdx சொத்து "
+"நேரடி ஏரி மாதிரிகளுக்கு பொருந்தாது."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"'தரவு கவரேஜ் வரையறை' சொத்தை அமைப்பது சிறந்த செயல்திறனுக்கு வழிவகுக்கும், "
+"ஏனெனில் அட்டவணையின் இறக்குமதி-பகுதியை மட்டுமே எப்போது வினவ முடியும் மற்றும் "
+"அட்டவணையின் டைரக்ட்க்வெரி பகுதியை எப்போது வினவ வேண்டும் என்பது "
+"இயந்திரத்திற்குத் தெரியும்."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"DirectQuery இல் தொடர்புடைய உண்மை அட்டவணை இருக்கும் பரிமாண அட்டவணைகள் / "
+"பகிர்வுகளுக்கு மட்டுமே இரட்டை பயன்முறையைப் பயன்படுத்தவும். மற்ற "
+"சூழ்நிலைகளில் இரட்டை பயன்முறையைப் பயன்படுத்துவது (அதாவது மாதிரியின் "
+"மீதமுள்ளவை இறக்குமதி பயன்முறையில் உள்ளன) செயல்திறன் சிக்கல்களுக்கு "
+"வழிவகுக்கும், குறிப்பாக மாதிரியில் நடவடிக்கைகளின் எண்ணிக்கை அதிகமாக "
+"இருந்தால்."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"DirectQuery பயன்படுத்தும் போது, வினவல் செயல்திறனை மேம்படுத்த பரிமாண "
+"அட்டவணைகள் இரட்டை பயன்முறைக்கு அமைக்கப்பட வேண்டும்."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"மாதிரி செயலாக்க செயல்திறனை மேம்படுத்த பவர் வினவல் மாற்றங்களை குறைக்கவும். "
+"முடிந்தால் இந்த மாற்றங்களை தரவு கிடங்கிற்கு ஆஃப்லோட் செய்வது சிறந்த "
+"நடைமுறையாகும். மேலும், உங்கள் மாடலுக்குள் வினவல் மடிப்பு நிகழ்கிறதா என்பதை "
+"சரிபார்க்கவும். வினவல் மடிப்பு பற்றிய கூடுதல் தகவலுக்கு கீழே உள்ள "
+"கட்டுரையைப் பார்க்கவும்."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"பொதுவாக, ஒரு நட்சத்திர-ஸ்கீமா என்பது அட்டவணை மாதிரிகளுக்கான உகந்த "
+"கட்டமைப்பாகும். அப்படியானால், ஸ்னோஃப்ளேக் அணுகுமுறையைப் பயன்படுத்த சரியான "
+"வழக்குகள் உள்ளன. உங்கள் மாதிரியைச் சரிபார்த்து, நட்சத்திர-ஸ்கீமா "
+"கட்டமைப்பிற்கு மாறுவதைக் கவனியுங்கள்."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"நேரடி ஏரி பயன்முறையில், காட்சிகள் எப்போதும் DirectQuery க்கு திரும்பும். "
+"எனவே, சிறந்த செயல்திறனைப் பெற, காட்சிகளுக்கு பதிலாக லேக்ஹவுஸ் அட்டவணைகளைப் "
+"பயன்படுத்தவும்."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"வெற்று மதிப்பைக் காட்டாமல் இருப்பதற்காக ஒரு அளவீட்டில் 0 ஐச் சேர்ப்பது "
+"செயல்திறனை எதிர்மறையாக பாதிக்கலாம்."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"கணக்கிடப்பட்ட அட்டவணை தர்க்கத்தை உங்கள் தரவு கிடங்கிற்கு நகர்த்தவும். "
+"கணக்கிடப்பட்ட அட்டவணைகளை நம்பியிருப்பது உங்கள் மேடையில் பல மாதிரிகள் "
+"இருந்தால் தொழில்நுட்ப கடன் மற்றும் சாத்தியமான தவறான சீரமைப்புகளுக்கு "
+"வழிவகுக்கும்."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"கணக்கிடப்பட்ட நெடுவரிசைகள் தரவு நெடுவரிசைகளை சுருக்குவதில்லை மற்றும் நீண்ட "
+"செயலாக்க நேரங்களை ஏற்படுத்தக்கூடும். எனவே, கணக்கிடப்பட்ட நெடுவரிசைகள் "
+"முடிந்தால் தவிர்க்கப்பட வேண்டும். அவர்கள் தொடர்புடைய செயல்பாட்டைப் "
+"பயன்படுத்தினால், அவற்றைத் தவிர்ப்பது எளிதாக இருக்கும் ஒரு சூழ்நிலை."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"பி-டி மற்றும் பல முதல் பல உறவுகளின் பயன்பாட்டைக் கட்டுப்படுத்துங்கள். இந்த "
+"விதி 30% க்கும் மேற்பட்ட உறவுகள் பி-டி அல்லது பலவற்றிலிருந்து பலவாக "
+"இருந்தால் மாதிரியைக் கொடியிடுகிறது."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"தானியங்கு தேதி அட்டவணைகளைப் பயன்படுத்துவதைத் தவிர்க்கவும். Power BI "
+"டெஸ்க்டாப்பில் உள்ள அமைப்புகளில் தானியங்கு தேதி அட்டவணையை அணைப்பதை "
+"உறுதிசெய்யவும். இது நினைவக வளங்களை சேமிக்கும்."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"இந்த விதி 'தேதி' அல்லது 'காலெண்டர்' என்ற சொற்களைக் கொண்ட அட்டவணைகளைத் "
+"தேடுகிறது, ஏனெனில் அவை தேதி அட்டவணையாக குறிக்கப்பட வேண்டும்."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"செயலாக்கத்தை மேம்படுத்த பெரிய அட்டவணைகள் பிரிக்கப்பட வேண்டும். டைரக்ட் லேக் "
+"பயன்முறையில் உள்ள சொற்பொருள் மாதிரிகளுக்கு இது பொருந்தாது, ஏனெனில் அவை ஒரு "
+"அட்டவணைக்கு ஒரு பகிர்வை மட்டுமே கொண்டிருக்க முடியும்."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"வரிசை நிலை பாதுகாப்பிற்கு பயன்படுத்தப்படும் DAX ஐ எளிமைப்படுத்த "
+"முயற்சிக்கவும். இந்த விதிக்கு உட்பட்ட செயல்பாடுகளின் பயன்பாடு அப்ஸ்ட்ரீம் "
+"அமைப்புகளுக்கு (தரவு கிடங்கு) ஆஃப்லோட் செய்யப்படலாம்."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"பொதுவாக, மாதிரிகள் பொதுவாக தேதி அட்டவணையைக் கொண்டிருக்க வேண்டும். தேதி "
+"அட்டவணை இல்லாத மாதிரிகள் பொதுவாக நேர நுண்ணறிவு போன்ற அம்சங்களைப் "
+"பயன்படுத்துவதில்லை அல்லது ஒழுங்காக கட்டமைக்கப்பட்ட கட்டமைப்பைக் "
+"கொண்டிருக்காமல் இருக்கலாம்."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"கணக்கீட்டு உருப்படிகளில் ஒரு வெளிப்பாடு இருக்க வேண்டும். ஒரு வெளிப்பாடு "
+"இல்லாமல், அவர்கள் எந்த மதிப்புகளையும் காட்ட மாட்டார்கள்."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"உறவில் பயன்படுத்தப்படும் நெடுவரிசைகள் ஒரே தரவினத்தைச் சேர்ந்தவையாக இருக்க "
+"வேண்டும். வெறுமனே, அவை முழு எண் தரவினமாக இருக்கும் (தொடர்புடைய விதியைப் "
+"பார்க்கவும் '[வடிவமைத்தல்] உறவு நெடுவரிசைகள் முழு எண் தரவினமாக இருக்க "
+"வேண்டும்'). வெவ்வேறு தரவு வகைகளைக் கொண்ட ஒரு உறவுக்குள் நெடுவரிசைகளைக் "
+"கொண்டிருப்பது பல்வேறு சிக்கல்களுக்கு வழிவகுக்கும்."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"தரவு நெடுவரிசைகள் மூல நெடுவரிசையைக் கொண்டிருக்க வேண்டும். மூல நெடுவரிசை "
+"இல்லாத தரவு நெடுவரிசை மாதிரியை செயலாக்கும் போது பிழையை ஏற்படுத்தும்."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"பிழைகளைத் தவிர்ப்பதற்காக, ஒரு நெடுவரிசை மற்றொரு நெடுவரிசையை வரிசைப்படுத்த "
+"பயன்படுத்தப்பட்டால், ஒரு படிநிலையில் பயன்படுத்தப்பட்டால், மாறுபாடுகளில் "
+"பயன்படுத்தப்பட்டால் அல்லது மற்றொரு நெடுவரிசையால் வரிசைப்படுத்தப்பட்டால் "
+"பண்புக்கூறு படிநிலைகள் இயக்கப்பட்டுள்ளதா என்பதை உறுதிப்படுத்தவும். "
+"IsAvailableInMdx சொத்து நேரடி ஏரி மாதிரிகளுக்கு பொருந்தாது."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"USERELATIONSHIP செயல்பாடு ஒரு அட்டவணைக்கு எதிராக பயன்படுத்தப்படாமல் போகலாம்,"
+" இது வரிசை-நிலை பாதுகாப்பையும் (RLS) பயன்படுத்துகிறது. ஒரு காட்சியில் "
+"குறிப்பிட்ட அளவைப் பயன்படுத்தும் போது இது பிழையை உருவாக்கும். இந்த விதி ஒரு "
+"அளவீட்டின் USERELATIONSHIP செயல்பாடு மற்றும் RLS இல் பயன்படுத்தப்படும் "
+"அட்டவணையை முன்னிலைப்படுத்தும்."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"IFERROR செயல்பாட்டைப் பயன்படுத்துவதைத் தவிர்க்கவும், ஏனெனில் இது செயல்திறன் "
+"சரிவை ஏற்படுத்தக்கூடும். பூஜ்ஜியத்தால் வகுக்கப்பட்ட பிழையைப் பற்றி நீங்கள் "
+"கவலைப்படுகிறீர்கள் என்றால், DIVIDE செயல்பாட்டைப் பயன்படுத்தவும், ஏனெனில் இது"
+" இயற்கையாகவே வெற்று போன்ற பிழைகளைத் தீர்க்கிறது (அல்லது அத்தகைய பிழை "
+"ஏற்பட்டால் என்ன காட்டப்பட வேண்டும் என்பதை நீங்கள் தனிப்பயனாக்கலாம்)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"TREATAS செயல்பாடு மிகவும் திறமையானது மற்றும் virutal உறவுகளில் "
+"பயன்படுத்தப்படும் போது INTERSECT செயல்பாட்டை விட சிறந்த செயல்திறனை "
+"வழங்குகிறது."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"EVALUATEANDLOG செயல்பாடு வளர்ச்சி/சோதனை சூழல்களில் மட்டுமே பயன்படுத்தப்பட "
+"வேண்டும் மற்றும் உற்பத்தி மாதிரிகளில் பயன்படுத்தப்படக்கூடாது."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"இந்த விதி வெறுமனே மற்றொரு அளவீட்டிற்கான குறிப்பான நடவடிக்கைகளை அடையாளம் "
+"காட்டுகிறது. உதாரணமாக, இரண்டு அளவீடுகளைக் கொண்ட மாதிரியைக் கவனியுங்கள்: "
+"[MeasureA] மற்றும் [MeasureB]. MeasureB இன் DAX MeasureB:=[MeasureA] ஆக "
+"இருந்தால் இந்த விதி MeasureB க்கு தூண்டப்படும். இதுபோன்ற போலி நடவடிக்கைகள் "
+"அகற்றப்பட வேண்டும்."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"வெவ்வேறு பெயர்களைக் கொண்ட மற்றும் ஒரே DAX வெளிப்பாட்டால் வரையறுக்கப்பட்ட "
+"இரண்டு நடவடிக்கைகள் பணிநீக்கத்தைக் குறைக்க தவிர்க்கப்பட வேண்டும்."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "நிலையான மதிப்பைச் சேர்ப்பது செயல்திறன் சரிவுக்கு வழிவகுக்கும்."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"சதவீத கணக்கீட்டை அடைய '1- (x/y)' அல்லது '1+(x/y)' தொடரியல் பயன்படுத்துவதற்கு"
+" பதிலாக, அடிப்படை DAX செயல்பாடுகளை பயன்படுத்தவும் (கீழே காட்டப்பட்டுள்ளபடி)."
+" மேம்படுத்தப்பட்ட தொடரியல் பயன்படுத்துவது பொதுவாக செயல்திறனை மேம்படுத்தும். "
+"'1+/-...' தொடரியல் எப்போதும் ஒரு மதிப்பைத் தருகிறது, அதேசமயம் '1+/-...' "
+"இல்லாத தீர்வு இல்லை (மதிப்பு 'வெற்று' ஆக இருக்கலாம்). எனவே '1+/-...' "
+"தொடரியல் அதிக வரிசைகள் / நெடுவரிசைகளை வழங்கக்கூடும், இதன் விளைவாக மெதுவான "
+"வினவல் வேகம் ஏற்படலாம்.    ஒரு உதாரணத்துடன் தெளிவுபடுத்துவோம்: இதைத் "
+"தவிர்க்கவும்: 1 - SUM ('விற்பனை'[CostAmount]) / SUM ('விற்பனை'[SalesAmount])"
+" சிறந்தது: SUM ( SUM ( 'Sales' [SalesAmount]) - SUM ( 'Sales' [CostAmount]),"
+" SUM ( 'Sales' [SalesAmount]) ) சிறந்த: VAR x = SUM ( 'விற்பனை' "
+"[SalesAmount]) ரிட்டர்ன் வகுத்தல் ( x - SUM ( 'விற்பனை' [CostAmount]), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"CALCULATE அல்லது CALCULATETABLE செயல்பாட்டின் வடிகட்டி அளவுருக்களுக்கு இந்த வடிவத்தை FILTER ('அட்டவணை',[அளவீடு]>மதிப்பு) பயன்படுத்துவதற்குப் பதிலாக, கீழே உள்ள விருப்பங்களில் ஒன்றைப் பயன்படுத்தவும் (முடிந்தால்). ஒரு குறிப்பிட்ட நெடுவரிசையில் வடிகட்டுவது இயந்திரம் செயலாக்க ஒரு சிறிய அட்டவணையை உருவாக்கும், இதனால் விரைவான செயல்திறனை செயல்படுத்தும். VALUES செயல்பாடு அல்லது ALL செயல்பாட்டைப் பயன்படுத்துவது விரும்பிய அளவீட்டு முடிவைப் பொறுத்தது.\n"
+"விருப்பம் 1: வடிகட்டி (மதிப்புகள் ('அட்டவணை' [நெடுவரிசை]), [அளவீடு] > மதிப்பு)\n"
+"விருப்பம் 2: வடிகட்டி (ALL('அட்டவணை'[நெடுவரிசை]), [அளவீடு] > மதிப்பு)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"CALCULATE அல்லது CALCULATETABLE செயல்பாட்டின் வடிகட்டி அளவுருக்களுக்கு இந்த வடிவத்தை FILTER ('Table','Table'[Column] = \"Value\") பயன்படுத்துவதற்குப் பதிலாக, கீழே உள்ள விருப்பங்களில் ஒன்றைப் பயன்படுத்தவும். KEEPFILTERS செயல்பாட்டைப் பயன்படுத்தலாமா என்பதைப் பொறுத்தவரை, கீழே உள்ள இரண்டாவது குறிப்பு இணைப்பைப் பார்க்கவும்.\n"
+"விருப்பம் 1: KEEPFILTERS ('அட்டவணை'[நெடுவரிசை] = \"மதிப்பு\")\n"
+"விருப்பம் 2: 'அட்டவணை'[நெடுவரிசை]=\"மதிப்பு\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"\"/\" ஐப் பயன்படுத்துவதற்குப் பதிலாக DIVIDE செயல்பாட்டைப் பயன்படுத்தவும். "
+"DIVIDE செயல்பாடு வகு-பூஜ்ஜிய வழக்குகளைத் தீர்க்கிறது. எனவே, பிழைகளைத் "
+"தவிர்க்க பயன்படுத்த பரிந்துரைக்கப்படுகிறது."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"முழு தகுதி வாய்ந்த நெடுவரிசை குறிப்புகளைப் பயன்படுத்துவது நெடுவரிசை மற்றும் "
+"அளவீட்டு குறிப்புகளை வேறுபடுத்துவதை எளிதாக்குகிறது, மேலும் சில பிழைகளைத் "
+"தவிர்க்கவும் உதவுகிறது. DAX இல் ஒரு நெடுவரிசையைக் குறிப்பிடும்போது, முதலில் "
+"அட்டவணை பெயரைக் குறிப்பிடவும், பின்னர் நெடுவரிசை பெயரை சதுர "
+"அடைப்புக்குறிக்குள் குறிப்பிடவும்."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"தகுதியற்ற அளவீட்டு குறிப்புகளைப் பயன்படுத்துவது நெடுவரிசை மற்றும் அளவீட்டு "
+"குறிப்புகளை வேறுபடுத்துவதை எளிதாக்குகிறது, மேலும் சில பிழைகளைத் தவிர்க்கவும்"
+" உதவுகிறது. DAX ஐப் பயன்படுத்தி ஒரு அளவீட்டைக் குறிப்பிடும்போது, அட்டவணை "
+"பெயரைக் குறிப்பிட வேண்டாம். சதுர அடைப்புக்குறிக்குள் அளவீட்டு பெயரை மட்டுமே "
+"பயன்படுத்தவும்."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"செயலற்ற உறவுகள் USERELATIONSHIP செயல்பாட்டைப் பயன்படுத்தி "
+"செயல்படுத்தப்படுகின்றன. ஒரு செயலற்ற உறவு இந்த செயல்பாட்டின் மூலம் எந்த "
+"அளவிலும் குறிப்பிடப்படவில்லை என்றால், உறவு பயன்படுத்தப்படாது. உறவு "
+"அவசியமில்லையா அல்லது இந்த முறையின் மூலம் உறவை செயல்படுத்த வேண்டுமா என்பதை "
+"தீர்மானிக்க வேண்டும்."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"எந்த DAX வெளிப்பாடுகள், உறவுகள், படிநிலை நிலைகள் அல்லது வரிசை துணை "
+"பண்புகளால் குறிப்பிடப்படாத மறைக்கப்பட்ட நெடுவரிசைகள் அகற்றப்பட வேண்டும்."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"எந்த DAX வெளிப்பாடுகளாலும் குறிப்பிடப்படாத மறைக்கப்பட்ட நடவடிக்கைகள் "
+"பராமரிப்புக்காக அகற்றப்பட வேண்டும்."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"இந்த விதி ஒரு உறவுடன் மாதிரியில் வேறு எந்த அட்டவணையுடனும் இணைக்கப்படாத "
+"அட்டவணைகளை எடுத்துக்காட்டுகிறது."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"கணக்கீட்டு உருப்படிகள் இல்லாவிட்டால் கணக்கீட்டு குழுக்களுக்கு எந்த "
+"செயல்பாட்டும் இல்லை."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"பொருள்களுக்கு விளக்கங்களைச் சேர்க்கவும். இந்த விளக்கங்கள் Power BI "
+"டெஸ்க்டாப்பில் உள்ள புலப் பட்டியலில் மிதவையில் காட்டப்பட்டுள்ளன. கூடுதலாக, "
+"தானியங்கி தரவு அகராதியை உருவாக்க இந்த விளக்கங்களை நீங்கள் பயன்படுத்தலாம்."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"அவற்றின் பெயர்களில் \"Month\" ஐக் கொண்ட \"DateTime\" வகை நெடுவரிசைகள் "
+"\"mm/dd/yyyy\" என வடிவமைக்கப்பட வேண்டும்."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"எண் நெடுவரிசைகள் (முழு எண், தசமம், இரட்டை) அவற்றின் சுருக்கம் மூலம் சொத்து "
+"\"எதுவுமில்லை\" என அமைக்கப்பட வேண்டும் பவர் BI இல் தற்செயலான கூட்டலைத் "
+"தவிர்க்க (அதற்கு பதிலாக நடவடிக்கைகளை உருவாக்கவும்)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"காணக்கூடிய அளவீடுகள் அவற்றின் வடிவமைப்பு சரம் சொத்து ஒதுக்கப்பட வேண்டும்."
+
+# description
+msgid "Add data category for columns"
+msgstr "பொருத்தமான நெடுவரிசைகளுக்கு தரவு வகை குணத்தைச் சேர்க்கவும்."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"சிறந்த பயனர் அனுபவத்திற்கு, percengage நடவடிக்கைகள் '%' அடையாளத்துடன் "
+"வடிவமைக்கப்பட வேண்டும்."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"சிறந்த பயனர் அனுபவத்திற்காக, முழு எண்களும் காற்புள்ளிகளுடன் வடிவமைக்கப்பட "
+"வேண்டும்."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"வெளிநாட்டு விசைகள் எப்போதும் மறைக்கப்பட வேண்டும், ஏனெனில் அவை இறுதி "
+"பயனர்களால் பயன்படுத்தப்படக்கூடாது."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"நெடுவரிசை பண்புகளில் உள்ள முதன்மை விசை நெடுவரிசைகளுக்கு 'விசை' பண்பை 'உண்மை'"
+" என அமைக்கவும்."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"இந்த விதி சரங்களாக இருக்கும் மற்றும் வரிசைப்படுத்தப்படாத மாத நெடுவரிசைகளை "
+"எடுத்துக்காட்டுகிறது. வரிசைப்படுத்தாமல் விட்டால், அவை அகர வரிசைப்படி "
+"வரிசைப்படுத்தப்படும் (அதாவது ஏப்ரல், ஆகஸ்ட்...). அத்தகைய நெடுவரிசைகளை "
+"ஒழுங்காக வரிசைப்படுத்துவதை உறுதிப்படுத்திக் கொள்ளுங்கள் (ஜனவரி, பிப்ரவரி, "
+"மார்ச்...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"உறவு நெடுவரிசைகள் முழுஎண் தரவினமாக இருப்பது சிறந்த நடைமுறையாகும். இது தரவு "
+"கிடங்கிற்கு மட்டுமல்ல, தரவு மாடலிங்கிற்கும் பொருந்தும்."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"அவற்றின் பெயர்களில் \"மாதம்\" கொண்ட \"DateTime\" வகை நெடுவரிசைகள் \"MMMM "
+"yyyy\" என வடிவமைக்கப்பட வேண்டும்."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"கொடிகள் ஆம்/இல்லை என சரியாக வடிவமைக்கப்பட வேண்டும், ஏனெனில் இது 0/1 முழு எண்"
+" மதிப்புகளைப் பயன்படுத்துவதை விட படிக்க எளிதானது."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"பொருள்கள் இடைவெளியுடன் தொடங்கவோ அல்லது முடிவடையவோ கூடாது. இது வழக்கமாக "
+"தற்செயலாக நிகழ்கிறது மற்றும் கண்டுபிடிக்க கடினமாக உள்ளது."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"தொழில்முறை தரத்தை பராமரிக்க பொருள் பெயர்களின் முதல் எழுத்து பெரியதாக இருக்க "
+"வேண்டும்."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "பொருள் பெயர்களில் தாவல்கள், வரி இடைவெளிகள் போன்றவை இருக்கக்கூடாது."
