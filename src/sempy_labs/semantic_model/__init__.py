@@ -6,9 +6,6 @@ from ._copilot import (
 from ._caching import (
     enable_query_caching,
 )
-from ._vertipaq_analyzer import (
-    vertipaq_analyzer,
-)
 
 
 __all__ = [
@@ -16,5 +13,4 @@ __all__ = [
     "set_endorsement",
     "make_discoverable",
     "enable_query_caching",
-    "vertipaq_analyzer",
 ]
