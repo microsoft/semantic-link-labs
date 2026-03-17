@@ -154,7 +154,7 @@ def vertipaq_analyzer(
     export : typing.Literal['table'], default=None
         If set to 'table', the vertipaq analyzer statistics will be exported as delta tables to the lakehouse. The tables will be named vertipaqanalyzer_model, vertipaqanalyzer_table, vertipaqanalyzer_partition, vertipaqanalyzer_column, vertipaqanalyzer_relationship, and vertipaqanalyzer_hierarchy. If None, the statistics will just be displayed in the notebook.
     read_stats_from_data : bool, default=False
-        Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
+        Setting this parameter to True has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve by querying the delta tables). Missing Rows is not calculated for Direct Lake models.
     export_lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID to which the vertipaq analyzer statistics tables will be exported if export is set to 'table'.
         Defaults to None which resolves to the lakehouse attached to the notebook.
