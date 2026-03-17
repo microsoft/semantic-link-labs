@@ -441,6 +441,11 @@ def vertipaq_analyzer(
                 "format": icons.int_format,
                 "tooltip": "The size of user hierarchy structures (in bytes)",
             },
+            "Levels": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of levels in the hierarchy",
+            },
         },
         "Relationships": {
             "From Object": {
@@ -577,6 +582,7 @@ def vertipaq_analyzer(
                         tom.get_annotation_value(object=h, name="Vertipaq_UsedSize"),
                         "decimal",
                     ),
+                    "Levels": h.Levels.Count,
                 }
             )
 
