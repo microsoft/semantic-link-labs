@@ -503,6 +503,8 @@ def _display_delta_analyzer_ui(
                 return html_module.escape(str(v))
         if "ratio" in col_lower:
             return _fmt_float(v)
+        if col_lower in ("compressed size", "uncompressed size"):
+            return _fmt_int(v)
         if "size" in col_lower or col_lower == "total size" or col_lower == "table size":
             return _fmt_bytes(v)
         if isinstance(v, float):
@@ -868,7 +870,10 @@ def _display_delta_analyzer_ui(
                 handle.classList.add('da-' + uid + '-resizing');
                 function onMove(ev) {{
                     var newW = Math.max(60, startW + ev.pageX - startX);
+                    var diff = newW - th.offsetWidth;
                     th.style.width = newW + 'px';
+                    var tbl = th.closest('table');
+                    tbl.style.width = (tbl.offsetWidth + diff) + 'px';
                 }}
                 function onUp() {{
                     handle.classList.remove('da-' + uid + '-resizing');
