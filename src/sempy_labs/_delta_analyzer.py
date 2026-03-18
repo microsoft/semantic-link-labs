@@ -1,10 +1,12 @@
 import pandas as pd
 import re
+import html as html_module
 from datetime import datetime
 import os
 from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.parquet as pq
+from IPython.display import display, HTML
 from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
@@ -256,7 +258,7 @@ def delta_analyzer(
                         "Value Count": column_chunk.num_values,
                         "Encodings": str(column_chunk.encodings),
                         "Statistics": column_chunk.statistics,
-                        "PrimativeType": column_chunk.physical_type,
+                        "Primative Type": column_chunk.physical_type,
                     }
 
                     column_chunk_df = pd.concat(
@@ -422,7 +424,499 @@ def delta_analyzer(
                 merge_schema=True,
             )
 
+    _display_delta_analyzer_ui(dataframes=dataframes, table_name=table_name, schema=schema)
+
     return dataframes
+
+
+def _display_delta_analyzer_ui(
+    dataframes: Dict[str, pd.DataFrame],
+    table_name: str,
+    schema: Optional[str] = None,
+) -> None:
+    """Renders an interactive Apple-style HTML dashboard for delta analyzer results."""
+
+    import uuid as _uuid
+
+    uid = _uuid.uuid4().hex[:8]
+
+    _skip_cols = {
+        "Workspace Name",
+        "Workspace Id",
+        "Lakehouse Name",
+        "Lakehouse Id",
+        "Table Name",
+        "Timestamp",
+        "Run Id",
+        "Statistics",
+    }
+
+    _tab_skip_cols = {
+        "Parquet Files": {"Total Table Rows", "Total Table Row Groups"},
+        "Row Groups": {"Total Table Rows", "Total Table Row Groups"},
+        "Column Chunks": {"Column ID"},
+        "Columns": {"Total Table Rows", "Table Size"},
+    }
+
+    def _fmt_int(v) -> str:
+        try:
+            return f"{int(v):,}"
+        except Exception:
+            return html_module.escape(str(v))
+
+    def _fmt_float(v) -> str:
+        try:
+            return f"{float(v):,.2f}"
+        except Exception:
+            return html_module.escape(str(v))
+
+    def _fmt_pct(v) -> str:
+        try:
+            return f"{float(v):.2f}%"
+        except Exception:
+            return html_module.escape(str(v))
+
+    def _fmt_bytes(v) -> str:
+        try:
+            b = int(v)
+            for unit in ["", "KB", "MB", "GB", "TB"]:
+                if abs(b) < 1024:
+                    return f"{b:,.1f} {unit}" if unit else f"{b:,} B"
+                b /= 1024
+            return f"{b:,.1f} PB"
+        except Exception:
+            return html_module.escape(str(v))
+
+    def _fmt_val(col: str, v) -> str:
+        if pd.isna(v):
+            return "&mdash;"
+        if isinstance(v, bool):
+            return "True" if v else "False"
+        s = str(v)
+        col_lower = col.lower()
+        if "ratio of total" in col_lower or "percent" in col_lower or "% " in col_lower or "size percent" in col_lower:
+            return _fmt_pct(v)
+        if col_lower == "compression ratio":
+            try:
+                return f"{float(v) * 100:.2f}%"
+            except Exception:
+                return html_module.escape(str(v))
+        if "ratio" in col_lower:
+            return _fmt_float(v)
+        if "size" in col_lower or col_lower == "total size" or col_lower == "table size":
+            return _fmt_bytes(v)
+        if isinstance(v, float):
+            return _fmt_float(v)
+        if isinstance(v, (int,)):
+            return _fmt_int(v)
+        return html_module.escape(s)
+
+    def _is_text_col(df: pd.DataFrame, col: str) -> bool:
+        dtype = df[col].dtype
+        if dtype == object or dtype.name == "string" or dtype.name == "bool":
+            return True
+        return False
+
+    # Extract metadata for the header
+    summary_df = dataframes.get("Summary")
+    meta_workspace = ""
+    meta_lakehouse = ""
+    for _df in dataframes.values():
+        if "Workspace Name" in _df.columns and not _df.empty:
+            meta_workspace = str(_df["Workspace Name"].iloc[0])
+            meta_lakehouse = str(_df["Lakehouse Name"].iloc[0])
+            break
+
+    # Build summary cards HTML
+    cards_html = ""
+    if summary_df is not None and not summary_df.empty:
+        row = summary_df.iloc[0]
+        card_items = [
+            ("Row Count", _fmt_int(row.get("Row Count", 0))),
+            ("Parquet Files", _fmt_int(row.get("Parquet Files", 0))),
+            ("Row Groups", _fmt_int(row.get("Row Groups", 0))),
+            ("Avg Rows / RG", _fmt_int(row.get("Avg Rows Per Row Group", 0))),
+            ("VOrder", "Yes" if row.get("VOrder Enabled") else "No"),
+        ]
+        if "Total Size" in row.index:
+            card_items.insert(1, ("Total Size", _fmt_bytes(row["Total Size"])))
+        for label, value in card_items:
+            cards_html += f"""
+            <div class="da-{uid}-card">
+                <div class="da-{uid}-card-label">{html_module.escape(label)}</div>
+                <div class="da-{uid}-card-value">{value}</div>
+            </div>"""
+
+    # Build table HTML for each dataframe tab
+    tab_keys = [k for k in ["Parquet Files", "Row Groups", "Column Chunks", "Columns"] if k in dataframes]
+    _default_sort = {
+        "Parquet Files": "Row Count",
+        "Row Groups": "Compressed Size",
+        "Column Chunks": "Compressed Size",
+        "Columns": "Compressed Size",
+    }
+    tabs_html = ""
+    panels_html = ""
+    for i, key in enumerate(tab_keys):
+        active_cls = ' da-{uid}-tab-active'.format(uid=uid) if i == 0 else ""
+        safe_key = html_module.escape(key)
+        tabs_html += f'<button class="da-{uid}-tab{active_cls}" data-da-tab-{uid}="{i}">{safe_key}</button>'
+
+        df = dataframes[key]
+        skip = _skip_cols | _tab_skip_cols.get(key, set())
+        visible_cols = [c for c in df.columns if c not in skip]
+
+        # Apply default descending sort
+        sort_col = _default_sort.get(key)
+        if sort_col and sort_col in df.columns:
+            df = df.sort_values(by=sort_col, ascending=False)
+
+        display_style = "block" if i == 0 else "none"
+        # Header with resize handles; initial width based on header text
+        header_cells = ""
+        for c in visible_cols:
+            label = html_module.escape(str(c))
+            # ~7.5px per char at 11px uppercase + 32px padding + 16px resize handle
+            col_w = max(int(len(str(c)) * 7.5) + 48, 80)
+            arrow = ' <span class="da-{uid}-sort-arrow">\u25BC</span>'.format(uid=uid) if c == sort_col else ""
+            align = "left" if _is_text_col(df, c) else "right"
+            header_cells += f'<th style="width:{col_w}px;min-width:60px;text-align:{align}"><span class="da-{uid}-th-text">{label}{arrow}</span><div class="da-{uid}-resize"></div></th>'
+        # Body
+        col_aligns = ["left" if _is_text_col(df, c) else "right" for c in visible_cols]
+        body_rows = ""
+        for _, r in df.iterrows():
+            cells = "".join(f'<td style="text-align:{col_aligns[j]}">{_fmt_val(str(c), r[c])}</td>' for j, c in enumerate(visible_cols))
+            body_rows += f"<tr>{cells}</tr>"
+
+        panels_html += f"""
+        <div class="da-{uid}-panel" data-da-panel-{uid}="{i}" style="display:{display_style}">
+            <div class="da-{uid}-table-wrap">
+                <table class="da-{uid}-table">
+                    <thead><tr>{header_cells}</tr></thead>
+                    <tbody>{body_rows}</tbody>
+                </table>
+            </div>
+        </div>"""
+
+    full_html = f"""
+    <style>
+        .da-{uid}-root {{
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                         'Helvetica Neue', Arial, sans-serif;
+            color: #1d1d1f;
+            max-width: 1200px;
+            margin: 24px auto;
+            -webkit-font-smoothing: antialiased;
+        }}
+        .da-{uid}-header {{
+            margin-bottom: 28px;
+        }}
+        .da-{uid}-title {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin: 0 0 4px 0;
+        }}
+        .da-{uid}-logo {{
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+        }}
+        .da-{uid}-subtitle {{
+            font-size: 15px;
+            color: #86868b;
+            font-weight: 400;
+            margin: 0;
+        }}
+        /* Summary cards */
+        .da-{uid}-cards {{
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }}
+        .da-{uid}-card {{
+            flex: 1 1 110px;
+            min-width: 110px;
+            background: #ffffff;
+            border: 1px solid #e8e8ed;
+            border-radius: 12px;
+            padding: 14px 16px;
+            transition: box-shadow 0.25s ease, transform 0.2s ease;
+        }}
+        .da-{uid}-card:hover {{
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }}
+        .da-{uid}-card-label {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #86868b;
+            margin-bottom: 4px;
+        }}
+        .da-{uid}-card-value {{
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: #1d1d1f;
+        }}
+        /* Tabs */
+        .da-{uid}-tabs {{
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid #e8e8ed;
+            margin-bottom: 0;
+        }}
+        .da-{uid}-tab {{
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #86868b;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+            font-family: inherit;
+        }}
+        .da-{uid}-tab:hover {{
+            color: #1d1d1f;
+        }}
+        .da-{uid}-tab-active {{
+            color: #0071e3;
+            border-bottom-color: #0071e3;
+        }}
+        /* Data table */
+        .da-{uid}-table-wrap {{
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 520px;
+            background: #ffffff;
+            border: 1px solid #e8e8ed;
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+        }}
+        .da-{uid}-table {{
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 13px;
+        }}
+        .da-{uid}-table thead th {{
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #f5f5f7;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #6e6e73;
+            padding: 12px 16px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-bottom: 1px solid #e8e8ed;
+            position: relative;
+        }}
+        .da-{uid}-th-text {{
+            pointer-events: none;
+        }}
+        .da-{uid}-resize {{
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 2;
+        }}
+        .da-{uid}-resize:hover,
+        .da-{uid}-resize.da-{uid}-resizing {{
+            background: #0071e3;
+            opacity: 0.4;
+        }}
+        .da-{uid}-table tbody td {{
+            padding: 10px 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-bottom: 1px solid #f0f0f5;
+            color: #1d1d1f;
+        }}
+        .da-{uid}-table tbody tr:last-child td {{
+            border-bottom: none;
+        }}
+        .da-{uid}-table tbody tr:hover {{
+            background: #f5f5f7;
+        }}
+        .da-{uid}-table tbody tr {{
+            transition: background 0.15s ease;
+        }}
+        /* Search */
+        .da-{uid}-toolbar {{
+            display: flex;
+            justify-content: flex-start;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #e8e8ed;
+            border-top: none;
+        }}
+        .da-{uid}-search {{
+            font-family: inherit;
+            font-size: 13px;
+            padding: 6px 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            outline: none;
+            width: 220px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }}
+        .da-{uid}-search:focus {{
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.15);
+        }}
+        .da-{uid}-search::placeholder {{
+            color: #aeaeb2;
+        }}
+        /* Sort indicator */
+        .da-{uid}-table thead th {{
+            cursor: pointer;
+            user-select: none;
+        }}
+        .da-{uid}-table thead th:hover {{
+            color: #1d1d1f;
+        }}
+        .da-{uid}-sort-arrow {{
+            font-size: 10px;
+            margin-left: 4px;
+            opacity: 0.5;
+        }}
+    </style>
+
+    <div class="da-{uid}-root">
+        <div class="da-{uid}-header">
+            <h2 class="da-{uid}-title"><svg class="da-{uid}-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="da-{uid}-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0071e3"/><stop offset="100%" stop-color="#40a9ff"/></linearGradient></defs><path d="M50 8 L92 85 Q94 89 91 92 Q89 94 85 94 L15 94 Q11 94 9 92 Q6 89 8 85 Z" fill="url(#da-{uid}-grad)"/><path d="M50 30 L72 78 L28 78 Z" fill="white" opacity="0.35"/></svg>Delta Analyzer</h2>
+            <p class="da-{uid}-subtitle">{(html_module.escape(schema) + '.') if schema else ''}{html_module.escape(table_name)}{(' &nbsp;&middot;&nbsp; ' + html_module.escape(meta_workspace)) if meta_workspace else ''}{(' &nbsp;&middot;&nbsp; ' + html_module.escape(meta_lakehouse)) if meta_lakehouse else ''}</p>
+        </div>
+        <div class="da-{uid}-cards">
+            {cards_html}
+        </div>
+        <div class="da-{uid}-tabs">
+            {tabs_html}
+        </div>
+        <div class="da-{uid}-toolbar">
+            <input type="text" class="da-{uid}-search" id="da-{uid}-search" placeholder="Search...">
+        </div>
+        <div class="da-{uid}-panels">
+            {panels_html}
+        </div>
+    </div>
+
+    <script>
+    (function() {{
+        var uid = '{uid}';
+        // Tab switching
+        var tabs = document.querySelectorAll('.da-' + uid + '-tab');
+        var panels = document.querySelectorAll('[data-da-panel-' + uid + ']');
+        tabs.forEach(function(tab) {{
+            tab.addEventListener('click', function() {{
+                var idx = this.getAttribute('data-da-tab-' + uid);
+                tabs.forEach(function(t) {{ t.classList.remove('da-' + uid + '-tab-active'); }});
+                this.classList.add('da-' + uid + '-tab-active');
+                panels.forEach(function(p) {{
+                    p.style.display = p.getAttribute('data-da-panel-' + uid) === idx ? 'block' : 'none';
+                }});
+                // Clear search on tab switch
+                var si = document.getElementById('da-' + uid + '-search');
+                if (si) {{ si.value = ''; filterRows(''); }}
+            }});
+        }});
+
+        // Search / filter
+        function filterRows(query) {{
+            panels.forEach(function(p) {{
+                if (p.style.display === 'none') return;
+                var rows = p.querySelectorAll('tbody tr');
+                rows.forEach(function(row) {{
+                    var text = row.textContent.toLowerCase();
+                    row.style.display = text.indexOf(query) !== -1 ? '' : 'none';
+                }});
+            }});
+        }}
+        var searchInput = document.getElementById('da-' + uid + '-search');
+        if (searchInput) {{
+            searchInput.addEventListener('input', function() {{
+                filterRows(this.value.toLowerCase());
+            }});
+        }}
+
+        // Column resizing
+        document.querySelectorAll('.da-' + uid + '-resize').forEach(function(handle) {{
+            handle.addEventListener('mousedown', function(e) {{
+                e.preventDefault();
+                e.stopPropagation();
+                var th = this.parentElement;
+                var startX = e.pageX;
+                var startW = th.offsetWidth;
+                handle.classList.add('da-' + uid + '-resizing');
+                function onMove(ev) {{
+                    var newW = Math.max(60, startW + ev.pageX - startX);
+                    th.style.width = newW + 'px';
+                }}
+                function onUp() {{
+                    handle.classList.remove('da-' + uid + '-resizing');
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }}
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            }});
+        }});
+
+        // Column sorting
+        var sortState = {{}};
+        document.querySelectorAll('.da-' + uid + '-table thead th').forEach(function(th) {{
+            th.addEventListener('click', function() {{
+                var table = this.closest('table');
+                var colIdx = Array.from(this.parentNode.children).indexOf(this);
+                var tbody = table.querySelector('tbody');
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                var key = table.id + '_' + colIdx;
+                var asc = sortState[key] !== true;
+                sortState[key] = asc;
+
+                rows.sort(function(a, b) {{
+                    var aVal = a.children[colIdx] ? a.children[colIdx].textContent.replace(/[,%]/g, '').trim() : '';
+                    var bVal = b.children[colIdx] ? b.children[colIdx].textContent.replace(/[,%]/g, '').trim() : '';
+                    var aNum = parseFloat(aVal);
+                    var bNum = parseFloat(bVal);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {{
+                        return asc ? aNum - bNum : bNum - aNum;
+                    }}
+                    return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                }});
+                rows.forEach(function(row) {{ tbody.appendChild(row); }});
+
+                // Update arrow indicators
+                table.querySelectorAll('.da-' + uid + '-sort-arrow').forEach(function(el) {{ el.remove(); }});
+                var arrow = document.createElement('span');
+                arrow.className = 'da-' + uid + '-sort-arrow';
+                arrow.textContent = asc ? ' \u25B2' : ' \u25BC';
+                th.appendChild(arrow);
+            }});
+        }});
+    }})();
+    </script>
+    """
+
+    display(HTML(full_html))
 
 
 @log
