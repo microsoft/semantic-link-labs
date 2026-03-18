@@ -3214,10 +3214,33 @@ class TOMWrapper:
                 row = dfT_filt.iloc[0]
                 rowCount = str(row["Row Count"])
                 totalSize = str(row["Total Size"])
+                dict_size = str(row["Dictionary Size"])
+                data_size = str(row["Data Size"])
+                hierarchy_size = str(row["Hierarchy Size"])
+                user_hierarchy_size = str(row["User Hierarchy Size"])
+                relationship_size = str(row["Relationship Size"])
+                pct_db = str(row["% DB"])
+
                 self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
                 self.set_annotation(
                     object=t, name="Vertipaq_TotalSize", value=totalSize
                 )
+                self.set_annotation(object=t, name="Vertipaq_DataSize", value=data_size)
+                self.set_annotation(
+                    object=t, name="Vertipaq_DictionarySize", value=dict_size
+                )
+                self.set_annotation(
+                    object=t, name="Vertipaq_HierarchySize", value=hierarchy_size
+                )
+                self.set_annotation(
+                    object=t,
+                    name="Vertipaq_UserHierarchySize",
+                    value=user_hierarchy_size,
+                )
+                self.set_annotation(
+                    object=t, name="Vertipaq_RelationshipSize", value=relationship_size
+                )
+                self.set_annotation(object=t, name="Vertipaq_%DB", value=pct_db)
             for c in t.Columns:
                 dfC_filt = dfC[
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
@@ -3228,7 +3251,10 @@ class TOMWrapper:
                     dataSize = str(row["Data Size"])
                     dictSize = str(row["Dictionary Size"])
                     hierSize = str(row["Hierarchy Size"])
+                    is_resident = str(row["Is Resident"])
+                    temp = str(row["Temperature"])
                     card = str(row["Column Cardinality"])
+                    last_accessed = str(row["Last Accessed"])
                     self.set_annotation(
                         object=c, name="Vertipaq_TotalSize", value=totalSize
                     )
@@ -3243,6 +3269,15 @@ class TOMWrapper:
                     )
                     self.set_annotation(
                         object=c, name="Vertipaq_Cardinality", value=card
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_IsResident", value=is_resident
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_Temperature", value=temp
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_LastAccessed", value=last_accessed
                     )
             for p in t.Partitions:
                 dfP_filt = dfP[
@@ -3275,7 +3310,9 @@ class TOMWrapper:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
             if not dfR_filt.empty:
                 relSize = str(dfR_filt["Used Size"].iloc[0])
+                mult = str(dfR_filt["Multiplicity"].iloc[0])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
+                self.set_annotation(object=r, name="Vertipaq_Multiplicity", value=mult)
         try:
             runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
