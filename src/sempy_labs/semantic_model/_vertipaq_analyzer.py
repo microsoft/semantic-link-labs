@@ -1223,6 +1223,14 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
         letter-spacing: -0.01em;
         outline: none;
         font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .vpx-{uid} .vpx-tab-btn .vpx-tab-icon {{
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
     }}
     .vpx-{uid} .vpx-tab-btn::after {{
         content: '';
@@ -1466,14 +1474,24 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
             )
         html_parts.append('</div>')
 
+    # Tab icons (monochrome SVGs using currentColor for light/dark mode)
+    tab_icons = {
+        "Tables": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="6" x2="6" y2="14"/></svg>',
+        "Partitions": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="1.5" width="10" height="4" rx="1"/><rect x="3" y="6.5" width="10" height="4" rx="1"/><rect x="3" y="11.5" width="10" height="3" rx="1"/></svg>',
+        "Columns": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="14" x2="4" y2="5"/><line x1="8" y1="14" x2="8" y2="2"/><line x1="12" y1="14" x2="12" y2="8"/><line x1="2" y1="14" x2="14" y2="14"/></svg>',
+        "Relationships": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="8" r="2.5"/><circle cx="12" cy="8" r="2.5"/><line x1="6.5" y1="8" x2="9.5" y2="8"/></svg>',
+        "Hierarchies": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="3" r="1.8"/><circle cx="4" cy="13" r="1.8"/><circle cx="12" cy="13" r="1.8"/><line x1="6.8" y1="4.5" x2="4.8" y2="11.2"/><line x1="9.2" y1="4.5" x2="11.2" y2="11.2"/></svg>',
+    }
+
     # Tab bar
     html_parts.append(f'<div class="vpx-tab-bar" id="vpx-tabbar-{uid}">')
     for i, title in enumerate(df_dict.keys()):
         active = " vpx-active" if i == 0 else ""
+        icon = tab_icons.get(title, "")
         html_parts.append(
             f'<button class="vpx-tab-btn{active}" '
             f'data-vpx-target="vpx-{uid}-p{i}" '
-            f'onclick="vpxSwitch_{uid}(this)">{title}</button>'
+            f'onclick="vpxSwitch_{uid}(this)">{icon}{title}</button>'
         )
 
     html_parts.append("</div>")
