@@ -96,16 +96,25 @@ def calc_missing_rows_dax(
 
 
 # Converting to KB/MB/GB necessitates division by 1024 * 1000.
-def convert_bytes(value):
-    if value >= 1000000000:
-        result = value / (1024**3) * 1000000000
-    elif value >= 1000000:
-        result = value / (1024**2) * 1000000
-    elif value >= 1000:
-        result = value / (1024) * 1000
-    else:
-        result = value
-    return round(result)
+def format_bytes(size, decimals=2):
+    """
+    Convert bytes to a human-readable format (KB, MB, GB, etc.)
+
+    :param size: Size in bytes
+    :param decimals: Number of decimal places
+    :return: Formatted string
+    """
+    if size == 0:
+        return "0 Bytes"
+
+    units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
+    i = 0
+
+    while size >= 1024 and i < len(units) - 1:
+        size /= 1024
+        i += 1
+
+    return f"{round(size, decimals)} {units[i]}"
 
 
 def cast_to_type(value, type_):
@@ -113,7 +122,13 @@ def cast_to_type(value, type_):
         "int": int,
         "decimal": float,
         "bool": lambda v: str(v).strip().lower()
-        == "true",  # convert "True"/"False" strings
+        == "true",  # convert "True"/"False" strings,
+        "timestamp": lambda v: pd.to_datetime(
+            v,
+            format="%Y-%m-%d %H:%M:%S",
+            errors="coerce",
+            utc=True,
+        )
     }
 
     # Handle null / empty values
@@ -421,7 +436,7 @@ def vertipaq_analyzer(
             },
             "Last Accessed": {
                 "data_type": icons.data_type_timestamp,  # icons.data_type_timestamp,
-                "format": icons.no_format,
+                "format": icons.data_type_timestamp,
                 "tooltip": "The time the column was last queried",
             },
         },
@@ -840,7 +855,7 @@ def vertipaq_analyzer(
         model_summary.append(
             {
                 "Dataset Name": dataset_name,
-                "Total Size": convert_bytes(total_db),
+                "Total Size": total_db,
                 "Table Count": table_count,
                 "Column Count": column_count,
                 "Compatibility Level": compat_level,
@@ -892,6 +907,7 @@ def vertipaq_analyzer(
         format_funcs = {
             "int": lambda x: f"{int(x):,}" if pd.notna(x) and x != "<NA>" else "",
             "pct": lambda x: f"{float(x):.2f}%" if pd.notna(x) and x != "<NA>" else "",
+            "double": lambda x: f"{float(x):.4f}" if pd.notna(x) and x != "<NA>" else "",
             "": lambda x: f"{x}",
         }
 
@@ -1519,7 +1535,14 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
             if col == "Dataset Name":
                 continue
             val = row[col]
-            cell_val = "" if pd.isna(val) else str(val)
+            if col == "Total Size" and pd.notna(val) and str(val):
+                try:
+                    numeric_val = float(str(val).replace(",", ""))
+                    cell_val = format_bytes(numeric_val)
+                except (ValueError, TypeError):
+                    cell_val = str(val)
+            else:
+                cell_val = "" if pd.isna(val) else str(val)
             tt = tooltip_lookup.get(("Model", col), "")
             tip_attr = f' title="{tt}"' if tt else ""
             html_parts.append(
