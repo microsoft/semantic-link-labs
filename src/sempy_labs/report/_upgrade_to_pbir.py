@@ -64,7 +64,7 @@ def embed_report_save_in_edit_mode(embed_url, access_token: str) -> pd.DataFrame
 def upgrade_to_pbir(
     report: Optional[str | UUID | List[str | UUID]] = None,
     workspace: Optional[str | UUID | List[str | UUID]] = None,
-):
+) -> pd.DataFrame:
     """
     Upgrades a Power BI report to the new `PBIR <https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview>`_ format.
 
