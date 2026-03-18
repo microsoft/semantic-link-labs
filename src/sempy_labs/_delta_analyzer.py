@@ -583,11 +583,38 @@ def _display_delta_analyzer_ui(
             arrow = ' <span class="da-{uid}-sort-arrow">\u25BC</span>'.format(uid=uid) if c == sort_col else ""
             align = "left" if _is_text_col(df, c) else "right"
             header_cells += f'<th style="width:{col_w}px;min-width:60px;text-align:{align}"><span class="da-{uid}-th-text">{label}{arrow}</span><div class="da-{uid}-resize"></div></th>'
+        # Compute column max values for data bars
+        col_maxes = {}
+        for j, c in enumerate(visible_cols):
+            if not _is_text_col(df, c):
+                try:
+                    max_val = df[c].abs().max()
+                    if max_val > 0:
+                        col_maxes[j] = float(max_val)
+                except Exception:
+                    pass
+
         # Body
         col_aligns = ["left" if _is_text_col(df, c) else "right" for c in visible_cols]
         body_rows = ""
         for _, r in df.iterrows():
-            cells = "".join(f'<td style="text-align:{col_aligns[j]}">{_fmt_val(str(c), r[c])}</td>' for j, c in enumerate(visible_cols))
+            cells = ""
+            for j, c in enumerate(visible_cols):
+                val = r[c]
+                fmt_val = _fmt_val(str(c), val)
+                if j in col_maxes:
+                    try:
+                        raw = abs(float(val)) if not pd.isna(val) else 0
+                        pct = raw / col_maxes[j] * 100
+                    except Exception:
+                        pct = 0
+                    cells += (
+                        f'<td class="da-{uid}-bar-cell" style="text-align:{col_aligns[j]}">'
+                        f'<div class="da-{uid}-bar" style="width:{pct:.1f}%"></div>'
+                        f'<span class="da-{uid}-bar-value">{fmt_val}</span></td>'
+                    )
+                else:
+                    cells += f'<td style="text-align:{col_aligns[j]}">{fmt_val}</td>'
             body_rows += f"<tr>{cells}</tr>"
 
         panels_html += f"""
@@ -724,7 +751,6 @@ def _display_delta_analyzer_ui(
             overflow: hidden;
             text-overflow: ellipsis;
             border-bottom: 1px solid #e8e8ed;
-            position: relative;
         }}
         .da-{uid}-th-text {{
             pointer-events: none;
@@ -800,6 +826,58 @@ def _display_delta_analyzer_ui(
             margin-left: 4px;
             opacity: 0.5;
         }}
+        /* Data bars */
+        .da-{uid}-table tbody td.da-{uid}-bar-cell {{
+            position: relative;
+            overflow: hidden;
+        }}
+        .da-{uid}-table tbody td.da-{uid}-bar-cell .da-{uid}-bar {{
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            background: rgba(0, 113, 227, 0.08);
+            border-right: 2px solid rgba(0, 113, 227, 0.25);
+            pointer-events: none;
+        }}
+        .da-{uid}-table tbody td.da-{uid}-bar-cell .da-{uid}-bar-value {{
+            position: relative;
+            z-index: 1;
+        }}
+        .da-{uid}-bars-off .da-{uid}-bar {{
+            display: none;
+        }}
+        /* Data bar toggle */
+        .da-{uid}-bar-toggle {{
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: inherit;
+            color: #86868b;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            white-space: nowrap;
+            margin-left: 12px;
+        }}
+        .da-{uid}-bar-toggle:hover {{
+            color: #1d1d1f;
+            border-color: #86868b;
+        }}
+        .da-{uid}-bar-toggle.da-{uid}-bars-active {{
+            color: #0071e3;
+            border-color: #0071e3;
+        }}
+        .da-{uid}-bar-toggle .da-{uid}-toggle-icon {{
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }}
     </style>
 
     <div class="da-{uid}-root">
@@ -815,6 +893,7 @@ def _display_delta_analyzer_ui(
         </div>
         <div class="da-{uid}-toolbar">
             <input type="text" class="da-{uid}-search" id="da-{uid}-search" placeholder="Search...">
+            <button class="da-{uid}-bar-toggle da-{uid}-bars-active" id="da-{uid}-bar-toggle" title="Toggle data bars"><svg class="da-{uid}-toggle-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="12" x2="3" y2="6"/><line x1="7" y1="12" x2="7" y2="3"/><line x1="11" y1="12" x2="11" y2="8"/><line x1="1" y1="12" x2="13" y2="12"/></svg>Bars</button>
         </div>
         <div class="da-{uid}-panels">
             {panels_html}
@@ -917,6 +996,23 @@ def _display_delta_analyzer_ui(
                 th.appendChild(arrow);
             }});
         }});
+
+        // Data bar toggle (synced across all tabs)
+        var barBtn = document.getElementById('da-' + uid + '-bar-toggle');
+        if (barBtn) {{
+            barBtn.addEventListener('click', function() {{
+                var root = this.closest('.da-' + uid + '-root');
+                if (!root) return;
+                var wraps = root.querySelectorAll('.da-' + uid + '-table-wrap');
+                var turnOff = !wraps[0].classList.contains('da-' + uid + '-bars-off');
+                wraps.forEach(function(w) {{
+                    if (turnOff) {{ w.classList.add('da-' + uid + '-bars-off'); }}
+                    else {{ w.classList.remove('da-' + uid + '-bars-off'); }}
+                }});
+                if (turnOff) {{ this.classList.remove('da-' + uid + '-bars-active'); }}
+                else {{ this.classList.add('da-' + uid + '-bars-active'); }}
+            }});
+        }}
     }})();
     </script>
     """
