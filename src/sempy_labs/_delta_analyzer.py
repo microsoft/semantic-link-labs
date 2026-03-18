@@ -559,6 +559,7 @@ def _display_delta_analyzer_ui(
     }
     tabs_html = ""
     panels_html = ""
+    tab_row_counts = {}
     for i, key in enumerate(tab_keys):
         active_cls = ' da-{uid}-tab-active'.format(uid=uid) if i == 0 else ""
         safe_key = html_module.escape(key)
@@ -596,6 +597,7 @@ def _display_delta_analyzer_ui(
 
         # Body
         col_aligns = ["left" if _is_text_col(df, c) else "right" for c in visible_cols]
+        tab_row_counts[i] = len(df)
         body_rows = ""
         for _, r in df.iterrows():
             cells = ""
@@ -790,7 +792,8 @@ def _display_delta_analyzer_ui(
         /* Search */
         .da-{uid}-toolbar {{
             display: flex;
-            justify-content: flex-start;
+            align-items: center;
+            justify-content: space-between;
             padding: 12px 16px;
             background: #ffffff;
             border: 1px solid #e8e8ed;
@@ -878,6 +881,21 @@ def _display_delta_analyzer_ui(
             height: 12px;
             flex-shrink: 0;
         }}
+        /* Toolbar controls */
+        .da-{uid}-toolbar-controls {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+        .da-{uid}-row-count {{
+            font-size: 12px;
+            font-weight: 500;
+            color: #86868b;
+            letter-spacing: -0.01em;
+        }}
+        .da-{uid}-row-count span {{
+            font-variant-numeric: tabular-nums;
+        }}
     </style>
 
     <div class="da-{uid}-root">
@@ -893,7 +911,10 @@ def _display_delta_analyzer_ui(
         </div>
         <div class="da-{uid}-toolbar">
             <input type="text" class="da-{uid}-search" id="da-{uid}-search" placeholder="Search...">
-            <button class="da-{uid}-bar-toggle da-{uid}-bars-active" id="da-{uid}-bar-toggle" title="Toggle data bars"><svg class="da-{uid}-toggle-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="12" x2="3" y2="6"/><line x1="7" y1="12" x2="7" y2="3"/><line x1="11" y1="12" x2="11" y2="8"/><line x1="1" y1="12" x2="13" y2="12"/></svg>Bars</button>
+            <div class="da-{uid}-toolbar-controls">
+                <button class="da-{uid}-bar-toggle da-{uid}-bars-active" id="da-{uid}-bar-toggle" title="Toggle data bars"><svg class="da-{uid}-toggle-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="12" x2="3" y2="6"/><line x1="7" y1="12" x2="7" y2="3"/><line x1="11" y1="12" x2="11" y2="8"/><line x1="1" y1="12" x2="13" y2="12"/></svg>Bars</button>
+                <div class="da-{uid}-row-count" id="da-{uid}-row-count"><span>{tab_row_counts.get(0, 0):,}</span> row{'s' if tab_row_counts.get(0, 0) != 1 else ''}</div>
+            </div>
         </div>
         <div class="da-{uid}-panels">
             {panels_html}
@@ -903,6 +924,7 @@ def _display_delta_analyzer_ui(
     <script>
     (function() {{
         var uid = '{uid}';
+        var tabRowCounts = {tab_row_counts};
         // Tab switching
         var tabs = document.querySelectorAll('.da-' + uid + '-tab');
         var panels = document.querySelectorAll('[data-da-panel-' + uid + ']');
@@ -917,6 +939,10 @@ def _display_delta_analyzer_ui(
                 // Clear search on tab switch
                 var si = document.getElementById('da-' + uid + '-search');
                 if (si) {{ si.value = ''; filterRows(''); }}
+                // Update row count
+                var rc = document.getElementById('da-' + uid + '-row-count');
+                var cnt = tabRowCounts[parseInt(idx)] || 0;
+                rc.innerHTML = '<span>' + cnt.toLocaleString() + '</span> row' + (cnt !== 1 ? 's' : '');
             }});
         }});
 
@@ -925,10 +951,20 @@ def _display_delta_analyzer_ui(
             panels.forEach(function(p) {{
                 if (p.style.display === 'none') return;
                 var rows = p.querySelectorAll('tbody tr');
+                var shown = 0;
+                var total = rows.length;
                 rows.forEach(function(row) {{
                     var text = row.textContent.toLowerCase();
-                    row.style.display = text.indexOf(query) !== -1 ? '' : 'none';
+                    var match = !query || text.indexOf(query) !== -1;
+                    row.style.display = match ? '' : 'none';
+                    if (match) shown++;
                 }});
+                var rc = document.getElementById('da-' + uid + '-row-count');
+                if (rc) {{
+                    rc.innerHTML = '<span>' + shown.toLocaleString() + '</span>' +
+                        (shown !== total ? ' of <span>' + total.toLocaleString() + '</span>' : '') +
+                        ' row' + (shown !== 1 ? 's' : '');
+                }}
             }});
         }}
         var searchInput = document.getElementById('da-' + uid + '-search');
