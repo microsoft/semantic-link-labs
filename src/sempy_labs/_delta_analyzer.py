@@ -3,6 +3,7 @@ import re
 import html as html_module
 from datetime import datetime
 import os
+import uuid
 from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.parquet as pq
@@ -63,6 +64,7 @@ def delta_analyzer(
     column_stats: bool = True,
     skip_cardinality: bool = True,
     schema: Optional[str] = None,
+    visualize: bool = True,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
@@ -98,6 +100,8 @@ def delta_analyzer(
         If True, skips the cardinality calculation for each column. If False, calculates the cardinality for each column.
     schema : str, default=None
         The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
+    visualize : bool, default=True
+        If True, renders an HTML-styled interactive UI for viewing the Delta Analyzer results.
 
     Returns
     -------
@@ -424,7 +428,10 @@ def delta_analyzer(
                 merge_schema=True,
             )
 
-    _display_delta_analyzer_ui(dataframes=dataframes, table_name=table_name, schema=schema)
+    if visualize:
+        _display_delta_analyzer_ui(
+            dataframes=dataframes, table_name=table_name, schema=schema
+        )
 
     return dataframes
 
@@ -434,11 +441,9 @@ def _display_delta_analyzer_ui(
     table_name: str,
     schema: Optional[str] = None,
 ) -> None:
-    """Renders an interactive Apple-style HTML dashboard for delta analyzer results."""
+    """Renders an interactive HTML dashboard for delta analyzer results."""
 
-    import uuid as _uuid
-
-    uid = _uuid.uuid4().hex[:8]
+    uid = uuid.uuid4().hex[:8]
 
     _skip_cols = {
         "Workspace Name",
@@ -494,7 +499,12 @@ def _display_delta_analyzer_ui(
             return "True" if v else "False"
         s = str(v)
         col_lower = col.lower()
-        if "ratio of total" in col_lower or "percent" in col_lower or "% " in col_lower or "size percent" in col_lower:
+        if (
+            "ratio of total" in col_lower
+            or "percent" in col_lower
+            or "% " in col_lower
+            or "size percent" in col_lower
+        ):
             return _fmt_pct(v)
         if col_lower == "compression ratio":
             try:
@@ -505,7 +515,11 @@ def _display_delta_analyzer_ui(
             return _fmt_float(v)
         if col_lower in ("compressed size", "uncompressed size"):
             return _fmt_int(v)
-        if "size" in col_lower or col_lower == "total size" or col_lower == "table size":
+        if (
+            "size" in col_lower
+            or col_lower == "total size"
+            or col_lower == "table size"
+        ):
             return _fmt_bytes(v)
         if isinstance(v, float):
             return _fmt_float(v)
@@ -550,7 +564,11 @@ def _display_delta_analyzer_ui(
             </div>"""
 
     # Build table HTML for each dataframe tab
-    tab_keys = [k for k in ["Parquet Files", "Row Groups", "Column Chunks", "Columns"] if k in dataframes]
+    tab_keys = [
+        k
+        for k in ["Parquet Files", "Row Groups", "Column Chunks", "Columns"]
+        if k in dataframes
+    ]
     _default_sort = {
         "Parquet Files": "Row Count",
         "Row Groups": "Compressed Size",
@@ -560,10 +578,25 @@ def _display_delta_analyzer_ui(
     tabs_html = ""
     panels_html = ""
     tab_row_counts = {}
+    tab_icons = {
+        "Parquet Files": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><line x1="6" y1="5" x2="10" y2="5"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg>'.format(
+            uid=uid
+        ),
+        "Row Groups": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/></svg>'.format(
+            uid=uid
+        ),
+        "Column Chunks": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="6" x2="6" y2="14"/></svg>'.format(
+            uid=uid
+        ),
+        "Columns": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="14" x2="4" y2="5"/><line x1="8" y1="14" x2="8" y2="2"/><line x1="12" y1="14" x2="12" y2="8"/><line x1="2" y1="14" x2="14" y2="14"/></svg>'.format(
+            uid=uid
+        ),
+    }
     for i, key in enumerate(tab_keys):
-        active_cls = ' da-{uid}-tab-active'.format(uid=uid) if i == 0 else ""
+        active_cls = " da-{uid}-tab-active".format(uid=uid) if i == 0 else ""
         safe_key = html_module.escape(key)
-        tabs_html += f'<button class="da-{uid}-tab{active_cls}" data-da-tab-{uid}="{i}">{safe_key}</button>'
+        icon = tab_icons.get(key, "")
+        tabs_html += f'<button class="da-{uid}-tab{active_cls}" data-da-tab-{uid}="{i}">{icon}{safe_key}</button>'
 
         df = dataframes[key]
         skip = _skip_cols | _tab_skip_cols.get(key, set())
@@ -581,7 +614,11 @@ def _display_delta_analyzer_ui(
             label = html_module.escape(str(c))
             # ~7.5px per char at 11px uppercase + 32px padding + 16px resize handle
             col_w = max(int(len(str(c)) * 7.5) + 48, 80)
-            arrow = ' <span class="da-{uid}-sort-arrow">\u25BC</span>'.format(uid=uid) if c == sort_col else ""
+            arrow = (
+                ' <span class="da-{uid}-sort-arrow">\u25BC</span>'.format(uid=uid)
+                if c == sort_col
+                else ""
+            )
             align = "left" if _is_text_col(df, c) else "right"
             header_cells += f'<th style="width:{col_w}px;min-width:60px;text-align:{align}"><span class="da-{uid}-th-text">{label}{arrow}</span><div class="da-{uid}-resize"></div></th>'
         # Compute column max values for data bars
@@ -714,6 +751,14 @@ def _display_delta_analyzer_ui(
             border-bottom: 2px solid transparent;
             transition: color 0.2s, border-color 0.2s;
             font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .da-{uid}-tab-icon {{
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
         }}
         .da-{uid}-tab:hover {{
             color: #1d1d1f;
