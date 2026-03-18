@@ -1305,6 +1305,42 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     .vpx-{uid} .vpx-row-count span {{
         font-variant-numeric: tabular-nums;
     }}
+    /* ── Toolbar controls ── */
+    .vpx-{uid} .vpx-toolbar-controls {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }}
+    .vpx-{uid} .vpx-bar-toggle {{
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: inherit;
+        color: var(--vpx-text-secondary);
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border-strong);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: color var(--vpx-transition), border-color var(--vpx-transition);
+        white-space: nowrap;
+    }}
+    .vpx-{uid} .vpx-bar-toggle:hover {{
+        color: var(--vpx-text);
+        border-color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-bar-toggle.vpx-bars-active {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-bar-toggle .vpx-toggle-icon {{
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+    }}
+
     /* ── Tab Content ── */
     .vpx-{uid} .vpx-panel {{
         display: none;
@@ -1377,6 +1413,26 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
         white-space: nowrap;
         text-align: left;
         transition: background var(--vpx-transition);
+    }}
+    .vpx-{uid} tbody td.vpx-bar-cell {{
+        position: relative;
+        overflow: hidden;
+    }}
+    .vpx-{uid} tbody td.vpx-bar-cell .vpx-bar {{
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: rgba(0, 113, 227, 0.08);
+        border-right: 2px solid rgba(0, 113, 227, 0.25);
+        pointer-events: none;
+    }}
+    .vpx-{uid} tbody td.vpx-bar-cell .vpx-bar-value {{
+        position: relative;
+        z-index: 1;
+    }}
+    .vpx-{uid} .vpx-bars-off .vpx-bar {{
+        display: none;
     }}
     .vpx-{uid} tbody tr {{
         transition: background var(--vpx-transition);
@@ -1483,6 +1539,15 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
         "Hierarchies": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="3" r="1.8"/><circle cx="4" cy="13" r="1.8"/><circle cx="12" cy="13" r="1.8"/><line x1="6.8" y1="4.5" x2="4.8" y2="11.2"/><line x1="9.2" y1="4.5" x2="11.2" y2="11.2"/></svg>',
     }
 
+    # Columns that should show data bars per tab
+    data_bar_columns = {
+        "Tables": ["Total Size", "Row Count", "Data Size", "Dictionary Size", "Relationship Size", "Hierarchy Size", "User Hierarchy Size"],
+        "Columns": ["Cardinality", "Total Size", "Data Size", "Dictionary Size", "Hierarchy Size"],
+        "Relationships": ["Used Size"],
+        "Partitions": ["Record Count"],
+        "Hierarchies": ["Used Size"],
+    }
+
     # Tab bar
     html_parts.append(f'<div class="vpx-tab-bar" id="vpx-tabbar-{uid}">')
     for i, title in enumerate(df_dict.keys()):
@@ -1505,6 +1570,10 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
 
         html_parts.append(f'<div id="{panel_id}" class="vpx-panel{visible}">')
 
+        has_bars = title in data_bar_columns and any(
+            bc in df.columns for bc in data_bar_columns.get(title, [])
+        )
+
         # Toolbar with search and row count
         html_parts.append('<div class="vpx-toolbar">')
         html_parts.append(
@@ -1514,11 +1583,28 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
             f"oninput=\"vpxFilter_{uid}(this, '{panel_id}')\" />"
             f"</div>"
         )
+        html_parts.append('<div class="vpx-toolbar-controls">')
+        if has_bars:
+            bar_toggle_icon = (
+                '<svg class="vpx-toggle-icon" viewBox="0 0 16 16" fill="none" '
+                'stroke="currentColor" stroke-width="1.4" stroke-linecap="round">'
+                '<line x1="3" y1="12" x2="3" y2="6"/>'
+                '<line x1="7" y1="12" x2="7" y2="3"/>'
+                '<line x1="11" y1="12" x2="11" y2="8"/>'
+                '<line x1="1" y1="12" x2="13" y2="12"/></svg>'
+            )
+            html_parts.append(
+                f'<button class="vpx-bar-toggle vpx-bars-active" '
+                f'onclick="vpxToggleBars_{uid}(this, \'{panel_id}\')" '
+                f'title="Toggle data bars">{bar_toggle_icon}Bars</button>'
+            )
+
         html_parts.append(
             f'<div class="vpx-row-count" id="{panel_id}-rc">'
             f'<span>{row_count:,}</span> row{"s" if row_count != 1 else ""}'
             f"</div>"
         )
+        html_parts.append("</div>")  # toolbar-controls
         html_parts.append("</div>")  # toolbar
 
         # Table
@@ -1554,14 +1640,58 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
             html_parts.append("</tr></thead>")
 
             # Body
+            bar_cols = data_bar_columns.get(title, [])
+            bar_maxes = {}
+            for bc in bar_cols:
+                if bc in df.columns:
+                    max_val = 0
+                    for v in df[bc]:
+                        if pd.notna(v) and str(v):
+                            try:
+                                max_val = max(
+                                    max_val,
+                                    float(
+                                        str(v)
+                                        .replace(",", "")
+                                        .replace("%", "")
+                                    ),
+                                )
+                            except ValueError:
+                                pass
+                    if max_val > 0:
+                        bar_maxes[bc] = max_val
+
             html_parts.append("<tbody>")
             for _, row_data in df.iterrows():
                 html_parts.append("<tr>")
                 for col in df.columns:
                     val = row_data[col]
-                    num_cls = ' class="vpx-numeric"' if col in numeric_cols else ""
                     cell_val = "" if pd.isna(val) else str(val)
-                    html_parts.append(f"<td{num_cls}>{cell_val}</td>")
+                    is_bar = col in bar_maxes
+                    num = col in numeric_cols
+                    cls_parts = []
+                    if num:
+                        cls_parts.append("vpx-numeric")
+                    if is_bar:
+                        cls_parts.append("vpx-bar-cell")
+                    cls_attr = (
+                        f' class="{" ".join(cls_parts)}"' if cls_parts else ""
+                    )
+                    if is_bar and cell_val:
+                        try:
+                            num_val = float(
+                                cell_val.replace(",", "").replace("%", "")
+                            )
+                            pct = (num_val / bar_maxes[col]) * 100
+                        except ValueError:
+                            pct = 0
+                        html_parts.append(
+                            f"<td{cls_attr}>"
+                            f'<div class="vpx-bar" style="width:{pct:.1f}%"></div>'
+                            f'<span class="vpx-bar-value">{cell_val}</span></td>'
+                        )
+                    else:
+                        html_parts.append(f"<td{cls_attr}>{cell_val}</td>")
                 html_parts.append("</tr>")
             html_parts.append("</tbody>")
 
@@ -1682,6 +1812,27 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
             }});
             rows.forEach(function(r) {{ tbody.appendChild(r); }});
         }};
+
+        /* Toggle data bars (synced across all tabs) */
+        window.vpxToggleBars_{uid} = function(btn, panelId) {{
+            var container = btn.closest('.vpx-{uid}');
+            if (!container) return;
+            var panel = document.getElementById(panelId);
+            if (!panel) return;
+            var wrap = panel.querySelector('.vpx-table-wrap');
+            if (!wrap) return;
+            var barsOff = !wrap.classList.contains('vpx-bars-off');
+            container.querySelectorAll('.vpx-panel .vpx-table-wrap').forEach(function(w) {{
+                if (barsOff) {{ w.classList.add('vpx-bars-off'); }}
+                else {{ w.classList.remove('vpx-bars-off'); }}
+            }});
+            container.querySelectorAll('.vpx-bar-toggle').forEach(function(b) {{
+                if (barsOff) {{ b.classList.remove('vpx-bars-active'); }}
+                else {{ b.classList.add('vpx-bars-active'); }}
+            }});
+        }};
+
+
     }})();
     </script>
     """
