@@ -1096,9 +1096,11 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
                 if tt:
                     tooltip_lookup[(vw, col_name)] = tt
 
+    # Model summary cards (shown above tabs)
+    model_df = dataframes["Model"]["data"]
+
     # define the dictionary with {"Tab name":df}
     df_dict = {
-        "Model Summary": (dataframes["Model"]["data"], "Model"),
         "Tables": (dataframes["Tables"]["data"], "Table"),
         "Partitions": (dataframes["Partitions"]["data"], "Partition"),
         "Columns": (dataframes["Columns"]["data"], "Column"),
@@ -1159,6 +1161,38 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
         color: var(--vpx-text);
         margin: 0 0 16px 0;
         line-height: 1.2;
+    }}
+    /* ── Model Summary Cards ── */
+    .vpx-{uid} .vpx-cards {{
+        display: flex;
+        gap: 12px;
+        padding: 0 24px 16px 24px;
+        flex-wrap: wrap;
+    }}
+    .vpx-{uid} .vpx-card {{
+        flex: 1 1 0;
+        min-width: 120px;
+        background: var(--vpx-bg-secondary);
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius-sm);
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }}
+    .vpx-{uid} .vpx-card-label {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-card-value {{
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--vpx-text);
+        font-variant-numeric: tabular-nums;
     }}
     /* ── Tab Navigation ── */
     .vpx-{uid} .vpx-tab-bar {{
@@ -1412,6 +1446,25 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     html_parts.append(
         f'<div class="vpx-header"><div class="vpx-title">{header_title}</div></div>'
     )
+
+    # Model summary cards
+    if not model_df.empty:
+        html_parts.append('<div class="vpx-cards">')
+        row = model_df.iloc[0]
+        for col in model_df.columns:
+            if col == "Dataset Name":
+                continue
+            val = row[col]
+            cell_val = "" if pd.isna(val) else str(val)
+            tt = tooltip_lookup.get(("Model", col), "")
+            tip_attr = f' title="{tt}"' if tt else ""
+            html_parts.append(
+                f'<div class="vpx-card"{tip_attr}>'
+                f'<div class="vpx-card-label">{col}</div>'
+                f'<div class="vpx-card-value">{cell_val}</div>'
+                f'</div>'
+            )
+        html_parts.append('</div>')
 
     # Tab bar
     html_parts.append(f'<div class="vpx-tab-bar" id="vpx-tabbar-{uid}">')
