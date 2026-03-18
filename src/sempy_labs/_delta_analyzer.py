@@ -676,8 +676,16 @@ def _display_delta_analyzer_ui(
             margin: 24px auto;
             -webkit-font-smoothing: antialiased;
         }}
+        .da-{uid}-container {{
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.06);
+        }}
         .da-{uid}-header {{
-            margin-bottom: 28px;
+            padding: 20px 24px 0 24px;
+            margin-bottom: 16px;
         }}
         .da-{uid}-title {{
             display: flex;
@@ -702,9 +710,9 @@ def _display_delta_analyzer_ui(
         /* Summary cards */
         .da-{uid}-cards {{
             display: flex;
-            gap: 16px;
+            gap: 12px;
+            padding: 0 24px 16px 24px;
             flex-wrap: wrap;
-            margin-bottom: 32px;
         }}
         .da-{uid}-card {{
             flex: 1 1 110px;
@@ -736,9 +744,16 @@ def _display_delta_analyzer_ui(
         /* Tabs */
         .da-{uid}-tabs {{
             display: flex;
-            gap: 4px;
+            gap: 2px;
+            padding: 0 24px;
             border-bottom: 1px solid #e8e8ed;
             margin-bottom: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }}
+        .da-{uid}-tabs::-webkit-scrollbar {{
+            display: none;
         }}
         .da-{uid}-tab {{
             background: none;
@@ -765,6 +780,7 @@ def _display_delta_analyzer_ui(
         }}
         .da-{uid}-tab-active {{
             color: #0071e3;
+            font-weight: 600;
             border-bottom-color: #0071e3;
         }}
         /* Data table */
@@ -772,10 +788,6 @@ def _display_delta_analyzer_ui(
             overflow-x: auto;
             overflow-y: auto;
             max-height: 520px;
-            background: #ffffff;
-            border: 1px solid #e8e8ed;
-            border-top: none;
-            border-radius: 0 0 16px 16px;
         }}
         .da-{uid}-table {{
             table-layout: fixed;
@@ -839,10 +851,9 @@ def _display_delta_analyzer_ui(
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 16px;
-            background: #ffffff;
-            border: 1px solid #e8e8ed;
-            border-top: none;
+            padding: 12px 24px;
+            background: #fbfbfd;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
         }}
         .da-{uid}-search {{
             font-family: inherit;
@@ -941,9 +952,19 @@ def _display_delta_analyzer_ui(
         .da-{uid}-row-count span {{
             font-variant-numeric: tabular-nums;
         }}
+        /* Footer */
+        .da-{uid}-footer {{
+            padding: 10px 24px;
+            font-size: 11px;
+            color: #86868b;
+            text-align: right;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            background: #fbfbfd;
+        }}
     </style>
 
     <div class="da-{uid}-root">
+    <div class="da-{uid}-container">
         <div class="da-{uid}-header">
             <h2 class="da-{uid}-title"><svg class="da-{uid}-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="da-{uid}-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0071e3"/><stop offset="100%" stop-color="#40a9ff"/></linearGradient></defs><path d="M50 8 L92 85 Q94 89 91 92 Q89 94 85 94 L15 94 Q11 94 9 92 Q6 89 8 85 Z" fill="url(#da-{uid}-grad)"/><path d="M50 30 L72 78 L28 78 Z" fill="white" opacity="0.35"/></svg>Delta Analyzer</h2>
             <p class="da-{uid}-subtitle">{(html_module.escape(schema) + '.') if schema else ''}{html_module.escape(table_name)}{(' &nbsp;&middot;&nbsp; ' + html_module.escape(meta_workspace)) if meta_workspace else ''}{(' &nbsp;&middot;&nbsp; ' + html_module.escape(meta_lakehouse)) if meta_lakehouse else ''}</p>
@@ -964,6 +985,8 @@ def _display_delta_analyzer_ui(
         <div class="da-{uid}-panels">
             {panels_html}
         </div>
+        <div class="da-{uid}-footer">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" style="color:inherit;text-decoration:underline;">Semantic Link Labs</a></div>
+    </div>
     </div>
 
     <script>
