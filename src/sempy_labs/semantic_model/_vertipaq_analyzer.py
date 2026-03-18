@@ -954,7 +954,12 @@ def vertipaq_analyzer(
 
     if export is None:
         dfs = create_dfs(column_formatting="format")
-        visualize_vertipaq(dfs, dataset_name, vertipaq_map)
+        default_sort = {
+            items["title"]: items["sortby"]
+            for items in config.values()
+            if items.get("sortby")
+        }
+        visualize_vertipaq(dfs, dataset_name, vertipaq_map, default_sort=default_sort)
         return {
             "Model Summary": dfs["Model"]["data"],
             "Tables": dfs["Tables"]["data"],
@@ -1071,7 +1076,7 @@ def vertipaq_analyzer(
             )
 
 
-def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
+def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort=None):
 
     # Build tooltip lookup from vertipaq_map
     tooltip_lookup = {}
@@ -1312,14 +1317,14 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
         background: #ececee;
     }}
     .vpx-{uid} thead th .vpx-sort-arrow {{
-        display: inline-block;
+        display: none;
         margin-left: 4px;
         font-size: 10px;
-        opacity: 0.3;
         transition: opacity var(--vpx-transition);
     }}
     .vpx-{uid} thead th.vpx-sort-asc .vpx-sort-arrow,
     .vpx-{uid} thead th.vpx-sort-desc .vpx-sort-arrow {{
+        display: inline-block;
         opacity: 1;
         color: var(--vpx-accent);
     }}
@@ -1460,15 +1465,18 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
                     numeric_cols.add(col)
 
             # Header
+            presort_col = default_sort.get(title) if default_sort else None
             html_parts.append("<thead><tr>")
             for col in df.columns:
                 tt = tooltip_lookup.get((vw, col), "")
                 num_cls = " vpx-numeric" if col in numeric_cols else ""
+                sort_cls = " vpx-sort-desc" if col == presort_col else ""
                 tip_attr = f' title="{tt}"' if tt else ""
+                arrow = "&#x25BC;" if col == presort_col else "&#x25B2;"
                 html_parts.append(
-                    f'<th class="{num_cls.strip()}"{tip_attr} '
+                    f'<th class="{(num_cls + sort_cls).strip()}"{tip_attr} '
                     f'onclick="vpxSort_{uid}(this)">'
-                    f'{col}<span class="vpx-sort-arrow">&#x25B2;</span>'
+                    f'{col}<span class="vpx-sort-arrow">{arrow}</span>'
                     f'<div class="vpx-resize-handle" '
                     f'onmousedown="vpxResizeStart_{uid}(event, this)"></div></th>'
                 )
