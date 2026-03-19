@@ -86,7 +86,7 @@ def migrate(
         multi_partitioned_tables = [
             t.Name for t in tom.model.Tables if t.Partitions.Count > 1
         ]
-        aggs_used = any(c for c in tom.all_columns if c.AlternateOf is not None)
+        aggs_used = any(c for c in tom.all_columns() if c.AlternateOf is not None)
 
         # Collect depencency issues
         broken_measures = []
