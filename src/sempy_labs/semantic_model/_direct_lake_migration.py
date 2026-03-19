@@ -11,18 +11,6 @@ from sempy_labs.directlake._generate_shared_expression import generate_shared_ex
 from sempy_labs.lakehouse._schemas import is_schema_enabled
 from sempy_labs._model_dependencies import get_model_dependencies
 
-# class DirectLakeMigration:
-
-#    def __init__(
-#        self,
-#        dataset,
-#        workspace,
-#    )
-#        self.dataset = dataset
-#        self.workspace = workspace
-
-#    def identify_issues(self)
-
 
 def migrate(
     dataset: str | UUID,
@@ -34,14 +22,17 @@ def migrate(
     use_sql_endpoint: bool = False,
 ):
 
-    import Microsoft.AnalysisServices.Tabluar as TOM
+    import Microsoft.AnalysisServices.Tabular as TOM
 
     expression_name = "DatabaseQuery"
-    sql_endpoint_sources = ['Lakehouse', 'Warehouse']
-    dl_source_list = ['Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', 'MirroredAzureDatabricksCatalog']
-
-    # Get dependencies
-    dep = get_model_dependencies(dataset=dataset, workspace=workspace)
+    sql_endpoint_sources = ["Lakehouse", "Warehouse"]
+    dl_source_list = [
+        "Lakehouse",
+        "Warehouse",
+        "MirroredDatabase",
+        "SQLDatabase",
+        "MirroredAzureDatabricksCatalog",
+    ]
 
     # SQL Endpoint only valid for Lakehouse and Warehouse sources
     if use_sql_endpoint and source_type not in sql_endpoint_sources:
@@ -61,7 +52,9 @@ def migrate(
             item=source, type=source_type, workspace=source_workspace_id
         )
 
-    # Have one for your review, Bo: https://github.com/microsoft/semantic-link-labs/pull/1114
+    # Get dependencies
+    dep = get_model_dependencies(dataset=dataset, workspace=workspace)
+
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
 
         # Collect unsuppported objects and display it in the UI
@@ -88,7 +81,7 @@ def migrate(
         ]
         aggs_used = any(c for c in tom.all_columns() if c.AlternateOf is not None)
 
-        # Collect depencency issues
+        # Collect dependency issues
         broken_measures = []
         broken_relationships = []
         broken_row_level_security = []
@@ -133,6 +126,7 @@ def migrate(
                     if p != first_partition:
                         tom.remove_object(p)
 
+        # Remove calc columns, binary columns, and aggs.
         for c in tom.all_columns():
             if tom.is_calculated_column(table_name=c.Parent.Name, column_name=c.Name):
                 tom.remove_object(c)
@@ -142,8 +136,13 @@ def migrate(
                 # Remove Aggs
                 c.AlternateOf = None
 
+        # Remove relationships with non-matching column data types
         for r in tom.model.Relationships:
             if r.FromColumn.DataType != r.ToColumn.DataType:
                 tom.remove_object(r)
 
         # Create calc tables
+
+        # Create dataflow definition
+        # Create dataflow
+        # Execute dataflow to populate tables in OneLake
