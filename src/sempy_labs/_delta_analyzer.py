@@ -159,7 +159,7 @@ def delta_analyzer(
         "Value Count": "int",
         "Encodings": "string",
         "Statistics": "string",
-        "Primative Type": "string",
+        "Primitive Type": "string",
     }
 
     parquet_file_df = _create_dataframe(columns=parquet_file_df_columns)
@@ -262,7 +262,7 @@ def delta_analyzer(
                         "Value Count": column_chunk.num_values,
                         "Encodings": str(column_chunk.encodings),
                         "Statistics": column_chunk.statistics,
-                        "Primative Type": column_chunk.physical_type,
+                        "Primitive Type": column_chunk.physical_type,
                     }
 
                     column_chunk_df = pd.concat(
