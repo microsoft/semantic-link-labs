@@ -939,11 +939,11 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
 
   /* == Push state to Python via ipywidgets Textarea == */
   /* The bridge textarea and this HTML are displayed inside the same
-     widgets.Output(), so they share one DOM.  We find the textarea
-     by its placeholder, set its value via the native setter, then
-     dispatch an 'input' event.  The ipywidgets TextView listens for
-     'input' events on its <textarea> and syncs to the kernel via
-     model.set('value', ...) + model.save_changes(). */
+     widgets.Output(), so they share one DOM.  We use focus() +
+     execCommand('insertText') to generate a *trusted* InputEvent
+     that ipywidgets reliably syncs to the Python kernel.  Plain
+     synthetic Event('input') is ignored by ipywidgets in Fabric
+     notebooks. */
   function pushState() {
     var payload = JSON.stringify({ sources: sources, tables: tables });
     var br = document.querySelector(
@@ -953,16 +953,27 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
       console.warn('[DLM] Bridge textarea not found for uid=' + uid);
       return;
     }
-    var nativeSetter = Object.getOwnPropertyDescriptor(
-      HTMLTextAreaElement.prototype, 'value'
-    );
-    if (nativeSetter && nativeSetter.set) {
-      nativeSetter.set.call(br, payload);
-    } else {
-      br.value = payload;
+    /* Save and later restore focus so the user doesn't notice. */
+    var prev = document.activeElement;
+    br.focus();
+    br.select();
+    var ok = document.execCommand('insertText', false, payload);
+    if (!ok) {
+      /* Fallback: set value directly and fire an InputEvent (not a
+         plain Event) which some widget versions still handle. */
+      var nativeSetter = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype, 'value'
+      );
+      if (nativeSetter && nativeSetter.set) {
+        nativeSetter.set.call(br, payload);
+      } else {
+        br.value = payload;
+      }
+      br.dispatchEvent(new InputEvent('input', {
+        bubbles: true, inputType: 'insertText'
+      }));
     }
-    br.dispatchEvent(new Event('input',  { bubbles: true }));
-    br.dispatchEvent(new Event('change', { bubbles: true }));
+    if (prev && prev !== br) { try { prev.focus(); } catch(e) {} }
   }
 
   /* == Initial render == */
