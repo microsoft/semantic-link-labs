@@ -104,7 +104,6 @@ def _apply_changes(uid, state_json):
                     name=expr_name,
                     expression=expression,
                 )
-
         # Apply table partition changes
         for tbl in new_tables:
             table_name = tbl["tableName"]
@@ -693,12 +692,13 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
       sqlEl.value = "false";
       sqlEl.disabled = true;
       sqlEl.style.opacity = "0.5";
+    } else if (typeVal === "Warehouse") {
+      sqlEl.value = "true";
+      sqlEl.disabled = true;
+      sqlEl.style.opacity = "0.5";
     } else {
       sqlEl.disabled = false;
       sqlEl.style.opacity = "1";
-      if (typeVal === "Warehouse") {
-        sqlEl.value = "true";
-      }
     }
   }
 
@@ -713,7 +713,7 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     el("dlm-"+uid+"-src-f-name").value  = "";
     el("dlm-"+uid+"-src-f-type").value  = "Lakehouse";
     el("dlm-"+uid+"-src-f-ws").value    = "";
-    el("dlm-"+uid+"-src-f-sql").value   = "true";
+    el("dlm-"+uid+"-src-f-sql").value   = "false";
     onTypeChange();
     el("dlm-"+uid+"-modal-src").classList.add("visible");
   }
@@ -722,7 +722,7 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     editSrcIdx = idx;
     var s = sources[idx];
     el("dlm-"+uid+"-modal-src-title").textContent = "Edit Source";
-    el("dlm-"+uid+"-src-f-expr").value  = s.expressionName;
+    el("dlm-"+uid+"-src-f-expr").value  = s.expressionName || s.ExpressionName || "";
     el("dlm-"+uid+"-src-f-expr").disabled = true;
     el("dlm-"+uid+"-src-f-expr").style.background = "#f5f5f7";
     el("dlm-"+uid+"-src-f-expr").style.color = "#86868b";
@@ -818,25 +818,61 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
   }
 
   /* == Push state to ipywidgets Textarea bridge == */
-  var _bridgeEl = null;
   function _findBridge() {
-    if (_bridgeEl) return _bridgeEl;
-    var sel = '.dlm-bridge-' + uid + ' textarea';
+    /* Try multiple selectors and documents to locate the bridge textarea */
+    var selectors = [
+      'textarea[placeholder="dlm-bridge-' + uid + '"]',
+      '.dlm-bridge-' + uid + ' textarea'
+    ];
     var docs = [document];
     try { if (parent && parent.document !== document) docs.push(parent.document); } catch(e) {}
     try { if (top && top.document !== document && top.document !== parent.document) docs.push(top.document); } catch(e) {}
-    for (var i = 0; i < docs.length; i++) {
-      _bridgeEl = docs[i].querySelector(sel);
-      if (_bridgeEl) return _bridgeEl;
+    for (var d = 0; d < docs.length; d++) {
+      for (var s = 0; s < selectors.length; s++) {
+        try {
+          var el2 = docs[d].querySelector(selectors[s]);
+          if (el2) return el2;
+        } catch(e) {}
+      }
     }
     return null;
   }
   function pushState() {
     var payload = JSON.stringify({ sources: sources, tables: tables });
     var br = _findBridge();
-    if (br) {
-      br.value = payload;
-      br.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!br) {
+      console.warn('[DLM] Bridge textarea not found for uid=' + uid);
+      return;
+    }
+    /*
+     * Use document.execCommand('insertText') to generate REAL browser
+     * InputEvent / change events that ipywidgets Backbone views recognise.
+     * Synthetic events created with `new Event(...)` are ignored by the
+     * ipywidgets comm protocol because they never pass through the
+     * browser's native editing pipeline.
+     */
+    try {
+      br.focus();
+      br.select();  /* select all existing text */
+      if (document.execCommand) {
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, payload);
+      }
+    } catch(e) {
+      console.warn('[DLM] execCommand failed, using fallback:', e);
+    }
+    /* Verify value was set; fall back to native setter + synthetic events */
+    if (br.value !== payload) {
+      var nativeSetter = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype, 'value'
+      );
+      if (nativeSetter && nativeSetter.set) {
+        nativeSetter.set.call(br, payload);
+      } else {
+        br.value = payload;
+      }
+      br.dispatchEvent(new Event('input',  { bubbles: true }));
+      br.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
@@ -930,21 +966,34 @@ def direct_lake_manager(
 
     html_content = _build_html(uid, sources_json, tables_json, dataset_name)
 
-    # State bridge: hidden Textarea that JS writes to on every edit.
-    # Rendered inside the same Output as the HTML so JS can find it in the DOM.
+    # State bridge: off-screen Textarea widget.  Must NOT use
+    # visibility:hidden because hidden elements cannot receive focus,
+    # and document.execCommand('insertText') requires a focused element
+    # to generate real browser InputEvent / change events.
     initial_state = json.dumps({"sources": sources, "tables": tables})
     state_bridge = widgets.Textarea(
         value=initial_state,
+        placeholder=f"dlm-bridge-{uid}",
+        continuous_update=True,
         layout=widgets.Layout(
-            visibility="hidden",
-            height="1px",
+            position="absolute",
+            left="-9999px",
+            top="-9999px",
             width="1px",
+            height="1px",
             overflow="hidden",
-            margin="0",
-            padding="0",
         ),
     )
     state_bridge.add_class(f"dlm-bridge-{uid}")
+
+    # Debug: log whenever the widget model actually syncs from the frontend
+    def _on_bridge_change(change):
+        print(
+            f"{icons.in_progress} [DLM] Bridge value synced "
+            f"(length={len(change['new'])})"
+        )
+
+    state_bridge.observe(_on_bridge_change, names=["value"])
 
     # Status bar widget for apply feedback
     status_bar = widgets.HTML(value="")
@@ -976,10 +1025,12 @@ def direct_lake_manager(
 
     apply_btn.on_click(_on_apply)
 
-    # Main output: HTML + bridge textarea rendered in the same DOM context
-    main_output = widgets.Output()
-    with main_output:
-        display(HTML(html_content))
-        display(state_bridge)
-
-    display(widgets.VBox([main_output, apply_btn, status_bar]))
+    # Display order matters:
+    #   1. state_bridge first — so its textarea is in the DOM when the
+    #      HTML <script> runs and pushState() looks for it.
+    #   2. HTML + JS — the UI; pushState() uses execCommand('insertText')
+    #      which produces real browser events that ipywidgets syncs.
+    #   3. Controls — Apply button + status bar.
+    display(state_bridge)
+    display(HTML(html_content))
+    display(widgets.HBox([apply_btn, status_bar]))
