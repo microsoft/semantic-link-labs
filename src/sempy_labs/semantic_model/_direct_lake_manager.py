@@ -83,6 +83,17 @@ def _apply_changes(uid, state_json):
         readonly=False,
     ) as tom:
         existing_expr_names = {e.Name for e in tom.model.Expressions}
+        new_expr_names = {
+            src.get("expressionName", "")
+            for src in new_sources
+            if src.get("expressionName")
+        }
+
+        # Remove expressions that were deleted by the user
+        removed_expr_names = existing_expr_names - new_expr_names
+        for expr_name in removed_expr_names:
+            expr_obj = tom.model.Expressions[expr_name]
+            tom.remove_object(expr_obj)
 
         # Apply source (expression) changes
         for src in new_sources:
