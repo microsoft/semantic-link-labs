@@ -588,6 +588,28 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
   </div>
 </div>
 
+<!-- Confirm Delete Source Modal -->
+<div class="dlm-overlay" id="dlm-"""
+        + uid
+        + """-modal-del">
+  <div class="dlm-modal" style="width:400px">
+    <div class="dlm-modal-header" style="color:#ff3b30">Confirm Delete</div>
+    <div class="dlm-modal-body">
+      <p id="dlm-"""
+        + uid
+        + """-del-msg" style="font-size:14px;line-height:1.5"></p>
+    </div>
+    <div class="dlm-modal-footer">
+      <button class="dlm-btn dlm-btn-secondary" onclick="dlm_"""
+        + uid
+        + """.cancelDelete()">Cancel</button>
+      <button class="dlm-btn dlm-btn-danger" onclick="dlm_"""
+        + uid
+        + """.confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="dlm-toast" id="dlm-"""
         + uid
@@ -660,7 +682,7 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
         + '<td><span class="dlm-tag ' + sqlCls + '">' + sqlTxt + '</span></td>'
         + '<td>'
         +   '<button class="dlm-btn dlm-btn-ghost" onclick="dlm_' + uid + '.editSource(' + i + ')" title="Edit">&#9998;</button>'
-        +   '<button class="dlm-btn dlm-btn-ghost" style="color:#ff3b30" onclick="dlm_' + uid + '.deleteSource(' + i + ')" title="Delete">&#128465;</button>'
+        +   (sources.length > 1 ? '<button class="dlm-btn dlm-btn-ghost" style="color:#ff3b30" onclick="dlm_' + uid + '.deleteSource(' + i + ')" title="Delete">&#128465;</button>' : '')
         + '</td>'
         + '</tr>';
     }
@@ -775,12 +797,44 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     pushState();
   }
 
+  var pendingDeleteIdx = -1;
+
   function deleteSource(idx) {
-    if (!confirm("Remove this source?")) return;
-    sources.splice(idx, 1);
-    renderSources();
-    toast("Source removed");
-    pushState();
+    pendingDeleteIdx = idx;
+    var srcExpr = sources[idx].expressionName || sources[idx].ExpressionName || "";
+    /* Find tables that reference this source */
+    var affected = [];
+    for (var i = 0; i < tables.length; i++) {
+      if (tables[i].expressionName === srcExpr) {
+        affected.push(tables[i].tableName);
+      }
+    }
+    var msg = 'Are you sure you want to remove source <strong>' + esc(srcExpr) + '</strong>?';
+    if (affected.length) {
+      msg += '<br><br><span style="color:#ff3b30">The following table(s) use this source and will break:</span><ul style="margin:6px 0 0 16px">';
+      for (var i = 0; i < affected.length; i++) {
+        msg += '<li>' + esc(affected[i]) + '</li>';
+      }
+      msg += '</ul>';
+    }
+    el("dlm-"+uid+"-del-msg").innerHTML = msg;
+    el("dlm-"+uid+"-modal-del").classList.add("visible");
+  }
+
+  function confirmDelete() {
+    if (pendingDeleteIdx >= 0) {
+      sources.splice(pendingDeleteIdx, 1);
+      pendingDeleteIdx = -1;
+      closeModal("del");
+      renderSources();
+      toast("Source removed");
+      pushState();
+    }
+  }
+
+  function cancelDelete() {
+    pendingDeleteIdx = -1;
+    closeModal("del");
   }
 
   /* == Table modal == */
@@ -898,6 +952,8 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     editSource: editSource,
     onTypeChange: onTypeChange,
     deleteSource: deleteSource,
+    confirmDelete: confirmDelete,
+    cancelDelete: cancelDelete,
     saveSource: saveSource,
     editTable: editTable,
     saveTable: saveTable,
