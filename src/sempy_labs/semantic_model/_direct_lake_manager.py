@@ -1,3 +1,4 @@
+import sempy
 import json
 import uuid
 from typing import Optional
@@ -5,11 +6,18 @@ from uuid import UUID
 import ipywidgets as widgets
 from IPython.display import display, HTML
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs.directlake._sources import get_direct_lake_sources
+from sempy_labs.directlake._sources import (
+    get_direct_lake_sources,
+)
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_workspace_name,
     resolve_item_name_and_id,
+    _base_api,
+)
+from sempy_labs.directlake._generate_shared_expression import (
+    generate_shared_expression,
 )
 
 
@@ -19,12 +27,15 @@ from sempy_labs._helper_functions import (
 
 
 def _collect_sources(dataset, workspace):
-    """Retrieve Direct Lake source metadata."""
+    """Retrieve Direct Lake source metadata including expression names."""
     return get_direct_lake_sources(dataset=dataset, workspace=workspace)
 
 
 def _collect_tables(dataset, workspace):
     """Retrieve Direct Lake table / partition metadata."""
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+    
     table_list = []
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         if not tom.is_direct_lake():
@@ -34,17 +45,102 @@ def _collect_tables(dataset, workspace):
         for t in tom.model.Tables:
             table_name = t.Name
             for p in t.Partitions:
-                if str(p.Mode) == "DirectLake":
+                if p.Mode == TOM.ModeType.DirectLake:
                     table_list.append(
                         {
                             "tableName": table_name,
                             "partitionName": p.Name,
-                            "expressionName": p.Source.SourceExpression.Name,
+                            "expressionName": p.Source.ExpressionSource.Name,
                             "entityName": p.Source.EntityName,
                             "schemaName": p.Source.SchemaName,
                         }
                     )
     return table_list
+
+
+# ---------------------------------------------------------------------------
+# Apply changes callback
+# ---------------------------------------------------------------------------
+
+_dlm_callbacks = {}
+
+
+def _apply_changes_encoded(uid, encoded_state):
+    """URL-decode state and apply changes."""
+    from urllib.parse import unquote
+    state_json = unquote(encoded_state)
+    _apply_changes(uid, state_json)
+
+
+def _apply_changes(uid, state_json):
+    """Apply Direct Lake source and table changes to the semantic model."""
+    info = _dlm_callbacks.get(uid)
+    if not info:
+        print(
+            f"{icons.red_dot} No callback registered "
+            f"for session {uid}."
+        )
+        return
+
+    dataset_id = info["dataset_id"]
+    workspace_id = info["workspace_id"]
+    state = json.loads(state_json)
+    new_sources = state.get("sources", [])
+    new_tables = state.get("tables", [])
+
+    with connect_semantic_model(
+        dataset=dataset_id,
+        workspace=workspace_id,
+        readonly=False,
+    ) as tom:
+        existing_expr_names = {
+            e.Name for e in tom.model.Expressions
+        }
+
+        # Apply source (expression) changes
+        for src in new_sources:
+            expr_name = src.get("expressionName", "")
+            if not expr_name:
+                continue
+
+            expression = generate_shared_expression(
+                item_name=src["itemName"],
+                item_type=src["itemType"],
+                workspace=src["workspaceName"],
+                use_sql_endpoint=src["usesSqlEndpoint"],
+            )
+
+            if expr_name in existing_expr_names:
+                tom.model.Expressions[
+                    expr_name
+                ].Expression = expression
+            else:
+                tom.add_expression(
+                    name=expr_name,
+                    expression=expression,
+                )
+
+        # Apply table partition changes
+        for tbl in new_tables:
+            table_name = tbl["tableName"]
+            partition_name = tbl["partitionName"]
+            for p in tom.model.Tables[
+                table_name
+            ].Partitions:
+                if p.Name == partition_name:
+                    p.Source.ExpressionSource = (
+                        tom.model.Expressions[
+                            tbl["expressionName"]
+                        ]
+                    )
+                    p.Source.EntityName = tbl["entityName"]
+                    p.Source.SchemaName = tbl[
+                        "schemaName"
+                    ]
+
+    print(
+        f"{icons.green_dot} Changes applied successfully."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +406,9 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     <span class="dlm-topbar-badge">"""
         + dataset_name
         + """</span>
+    <button class="dlm-btn dlm-btn-primary" onclick="dlm_"""
+        + uid
+        + """.applyChanges()">&#10003;&ensp;Apply Changes</button>
   </div>
 
   <!-- Navigation -->
@@ -403,6 +502,12 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
         + """-modal-src-title">Add Source</div>
     <div class="dlm-modal-body">
       <div class="dlm-field">
+        <label>Expression Name</label>
+        <input id="dlm-"""
+        + uid
+        + """-src-f-expr" placeholder="e.g. DatabaseQuery" />
+      </div>
+      <div class="dlm-field">
         <label>Item Name</label>
         <input id="dlm-"""
         + uid
@@ -412,9 +517,14 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
         <label>Item Type</label>
         <select id="dlm-"""
         + uid
-        + """-src-f-type">
+        + """-src-f-type" onchange="dlm_"""
+        + uid
+        + """.onTypeChange()">
           <option value="Lakehouse">Lakehouse</option>
           <option value="Warehouse">Warehouse</option>
+          <option value="MirroredDatabase">MirroredDatabase</option>
+          <option value="SQLDatabase">SQLDatabase</option>
+          <option value="MirroredAzureDatabricksCatalog">MirroredAzureDatabricksCatalog</option>
         </select>
       </div>
       <div class="dlm-field">
@@ -594,14 +704,38 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     body.innerHTML = html;
   }
 
+  /* == SQL endpoint source types == */
+  var sqlEndpointSourceTypes = ["Lakehouse", "Warehouse"];
+
+  function onTypeChange() {
+    var typeVal = el("dlm-"+uid+"-src-f-type").value;
+    var sqlEl   = el("dlm-"+uid+"-src-f-sql");
+    if (sqlEndpointSourceTypes.indexOf(typeVal) === -1) {
+      sqlEl.value = "false";
+      sqlEl.disabled = true;
+      sqlEl.style.opacity = "0.5";
+    } else {
+      sqlEl.disabled = false;
+      sqlEl.style.opacity = "1";
+      if (typeVal === "Warehouse") {
+        sqlEl.value = "true";
+      }
+    }
+  }
+
   /* == Source modal == */
   function openAddSource() {
     editSrcIdx = -1;
     el("dlm-"+uid+"-modal-src-title").textContent = "Add Source";
+    el("dlm-"+uid+"-src-f-expr").value  = "";
+    el("dlm-"+uid+"-src-f-expr").disabled = false;
+    el("dlm-"+uid+"-src-f-expr").style.background = "";
+    el("dlm-"+uid+"-src-f-expr").style.color = "";
     el("dlm-"+uid+"-src-f-name").value  = "";
     el("dlm-"+uid+"-src-f-type").value  = "Lakehouse";
     el("dlm-"+uid+"-src-f-ws").value    = "";
     el("dlm-"+uid+"-src-f-sql").value   = "true";
+    onTypeChange();
     el("dlm-"+uid+"-modal-src").classList.add("visible");
   }
 
@@ -609,21 +743,29 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     editSrcIdx = idx;
     var s = sources[idx];
     el("dlm-"+uid+"-modal-src-title").textContent = "Edit Source";
+    el("dlm-"+uid+"-src-f-expr").value  = s.expressionName;
+    el("dlm-"+uid+"-src-f-expr").disabled = true;
+    el("dlm-"+uid+"-src-f-expr").style.background = "#f5f5f7";
+    el("dlm-"+uid+"-src-f-expr").style.color = "#86868b";
     el("dlm-"+uid+"-src-f-name").value  = s.itemName;
     el("dlm-"+uid+"-src-f-type").value  = s.itemType;
     el("dlm-"+uid+"-src-f-ws").value    = s.workspaceName;
     el("dlm-"+uid+"-src-f-sql").value   = s.usesSqlEndpoint ? "true" : "false";
+    onTypeChange();
     el("dlm-"+uid+"-modal-src").classList.add("visible");
   }
 
   function saveSource() {
+    var exprName = el("dlm-"+uid+"-src-f-expr").value.trim();
     var name = el("dlm-"+uid+"-src-f-name").value.trim();
     var type = el("dlm-"+uid+"-src-f-type").value;
     var ws   = el("dlm-"+uid+"-src-f-ws").value.trim();
     var sql  = el("dlm-"+uid+"-src-f-sql").value === "true";
+    if (!exprName) { toast("Expression name is required"); return; }
     if (!name) { toast("Item name is required"); return; }
     if (!ws)   { toast("Workspace is required"); return; }
     var obj = {
+      expressionName: exprName,
       itemId: editSrcIdx >= 0 ? sources[editSrcIdx].itemId : "",
       itemName: name,
       itemType: type,
@@ -689,6 +831,26 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     if (stateEl) stateEl.value = payload;
   }
 
+  /* == Apply changes via Python kernel == */
+  function applyChanges() {
+    pushState();
+    var payload = JSON.stringify({ sources: sources, tables: tables });
+    var encoded = encodeURIComponent(payload);
+    var pyCode = "from sempy_labs.semantic_model._direct_lake_manager import _apply_changes_encoded; _apply_changes_encoded('" + uid + "', '" + encoded + "')";
+    var kernel = null;
+    if (typeof Jupyter !== 'undefined' && Jupyter.notebook) {
+      kernel = Jupyter.notebook.kernel;
+    } else if (typeof IPython !== 'undefined' && IPython.notebook) {
+      kernel = IPython.notebook.kernel;
+    }
+    if (kernel) {
+      kernel.execute(pyCode);
+      toast("Applying changes...");
+    } else {
+      toast("Cannot reach Python kernel");
+    }
+  }
+
   /* == Initial render == */
   renderSources();
   renderTables();
@@ -698,11 +860,13 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     nav: nav,
     openAddSource: openAddSource,
     editSource: editSource,
+    onTypeChange: onTypeChange,
     deleteSource: deleteSource,
     saveSource: saveSource,
     editTable: editTable,
     saveTable: saveTable,
     closeModal: closeModal,
+    applyChanges: applyChanges,
     getSources: function() { return sources; },
     getTables:  function() { return tables; }
   };
@@ -756,11 +920,20 @@ def direct_lake_manager(
     sources = _collect_sources(dataset=dataset_id, workspace=workspace_id)
     tables = _collect_tables(dataset=dataset_id, workspace=workspace_id)
 
+    source_types = ['Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', 'MirroredAzureDatabricksCatalog']
+    sql_endpoint_source_types = ['Lakehouse', 'Warehouse']
+
     # Unique id so multiple widgets can coexist
     uid = uuid.uuid4().hex[:10]
 
     sources_json = json.dumps(sources)
     tables_json = json.dumps(tables)
+
+    # Register callback for Apply Changes
+    _dlm_callbacks[uid] = {
+        "dataset_id": str(dataset_id),
+        "workspace_id": str(workspace_id),
+    }
 
     html_content = _build_html(uid, sources_json, tables_json, dataset_name)
 
