@@ -117,8 +117,6 @@ def _apply_changes(uid, state_json):
                     p.Source.EntityName = tbl["entityName"]
                     p.Source.SchemaName = tbl["schemaName"]
 
-    print(f"{icons.green_dot} Changes applied successfully.")
-
 
 # ---------------------------------------------------------------------------
 # HTML / CSS / JS template
@@ -932,7 +930,8 @@ def direct_lake_manager(
 
     html_content = _build_html(uid, sources_json, tables_json, dataset_name)
 
-    # State bridge: hidden Textarea that JS writes to on every edit
+    # State bridge: hidden Textarea that JS writes to on every edit.
+    # Rendered inside the same Output as the HTML so JS can find it in the DOM.
     initial_state = json.dumps({"sources": sources, "tables": tables})
     state_bridge = widgets.Textarea(
         value=initial_state,
@@ -947,8 +946,15 @@ def direct_lake_manager(
     )
     state_bridge.add_class(f"dlm-bridge-{uid}")
 
-    # Status output widget for apply feedback
-    status_output = widgets.Output()
+    # Status bar widget for apply feedback
+    status_bar = widgets.HTML(value="")
+
+    def _show_status(msg, color):
+        status_bar.value = (
+            f'<div style="padding:8px 12px; border-radius:8px; '
+            f"background:{color}1a; color:{color}; font-size:14px; "
+            f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">{msg}</div>'
+        )
 
     # Apply Changes button (Python widget - reliable comm protocol)
     apply_btn = widgets.Button(
@@ -960,15 +966,20 @@ def direct_lake_manager(
     def _on_apply(_):
         val = state_bridge.value
         if not val:
-            with status_output:
-                status_output.clear_output(wait=True)
-                print(f"{icons.warning} No changes to apply.")
+            _show_status("No changes to apply.", "#ff9500")
             return
-        with status_output:
-            status_output.clear_output(wait=True)
+        try:
             _apply_changes(uid, val)
+            _show_status(f"{icons.green_dot} Changes applied successfully.", "#34c759")
+        except Exception as e:
+            _show_status(f"Error: {e}", "#ff3b30")
 
     apply_btn.on_click(_on_apply)
 
-    display(HTML(html_content))
-    display(widgets.VBox([state_bridge, apply_btn, status_output]))
+    # Main output: HTML + bridge textarea rendered in the same DOM context
+    main_output = widgets.Output()
+    with main_output:
+        display(HTML(html_content))
+        display(state_bridge)
+
+    display(widgets.VBox([main_output, apply_btn, status_bar]))
