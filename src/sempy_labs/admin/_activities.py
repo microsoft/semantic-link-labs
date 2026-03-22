@@ -129,7 +129,9 @@ def list_activity_events(
                         "Activity": i.get("Activity"),
                         "Workspace Name": i.get("WorkSpaceName"),
                         "Workspace Id": i.get("WorkspaceId"),
-                        "Workspaces Semicolon Delimited List": i.get("WorkspacesSemicolonDelimitedList"),
+                        "Workspaces Semicolon Delimited List": i.get(
+                            "WorkspacesSemicolonDelimitedList"
+                        ),
                         "Object Id": i.get("ObjectId"),
                         "Request Id": i.get("RequestId"),
                         "Object Type": i.get("ObjectType"),
