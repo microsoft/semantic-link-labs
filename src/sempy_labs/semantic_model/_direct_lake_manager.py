@@ -356,6 +356,27 @@ _CSS = """
 }
 .dlm-empty-icon { font-size: 36px; margin-bottom: 10px; }
 
+/* == Change indicator == */
+.dlm-changed {
+    position: relative;
+}
+.dlm-changed::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #ff9500;
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.dlm-row-new {
+    background: #fffbe6 !important;
+}
+.dlm-row-new:hover {
+    background: #fff6cc !important;
+}
+
 /* == Toast == */
 .dlm-toast {
     position: fixed;
@@ -632,6 +653,27 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
   var editSrcIdx = -1;
   var editTblIdx = -1;
 
+  /* Deep-copy initial state for change tracking */
+  var _initSources = JSON.parse(JSON.stringify(sources));
+  var _initTables  = JSON.parse(JSON.stringify(tables));
+
+  /* Find initial source by expressionName; returns null if new */
+  function _findInitSrc(exprName) {
+    for (var i = 0; i < _initSources.length; i++) {
+      var n = _initSources[i].expressionName || _initSources[i].ExpressionName || '';
+      if (n === exprName) return _initSources[i];
+    }
+    return null;
+  }
+  /* Find initial table by tableName + partitionName */
+  function _findInitTbl(tblName, partName) {
+    for (var i = 0; i < _initTables.length; i++) {
+      if (_initTables[i].tableName === tblName && _initTables[i].partitionName === partName)
+        return _initTables[i];
+    }
+    return null;
+  }
+
   /* == Escape HTML to prevent XSS == */
   function esc(str) {
     var d = document.createElement("div");
@@ -671,15 +713,24 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     var html = "";
     for (var i = 0; i < sources.length; i++) {
       var s = sources[i];
+      var exprN = s.expressionName || s.ExpressionName || '';
+      var orig = _findInitSrc(exprN);
+      var isNew = !orig;
       var typeCls = s.itemType === "Lakehouse" ? "dlm-tag-blue" : "dlm-tag-orange";
       var sqlCls  = s.usesSqlEndpoint ? "dlm-tag-green" : "dlm-tag-gray";
       var sqlTxt  = s.usesSqlEndpoint ? "Yes" : "No";
-      html += '<tr>'
-        + '<td>' + esc(s.expressionName || s.ExpressionName || '') + '</td>'
-        + '<td>' + esc(s.itemName) + '</td>'
-        + '<td><span class="dlm-tag ' + typeCls + '">' + esc(s.itemType) + '</span></td>'
-        + '<td>' + esc(s.workspaceName) + '</td>'
-        + '<td><span class="dlm-tag ' + sqlCls + '">' + sqlTxt + '</span></td>'
+      /* Per-field change detection (unchanged for new rows — whole row is highlighted) */
+      var cName = (!isNew && orig.itemName !== s.itemName) ? ' dlm-changed' : '';
+      var cType = (!isNew && orig.itemType !== s.itemType) ? ' dlm-changed' : '';
+      var cWs   = (!isNew && orig.workspaceName !== s.workspaceName) ? ' dlm-changed' : '';
+      var cSql  = (!isNew && (!!orig.usesSqlEndpoint) !== (!!s.usesSqlEndpoint)) ? ' dlm-changed' : '';
+      var rowCls = isNew ? ' class="dlm-row-new"' : '';
+      html += '<tr' + rowCls + '>'
+        + '<td>' + esc(exprN) + '</td>'
+        + '<td class="' + cName.trim() + '">' + esc(s.itemName) + '</td>'
+        + '<td class="' + cType.trim() + '"><span class="dlm-tag ' + typeCls + '">' + esc(s.itemType) + '</span></td>'
+        + '<td class="' + cWs.trim() + '">' + esc(s.workspaceName) + '</td>'
+        + '<td class="' + cSql.trim() + '"><span class="dlm-tag ' + sqlCls + '">' + sqlTxt + '</span></td>'
         + '<td>'
         +   '<button class="dlm-btn dlm-btn-ghost" onclick="dlm_' + uid + '.editSource(' + i + ')" title="Edit">&#9998;</button>'
         +   (sources.length > 1 ? '<button class="dlm-btn dlm-btn-ghost" style="color:#ff3b30" onclick="dlm_' + uid + '.deleteSource(' + i + ')" title="Delete">&#128465;</button>' : '')
@@ -702,11 +753,15 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     var html = "";
     for (var i = 0; i < tables.length; i++) {
       var t = tables[i];
+      var origT = _findInitTbl(t.tableName, t.partitionName);
+      var cEntity = (origT && origT.entityName !== t.entityName) ? ' dlm-changed' : '';
+      var cSchema = (origT && origT.schemaName !== t.schemaName) ? ' dlm-changed' : '';
+      var cExpr   = (origT && origT.expressionName !== t.expressionName) ? ' dlm-changed' : '';
       html += '<tr>'
         + '<td style="font-weight:500">' + esc(t.tableName) + '</td>'
-        + '<td>' + esc(t.entityName) + '</td>'
-        + '<td>' + esc(t.schemaName) + '</td>'
-        + '<td>' + esc(t.expressionName) + '</td>'
+        + '<td class="' + cEntity.trim() + '">' + esc(t.entityName) + '</td>'
+        + '<td class="' + cSchema.trim() + '">' + esc(t.schemaName) + '</td>'
+        + '<td class="' + cExpr.trim() + '">' + esc(t.expressionName) + '</td>'
         + '<td>'
         +   '<button class="dlm-btn dlm-btn-ghost" onclick="dlm_' + uid + '.editTable(' + i + ')" title="Edit">&#9998;</button>'
         + '</td>'
@@ -882,62 +937,123 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     el("dlm-"+uid+"-modal-"+type).classList.remove("visible");
   }
 
-  /* == Push state to ipywidgets Textarea bridge == */
-  function _findBridge() {
-    /* Try multiple selectors and documents to locate the bridge textarea */
-    var selectors = [
-      'textarea[placeholder="dlm-bridge-' + uid + '"]',
-      '.dlm-bridge-' + uid + ' textarea'
-    ];
-    var docs = [document];
-    try { if (parent && parent.document !== document) docs.push(parent.document); } catch(e) {}
-    try { if (top && top.document !== document && top.document !== parent.document) docs.push(top.document); } catch(e) {}
-    for (var d = 0; d < docs.length; d++) {
-      for (var s = 0; s < selectors.length; s++) {
-        try {
-          var el2 = docs[d].querySelector(selectors[s]);
-          if (el2) return el2;
-        } catch(e) {}
-      }
-    }
-    return null;
-  }
+  /* == Push state to Python via ipywidgets model == */
   function pushState() {
     var payload = JSON.stringify({ sources: sources, tables: tables });
-    var br = _findBridge();
-    if (!br) {
-      console.warn('[DLM] Bridge textarea not found for uid=' + uid);
-      return;
-    }
+    /* Store in global for fallback reading */
+    window['_dlm_state_' + uid] = payload;
     /*
-     * Use document.execCommand('insertText') to generate REAL browser
-     * InputEvent / change events that ipywidgets Backbone views recognise.
-     * Synthetic events created with `new Event(...)` are ignored by the
-     * ipywidgets comm protocol because they never pass through the
-     * browser's native editing pipeline.
+     * Find the ipywidgets Textarea model and set its value directly
+     * through the Backbone model -> comm protocol.  This works because
+     * ipywidgets registers a WidgetManager on the page that tracks all
+     * widget models.  We find ours by matching the placeholder attribute.
      */
-    try {
-      br.focus();
-      br.select();  /* select all existing text */
-      if (document.execCommand) {
-        document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, payload);
+    function _setViaWidgetManager(mgr) {
+      if (!mgr || !mgr._models) return false;
+      var models = mgr._models;
+      var keys = Object.keys(models);
+      for (var i = 0; i < keys.length; i++) {
+        (function(k) {
+          var p = models[k];
+          if (p && typeof p.then === 'function') {
+            p.then(function(m) {
+              if (m && m.get && m.get('placeholder') === 'dlm-bridge-' + uid) {
+                m.set('value', payload);
+                m.save_changes();
+              }
+            });
+          } else if (p && p.get && p.get('placeholder') === 'dlm-bridge-' + uid) {
+            p.set('value', payload);
+            p.save_changes();
+          }
+        })(keys[i]);
       }
-    } catch(e) {
-      console.warn('[DLM] execCommand failed, using fallback:', e);
+      return true;
     }
-    /* Verify value was set; fall back to native setter + synthetic events */
-    if (br.value !== payload) {
-      var nativeSetter = Object.getOwnPropertyDescriptor(
-        HTMLTextAreaElement.prototype, 'value'
-      );
-      if (nativeSetter && nativeSetter.set) {
-        nativeSetter.set.call(br, payload);
-      } else {
-        br.value = payload;
+    /* Try multiple ways to find the widget manager */
+    var found = false;
+    /* 1. Jupyter Lab / Fabric notebooks */
+    try {
+      var docs = [document];
+      try { if (parent && parent.document !== document) docs.push(parent.document); } catch(e) {}
+      for (var d = 0; d < docs.length && !found; d++) {
+        try {
+          var managers = docs[d].querySelectorAll('[data-jupyter-widgets-cdn-only]');
+          if (docs[d]._jupyter_widget_manager) {
+            found = _setViaWidgetManager(docs[d]._jupyter_widget_manager);
+          }
+        } catch(e) {}
       }
-      br.dispatchEvent(new Event('input',  { bubbles: true }));
-      br.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch(e) {}
+    /* 2. Try requirejs-based access (classic notebook) */
+    if (!found) {
+      try {
+        if (typeof require !== 'undefined') {
+          require(['jupyter-js-widgets'], function(widgets) {
+            if (widgets && widgets.ManagerBase && widgets.ManagerBase._managers) {
+              for (var i = 0; i < widgets.ManagerBase._managers.length; i++) {
+                _setViaWidgetManager(widgets.ManagerBase._managers[i]);
+              }
+            }
+          });
+        }
+      } catch(e) {}
+    }
+    /* 3. Try Jupyter.notebook.kernel.comm_manager (Fabric) */
+    if (!found) {
+      try {
+        var wMgrs = [];
+        if (window.Jupyter && Jupyter.WidgetManager) wMgrs.push(Jupyter.WidgetManager);
+        /* Search for any WidgetManager instance on the page */
+        var frames = [window];
+        try { if (parent && parent !== window) frames.push(parent); } catch(e) {}
+        for (var f = 0; f < frames.length; f++) {
+          try {
+            if (frames[f]._jupyter_widget_manager) {
+              _setViaWidgetManager(frames[f]._jupyter_widget_manager);
+              found = true;
+            }
+          } catch(e) {}
+        }
+      } catch(e) {}
+    }
+    /* 4. Last resort: find textarea DOM element and trigger events */
+    if (!found) {
+      var selectors = [
+        'textarea[placeholder="dlm-bridge-' + uid + '"]',
+        '.dlm-bridge-' + uid + ' textarea'
+      ];
+      var docs2 = [document];
+      try { if (parent && parent.document !== document) docs2.push(parent.document); } catch(e) {}
+      for (var d = 0; d < docs2.length; d++) {
+        for (var s = 0; s < selectors.length; s++) {
+          try {
+            var br = docs2[d].querySelector(selectors[s]);
+            if (br) {
+              try {
+                br.focus();
+                br.select();
+                if (docs2[d].execCommand) {
+                  docs2[d].execCommand('selectAll', false, null);
+                  docs2[d].execCommand('insertText', false, payload);
+                }
+              } catch(e2) {}
+              if (br.value !== payload) {
+                var ns = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+                if (ns && ns.set) { ns.set.call(br, payload); } else { br.value = payload; }
+                br.dispatchEvent(new Event('input', { bubbles: true }));
+                br.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+              found = true;
+              break;
+            }
+          } catch(e) {}
+        }
+        if (found) break;
+      }
+    }
+    if (!found) {
+      console.warn('[DLM] Could not sync state to Python for uid=' + uid);
     }
   }
 
@@ -1080,7 +1196,50 @@ def direct_lake_manager(
     )
 
     def _on_apply(_):
+        # Try reading from bridge widget first
         val = state_bridge.value
+        # Check if a JS global has fresher state (fallback)
+        try:
+            from IPython.display import Javascript
+            from IPython import get_ipython
+
+            ip = get_ipython()
+            if ip:
+                # Execute JS in the notebook frontend to copy global state
+                # into the bridge widget via the widget manager
+                js_code = f"""
+                (function() {{
+                    var payload = window['_dlm_state_{uid}'];
+                    if (!payload) return;
+                    // Find widget manager and update model
+                    function findAndSet(mgr) {{
+                        if (!mgr || !mgr._models) return;
+                        var keys = Object.keys(mgr._models);
+                        for (var i = 0; i < keys.length; i++) {{
+                            var p = mgr._models[keys[i]];
+                            if (p && typeof p.then === 'function') {{
+                                p.then(function(m) {{
+                                    if (m && m.get && m.get('placeholder') === 'dlm-bridge-{uid}') {{
+                                        m.set('value', payload);
+                                        m.save_changes();
+                                    }}
+                                }});
+                            }}
+                        }}
+                    }}
+                    try {{ if (window._jupyter_widget_manager) findAndSet(window._jupyter_widget_manager); }} catch(e) {{}}
+                    try {{ if (parent && parent._jupyter_widget_manager) findAndSet(parent._jupyter_widget_manager); }} catch(e) {{}}
+                }})();
+                """
+                display(Javascript(js_code))
+                # Give a moment for the comm message to arrive
+                import time
+
+                time.sleep(0.5)
+                val = state_bridge.value
+        except Exception:
+            pass
+
         if not val:
             _show_status("No changes to apply.", "#ff9500")
             return
