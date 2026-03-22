@@ -928,7 +928,7 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     tables[editTblIdx].schemaName     = schema;
     closeModal("tbl");
     renderTables();
-    toast("Table mapping updated");
+    toast("Table mapping updated ");
     pushState();
   }
 
@@ -937,124 +937,32 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     el("dlm-"+uid+"-modal-"+type).classList.remove("visible");
   }
 
-  /* == Push state to Python via ipywidgets model == */
+  /* == Push state to Python via ipywidgets Textarea == */
+  /* The bridge textarea and this HTML are displayed inside the same
+     widgets.Output(), so they share one DOM.  We find the textarea
+     by its placeholder, set its value via the native setter, then
+     dispatch an 'input' event.  The ipywidgets TextView listens for
+     'input' events on its <textarea> and syncs to the kernel via
+     model.set('value', ...) + model.save_changes(). */
   function pushState() {
     var payload = JSON.stringify({ sources: sources, tables: tables });
-    /* Store in global for fallback reading */
-    window['_dlm_state_' + uid] = payload;
-    /*
-     * Find the ipywidgets Textarea model and set its value directly
-     * through the Backbone model -> comm protocol.  This works because
-     * ipywidgets registers a WidgetManager on the page that tracks all
-     * widget models.  We find ours by matching the placeholder attribute.
-     */
-    function _setViaWidgetManager(mgr) {
-      if (!mgr || !mgr._models) return false;
-      var models = mgr._models;
-      var keys = Object.keys(models);
-      for (var i = 0; i < keys.length; i++) {
-        (function(k) {
-          var p = models[k];
-          if (p && typeof p.then === 'function') {
-            p.then(function(m) {
-              if (m && m.get && m.get('placeholder') === 'dlm-bridge-' + uid) {
-                m.set('value', payload);
-                m.save_changes();
-              }
-            });
-          } else if (p && p.get && p.get('placeholder') === 'dlm-bridge-' + uid) {
-            p.set('value', payload);
-            p.save_changes();
-          }
-        })(keys[i]);
-      }
-      return true;
+    var br = document.querySelector(
+      'textarea[placeholder="dlm-bridge-' + uid + '"]'
+    );
+    if (!br) {
+      console.warn('[DLM] Bridge textarea not found for uid=' + uid);
+      return;
     }
-    /* Try multiple ways to find the widget manager */
-    var found = false;
-    /* 1. Jupyter Lab / Fabric notebooks */
-    try {
-      var docs = [document];
-      try { if (parent && parent.document !== document) docs.push(parent.document); } catch(e) {}
-      for (var d = 0; d < docs.length && !found; d++) {
-        try {
-          var managers = docs[d].querySelectorAll('[data-jupyter-widgets-cdn-only]');
-          if (docs[d]._jupyter_widget_manager) {
-            found = _setViaWidgetManager(docs[d]._jupyter_widget_manager);
-          }
-        } catch(e) {}
-      }
-    } catch(e) {}
-    /* 2. Try requirejs-based access (classic notebook) */
-    if (!found) {
-      try {
-        if (typeof require !== 'undefined') {
-          require(['jupyter-js-widgets'], function(widgets) {
-            if (widgets && widgets.ManagerBase && widgets.ManagerBase._managers) {
-              for (var i = 0; i < widgets.ManagerBase._managers.length; i++) {
-                _setViaWidgetManager(widgets.ManagerBase._managers[i]);
-              }
-            }
-          });
-        }
-      } catch(e) {}
+    var nativeSetter = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype, 'value'
+    );
+    if (nativeSetter && nativeSetter.set) {
+      nativeSetter.set.call(br, payload);
+    } else {
+      br.value = payload;
     }
-    /* 3. Try Jupyter.notebook.kernel.comm_manager (Fabric) */
-    if (!found) {
-      try {
-        var wMgrs = [];
-        if (window.Jupyter && Jupyter.WidgetManager) wMgrs.push(Jupyter.WidgetManager);
-        /* Search for any WidgetManager instance on the page */
-        var frames = [window];
-        try { if (parent && parent !== window) frames.push(parent); } catch(e) {}
-        for (var f = 0; f < frames.length; f++) {
-          try {
-            if (frames[f]._jupyter_widget_manager) {
-              _setViaWidgetManager(frames[f]._jupyter_widget_manager);
-              found = true;
-            }
-          } catch(e) {}
-        }
-      } catch(e) {}
-    }
-    /* 4. Last resort: find textarea DOM element and trigger events */
-    if (!found) {
-      var selectors = [
-        'textarea[placeholder="dlm-bridge-' + uid + '"]',
-        '.dlm-bridge-' + uid + ' textarea'
-      ];
-      var docs2 = [document];
-      try { if (parent && parent.document !== document) docs2.push(parent.document); } catch(e) {}
-      for (var d = 0; d < docs2.length; d++) {
-        for (var s = 0; s < selectors.length; s++) {
-          try {
-            var br = docs2[d].querySelector(selectors[s]);
-            if (br) {
-              try {
-                br.focus();
-                br.select();
-                if (docs2[d].execCommand) {
-                  docs2[d].execCommand('selectAll', false, null);
-                  docs2[d].execCommand('insertText', false, payload);
-                }
-              } catch(e2) {}
-              if (br.value !== payload) {
-                var ns = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
-                if (ns && ns.set) { ns.set.call(br, payload); } else { br.value = payload; }
-                br.dispatchEvent(new Event('input', { bubbles: true }));
-                br.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-              found = true;
-              break;
-            }
-          } catch(e) {}
-        }
-        if (found) break;
-      }
-    }
-    if (!found) {
-      console.warn('[DLM] Could not sync state to Python for uid=' + uid);
-    }
+    br.dispatchEvent(new Event('input',  { bubbles: true }));
+    br.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   /* == Initial render == */
@@ -1196,52 +1104,9 @@ def direct_lake_manager(
     )
 
     def _on_apply(_):
-        # Try reading from bridge widget first
         val = state_bridge.value
-        # Check if a JS global has fresher state (fallback)
-        try:
-            from IPython.display import Javascript
-            from IPython import get_ipython
-
-            ip = get_ipython()
-            if ip:
-                # Execute JS in the notebook frontend to copy global state
-                # into the bridge widget via the widget manager
-                js_code = f"""
-                (function() {{
-                    var payload = window['_dlm_state_{uid}'];
-                    if (!payload) return;
-                    // Find widget manager and update model
-                    function findAndSet(mgr) {{
-                        if (!mgr || !mgr._models) return;
-                        var keys = Object.keys(mgr._models);
-                        for (var i = 0; i < keys.length; i++) {{
-                            var p = mgr._models[keys[i]];
-                            if (p && typeof p.then === 'function') {{
-                                p.then(function(m) {{
-                                    if (m && m.get && m.get('placeholder') === 'dlm-bridge-{uid}') {{
-                                        m.set('value', payload);
-                                        m.save_changes();
-                                    }}
-                                }});
-                            }}
-                        }}
-                    }}
-                    try {{ if (window._jupyter_widget_manager) findAndSet(window._jupyter_widget_manager); }} catch(e) {{}}
-                    try {{ if (parent && parent._jupyter_widget_manager) findAndSet(parent._jupyter_widget_manager); }} catch(e) {{}}
-                }})();
-                """
-                display(Javascript(js_code))
-                # Give a moment for the comm message to arrive
-                import time
-
-                time.sleep(0.5)
-                val = state_bridge.value
-        except Exception:
-            pass
-
         if not val:
-            _show_status("No changes to apply.", "#ff9500")
+            _show_status("No changes detected.", "#ff9500")
             return
         try:
             _apply_changes(uid, val)
@@ -1251,12 +1116,14 @@ def direct_lake_manager(
 
     apply_btn.on_click(_on_apply)
 
-    # Display order matters:
-    #   1. state_bridge first — so its textarea is in the DOM when the
-    #      HTML <script> runs and pushState() looks for it.
-    #   2. HTML + JS — the UI; pushState() uses execCommand('insertText')
-    #      which produces real browser events that ipywidgets syncs.
-    #   3. Controls — Apply button + status bar.
-    display(state_bridge)
-    display(HTML(html_content))
-    display(widgets.HBox([apply_btn, status_bar]))
+    # Critical: wrap state_bridge + HTML inside ONE Output widget so they
+    # share the same DOM.  The HTML <script> uses
+    # document.querySelector('textarea[placeholder=...]') to find the
+    # bridge textarea and dispatch an 'input' event that ipywidgets syncs
+    # to the kernel.  If they are in separate display() calls they end up
+    # in different DOM trees and the querySelector fails.
+    ui_output = widgets.Output()
+    with ui_output:
+        display(state_bridge)
+        display(HTML(html_content))
+    display(widgets.VBox([ui_output, widgets.HBox([apply_btn, status_bar])]))
