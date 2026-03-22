@@ -33,6 +33,7 @@ from ._helper import (
 )
 from ._materialized_lake_views import (
     refresh_materialized_lake_views,
+    list_materialized_lake_views,
 )
 from ._schemas import (
     list_schemas,
@@ -64,4 +65,5 @@ __all__ = [
     "list_schemas",
     "schema_exists",
     "is_schema_enabled",
+    "list_materialized_lake_views",
 ]
