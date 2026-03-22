@@ -12,9 +12,7 @@ from sempy_labs.directlake._sources import (
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    resolve_workspace_name,
     resolve_item_name_and_id,
-    _base_api,
 )
 from sempy_labs.directlake._generate_shared_expression import (
     generate_shared_expression,
@@ -35,7 +33,7 @@ def _collect_tables(dataset, workspace):
     """Retrieve Direct Lake table / partition metadata."""
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
-    
+
     table_list = []
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         if not tom.is_direct_lake():
@@ -53,6 +51,7 @@ def _collect_tables(dataset, workspace):
                             "expressionName": p.Source.ExpressionSource.Name,
                             "entityName": p.Source.EntityName,
                             "schemaName": p.Source.SchemaName,
+                            "mode": str(p.Mode),
                         }
                     )
     return table_list
@@ -65,21 +64,11 @@ def _collect_tables(dataset, workspace):
 _dlm_callbacks = {}
 
 
-def _apply_changes_encoded(uid, encoded_state):
-    """URL-decode state and apply changes."""
-    from urllib.parse import unquote
-    state_json = unquote(encoded_state)
-    _apply_changes(uid, state_json)
-
-
 def _apply_changes(uid, state_json):
     """Apply Direct Lake source and table changes to the semantic model."""
     info = _dlm_callbacks.get(uid)
     if not info:
-        print(
-            f"{icons.red_dot} No callback registered "
-            f"for session {uid}."
-        )
+        print(f"{icons.red_dot} No callback registered " f"for session {uid}.")
         return
 
     dataset_id = info["dataset_id"]
@@ -93,9 +82,7 @@ def _apply_changes(uid, state_json):
         workspace=workspace_id,
         readonly=False,
     ) as tom:
-        existing_expr_names = {
-            e.Name for e in tom.model.Expressions
-        }
+        existing_expr_names = {e.Name for e in tom.model.Expressions}
 
         # Apply source (expression) changes
         for src in new_sources:
@@ -111,9 +98,7 @@ def _apply_changes(uid, state_json):
             )
 
             if expr_name in existing_expr_names:
-                tom.model.Expressions[
-                    expr_name
-                ].Expression = expression
+                tom.model.Expressions[expr_name].Expression = expression
             else:
                 tom.add_expression(
                     name=expr_name,
@@ -124,23 +109,15 @@ def _apply_changes(uid, state_json):
         for tbl in new_tables:
             table_name = tbl["tableName"]
             partition_name = tbl["partitionName"]
-            for p in tom.model.Tables[
-                table_name
-            ].Partitions:
+            for p in tom.model.Tables[table_name].Partitions:
                 if p.Name == partition_name:
-                    p.Source.ExpressionSource = (
-                        tom.model.Expressions[
-                            tbl["expressionName"]
-                        ]
-                    )
-                    p.Source.EntityName = tbl["entityName"]
-                    p.Source.SchemaName = tbl[
-                        "schemaName"
+                    p.Source.ExpressionSource = tom.model.Expressions[
+                        tbl["expressionName"]
                     ]
+                    p.Source.EntityName = tbl["entityName"]
+                    p.Source.SchemaName = tbl["schemaName"]
 
-    print(
-        f"{icons.green_dot} Changes applied successfully."
-    )
+    print(f"{icons.green_dot} Changes applied successfully.")
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +253,7 @@ _CSS = """
     padding: 11px 16px;
     border-bottom: 1px solid #f2f2f7;
     vertical-align: middle;
+    text-align: left;
 }
 .dlm-table tbody tr:last-child td { border-bottom: none; }
 .dlm-table tbody tr:hover { background: #f9f9fb; }
@@ -310,6 +288,9 @@ _CSS = """
     border-radius: 16px;
     width: 460px;
     max-width: 92vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 20px 60px rgba(0,0,0,.18);
     overflow: hidden;
     animation: dlm-pop .2s ease;
@@ -323,14 +304,16 @@ _CSS = """
     font-size: 17px;
     font-weight: 600;
     border-bottom: 1px solid #e5e5ea;
+    flex-shrink: 0;
 }
-.dlm-modal-body { padding: 20px 24px; }
+.dlm-modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
 .dlm-modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
     padding: 14px 24px;
     border-top: 1px solid #e5e5ea;
+    flex-shrink: 0;
 }
 .dlm-field { margin-bottom: 14px; }
 .dlm-field label {
@@ -406,9 +389,6 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     <span class="dlm-topbar-badge">"""
         + dataset_name
         + """</span>
-    <button class="dlm-btn dlm-btn-primary" onclick="dlm_"""
-        + uid
-        + """.applyChanges()">&#10003;&ensp;Apply Changes</button>
   </div>
 
   <!-- Navigation -->
@@ -437,6 +417,7 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
         + """-src-table">
         <thead>
           <tr>
+            <th>Expression Name</th>
             <th>Item Name</th>
             <th>Item Type</th>
             <th>Workspace</th>
@@ -471,10 +452,9 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
         <thead>
           <tr>
             <th>Table</th>
-            <th>Partition</th>
-            <th>Expression</th>
             <th>Entity Name</th>
             <th>Schema</th>
+            <th>Expression Name</th>
             <th style="width:90px">Actions</th>
           </tr>
         </thead>
@@ -571,9 +551,10 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
       </div>
       <div class="dlm-field">
         <label>Expression Name</label>
-        <input id="dlm-"""
+        <select id="dlm-"""
         + uid
-        + """-tbl-f-expr" placeholder="Expression name" />
+        + """-tbl-f-expr">
+        </select>
       </div>
       <div class="dlm-field">
         <label>Entity Name</label>
@@ -664,6 +645,7 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
       var sqlCls  = s.usesSqlEndpoint ? "dlm-tag-green" : "dlm-tag-gray";
       var sqlTxt  = s.usesSqlEndpoint ? "Yes" : "No";
       html += '<tr>'
+        + '<td>' + esc(s.expressionName || s.ExpressionName || '') + '</td>'
         + '<td>' + esc(s.itemName) + '</td>'
         + '<td><span class="dlm-tag ' + typeCls + '">' + esc(s.itemType) + '</span></td>'
         + '<td>' + esc(s.workspaceName) + '</td>'
@@ -692,10 +674,9 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
       var t = tables[i];
       html += '<tr>'
         + '<td style="font-weight:500">' + esc(t.tableName) + '</td>'
-        + '<td><span class="dlm-tag dlm-tag-gray">' + esc(t.partitionName) + '</span></td>'
-        + '<td>' + esc(t.expressionName) + '</td>'
         + '<td>' + esc(t.entityName) + '</td>'
         + '<td>' + esc(t.schemaName) + '</td>'
+        + '<td>' + esc(t.expressionName) + '</td>'
         + '<td>'
         +   '<button class="dlm-btn dlm-btn-ghost" onclick="dlm_' + uid + '.editTable(' + i + ')" title="Edit">&#9998;</button>'
         + '</td>'
@@ -798,7 +779,21 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     editTblIdx = idx;
     var t = tables[idx];
     el("dlm-"+uid+"-tbl-f-table").value  = t.tableName;
-    el("dlm-"+uid+"-tbl-f-expr").value   = t.expressionName;
+    /* Populate expression dropdown from sources */
+    var exprSel = el("dlm-"+uid+"-tbl-f-expr");
+    var seen = {};
+    exprSel.innerHTML = "";
+    for (var j = 0; j < sources.length; j++) {
+      var en = sources[j].expressionName || sources[j].ExpressionName || "";
+      if (en && !seen[en]) {
+        seen[en] = true;
+        var opt = document.createElement("option");
+        opt.value = en;
+        opt.textContent = en;
+        exprSel.appendChild(opt);
+      }
+    }
+    exprSel.value = t.expressionName;
     el("dlm-"+uid+"-tbl-f-entity").value = t.entityName;
     el("dlm-"+uid+"-tbl-f-schema").value = t.schemaName;
     el("dlm-"+uid+"-modal-tbl").classList.add("visible");
@@ -824,30 +819,26 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     el("dlm-"+uid+"-modal-"+type).classList.remove("visible");
   }
 
-  /* == Push state to hidden element for Python retrieval == */
+  /* == Push state to ipywidgets Textarea bridge == */
+  var _bridgeEl = null;
+  function _findBridge() {
+    if (_bridgeEl) return _bridgeEl;
+    var sel = '.dlm-bridge-' + uid + ' textarea';
+    var docs = [document];
+    try { if (parent && parent.document !== document) docs.push(parent.document); } catch(e) {}
+    try { if (top && top.document !== document && top.document !== parent.document) docs.push(top.document); } catch(e) {}
+    for (var i = 0; i < docs.length; i++) {
+      _bridgeEl = docs[i].querySelector(sel);
+      if (_bridgeEl) return _bridgeEl;
+    }
+    return null;
+  }
   function pushState() {
     var payload = JSON.stringify({ sources: sources, tables: tables });
-    var stateEl = el("dlm-"+uid+"-state");
-    if (stateEl) stateEl.value = payload;
-  }
-
-  /* == Apply changes via Python kernel == */
-  function applyChanges() {
-    pushState();
-    var payload = JSON.stringify({ sources: sources, tables: tables });
-    var encoded = encodeURIComponent(payload);
-    var pyCode = "from sempy_labs.semantic_model._direct_lake_manager import _apply_changes_encoded; _apply_changes_encoded('" + uid + "', '" + encoded + "')";
-    var kernel = null;
-    if (typeof Jupyter !== 'undefined' && Jupyter.notebook) {
-      kernel = Jupyter.notebook.kernel;
-    } else if (typeof IPython !== 'undefined' && IPython.notebook) {
-      kernel = IPython.notebook.kernel;
-    }
-    if (kernel) {
-      kernel.execute(pyCode);
-      toast("Applying changes...");
-    } else {
-      toast("Cannot reach Python kernel");
+    var br = _findBridge();
+    if (br) {
+      br.value = payload;
+      br.dispatchEvent(new Event('input', { bubbles: true }));
     }
   }
 
@@ -866,15 +857,11 @@ def _build_html(uid, sources_json, tables_json, dataset_name):
     editTable: editTable,
     saveTable: saveTable,
     closeModal: closeModal,
-    applyChanges: applyChanges,
     getSources: function() { return sources; },
     getTables:  function() { return tables; }
   };
 })();
 </script>
-<input type="hidden" id="dlm-"""
-        + uid
-        + """-state" />
 """
     )
 
@@ -910,7 +897,9 @@ def direct_lake_manager(
 
     # Validate & collect data
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_item_name_and_id(item=dataset, type='SemanticModel', workspace=workspace_id)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
     with connect_semantic_model(dataset=dataset_id, workspace=workspace_id) as tom:
         if not tom.is_direct_lake():
             raise ValueError(
@@ -920,8 +909,14 @@ def direct_lake_manager(
     sources = _collect_sources(dataset=dataset_id, workspace=workspace_id)
     tables = _collect_tables(dataset=dataset_id, workspace=workspace_id)
 
-    source_types = ['Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', 'MirroredAzureDatabricksCatalog']
-    sql_endpoint_source_types = ['Lakehouse', 'Warehouse']
+    source_types = [
+        "Lakehouse",
+        "Warehouse",
+        "MirroredDatabase",
+        "SQLDatabase",
+        "MirroredAzureDatabricksCatalog",
+    ]
+    sql_endpoint_source_types = ["Lakehouse", "Warehouse"]
 
     # Unique id so multiple widgets can coexist
     uid = uuid.uuid4().hex[:10]
@@ -937,7 +932,43 @@ def direct_lake_manager(
 
     html_content = _build_html(uid, sources_json, tables_json, dataset_name)
 
-    out = widgets.Output()
-    with out:
-        display(HTML(html_content))
-    display(out)
+    # State bridge: hidden Textarea that JS writes to on every edit
+    initial_state = json.dumps({"sources": sources, "tables": tables})
+    state_bridge = widgets.Textarea(
+        value=initial_state,
+        layout=widgets.Layout(
+            visibility="hidden",
+            height="1px",
+            width="1px",
+            overflow="hidden",
+            margin="0",
+            padding="0",
+        ),
+    )
+    state_bridge.add_class(f"dlm-bridge-{uid}")
+
+    # Status output widget for apply feedback
+    status_output = widgets.Output()
+
+    # Apply Changes button (Python widget - reliable comm protocol)
+    apply_btn = widgets.Button(
+        description="\u2713 Apply Changes",
+        button_style="primary",
+        layout=widgets.Layout(margin="8px 0 0 0"),
+    )
+
+    def _on_apply(_):
+        val = state_bridge.value
+        if not val:
+            with status_output:
+                status_output.clear_output(wait=True)
+                print(f"{icons.warning} No changes to apply.")
+            return
+        with status_output:
+            status_output.clear_output(wait=True)
+            _apply_changes(uid, val)
+
+    apply_btn.on_click(_on_apply)
+
+    display(HTML(html_content))
+    display(widgets.VBox([state_bridge, apply_btn, status_output]))
