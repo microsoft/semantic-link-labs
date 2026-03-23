@@ -166,8 +166,7 @@ def get_mirroring_status(
     )
     response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getMirroringStatus",
-        status_codes=200,
-        client="fabric_sp",
+        method='post',
     )
 
     return response.json().get("status", {})
@@ -206,19 +205,17 @@ def get_tables_mirroring_status(
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getTablesMirroringStatus",
         method="post",
-        status_codes=200,
         uses_pagination=True,
-        client="fabric_sp",
     )
 
     columns = {
         "Source Schema Name": "string",
         "Source Table Name": "string",
         "Status": "string",
-        "Processed Bytes": "int",
-        "Processed Rows": "int",
+        "Processed Bytes": "int_fillna",
+        "Processed Rows": "int_fillna",
         "Last Sync Date": "datetime",
-        "Last Sync Latency In Seconds": "int",
+        "Last Sync Latency In Seconds": "int_fillna",
     }
     df = _create_dataframe(columns=columns)
 
