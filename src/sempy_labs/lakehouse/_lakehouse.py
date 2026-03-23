@@ -1,4 +1,3 @@
-from tqdm.auto import tqdm
 from typing import List, Optional, Union
 from sempy._utils._log import log
 from uuid import UUID
@@ -15,6 +14,123 @@ from sempy_labs._helper_functions import (
 import sempy_labs._icons as icons
 import re
 import pandas as pd
+
+
+def create_progress_bar():
+    import uuid
+    from IPython.display import display, HTML
+
+    bar_id = f"progress-{uuid.uuid4().hex}"
+
+    html = f"""
+    <div id="{bar_id}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 600px;">
+        <div style="margin-bottom: 8px; font-size: 14px; color: #555;" class="progress-text">
+            Starting...
+        </div>
+
+        <div style="
+            width: 100%;
+            height: 14px;
+            background: #e5e7eb;
+            border-radius: 999px;
+            overflow: hidden;
+        ">
+            <div class="progress-bar" style="
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #4f46e5, #6366f1);
+                border-radius: 999px;
+                transition: width 0.3s ease;
+            "></div>
+        </div>
+    </div>
+    """
+
+    # 👇 KEY: persistent display handle
+    handle = display(HTML(html), display_id=True)
+
+    def update(current, total, text):
+        percent = int((current / total) * 100) if total else 100
+
+        new_html = f"""
+        <div id="{bar_id}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 600px;">
+            <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+                {text}
+            </div>
+            
+            <div style="
+                width: 100%;
+                height: 14px;
+                background: #e5e7eb;
+                border-radius: 999px;
+                overflow: hidden;
+            ">
+                <div style="
+                    height: 100%;
+                    width: {percent}%;
+                    background: linear-gradient(90deg, #4f46e5, #6366f1);
+                    border-radius: 999px;
+                    transition: width 0.3s ease;
+                "></div>
+            </div>
+        </div>
+        """
+
+        handle.update(HTML(new_html))
+
+    def complete(text="✅ Completed"):
+        new_html = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 600px;">
+            <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+                {text}
+            </div>
+            
+            <div style="
+                width: 100%;
+                height: 14px;
+                background: #e5e7eb;
+                border-radius: 999px;
+                overflow: hidden;
+            ">
+                <div style="
+                    height: 100%;
+                    width: 100%;
+                    background: #10b981;
+                    border-radius: 999px;
+                "></div>
+            </div>
+        </div>
+        """
+
+        handle.update(HTML(new_html))
+
+    def error(text="❌ Error"):
+        new_html = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 600px;">
+            <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+                {text}
+            </div>
+            
+            <div style="
+                width: 100%;
+                height: 14px;
+                background: #e5e7eb;
+                border-radius: 999px;
+                overflow: hidden;
+            ">
+                <div style="
+                    height: 100%;
+                    width: 100%;
+                    background: #ef4444;
+                    border-radius: 999px;
+                "></div>
+            </div>
+        </div>
+        """
+
+        handle.update(HTML(new_html))
+
+    return update, complete, error
 
 
 @log
@@ -207,17 +323,22 @@ def optimize_lakehouse_tables(
     """
 
     df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
-
     total = len(df_tables)
-    for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
+    update_progress, complete_progress, error_progress = create_progress_bar()
+
+    for idx, r in df_tables.iterrows():
         table_name = r["Table Name"]
         schema_name = r["Schema Name"]
-        full_table_name = f"{schema_name}.{table_name}"
+        full_table_name = f"{schema_name}.{table_name}" if schema_name else table_name
         path = r["Location"]
-        bar.set_description(
-            f"Optimizing the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
+
+        update_progress(
+            idx + 1, total, f"Optimizing '{full_table_name}' ({idx + 1}/{total})..."
         )
+
         _optimize_table(path=path)
+
+    complete_progress("✅ All tables optimized.")
 
 
 @log
@@ -250,17 +371,21 @@ def vacuum_lakehouse_tables(
     """
 
     df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
-
     total = len(df_tables)
-    for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
+    update_progress, complete_progress, error_progress = create_progress_bar()
+    for idx, r in df_tables.iterrows():
         table_name = r["Table Name"]
         schema_name = r["Schema Name"]
-        full_table_name = f"{schema_name}.{table_name}"
+        full_table_name = f"{schema_name}.{table_name}" if schema_name else table_name
         path = r["Location"]
-        bar.set_description(
-            f"Vacuuming the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
+
+        update_progress(
+            idx + 1, total, f"Vacuuming the '{full_table_name}' ({idx + 1}/{total})..."
         )
+
         _vacuum_table(path=path, retain_n_hours=retain_n_hours)
+
+    complete_progress("✅ All tables vacuumed.")
 
 
 @log
