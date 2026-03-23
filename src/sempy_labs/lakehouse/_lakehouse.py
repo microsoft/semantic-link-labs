@@ -1,4 +1,3 @@
-from tqdm.auto import tqdm
 from typing import List, Optional, Union
 from sempy._utils._log import log
 from uuid import UUID
