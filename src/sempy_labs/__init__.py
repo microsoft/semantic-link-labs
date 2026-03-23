@@ -353,8 +353,14 @@ from ._catalog import (
     list_endorsements,
     list_favorites,
 )
+from ._items import (
+    bulk_export_items,
+    bulk_import_items,
+)
 
 __all__ = [
+    "bulk_export_items",
+    "bulk_import_items",
     "resolve_warehouse_id",
     "ConnectWarehouse",
     "ConnectLakehouse",
