@@ -27,7 +27,7 @@ def create_progress_bar():
         <div style="margin-bottom: 8px; font-size: 14px; color: #555;" class="progress-text">
             Starting...
         </div>
-        
+
         <div style="
             width: 100%;
             height: 14px;
