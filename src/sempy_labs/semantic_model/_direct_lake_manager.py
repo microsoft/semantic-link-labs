@@ -1,10 +1,11 @@
 import sempy
 import json
 import uuid
+import html as _html
 from typing import Optional
 from uuid import UUID
 import ipywidgets as widgets
-from IPython.display import display, HTML
+from IPython.display import display
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs.directlake._sources import (
     get_direct_lake_sources,
@@ -129,877 +130,1025 @@ def _apply_changes(uid, state_json):
 
 
 # ---------------------------------------------------------------------------
-# HTML / CSS / JS template
+# HTML escape helper
 # ---------------------------------------------------------------------------
 
-_CSS = """
-<style>
-/* == Reset & base == */
-.dlm-root * { box-sizing: border-box; margin: 0; padding: 0; }
-.dlm-root {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: #1d1d1f;
-    background: #f5f5f7;
-    border-radius: 16px;
-    overflow: hidden;
-    max-width: 1100px;
-    box-shadow: 0 4px 24px rgba(0,0,0,.08);
-}
 
-/* == Top bar == */
-.dlm-topbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 18px 28px;
-    background: #fff;
-    border-bottom: 1px solid #e5e5ea;
-}
-.dlm-topbar-title {
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
-    flex: 1;
-}
-.dlm-topbar-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 12px;
-    background: #007aff;
-    color: #fff;
-}
-
-/* == Navigation pill bar == */
-.dlm-nav {
-    display: flex;
-    gap: 6px;
-    padding: 12px 28px;
-    background: #fff;
-    border-bottom: 1px solid #e5e5ea;
-}
-.dlm-nav-btn {
-    padding: 7px 20px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 980px;
-    border: none;
-    cursor: pointer;
-    background: #f5f5f7;
-    color: #6e6e73;
-    transition: all .2s ease;
-}
-.dlm-nav-btn:hover { background: #e8e8ed; }
-.dlm-nav-btn.active {
-    background: #007aff;
-    color: #fff;
-}
-
-/* == Page container == */
-.dlm-page { display: none; padding: 24px 28px 28px; }
-.dlm-page.active { display: block; }
-
-/* == Section header with action button == */
-.dlm-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-}
-.dlm-section-title {
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: -0.2px;
-}
-.dlm-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 7px 16px;
-    border-radius: 980px;
-    border: none;
-    cursor: pointer;
-    transition: all .15s ease;
-}
-.dlm-btn-primary { background: #007aff; color: #fff; }
-.dlm-btn-primary:hover { background: #0066d6; }
-.dlm-btn-danger  { background: #ff3b30; color: #fff; }
-.dlm-btn-danger:hover  { background: #d42a20; }
-.dlm-btn-ghost   { background: transparent; color: #007aff; }
-.dlm-btn-ghost:hover   { background: rgba(0,122,255,.08); }
-.dlm-btn-secondary { background: #e8e8ed; color: #1d1d1f; }
-.dlm-btn-secondary:hover { background: #dcdce0; }
-
-/* == Card / Table == */
-.dlm-card {
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    overflow: hidden;
-    margin-bottom: 20px;
-}
-.dlm-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-.dlm-table thead th {
-    text-align: left;
-    padding: 12px 16px;
-    font-weight: 600;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    color: #86868b;
-    background: #fafafa;
-    border-bottom: 1px solid #e5e5ea;
-}
-.dlm-table tbody td {
-    padding: 11px 16px;
-    border-bottom: 1px solid #f2f2f7;
-    vertical-align: middle;
-    text-align: left;
-}
-.dlm-table tbody tr:last-child td { border-bottom: none; }
-.dlm-table tbody tr:hover { background: #f9f9fb; }
-
-/* == Tag / pill helpers == */
-.dlm-tag {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 10px;
-    border-radius: 10px;
-}
-.dlm-tag-blue   { background: #e8f1ff; color: #0055d4; }
-.dlm-tag-green  { background: #e0f9ed; color: #177a4b; }
-.dlm-tag-gray   { background: #f2f2f7; color: #6e6e73; }
-.dlm-tag-orange { background: #fff4e6; color: #b35c00; }
-
-/* == Modal (add / edit) == */
-.dlm-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.35);
-    backdrop-filter: blur(4px);
-    z-index: 9998;
-    justify-content: center;
-    align-items: center;
-}
-.dlm-overlay.visible { display: flex; }
-.dlm-modal {
-    background: #fff;
-    border-radius: 16px;
-    width: 460px;
-    max-width: 92vw;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0,0,0,.18);
-    overflow: hidden;
-    animation: dlm-pop .2s ease;
-}
-@keyframes dlm-pop {
-    from { transform: scale(.95); opacity: 0; }
-    to   { transform: scale(1);   opacity: 1; }
-}
-.dlm-modal-header {
-    padding: 18px 24px;
-    font-size: 17px;
-    font-weight: 600;
-    border-bottom: 1px solid #e5e5ea;
-    flex-shrink: 0;
-}
-.dlm-modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
-.dlm-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 14px 24px;
-    border-top: 1px solid #e5e5ea;
-    flex-shrink: 0;
-}
-.dlm-field { margin-bottom: 14px; }
-.dlm-field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: #86868b;
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-}
-.dlm-field input,
-.dlm-field select {
-    width: 100%;
-    border: 1.5px solid #d2d2d7;
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    outline: none;
-    transition: border .15s;
-}
-.dlm-field input:focus,
-.dlm-field select:focus { border-color: #007aff; }
-
-/* == Empty state == */
-.dlm-empty {
-    text-align: center;
-    padding: 48px 24px;
-    color: #86868b;
-    font-size: 14px;
-}
-.dlm-empty-icon { font-size: 36px; margin-bottom: 10px; }
-
-/* == Change indicator == */
-.dlm-changed {
-    position: relative;
-}
-.dlm-changed::after {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    background: #ff9500;
-    border-radius: 50%;
-    margin-left: 6px;
-    vertical-align: middle;
-}
-.dlm-row-new {
-    background: #fffbe6 !important;
-}
-.dlm-row-new:hover {
-    background: #fff6cc !important;
-}
-
-/* == Toast == */
-.dlm-toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: #1d1d1f;
-    color: #fff;
-    padding: 10px 24px;
-    border-radius: 980px;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 99999;
-    opacity: 0;
-    transition: all .3s ease;
-    pointer-events: none;
-}
-.dlm-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-}
-</style>
-"""
+def _esc(text):
+    """Escape text for safe HTML rendering."""
+    return _html.escape(str(text)) if text else ""
 
 
-def _build_html(uid, sources_json, tables_json, dataset_name):
-    """Return the full HTML string for the Direct Lake Manager UI."""
+# ---------------------------------------------------------------------------
+# Style constants
+# ---------------------------------------------------------------------------
 
+_C_PRIMARY = "#0078d4"
+_C_PRIMARY_BG = "#deecf9"
+_C_SUCCESS = "#107c10"
+_C_SUCCESS_BG = "#dff6dd"
+_C_WARNING = "#986f0b"
+_C_WARNING_BG = "#fff4ce"
+_C_DANGER = "#a4262c"
+_C_DANGER_BG = "#fde7e9"
+_C_SURFACE = "#ffffff"
+_C_BG = "#faf9f8"
+_C_BORDER = "#edebe9"
+_C_TEXT = "#323130"
+_C_SUBTLE = "#605e5c"
+_C_HEADER_BG = "#f3f2f1"
+_C_ROW_NEW = "#fffbe6"
+_C_DOT = "#ffb900"
+
+
+_SRC_GRID = "1.5fr 1.5fr 140px 1.5fr 80px"
+_TBL_GRID = "1fr 1.5fr 120px 1.5fr"
+
+_HEADER_CELL = (
+    f"font-weight:600;font-size:11px;text-transform:uppercase;"
+    f"letter-spacing:0.5px;color:{_C_SUBTLE}"
+)
+
+_SOURCE_TYPES = [
+    "Lakehouse",
+    "Warehouse",
+    "MirroredDatabase",
+    "SQLDatabase",
+    "MirroredAzureDatabricksCatalog",
+]
+_SQL_ENDPOINT_TYPES = ["Lakehouse", "Warehouse"]
+
+_TYPE_COLORS = {
+    "Lakehouse": (_C_PRIMARY_BG, _C_PRIMARY),
+    "Warehouse": ("#fff4ce", "#986f0b"),
+    "MirroredDatabase": ("#e8dfec", "#6b3a8a"),
+    "SQLDatabase": ("#d4edda", "#155724"),
+    "MirroredAzureDatabricksCatalog": ("#fff0e0", "#8a4b08"),
+}
+_TYPE_COLOR_DEFAULT = (_C_HEADER_BG, _C_SUBTLE)
+
+
+def _tag_html(text, bg, fg):
+    """Render a small coloured pill / tag as inline HTML."""
     return (
-        _CSS
-        + """
-<div class="dlm-root" id="dlm-"""
-        + uid
-        + """">
-
-  <!-- Top bar -->
-  <div class="dlm-topbar">
-    <div class="dlm-topbar-title">Direct Lake Manager</div>
-    <span class="dlm-topbar-badge">"""
-        + dataset_name
-        + """</span>
-  </div>
-
-  <!-- Navigation -->
-  <div class="dlm-nav">
-    <button class="dlm-nav-btn active" data-page="sources" onclick="dlm_"""
-        + uid
-        + """.nav(this)">Sources</button>
-    <button class="dlm-nav-btn" data-page="tables" onclick="dlm_"""
-        + uid
-        + """.nav(this)">Tables</button>
-  </div>
-
-  <!-- ============ SOURCES PAGE ============ -->
-  <div class="dlm-page active" id="dlm-"""
-        + uid
-        + """-page-sources">
-    <div class="dlm-section-header">
-      <div class="dlm-section-title">Direct Lake Sources</div>
-      <button class="dlm-btn dlm-btn-primary" onclick="dlm_"""
-        + uid
-        + """.openAddSource()">&#43;&ensp;Add Source</button>
-    </div>
-    <div class="dlm-card">
-      <table class="dlm-table" id="dlm-"""
-        + uid
-        + """-src-table">
-        <thead>
-          <tr>
-            <th>Expression Name</th>
-            <th>Item Name</th>
-            <th>Item Type</th>
-            <th>Workspace</th>
-            <th>SQL Endpoint</th>
-            <th style="width:120px">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="dlm-"""
-        + uid
-        + """-src-body"></tbody>
-      </table>
-      <div class="dlm-empty" id="dlm-"""
-        + uid
-        + """-src-empty" style="display:none">
-        <div class="dlm-empty-icon">&#128194;</div>
-        No sources configured.
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ TABLES PAGE ============ -->
-  <div class="dlm-page" id="dlm-"""
-        + uid
-        + """-page-tables">
-    <div class="dlm-section-header">
-      <div class="dlm-section-title">Direct Lake Tables</div>
-    </div>
-    <div class="dlm-card">
-      <table class="dlm-table" id="dlm-"""
-        + uid
-        + """-tbl-table">
-        <thead>
-          <tr>
-            <th>Table</th>
-            <th>Entity Name</th>
-            <th>Schema</th>
-            <th>Expression Name</th>
-            <th style="width:90px">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="dlm-"""
-        + uid
-        + """-tbl-body"></tbody>
-      </table>
-      <div class="dlm-empty" id="dlm-"""
-        + uid
-        + """-tbl-empty" style="display:none">
-        <div class="dlm-empty-icon">&#128203;</div>
-        No Direct Lake tables found.
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ ADD / EDIT SOURCE MODAL ============ -->
-<div class="dlm-overlay" id="dlm-"""
-        + uid
-        + """-modal-src">
-  <div class="dlm-modal">
-    <div class="dlm-modal-header" id="dlm-"""
-        + uid
-        + """-modal-src-title">Add Source</div>
-    <div class="dlm-modal-body">
-      <div class="dlm-field">
-        <label>Expression Name</label>
-        <input id="dlm-"""
-        + uid
-        + """-src-f-expr" placeholder="e.g. DatabaseQuery" />
-      </div>
-      <div class="dlm-field">
-        <label>Item Name</label>
-        <input id="dlm-"""
-        + uid
-        + """-src-f-name" placeholder="e.g. My Lakehouse" />
-      </div>
-      <div class="dlm-field">
-        <label>Item Type</label>
-        <select id="dlm-"""
-        + uid
-        + """-src-f-type" onchange="dlm_"""
-        + uid
-        + """.onTypeChange()">
-          <option value="Lakehouse">Lakehouse</option>
-          <option value="Warehouse">Warehouse</option>
-          <option value="MirroredDatabase">MirroredDatabase</option>
-          <option value="SQLDatabase">SQLDatabase</option>
-          <option value="MirroredAzureDatabricksCatalog">MirroredAzureDatabricksCatalog</option>
-        </select>
-      </div>
-      <div class="dlm-field">
-        <label>Workspace Name</label>
-        <input id="dlm-"""
-        + uid
-        + """-src-f-ws" placeholder="Workspace name" />
-      </div>
-      <div class="dlm-field">
-        <label>Uses SQL Endpoint</label>
-        <select id="dlm-"""
-        + uid
-        + """-src-f-sql">
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        </select>
-      </div>
-    </div>
-    <div class="dlm-modal-footer">
-      <button class="dlm-btn dlm-btn-secondary" onclick="dlm_"""
-        + uid
-        + """.closeModal('src')">Cancel</button>
-      <button class="dlm-btn dlm-btn-primary" id="dlm-"""
-        + uid
-        + """-src-save-btn" onclick="dlm_"""
-        + uid
-        + """.saveSource()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ EDIT TABLE MODAL ============ -->
-<div class="dlm-overlay" id="dlm-"""
-        + uid
-        + """-modal-tbl">
-  <div class="dlm-modal">
-    <div class="dlm-modal-header">Edit Table Mapping</div>
-    <div class="dlm-modal-body">
-      <div class="dlm-field">
-        <label>Table Name</label>
-        <input id="dlm-"""
-        + uid
-        + """-tbl-f-table" disabled style="background:#f5f5f7;color:#86868b" />
-      </div>
-      <div class="dlm-field">
-        <label>Expression Name</label>
-        <select id="dlm-"""
-        + uid
-        + """-tbl-f-expr">
-        </select>
-      </div>
-      <div class="dlm-field">
-        <label>Entity Name</label>
-        <input id="dlm-"""
-        + uid
-        + """-tbl-f-entity" placeholder="Entity name" />
-      </div>
-      <div class="dlm-field">
-        <label>Schema Name</label>
-        <input id="dlm-"""
-        + uid
-        + """-tbl-f-schema" placeholder="Schema name" />
-      </div>
-    </div>
-    <div class="dlm-modal-footer">
-      <button class="dlm-btn dlm-btn-secondary" onclick="dlm_"""
-        + uid
-        + """.closeModal('tbl')">Cancel</button>
-      <button class="dlm-btn dlm-btn-primary" onclick="dlm_"""
-        + uid
-        + """.saveTable()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Confirm Delete Source Modal -->
-<div class="dlm-overlay" id="dlm-"""
-        + uid
-        + """-modal-del">
-  <div class="dlm-modal" style="width:400px">
-    <div class="dlm-modal-header" style="color:#ff3b30">Confirm Delete</div>
-    <div class="dlm-modal-body">
-      <p id="dlm-"""
-        + uid
-        + """-del-msg" style="font-size:14px;line-height:1.5"></p>
-    </div>
-    <div class="dlm-modal-footer">
-      <button class="dlm-btn dlm-btn-secondary" onclick="dlm_"""
-        + uid
-        + """.cancelDelete()">Cancel</button>
-      <button class="dlm-btn dlm-btn-danger" onclick="dlm_"""
-        + uid
-        + """.confirmDelete()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="dlm-toast" id="dlm-"""
-        + uid
-        + """-toast"></div>
-
-<script>
-(function() {
-  var uid = \""""
-        + uid
-        + """\";
-  function el(id) { return document.getElementById(id); }
-
-  /* == State == */
-  var sources = """
-        + sources_json
-        + """;
-  var tables  = """
-        + tables_json
-        + """;
-  var editSrcIdx = -1;
-  var editTblIdx = -1;
-
-  /* Deep-copy initial state for change tracking */
-  var _initSources = JSON.parse(JSON.stringify(sources));
-  var _initTables  = JSON.parse(JSON.stringify(tables));
-
-  /* Find initial source by expressionName; returns null if new */
-  function _findInitSrc(exprName) {
-    for (var i = 0; i < _initSources.length; i++) {
-      var n = _initSources[i].expressionName || _initSources[i].ExpressionName || '';
-      if (n === exprName) return _initSources[i];
-    }
-    return null;
-  }
-  /* Find initial table by tableName + partitionName */
-  function _findInitTbl(tblName, partName) {
-    for (var i = 0; i < _initTables.length; i++) {
-      if (_initTables[i].tableName === tblName && _initTables[i].partitionName === partName)
-        return _initTables[i];
-    }
-    return null;
-  }
-
-  /* == Escape HTML to prevent XSS == */
-  function esc(str) {
-    var d = document.createElement("div");
-    d.appendChild(document.createTextNode(str));
-    return d.innerHTML;
-  }
-
-  /* == Toast == */
-  function toast(msg) {
-    var t = el("dlm-"+uid+"-toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(function() { t.classList.remove("show"); }, 2200);
-  }
-
-  /* == Navigation == */
-  function nav(btn) {
-    var root = el("dlm-"+uid);
-    var navBtns = root.querySelectorAll(".dlm-nav-btn");
-    var pages   = root.querySelectorAll(".dlm-page");
-    for (var i = 0; i < navBtns.length; i++) navBtns[i].classList.remove("active");
-    for (var i = 0; i < pages.length; i++)   pages[i].classList.remove("active");
-    btn.classList.add("active");
-    el("dlm-"+uid+"-page-"+btn.getAttribute("data-page")).classList.add("active");
-  }
-
-  /* == Render sources == */
-  function renderSources() {
-    var body  = el("dlm-"+uid+"-src-body");
-    var empty = el("dlm-"+uid+"-src-empty");
-    if (!sources.length) {
-      body.innerHTML = "";
-      empty.style.display = "block";
-      return;
-    }
-    empty.style.display = "none";
-    var html = "";
-    for (var i = 0; i < sources.length; i++) {
-      var s = sources[i];
-      var exprN = s.expressionName || s.ExpressionName || '';
-      var orig = _findInitSrc(exprN);
-      var isNew = !orig;
-      var typeCls = s.itemType === "Lakehouse" ? "dlm-tag-blue" : "dlm-tag-orange";
-      var sqlCls  = s.usesSqlEndpoint ? "dlm-tag-green" : "dlm-tag-gray";
-      var sqlTxt  = s.usesSqlEndpoint ? "Yes" : "No";
-      /* Per-field change detection (unchanged for new rows — whole row is highlighted) */
-      var cName = (!isNew && orig.itemName !== s.itemName) ? ' dlm-changed' : '';
-      var cType = (!isNew && orig.itemType !== s.itemType) ? ' dlm-changed' : '';
-      var cWs   = (!isNew && orig.workspaceName !== s.workspaceName) ? ' dlm-changed' : '';
-      var cSql  = (!isNew && (!!orig.usesSqlEndpoint) !== (!!s.usesSqlEndpoint)) ? ' dlm-changed' : '';
-      var rowCls = isNew ? ' class="dlm-row-new"' : '';
-      html += '<tr' + rowCls + '>'
-        + '<td>' + esc(exprN) + '</td>'
-        + '<td class="' + cName.trim() + '">' + esc(s.itemName) + '</td>'
-        + '<td class="' + cType.trim() + '"><span class="dlm-tag ' + typeCls + '">' + esc(s.itemType) + '</span></td>'
-        + '<td class="' + cWs.trim() + '">' + esc(s.workspaceName) + '</td>'
-        + '<td class="' + cSql.trim() + '"><span class="dlm-tag ' + sqlCls + '">' + sqlTxt + '</span></td>'
-        + '<td>'
-        +   '<button class="dlm-btn dlm-btn-ghost" onclick="dlm_' + uid + '.editSource(' + i + ')" title="Edit">&#9998;</button>'
-        +   (sources.length > 1 ? '<button class="dlm-btn dlm-btn-ghost" style="color:#ff3b30" onclick="dlm_' + uid + '.deleteSource(' + i + ')" title="Delete">&#128465;</button>' : '')
-        + '</td>'
-        + '</tr>';
-    }
-    body.innerHTML = html;
-  }
-
-  /* == Render tables == */
-  function renderTables() {
-    var body  = el("dlm-"+uid+"-tbl-body");
-    var empty = el("dlm-"+uid+"-tbl-empty");
-    if (!tables.length) {
-      body.innerHTML = "";
-      empty.style.display = "block";
-      return;
-    }
-    empty.style.display = "none";
-    var html = "";
-    for (var i = 0; i < tables.length; i++) {
-      var t = tables[i];
-      var origT = _findInitTbl(t.tableName, t.partitionName);
-      var cEntity = (origT && origT.entityName !== t.entityName) ? ' dlm-changed' : '';
-      var cSchema = (origT && origT.schemaName !== t.schemaName) ? ' dlm-changed' : '';
-      var cExpr   = (origT && origT.expressionName !== t.expressionName) ? ' dlm-changed' : '';
-      html += '<tr>'
-        + '<td style="font-weight:500">' + esc(t.tableName) + '</td>'
-        + '<td class="' + cEntity.trim() + '">' + esc(t.entityName) + '</td>'
-        + '<td class="' + cSchema.trim() + '">' + esc(t.schemaName) + '</td>'
-        + '<td class="' + cExpr.trim() + '">' + esc(t.expressionName) + '</td>'
-        + '<td>'
-        +   '<button class="dlm-btn dlm-btn-ghost" onclick="dlm_' + uid + '.editTable(' + i + ')" title="Edit">&#9998;</button>'
-        + '</td>'
-        + '</tr>';
-    }
-    body.innerHTML = html;
-  }
-
-  /* == SQL endpoint source types == */
-  var sqlEndpointSourceTypes = ["Lakehouse", "Warehouse"];
-
-  function onTypeChange() {
-    var typeVal = el("dlm-"+uid+"-src-f-type").value;
-    var sqlEl   = el("dlm-"+uid+"-src-f-sql");
-    if (sqlEndpointSourceTypes.indexOf(typeVal) === -1) {
-      sqlEl.value = "false";
-      sqlEl.disabled = true;
-      sqlEl.style.opacity = "0.5";
-    } else if (typeVal === "Warehouse") {
-      sqlEl.value = "true";
-      sqlEl.disabled = true;
-      sqlEl.style.opacity = "0.5";
-    } else {
-      sqlEl.disabled = false;
-      sqlEl.style.opacity = "1";
-    }
-  }
-
-  /* == Source modal == */
-  function openAddSource() {
-    editSrcIdx = -1;
-    el("dlm-"+uid+"-modal-src-title").textContent = "Add Source";
-    el("dlm-"+uid+"-src-f-expr").value  = "";
-    el("dlm-"+uid+"-src-f-expr").disabled = false;
-    el("dlm-"+uid+"-src-f-expr").style.background = "";
-    el("dlm-"+uid+"-src-f-expr").style.color = "";
-    el("dlm-"+uid+"-src-f-name").value  = "";
-    el("dlm-"+uid+"-src-f-type").value  = "Lakehouse";
-    el("dlm-"+uid+"-src-f-ws").value    = "";
-    el("dlm-"+uid+"-src-f-sql").value   = "false";
-    onTypeChange();
-    el("dlm-"+uid+"-modal-src").classList.add("visible");
-  }
-
-  function editSource(idx) {
-    editSrcIdx = idx;
-    var s = sources[idx];
-    el("dlm-"+uid+"-modal-src-title").textContent = "Edit Source";
-    el("dlm-"+uid+"-src-f-expr").value  = s.expressionName || s.ExpressionName || "";
-    el("dlm-"+uid+"-src-f-expr").disabled = true;
-    el("dlm-"+uid+"-src-f-expr").style.background = "#f5f5f7";
-    el("dlm-"+uid+"-src-f-expr").style.color = "#86868b";
-    el("dlm-"+uid+"-src-f-name").value  = s.itemName;
-    el("dlm-"+uid+"-src-f-type").value  = s.itemType;
-    el("dlm-"+uid+"-src-f-ws").value    = s.workspaceName;
-    el("dlm-"+uid+"-src-f-sql").value   = s.usesSqlEndpoint ? "true" : "false";
-    onTypeChange();
-    el("dlm-"+uid+"-modal-src").classList.add("visible");
-  }
-
-  function saveSource() {
-    var exprName = el("dlm-"+uid+"-src-f-expr").value.trim();
-    var name = el("dlm-"+uid+"-src-f-name").value.trim();
-    var type = el("dlm-"+uid+"-src-f-type").value;
-    var ws   = el("dlm-"+uid+"-src-f-ws").value.trim();
-    var sql  = el("dlm-"+uid+"-src-f-sql").value === "true";
-    if (!exprName) { toast("Expression name is required"); return; }
-    if (!name) { toast("Item name is required"); return; }
-    if (!ws)   { toast("Workspace is required"); return; }
-    var obj = {
-      expressionName: exprName,
-      itemId: editSrcIdx >= 0 ? sources[editSrcIdx].itemId : "",
-      itemName: name,
-      itemType: type,
-      workspaceId: editSrcIdx >= 0 ? sources[editSrcIdx].workspaceId : "",
-      workspaceName: ws,
-      usesSqlEndpoint: sql
-    };
-    if (editSrcIdx >= 0) {
-      sources[editSrcIdx] = obj;
-      toast("Source updated");
-    } else {
-      sources.push(obj);
-      toast("Source added");
-    }
-    closeModal("src");
-    renderSources();
-    pushState();
-  }
-
-  var pendingDeleteIdx = -1;
-
-  function deleteSource(idx) {
-    pendingDeleteIdx = idx;
-    var srcExpr = sources[idx].expressionName || sources[idx].ExpressionName || "";
-    /* Find tables that reference this source */
-    var affected = [];
-    for (var i = 0; i < tables.length; i++) {
-      if (tables[i].expressionName === srcExpr) {
-        affected.push(tables[i].tableName);
-      }
-    }
-    var msg = 'Are you sure you want to remove source <strong>' + esc(srcExpr) + '</strong>?';
-    if (affected.length) {
-      msg += '<br><br><span style="color:#ff3b30">The following table(s) use this source and will break:</span><ul style="margin:6px 0 0 16px">';
-      for (var i = 0; i < affected.length; i++) {
-        msg += '<li>' + esc(affected[i]) + '</li>';
-      }
-      msg += '</ul>';
-    }
-    el("dlm-"+uid+"-del-msg").innerHTML = msg;
-    el("dlm-"+uid+"-modal-del").classList.add("visible");
-  }
-
-  function confirmDelete() {
-    if (pendingDeleteIdx >= 0) {
-      sources.splice(pendingDeleteIdx, 1);
-      pendingDeleteIdx = -1;
-      closeModal("del");
-      renderSources();
-      toast("Source removed");
-      pushState();
-    }
-  }
-
-  function cancelDelete() {
-    pendingDeleteIdx = -1;
-    closeModal("del");
-  }
-
-  /* == Table modal == */
-  function editTable(idx) {
-    editTblIdx = idx;
-    var t = tables[idx];
-    el("dlm-"+uid+"-tbl-f-table").value  = t.tableName;
-    /* Populate expression dropdown from sources */
-    var exprSel = el("dlm-"+uid+"-tbl-f-expr");
-    var seen = {};
-    exprSel.innerHTML = "";
-    for (var j = 0; j < sources.length; j++) {
-      var en = sources[j].expressionName || sources[j].ExpressionName || "";
-      if (en && !seen[en]) {
-        seen[en] = true;
-        var opt = document.createElement("option");
-        opt.value = en;
-        opt.textContent = en;
-        exprSel.appendChild(opt);
-      }
-    }
-    exprSel.value = t.expressionName;
-    el("dlm-"+uid+"-tbl-f-entity").value = t.entityName;
-    el("dlm-"+uid+"-tbl-f-schema").value = t.schemaName;
-    el("dlm-"+uid+"-modal-tbl").classList.add("visible");
-  }
-
-  function saveTable() {
-    var expr   = el("dlm-"+uid+"-tbl-f-expr").value.trim();
-    var entity = el("dlm-"+uid+"-tbl-f-entity").value.trim();
-    var schema = el("dlm-"+uid+"-tbl-f-schema").value.trim();
-    if (!expr)   { toast("Expression name is required"); return; }
-    if (!entity) { toast("Entity name is required"); return; }
-    tables[editTblIdx].expressionName = expr;
-    tables[editTblIdx].entityName     = entity;
-    tables[editTblIdx].schemaName     = schema;
-    closeModal("tbl");
-    renderTables();
-    toast("Table mapping updated ");
-    pushState();
-  }
-
-  /* == Close any modal == */
-  function closeModal(type) {
-    el("dlm-"+uid+"-modal-"+type).classList.remove("visible");
-  }
-
-  /* == Push state to Python via ipywidgets Textarea == */
-  /* The bridge textarea and this HTML are displayed inside the same
-     widgets.Output(), so they share one DOM.  We use focus() +
-     execCommand('insertText') to generate a *trusted* InputEvent
-     that ipywidgets reliably syncs to the Python kernel.  Plain
-     synthetic Event('input') is ignored by ipywidgets in Fabric
-     notebooks. */
-  function pushState() {
-    var payload = JSON.stringify({ sources: sources, tables: tables });
-    var br = document.querySelector(
-      'textarea[placeholder="dlm-bridge-' + uid + '"]'
-    );
-    if (!br) {
-      console.warn('[DLM] Bridge textarea not found for uid=' + uid);
-      return;
-    }
-    /* Save and later restore focus so the user doesn't notice. */
-    var prev = document.activeElement;
-    br.focus();
-    br.select();
-    var ok = document.execCommand('insertText', false, payload);
-    if (!ok) {
-      /* Fallback: set value directly and fire an InputEvent (not a
-         plain Event) which some widget versions still handle. */
-      var nativeSetter = Object.getOwnPropertyDescriptor(
-        HTMLTextAreaElement.prototype, 'value'
-      );
-      if (nativeSetter && nativeSetter.set) {
-        nativeSetter.set.call(br, payload);
-      } else {
-        br.value = payload;
-      }
-      br.dispatchEvent(new InputEvent('input', {
-        bubbles: true, inputType: 'insertText'
-      }));
-    }
-    if (prev && prev !== br) { try { prev.focus(); } catch(e) {} }
-  }
-
-  /* == Initial render == */
-  renderSources();
-  renderTables();
-
-  /* Expose API globally so onclick handlers work */
-  window["dlm_" + uid] = {
-    nav: nav,
-    openAddSource: openAddSource,
-    editSource: editSource,
-    onTypeChange: onTypeChange,
-    deleteSource: deleteSource,
-    confirmDelete: confirmDelete,
-    cancelDelete: cancelDelete,
-    saveSource: saveSource,
-    editTable: editTable,
-    saveTable: saveTable,
-    closeModal: closeModal,
-    getSources: function() { return sources; },
-    getTables:  function() { return tables; }
-  };
-})();
-</script>
-"""
+        f'<span style="display:inline-block;font-size:11px;font-weight:600;'
+        f'padding:2px 10px;border-radius:10px;background:{bg};color:{fg}">'
+        f"{_esc(text)}</span>"
     )
+
+
+def _change_dot():
+    """Tiny orange dot indicating a changed value."""
+    return (
+        f'<span style="display:inline-block;width:6px;height:6px;'
+        f"background:{_C_DOT};border-radius:50%;margin-left:5px;"
+        f'vertical-align:middle"></span>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# ipywidgets-based UI
+# ---------------------------------------------------------------------------
+
+
+class _DirectLakeManagerUI:
+    """Pure ipywidgets UI for the Direct Lake Manager."""
+
+    def __init__(self, uid, sources, tables, dataset_name, dataset_id, workspace_id):
+        self.uid = uid
+        self.sources = [dict(s) for s in sources]
+        self.tables = [dict(t) for t in tables]
+        self.dataset_name = dataset_name
+        self.dataset_id = dataset_id
+        self.workspace_id = workspace_id
+
+        # Deep-copy initial state for change tracking
+        self._init_sources = json.loads(json.dumps(sources))
+        self._init_tables = json.loads(json.dumps(tables))
+
+        self._edit_src_idx = -1
+        self._edit_tbl_idx = -1
+        self._delete_src_idx = -1
+
+        self._build()
+
+    # ------------------------------------------------------------------
+    # Lookup helpers for change tracking
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_expr(src):
+        return src.get("expressionName") or src.get("ExpressionName") or ""
+
+    def _find_init_src(self, expr_name):
+        for s in self._init_sources:
+            if self._get_expr(s) == expr_name:
+                return s
+        return None
+
+    def _find_init_tbl(self, tbl_name, part_name):
+        for t in self._init_tables:
+            if t["tableName"] == tbl_name and t["partitionName"] == part_name:
+                return t
+        return None
+
+    # ------------------------------------------------------------------
+    # Build full widget tree
+    # ------------------------------------------------------------------
+
+    def _build(self):
+        # Title bar
+        self._title_bar = widgets.HTML(
+            value=self._render_title_bar(),
+            layout=widgets.Layout(margin="0"),
+        )
+
+        # ---- Sources page -------------------------------------------------
+        self._add_src_btn = widgets.Button(
+            description="   Add Source",
+            icon="plus",
+            button_style="primary",
+            layout=widgets.Layout(height="32px"),
+        )
+        self._add_src_btn.on_click(self._on_add_source)
+
+        src_header = widgets.HBox(
+            [
+                widgets.HTML(
+                    value=(
+                        f'<div style="font-size:16px;font-weight:600;'
+                        f'color:{_C_TEXT}">Sources</div>'
+                    )
+                ),
+                self._add_src_btn,
+            ],
+            layout=widgets.Layout(
+                justify_content="space-between",
+                align_items="center",
+                padding="0 0 12px 0",
+            ),
+        )
+
+        self._src_container = widgets.VBox(
+            layout=widgets.Layout(
+                border=f"1px solid {_C_BORDER}",
+                border_radius="12px",
+                overflow="hidden",
+                background=_C_SURFACE,
+            )
+        )
+
+        # Source edit form (hidden)
+        self._src_form = self._build_source_form()
+        self._src_form.layout.display = "none"
+
+        # Source delete confirmation (hidden)
+        self._del_confirm = self._build_delete_confirm()
+        self._del_confirm.layout.display = "none"
+
+        sources_page = widgets.VBox(
+            [src_header, self._src_container, self._src_form, self._del_confirm],
+            layout=widgets.Layout(padding="20px 24px"),
+        )
+
+        # ---- Tables page --------------------------------------------------
+        self._tbl_container = widgets.VBox(
+            layout=widgets.Layout(
+                border=f"1px solid {_C_BORDER}",
+                border_radius="12px",
+                overflow="hidden",
+                background=_C_SURFACE,
+            )
+        )
+
+        self._tbl_form = self._build_table_form()
+        self._tbl_form.layout.display = "none"
+
+        tables_page = widgets.VBox(
+            [
+                widgets.HTML(
+                    value=(
+                        f'<div style="font-size:16px;font-weight:600;'
+                        f'color:{_C_TEXT};padding-bottom:12px">Tables</div>'
+                    )
+                ),
+                self._tbl_container,
+                self._tbl_form,
+            ],
+            layout=widgets.Layout(padding="20px 24px"),
+        )
+
+        # ---- Manual tab navigation ----------------------------------------
+        self._sources_page = sources_page
+        self._tables_page = tables_page
+        self._tables_page.layout.display = "none"
+
+        self._tab_src_btn = widgets.Button(
+            description="Sources",
+            icon="database",
+            button_style="primary",
+            layout=widgets.Layout(
+                height="34px",
+                border_radius="980px",
+            ),
+        )
+        self._tab_tbl_btn = widgets.Button(
+            description="Tables",
+            icon="table",
+            layout=widgets.Layout(
+                height="34px",
+                border_radius="980px",
+            ),
+        )
+        self._tab_src_btn.on_click(lambda _: self._switch_tab("sources"))
+        self._tab_tbl_btn.on_click(lambda _: self._switch_tab("tables"))
+
+        tab_bar = widgets.HBox(
+            [self._tab_src_btn, self._tab_tbl_btn],
+            layout=widgets.Layout(
+                padding="10px 24px",
+                gap="6px",
+                background=_C_SURFACE,
+                border_bottom=f"1px solid {_C_BORDER}",
+            ),
+        )
+
+        # ---- Bottom bar ---------------------------------------------------
+        self._apply_btn = widgets.Button(
+            description="   Apply Changes",
+            icon="check",
+            button_style="primary",
+            layout=widgets.Layout(height="36px", margin="0 12px 0 0"),
+        )
+        self._apply_btn.on_click(self._on_apply)
+
+        self._status = widgets.HTML(value="")
+
+        bottom_bar = widgets.HBox(
+            [self._apply_btn, self._status],
+            layout=widgets.Layout(padding="12px 24px", align_items="center"),
+        )
+
+        # ---- Root container -----------------------------------------------
+        self.widget = widgets.VBox(
+            [
+                self._title_bar,
+                tab_bar,
+                self._sources_page,
+                self._tables_page,
+                bottom_bar,
+            ],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_BORDER}",
+                border_radius="14px",
+                overflow="hidden",
+                background=_C_BG,
+                max_width="1100px",
+                box_shadow="0 2px 12px rgba(0,0,0,0.08)",
+            ),
+        )
+
+        # Initial render
+        self._render_sources()
+        self._render_tables()
+        self._update_apply_btn()
+
+    # ------------------------------------------------------------------
+    # Change detection
+    # ------------------------------------------------------------------
+
+    def _has_changes(self):
+        """Return True if current state differs from the saved baseline."""
+        return json.dumps(self.sources, sort_keys=True) != json.dumps(
+            self._init_sources, sort_keys=True
+        ) or json.dumps(self.tables, sort_keys=True) != json.dumps(
+            self._init_tables, sort_keys=True
+        )
+
+    def _update_apply_btn(self):
+        self._apply_btn.disabled = not self._has_changes()
+
+    # ------------------------------------------------------------------
+    # Tab switching
+    # ------------------------------------------------------------------
+
+    def _switch_tab(self, tab):
+        if tab == "sources":
+            self._sources_page.layout.display = None
+            self._tables_page.layout.display = "none"
+            self._tab_src_btn.button_style = "primary"
+            self._tab_tbl_btn.button_style = ""
+        else:
+            self._sources_page.layout.display = "none"
+            self._tables_page.layout.display = None
+            self._tab_src_btn.button_style = ""
+            self._tab_tbl_btn.button_style = "primary"
+
+    # ------------------------------------------------------------------
+    # Title bar
+    # ------------------------------------------------------------------
+
+    def _render_title_bar(self):
+        # SVG: Fluent-style semantic model icon – interconnected nodes
+        # with a dynamic directional sweep, evoking data flow / graph
+        logo_svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" '
+            'viewBox="0 0 32 32" fill="none" style="flex-shrink:0">'
+            # Sweep arc – conveys motion / flow
+            '<path d="M6 26 C6 14 14 6 26 6" stroke="#0078d4" '
+            'stroke-width="1.8" stroke-linecap="round" fill="none" '
+            'opacity="0.25"/>'
+            '<path d="M8 26 C8 16 16 8 26 8" stroke="#0078d4" '
+            'stroke-width="1.2" stroke-linecap="round" fill="none" '
+            'opacity="0.15"/>'
+            # Connector lines (behind nodes)
+            '<line x1="10" y1="22" x2="16" y2="14" '
+            'stroke="#0078d4" stroke-width="1.5" opacity="0.5"/>'
+            '<line x1="16" y1="14" x2="24" y2="10" '
+            'stroke="#0078d4" stroke-width="1.5" opacity="0.5"/>'
+            '<line x1="16" y1="14" x2="24" y2="20" '
+            'stroke="#0078d4" stroke-width="1.5" opacity="0.5"/>'
+            '<line x1="10" y1="22" x2="16" y2="26" '
+            'stroke="#0078d4" stroke-width="1.5" opacity="0.5"/>'
+            # Node: bottom-left (source)
+            '<circle cx="10" cy="22" r="3.5" fill="#0078d4"/>'
+            '<circle cx="10" cy="22" r="1.5" fill="#ffffff"/>'
+            # Node: centre (hub / model)
+            '<circle cx="16" cy="14" r="4" fill="#005a9e"/>'
+            '<circle cx="16" cy="14" r="1.8" fill="#ffffff"/>'
+            # Node: top-right
+            '<circle cx="24" cy="10" r="3" fill="#0078d4"/>'
+            '<circle cx="24" cy="10" r="1.3" fill="#ffffff"/>'
+            # Node: bottom-right
+            '<circle cx="24" cy="20" r="3" fill="#0078d4"/>'
+            '<circle cx="24" cy="20" r="1.3" fill="#ffffff"/>'
+            # Node: bottom-centre
+            '<circle cx="16" cy="26" r="2.5" fill="#0078d4" opacity="0.7"/>'
+            '<circle cx="16" cy="26" r="1.1" fill="#ffffff"/>'
+            "</svg>"
+        )
+
+        return (
+            f'<div style="display:flex;align-items:center;gap:12px;'
+            f"padding:18px 24px;background:linear-gradient(135deg,"
+            f"{_C_SURFACE} 0%,#f0f6fc 100%);"
+            f'border-bottom:1px solid {_C_BORDER}">'
+            f"{logo_svg}"
+            f'<div style="flex:1">'
+            f'<div style="font-size:19px;font-weight:700;'
+            f'color:{_C_TEXT};letter-spacing:-0.3px;line-height:1.2">'
+            f"Direct Lake Manager</div>"
+            f'<div style="font-size:11px;color:{_C_SUBTLE};'
+            f'margin-top:2px">Manage sources &amp; table mappings</div>'
+            f"</div>"
+            f'<span style="font-size:12px;font-weight:600;padding:5px 16px;'
+            f"border-radius:980px;background:{_C_PRIMARY};color:#fff;"
+            f'letter-spacing:0.2px">'
+            f"{_esc(self.dataset_name)}</span></div>"
+        )
+
+    # ------------------------------------------------------------------
+    # Source form
+    # ------------------------------------------------------------------
+
+    def _build_source_form(self):
+        desc_w = "140px"
+
+        self._src_form_title = widgets.HTML(value=self._form_heading("Add Source"))
+        self._src_f_expr = widgets.Text(
+            description="Expression Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._src_f_name = widgets.Text(
+            description="Item Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._src_f_type = widgets.Dropdown(
+            description="Item Type:",
+            options=_SOURCE_TYPES,
+            value="Lakehouse",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._src_f_ws = widgets.Text(
+            description="Workspace:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._src_f_sql = widgets.Dropdown(
+            description="SQL Endpoint:",
+            options=[("Yes", True), ("No", False)],
+            value=False,
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+
+        self._src_f_type.observe(self._on_type_change, names=["value"])
+
+        save_btn = widgets.Button(
+            description="Save",
+            button_style="primary",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        cancel_btn = widgets.Button(
+            description="Cancel",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        save_btn.on_click(self._on_save_source)
+        cancel_btn.on_click(lambda _: self._hide_source_form())
+
+        return widgets.VBox(
+            [
+                self._src_form_title,
+                self._src_f_expr,
+                self._src_f_name,
+                self._src_f_type,
+                self._src_f_ws,
+                self._src_f_sql,
+                widgets.HBox(
+                    [cancel_btn, save_btn],
+                    layout=widgets.Layout(
+                        justify_content="flex-end",
+                        gap="8px",
+                        padding="8px 0 0 0",
+                    ),
+                ),
+            ],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_PRIMARY}",
+                border_radius="12px",
+                padding="16px 20px",
+                margin="12px 0 0 0",
+                background=_C_SURFACE,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Delete confirmation
+    # ------------------------------------------------------------------
+
+    def _build_delete_confirm(self):
+        self._del_msg = widgets.HTML(value="")
+
+        confirm_btn = widgets.Button(
+            description="Delete",
+            button_style="danger",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        cancel_btn = widgets.Button(
+            description="Cancel",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        confirm_btn.on_click(self._on_confirm_delete)
+        cancel_btn.on_click(self._on_cancel_delete)
+
+        return widgets.VBox(
+            [
+                self._del_msg,
+                widgets.HBox(
+                    [cancel_btn, confirm_btn],
+                    layout=widgets.Layout(
+                        justify_content="flex-end",
+                        gap="8px",
+                        padding="8px 0 0 0",
+                    ),
+                ),
+            ],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_DANGER}",
+                border_radius="12px",
+                padding="16px 20px",
+                margin="12px 0 0 0",
+                background="#fef6f6",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Table form
+    # ------------------------------------------------------------------
+
+    def _build_table_form(self):
+        desc_w = "140px"
+
+        self._tbl_form_title = widgets.HTML(
+            value=self._form_heading("Edit Table Mapping")
+        )
+        self._tbl_f_table = widgets.Text(
+            description="Table Name:",
+            disabled=True,
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._tbl_f_expr = widgets.Dropdown(
+            description="Expression:",
+            options=[],
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._tbl_f_entity = widgets.Text(
+            description="Entity Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._tbl_f_schema = widgets.Text(
+            description="Schema Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+
+        save_btn = widgets.Button(
+            description="Save",
+            button_style="primary",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        cancel_btn = widgets.Button(
+            description="Cancel",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        save_btn.on_click(self._on_save_table)
+        cancel_btn.on_click(lambda _: self._hide_table_form())
+
+        return widgets.VBox(
+            [
+                self._tbl_form_title,
+                self._tbl_f_table,
+                self._tbl_f_expr,
+                self._tbl_f_entity,
+                self._tbl_f_schema,
+                widgets.HBox(
+                    [cancel_btn, save_btn],
+                    layout=widgets.Layout(
+                        justify_content="flex-end",
+                        gap="8px",
+                        padding="8px 0 0 0",
+                    ),
+                ),
+            ],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_PRIMARY}",
+                border_radius="12px",
+                padding="16px 20px",
+                margin="12px 0 0 0",
+                background=_C_SURFACE,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Render source rows
+    # ------------------------------------------------------------------
+
+    def _render_sources(self):
+        if not self.sources:
+            self._src_container.children = [
+                widgets.HTML(
+                    value=(
+                        f'<div style="text-align:center;padding:44px 24px;'
+                        f'color:{_C_SUBTLE};font-size:14px">'
+                        f'<div style="font-size:32px;margin-bottom:8px">'
+                        f"\U0001F4C1</div>No sources configured.</div>"
+                    )
+                )
+            ]
+            return
+
+        header = widgets.HTML(
+            value=(
+                f'<div style="display:grid;grid-template-columns:{_SRC_GRID};'
+                f"gap:12px;padding:11px 16px;background:{_C_HEADER_BG};"
+                f'border-bottom:1px solid {_C_BORDER}">'
+                f'<div style="{_HEADER_CELL}">Expression</div>'
+                f'<div style="{_HEADER_CELL}">Item Name</div>'
+                f'<div style="{_HEADER_CELL}">Type</div>'
+                f'<div style="{_HEADER_CELL}">Workspace</div>'
+                f'<div style="{_HEADER_CELL}">SQL</div></div>'
+            ),
+            layout=widgets.Layout(flex="1"),
+        )
+        # Spacer matching action button column width
+        header_row = widgets.HBox(
+            [
+                header,
+                widgets.HTML(
+                    value="",
+                    layout=widgets.Layout(
+                        min_width="76px" if len(self.sources) > 1 else "40px"
+                    ),
+                ),
+            ]
+        )
+
+        rows = [header_row]
+        for i, src in enumerate(self.sources):
+            rows.append(self._make_source_row(i, src))
+
+        self._src_container.children = rows
+
+    def _make_source_row(self, idx, src):
+        expr = self._get_expr(src)
+        orig = self._find_init_src(expr)
+        is_new = orig is None
+
+        item_type = src.get("itemType", "")
+        tc_bg, tc_fg = _TYPE_COLORS.get(item_type, _TYPE_COLOR_DEFAULT)
+
+        sql_yes = bool(src.get("usesSqlEndpoint", False))
+        sql_bg = _C_SUCCESS_BG if sql_yes else _C_HEADER_BG
+        sql_fg = _C_SUCCESS if sql_yes else _C_SUBTLE
+        sql_text = "Yes" if sql_yes else "No"
+
+        dot = _change_dot()
+        ch_name = (
+            dot if (not is_new and orig.get("itemName") != src.get("itemName")) else ""
+        )
+        ch_type = (
+            dot if (not is_new and orig.get("itemType") != src.get("itemType")) else ""
+        )
+        ch_ws = (
+            dot
+            if (not is_new and orig.get("workspaceName") != src.get("workspaceName"))
+            else ""
+        )
+        ch_sql = (
+            dot if (not is_new and bool(orig.get("usesSqlEndpoint")) != sql_yes) else ""
+        )
+
+        row_bg = _C_ROW_NEW if is_new else _C_SURFACE
+
+        data_html = widgets.HTML(
+            value=(
+                f'<div style="display:grid;grid-template-columns:{_SRC_GRID};'
+                f"gap:12px;padding:11px 16px;background:{row_bg};"
+                f'align-items:center;font-size:13px">'
+                f'<div style="color:{_C_TEXT}">{_esc(expr)}</div>'
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(src.get('itemName', ''))}{ch_name}</div>"
+                f"<div>{_tag_html(item_type, tc_bg, tc_fg)}{ch_type}</div>"
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(src.get('workspaceName', ''))}{ch_ws}</div>"
+                f"<div>{_tag_html(sql_text, sql_bg, sql_fg)}{ch_sql}</div>"
+                f"</div>"
+            ),
+            layout=widgets.Layout(flex="1"),
+        )
+
+        edit_btn = widgets.Button(
+            description="\u270E",
+            tooltip="Edit",
+            layout=widgets.Layout(width="34px", height="34px"),
+        )
+        edit_btn.on_click(lambda _, i=idx: self._on_edit_source(i))
+
+        btns = [edit_btn]
+        if len(self.sources) > 1:
+            del_btn = widgets.Button(
+                description="\u2715",
+                tooltip="Delete",
+                layout=widgets.Layout(width="34px", height="34px"),
+            )
+            del_btn.style.text_color = _C_DANGER
+            del_btn.on_click(lambda _, i=idx: self._on_delete_source(i))
+            btns.append(del_btn)
+
+        return widgets.HBox(
+            [data_html] + btns,
+            layout=widgets.Layout(
+                align_items="center",
+                border_bottom=f"1px solid {_C_BORDER}",
+                padding="0 8px 0 0",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Render table rows
+    # ------------------------------------------------------------------
+
+    def _render_tables(self):
+        if not self.tables:
+            self._tbl_container.children = [
+                widgets.HTML(
+                    value=(
+                        f'<div style="text-align:center;padding:44px 24px;'
+                        f'color:{_C_SUBTLE};font-size:14px">'
+                        f'<div style="font-size:32px;margin-bottom:8px">'
+                        f"\U0001F4CB</div>No Direct Lake tables found.</div>"
+                    )
+                )
+            ]
+            return
+
+        header = widgets.HTML(
+            value=(
+                f'<div style="display:grid;grid-template-columns:{_TBL_GRID};'
+                f"gap:12px;padding:11px 16px;background:{_C_HEADER_BG};"
+                f'border-bottom:1px solid {_C_BORDER}">'
+                f'<div style="{_HEADER_CELL}">Table</div>'
+                f'<div style="{_HEADER_CELL}">Entity Name</div>'
+                f'<div style="{_HEADER_CELL}">Schema</div>'
+                f'<div style="{_HEADER_CELL}">Expression</div></div>'
+            ),
+            layout=widgets.Layout(flex="1"),
+        )
+        header_row = widgets.HBox(
+            [
+                header,
+                widgets.HTML(
+                    value="",
+                    layout=widgets.Layout(min_width="40px"),
+                ),
+            ]
+        )
+
+        rows = [header_row]
+        for i, tbl in enumerate(self.tables):
+            rows.append(self._make_table_row(i, tbl))
+
+        self._tbl_container.children = rows
+
+    def _make_table_row(self, idx, tbl):
+        orig = self._find_init_tbl(tbl["tableName"], tbl["partitionName"])
+
+        dot = _change_dot()
+        ch_entity = (
+            dot if (orig and orig.get("entityName") != tbl.get("entityName")) else ""
+        )
+        ch_schema = (
+            dot if (orig and orig.get("schemaName") != tbl.get("schemaName")) else ""
+        )
+        ch_expr = (
+            dot
+            if (orig and orig.get("expressionName") != tbl.get("expressionName"))
+            else ""
+        )
+
+        data_html = widgets.HTML(
+            value=(
+                f'<div style="display:grid;grid-template-columns:{_TBL_GRID};'
+                f"gap:12px;padding:11px 16px;align-items:center;"
+                f'font-size:13px">'
+                f'<div style="font-weight:500;color:{_C_TEXT}">'
+                f"{_esc(tbl.get('tableName', ''))}</div>"
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(tbl.get('entityName', ''))}{ch_entity}</div>"
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(tbl.get('schemaName', ''))}{ch_schema}</div>"
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(tbl.get('expressionName', ''))}{ch_expr}</div>"
+                f"</div>"
+            ),
+            layout=widgets.Layout(flex="1"),
+        )
+
+        edit_btn = widgets.Button(
+            description="\u270E",
+            tooltip="Edit",
+            layout=widgets.Layout(width="34px", height="34px"),
+        )
+        edit_btn.on_click(lambda _, i=idx: self._on_edit_table(i))
+
+        return widgets.HBox(
+            [data_html, edit_btn],
+            layout=widgets.Layout(
+                align_items="center",
+                border_bottom=f"1px solid {_C_BORDER}",
+                padding="0 8px 0 0",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Source form callbacks
+    # ------------------------------------------------------------------
+
+    def _on_type_change(self, change):
+        type_val = change["new"]
+        if type_val not in _SQL_ENDPOINT_TYPES:
+            self._src_f_sql.value = False
+            self._src_f_sql.disabled = True
+        elif type_val == "Warehouse":
+            self._src_f_sql.value = True
+            self._src_f_sql.disabled = True
+        else:
+            self._src_f_sql.disabled = False
+
+    def _on_add_source(self, _):
+        self._edit_src_idx = -1
+        self._src_form_title.value = self._form_heading("Add Source")
+        self._src_f_expr.value = ""
+        self._src_f_expr.disabled = False
+        self._src_f_name.value = ""
+        self._src_f_type.value = "Lakehouse"
+        self._src_f_ws.value = ""
+        self._src_f_sql.value = False
+        self._src_f_sql.disabled = False
+        self._src_form.layout.display = None
+        self._clear_status()
+
+    def _on_edit_source(self, idx):
+        self._edit_src_idx = idx
+        src = self.sources[idx]
+        self._src_form_title.value = self._form_heading("Edit Source")
+        self._src_f_expr.value = self._get_expr(src)
+        self._src_f_expr.disabled = True
+        self._src_f_name.value = src.get("itemName", "")
+        self._src_f_type.value = src.get("itemType", "Lakehouse")
+        self._src_f_ws.value = src.get("workspaceName", "")
+        self._src_f_sql.value = bool(src.get("usesSqlEndpoint", False))
+        self._on_type_change({"new": src.get("itemType", "Lakehouse")})
+        self._src_form.layout.display = None
+        self._clear_status()
+
+    def _on_save_source(self, _):
+        expr_name = self._src_f_expr.value.strip()
+        item_name = self._src_f_name.value.strip()
+        item_type = self._src_f_type.value
+        ws_name = self._src_f_ws.value.strip()
+        sql = self._src_f_sql.value
+
+        if not expr_name:
+            self._show_status("Expression name is required.", "warning")
+            return
+        if not item_name:
+            self._show_status("Item name is required.", "warning")
+            return
+        if not ws_name:
+            self._show_status("Workspace is required.", "warning")
+            return
+
+        obj = {
+            "expressionName": expr_name,
+            "itemId": (
+                self.sources[self._edit_src_idx].get("itemId", "")
+                if self._edit_src_idx >= 0
+                else ""
+            ),
+            "itemName": item_name,
+            "itemType": item_type,
+            "workspaceId": (
+                self.sources[self._edit_src_idx].get("workspaceId", "")
+                if self._edit_src_idx >= 0
+                else ""
+            ),
+            "workspaceName": ws_name,
+            "usesSqlEndpoint": sql,
+        }
+
+        if self._edit_src_idx >= 0:
+            self.sources[self._edit_src_idx] = obj
+            self._show_status("Source updated.", "success")
+        else:
+            self.sources.append(obj)
+            self._show_status("Source added.", "success")
+
+        self._hide_source_form()
+        self._render_sources()
+        self._update_apply_btn()
+
+    def _hide_source_form(self):
+        self._src_form.layout.display = "none"
+
+    # ------------------------------------------------------------------
+    # Delete source callbacks
+    # ------------------------------------------------------------------
+
+    def _on_delete_source(self, idx):
+        self._delete_src_idx = idx
+        src_expr = self._get_expr(self.sources[idx])
+        affected = [
+            t["tableName"] for t in self.tables if t.get("expressionName") == src_expr
+        ]
+
+        msg = (
+            f'<div style="font-size:14px;line-height:1.6">'
+            f"Are you sure you want to remove source "
+            f"<strong>{_esc(src_expr)}</strong>?"
+        )
+        if affected:
+            msg += (
+                f'<br><br><span style="color:{_C_DANGER}">'
+                f"The following table(s) use this source and will "
+                f"break:</span>"
+                f'<ul style="margin:6px 0 0 16px">'
+            )
+            for name in affected:
+                msg += f"<li>{_esc(name)}</li>"
+            msg += "</ul>"
+        msg += "</div>"
+
+        self._del_msg.value = msg
+        self._del_confirm.layout.display = None
+
+    def _on_confirm_delete(self, _):
+        if self._delete_src_idx >= 0:
+            self.sources.pop(self._delete_src_idx)
+            self._delete_src_idx = -1
+            self._del_confirm.layout.display = "none"
+            self._render_sources()
+            self._update_apply_btn()
+            self._show_status("Source removed.", "success")
+
+    def _on_cancel_delete(self, _):
+        self._delete_src_idx = -1
+        self._del_confirm.layout.display = "none"
+
+    # ------------------------------------------------------------------
+    # Table form callbacks
+    # ------------------------------------------------------------------
+
+    def _on_edit_table(self, idx):
+        self._edit_tbl_idx = idx
+        tbl = self.tables[idx]
+        self._tbl_f_table.value = tbl.get("tableName", "")
+
+        # Populate expression dropdown from current sources
+        expr_names = list(
+            dict.fromkeys(self._get_expr(s) for s in self.sources if self._get_expr(s))
+        )
+        self._tbl_f_expr.options = expr_names
+        self._tbl_f_expr.value = tbl.get("expressionName", "")
+        self._tbl_f_entity.value = tbl.get("entityName", "")
+        self._tbl_f_schema.value = tbl.get("schemaName", "")
+        self._tbl_form.layout.display = None
+        self._clear_status()
+
+    def _on_save_table(self, _):
+        expr = self._tbl_f_expr.value
+        entity = self._tbl_f_entity.value.strip()
+        schema = self._tbl_f_schema.value.strip()
+
+        if not expr:
+            self._show_status("Expression name is required.", "warning")
+            return
+        if not entity:
+            self._show_status("Entity name is required.", "warning")
+            return
+
+        self.tables[self._edit_tbl_idx]["expressionName"] = expr
+        self.tables[self._edit_tbl_idx]["entityName"] = entity
+        self.tables[self._edit_tbl_idx]["schemaName"] = schema
+
+        self._hide_table_form()
+        self._render_tables()
+        self._update_apply_btn()
+        self._show_status("Table mapping updated.", "success")
+
+    def _hide_table_form(self):
+        self._tbl_form.layout.display = "none"
+
+    # ------------------------------------------------------------------
+    # Apply changes
+    # ------------------------------------------------------------------
+
+    def _on_apply(self, _):
+        state = json.dumps({"sources": self.sources, "tables": self.tables})
+        try:
+            _apply_changes(self.uid, state)
+            # Reset baseline so change dots clear
+            self._init_sources = json.loads(json.dumps(self.sources))
+            self._init_tables = json.loads(json.dumps(self.tables))
+            self._render_sources()
+            self._render_tables()
+            self._update_apply_btn()
+            self._show_status(
+                f"{icons.green_dot} Changes applied successfully.", "success"
+            )
+        except Exception as e:
+            self._show_status(f"Error: {e}", "danger")
+
+    # ------------------------------------------------------------------
+    # Status helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _form_heading(text):
+        return (
+            f'<div style="font-size:15px;font-weight:600;'
+            f'color:{_C_TEXT};padding:0 0 8px 0">{_esc(text)}</div>'
+        )
+
+    def _show_status(self, msg, level="info"):
+        colors = {
+            "success": (_C_SUCCESS_BG, _C_SUCCESS),
+            "warning": (_C_WARNING_BG, _C_WARNING),
+            "danger": (_C_DANGER_BG, _C_DANGER),
+            "info": (_C_PRIMARY_BG, _C_PRIMARY),
+        }
+        bg, fg = colors.get(level, colors["info"])
+        self._status.value = (
+            f'<div style="padding:6px 14px;border-radius:8px;background:{bg};'
+            f'color:{fg};font-size:13px;font-weight:500">{msg}</div>'
+        )
+
+    def _clear_status(self):
+        self._status.value = ""
+
+    # ------------------------------------------------------------------
+    # Display
+    # ------------------------------------------------------------------
+
+    def show(self):
+        """Display the widget in the notebook."""
+        display(self.widget)
 
 
 # ---------------------------------------------------------------------------
@@ -1045,20 +1194,7 @@ def direct_lake_manager(
     sources = _collect_sources(dataset=dataset_id, workspace=workspace_id)
     tables = _collect_tables(dataset=dataset_id, workspace=workspace_id)
 
-    source_types = [
-        "Lakehouse",
-        "Warehouse",
-        "MirroredDatabase",
-        "SQLDatabase",
-        "MirroredAzureDatabricksCatalog",
-    ]
-    sql_endpoint_source_types = ["Lakehouse", "Warehouse"]
-
-    # Unique id so multiple widgets can coexist
     uid = uuid.uuid4().hex[:10]
-
-    sources_json = json.dumps(sources)
-    tables_json = json.dumps(tables)
 
     # Register callback for Apply Changes
     _dlm_callbacks[uid] = {
@@ -1066,75 +1202,12 @@ def direct_lake_manager(
         "workspace_id": str(workspace_id),
     }
 
-    html_content = _build_html(uid, sources_json, tables_json, dataset_name)
-
-    # State bridge: off-screen Textarea widget.  Must NOT use
-    # visibility:hidden because hidden elements cannot receive focus,
-    # and document.execCommand('insertText') requires a focused element
-    # to generate real browser InputEvent / change events.
-    initial_state = json.dumps({"sources": sources, "tables": tables})
-    state_bridge = widgets.Textarea(
-        value=initial_state,
-        placeholder=f"dlm-bridge-{uid}",
-        continuous_update=True,
-        layout=widgets.Layout(
-            position="absolute",
-            left="-9999px",
-            top="-9999px",
-            width="1px",
-            height="1px",
-            overflow="hidden",
-        ),
+    ui = _DirectLakeManagerUI(
+        uid=uid,
+        sources=sources,
+        tables=tables,
+        dataset_name=dataset_name,
+        dataset_id=str(dataset_id),
+        workspace_id=str(workspace_id),
     )
-    state_bridge.add_class(f"dlm-bridge-{uid}")
-
-    # Debug: log whenever the widget model actually syncs from the frontend
-    def _on_bridge_change(change):
-        print(
-            f"{icons.in_progress} [DLM] Bridge value synced "
-            f"(length={len(change['new'])})"
-        )
-
-    state_bridge.observe(_on_bridge_change, names=["value"])
-
-    # Status bar widget for apply feedback
-    status_bar = widgets.HTML(value="")
-
-    def _show_status(msg, color):
-        status_bar.value = (
-            f'<div style="padding:8px 12px; border-radius:8px; '
-            f"background:{color}1a; color:{color}; font-size:14px; "
-            f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">{msg}</div>'
-        )
-
-    # Apply Changes button (Python widget - reliable comm protocol)
-    apply_btn = widgets.Button(
-        description="\u2713 Apply Changes",
-        button_style="primary",
-        layout=widgets.Layout(margin="8px 0 0 0"),
-    )
-
-    def _on_apply(_):
-        val = state_bridge.value
-        if not val:
-            _show_status("No changes detected.", "#ff9500")
-            return
-        try:
-            _apply_changes(uid, val)
-            _show_status(f"{icons.green_dot} Changes applied successfully.", "#34c759")
-        except Exception as e:
-            _show_status(f"Error: {e}", "#ff3b30")
-
-    apply_btn.on_click(_on_apply)
-
-    # Critical: wrap state_bridge + HTML inside ONE Output widget so they
-    # share the same DOM.  The HTML <script> uses
-    # document.querySelector('textarea[placeholder=...]') to find the
-    # bridge textarea and dispatch an 'input' event that ipywidgets syncs
-    # to the kernel.  If they are in separate display() calls they end up
-    # in different DOM trees and the querySelector fails.
-    ui_output = widgets.Output()
-    with ui_output:
-        display(state_bridge)
-        display(HTML(html_content))
-    display(widgets.VBox([ui_output, widgets.HBox([apply_btn, status_bar])]))
+    ui.show()
