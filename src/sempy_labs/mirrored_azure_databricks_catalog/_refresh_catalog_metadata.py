@@ -31,12 +31,13 @@ def refresh_catalog_metadata(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (catalog_name, catalog_id) = resolve_item_name_and_id(
-        mirrored_azure_databricks_catalog
+        item=mirrored_azure_databricks_catalog, type='MirroredAzureDatabricksCatalog', workspace=workspace_id
     )
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredAzureDatabricksCatalogs/{catalog_id}/refreshCatalogMetadata",
         method="post",
+        status_codes=[200, 202],
         lro_return_status_code=True,
     )
 
