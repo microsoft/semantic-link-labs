@@ -100,18 +100,25 @@ def _apply_changes(uid, state_json):
         # Apply source (expression) changes
         for src in new_sources:
             expr_name = src.get("expressionName", "")
+            item_name = src.get('itemName')
+            item_type = src.get('itemType')
+            item_workspace = src.get('workspaceName')
+            item_use_sql_endpoint = src.get('usesSqlEndpoint')
             if not expr_name:
                 continue
 
             expression = generate_shared_expression(
-                item_name=src["itemName"],
-                item_type=src["itemType"],
-                workspace=src["workspaceName"],
-                use_sql_endpoint=src["usesSqlEndpoint"],
+                item_name=item_name,
+                item_type=item_type,
+                workspace=item_workspace,
+                use_sql_endpoint=item_use_sql_endpoint,
             )
 
             if expr_name in existing_expr_names:
                 tom.model.Expressions[expr_name].Expression = expression
+                # Lakehouse SQL Endpoint must use DatabaseQuery as the expression name
+                #if item_type == 'Lakehouse' and item_use_sql_endpoint:
+                #    tom.model.Expressions[expr_name].Name = 'DatabaseQuery'
             else:
                 tom.add_expression(
                     name=expr_name,
@@ -224,6 +231,9 @@ class _DirectLakeManagerUI:
         self.workspace_id = workspace_id
         self.df_temp = None
         self._temp_loaded = False
+        self._temp_sort_col = "Temperature"
+        self._temp_sort_asc = False
+        self._temp_filter_text = ""
 
         # Deep-copy initial state for change tracking
         self._init_sources = json.loads(json.dumps(sources))
@@ -371,6 +381,50 @@ class _DirectLakeManagerUI:
         )
         self._temp_rerun_btn.on_click(lambda _: self._load_temperature())
 
+        # Temperature filter / sort controls
+        _temp_cols = [
+            "Table Name",
+            "Column Name",
+            "Data Type",
+            "Is Resident",
+            "Temperature",
+            "Last Accessed",
+        ]
+        self._temp_filter_input = widgets.Text(
+            placeholder="Filter rows\u2026",
+            layout=widgets.Layout(width="260px", height="32px"),
+        )
+        self._temp_filter_input.observe(self._on_temp_filter_change, names=["value"])
+
+        self._temp_sort_dd = widgets.Dropdown(
+            description="Sort by:",
+            options=_temp_cols,
+            value=self._temp_sort_col,
+            style={"description_width": "50px"},
+            layout=widgets.Layout(width="200px", height="32px"),
+        )
+        self._temp_sort_dd.observe(self._on_temp_sort_change, names=["value"])
+
+        self._temp_sort_dir_btn = widgets.Button(
+            description="\u25BC Desc",
+            layout=widgets.Layout(width="80px", height="32px"),
+        )
+        self._temp_sort_dir_btn.on_click(self._on_temp_sort_dir_toggle)
+
+        temp_toolbar = widgets.HBox(
+            [
+                self._temp_filter_input,
+                widgets.HTML(value="", layout=widgets.Layout(flex="1")),
+                self._temp_sort_dd,
+                self._temp_sort_dir_btn,
+            ],
+            layout=widgets.Layout(
+                padding="0 0 10px 0",
+                align_items="center",
+                gap="8px",
+            ),
+        )
+
         temp_header = widgets.HBox(
             [
                 widgets.HTML(
@@ -389,7 +443,7 @@ class _DirectLakeManagerUI:
         )
 
         temp_page = widgets.VBox(
-            [temp_header, self._temp_container],
+            [temp_header, temp_toolbar, self._temp_container],
             layout=widgets.Layout(padding="20px 24px"),
         )
 
@@ -547,7 +601,7 @@ class _DirectLakeManagerUI:
                     "Temperature",
                     "Last Accessed",
                 ]
-            ].sort_values(by="Temperature", ascending=False)
+            ]
             self._temp_loaded = True
             self._temp_container.value = self._render_temp_table()
         except Exception as e:
@@ -958,6 +1012,35 @@ class _DirectLakeManagerUI:
             False: (_C_HEADER_BG, _C_SUBTLE, "No"),
         }
 
+        # --- Apply filter ---
+        df = self.df_temp
+        filt = self._temp_filter_text.strip().lower()
+        if filt:
+            mask = df.apply(
+                lambda r: any(filt in str(v).lower() for v in r),
+                axis=1,
+            )
+            df = df[mask]
+
+        # --- Apply sort ---
+        sort_col = self._temp_sort_col
+        if sort_col in df.columns:
+            df = df.sort_values(
+                by=sort_col,
+                ascending=self._temp_sort_asc,
+                na_position="last",
+            )
+
+        if df.empty:
+            return (
+                f'<div style="text-align:center;padding:44px 24px;'
+                f'color:{_C_SUBTLE};font-size:14px">'
+                f"No rows match the current filter.</div>"
+            )
+
+        # --- Sort indicator ---
+        sort_indicator = "\u25B2" if self._temp_sort_asc else "\u25BC"
+
         html = (
             f'<div style="border:1px solid {_C_BORDER};border-radius:12px;'
             f'overflow-y:auto;max-height:500px;background:{_C_SURFACE};">'
@@ -969,15 +1052,21 @@ class _DirectLakeManagerUI:
             f'border-bottom:1px solid {_C_BORDER}">'
         )
         for col in self.df_temp.columns:
+            indicator = ""
+            if col == sort_col:
+                indicator = (
+                    f' <span style="color:{_C_PRIMARY};font-size:10px;'
+                    f'margin-left:4px">{sort_indicator}</span>'
+                )
             html += (
                 f'<th style="padding:11px 16px;text-align:left;{_HEADER_CELL};'
                 f"position:sticky;top:0;z-index:1;"
                 f'background:{_C_HEADER_BG};">'
-                f"{_esc(col)}</th>"
+                f"{_esc(col)}{indicator}</th>"
             )
         html += "</tr></thead><tbody>"
 
-        for _, row in self.df_temp.iterrows():
+        for _, row in df.iterrows():
             html += (
                 f'<tr style="border-bottom:1px solid {_C_BORDER};"'
                 f" onmouseover=\"this.style.background='#f9f9fb'\""
@@ -1003,6 +1092,28 @@ class _DirectLakeManagerUI:
 
         html += "</tbody></table></div>"
         return html
+
+    # ------------------------------------------------------------------
+    # Temperature filter / sort callbacks
+    # ------------------------------------------------------------------
+
+    def _on_temp_filter_change(self, change):
+        self._temp_filter_text = change["new"]
+        if self._temp_loaded and self.df_temp is not None:
+            self._temp_container.value = self._render_temp_table()
+
+    def _on_temp_sort_change(self, change):
+        self._temp_sort_col = change["new"]
+        if self._temp_loaded and self.df_temp is not None:
+            self._temp_container.value = self._render_temp_table()
+
+    def _on_temp_sort_dir_toggle(self, _):
+        self._temp_sort_asc = not self._temp_sort_asc
+        self._temp_sort_dir_btn.description = (
+            "\u25B2 Asc" if self._temp_sort_asc else "\u25BC Desc"
+        )
+        if self._temp_loaded and self.df_temp is not None:
+            self._temp_container.value = self._render_temp_table()
 
     # ------------------------------------------------------------------
     # Render table rows

@@ -1196,6 +1196,45 @@ class TOMWrapper:
 
         self.model.Expressions.Add(exp)
 
+    def set_expression(
+        self,
+        name: str,
+        new_name: Optional[str] = None,
+        expression: Optional[str] = None,
+        description: Optional[str] = None,
+        lineage_tag: Optional[str] = None,
+        source_lineage_tag: Optional[str] = None,
+    ):
+        """
+        Sets the properties of an `expression <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.namedexpression?view=analysisservices-dotnet>`_.
+
+        Parameters
+        ----------
+        name : str
+            Name of the expression.
+        expression: str
+            The M expression of the expression.
+        description : str, default=None
+            A description of the expression.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
+        source_lineage_tag : str, default=None
+            A tag that represents the lineage of the source for the object.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        e = self.model.Expressions[name]
+        if new_name is not None and new_name != name:
+            e.Name = new_name
+        if expression is not None and expression != e.Expression:
+            e.Expression = expression
+        if description is not None and description != e.Description:
+            e.Description = description
+        if lineage_tag is not None and lineage_tag != e.LineageTag:
+            e.LineageTag = lineage_tag
+        if source_lineage_tag is not None and source_lineage_tag != e.SourceLineageTag:
+            e.SourceLineageTag = source_lineage_tag
+
     def add_translation(self, language: str):
         """
         Adds a `translation language <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ (culture) to a semantic model.
