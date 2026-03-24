@@ -25,6 +25,25 @@ from sempy_labs.directlake._generate_shared_expression import (
 # Data helpers
 # ---------------------------------------------------------------------------
 
+data_type_mapping = {
+    "int": "Int64",
+    "integer": "Int64",
+    "long": "Int64",
+    "char": "String",
+    "varchar": "String",
+    "string": "String",
+    "bit": "String",
+    "datetime2": "DateTime",
+    "date": "DateTime",
+    "timestamp": "DateTime",
+    "float": "Decimal",
+    "decimal(18,2)": "Decimal",
+    "decimal(18,3)": "Decimal",
+    "decimal": "Decimal",
+    "binary": "Binary",
+    "boolean": "Boolean",
+}
+
 
 def _collect_sources(dataset, workspace):
     """Retrieve Direct Lake source metadata including expression names."""
@@ -37,6 +56,7 @@ def _collect_tables(dataset, workspace):
     import Microsoft.AnalysisServices.Tabular as TOM
 
     table_list = []
+    column_list = []
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         if not tom.is_direct_lake():
             raise ValueError(
@@ -56,7 +76,18 @@ def _collect_tables(dataset, workspace):
                             "mode": str(p.Mode),
                         }
                     )
-    return table_list
+            for c in t.Columns:
+              if c.Type != TOM.ColumnType.RowNumber:
+                column_list.append(
+                  {
+                    "tableName": table_name,
+                    "columnName": c.Name,
+                    "sourceColumn": c.SourceColumn,
+                    "dataType": str(c.DataType),
+                  }
+                )
+
+    return (table_list, column_list)
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +109,7 @@ def _apply_changes(uid, state_json):
     state = json.loads(state_json)
     new_sources = state.get("sources", [])
     new_tables = state.get("tables", [])
+    columns_data = state.get("columns", {})
 
     with connect_semantic_model(
         dataset=dataset_id,
@@ -100,10 +132,10 @@ def _apply_changes(uid, state_json):
         # Apply source (expression) changes
         for src in new_sources:
             expr_name = src.get("expressionName", "")
-            item_name = src.get('itemName')
-            item_type = src.get('itemType')
-            item_workspace = src.get('workspaceName')
-            item_use_sql_endpoint = src.get('usesSqlEndpoint')
+            item_name = src.get("itemName")
+            item_type = src.get("itemType")
+            item_workspace = src.get("workspaceName")
+            item_use_sql_endpoint = src.get("usesSqlEndpoint")
             if not expr_name:
                 continue
 
@@ -117,7 +149,7 @@ def _apply_changes(uid, state_json):
             if expr_name in existing_expr_names:
                 tom.model.Expressions[expr_name].Expression = expression
                 # Lakehouse SQL Endpoint must use DatabaseQuery as the expression name
-                #if item_type == 'Lakehouse' and item_use_sql_endpoint:
+                # if item_type == 'Lakehouse' and item_use_sql_endpoint:
                 #    tom.model.Expressions[expr_name].Name = 'DatabaseQuery'
             else:
                 tom.add_expression(
@@ -125,16 +157,40 @@ def _apply_changes(uid, state_json):
                     expression=expression,
                 )
         # Apply table partition changes
+        existing_table_names = {t.Name for t in tom.model.Tables}
+
         for tbl in new_tables:
             table_name = tbl["tableName"]
-            partition_name = tbl["partitionName"]
-            for p in tom.model.Tables[table_name].Partitions:
-                if p.Name == partition_name:
-                    p.Source.ExpressionSource = tom.model.Expressions[
-                        tbl["expressionName"]
-                    ]
-                    p.Source.EntityName = tbl["entityName"]
-                    p.Source.SchemaName = tbl["schemaName"]
+            expr = tbl["expressionName"]
+            entity_name = tbl["entityName"]
+            schema_name = tbl.get("schemaName")
+            is_new = tbl.get("_isNew", False)
+
+            if is_new and table_name not in existing_table_names:
+                # Create new table + entity partition
+                tom.add_table(name=table_name)
+                tom.add_entity_partition(
+                    table_name=table_name,
+                    entity_name=entity_name,
+                    expression=expr,
+                    schema_name=schema_name,
+                )
+                # Add columns from UI column data
+                for col in columns_data.get(table_name, []):
+                    tom.add_data_column(
+                        table_name=table_name,
+                        column_name=col["columnName"],
+                        source_column=col.get("sourceColumn", col["columnName"]),
+                        data_type=col.get("dataType", "String"),
+                    )
+
+            else:
+                partition_name = tbl["partitionName"]
+                for p in tom.model.Tables[table_name].Partitions:
+                    if p.Name == partition_name:
+                        p.Source.ExpressionSource = tom.model.Expressions[expr]
+                        p.Source.EntityName = entity_name
+                        p.Source.SchemaName = schema_name
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +227,9 @@ _C_DOT = "#ffb900"
 
 _SRC_GRID = "1.5fr 1.5fr 140px 1.5fr 80px"
 _TBL_GRID = "1fr 1.5fr 120px 1.5fr"
+_COL_GRID = "1.5fr 1.5fr 160px"
+
+_DATA_TYPES = ["String", "Int64", "Decimal", "Boolean", "DateTime"]
 
 _HEADER_CELL = (
     f"font-weight:600;font-size:11px;text-transform:uppercase;"
@@ -222,7 +281,7 @@ def _change_dot():
 class _DirectLakeManagerUI:
     """Pure ipywidgets UI for the Direct Lake Manager."""
 
-    def __init__(self, uid, sources, tables, dataset_name, dataset_id, workspace_id):
+    def __init__(self, uid, sources, tables, columns, dataset_name, dataset_id, workspace_id):
         self.uid = uid
         self.sources = [dict(s) for s in sources]
         self.tables = [dict(t) for t in tables]
@@ -235,13 +294,32 @@ class _DirectLakeManagerUI:
         self._temp_sort_asc = False
         self._temp_filter_text = ""
 
+        # Columns page state: table_name -> list of {columnName, sourceColumn, dataType}
+        self._columns_data = {}
+        for col in columns:
+            tbl = col["tableName"]
+            if tbl not in self._columns_data:
+                self._columns_data[tbl] = []
+            self._columns_data[tbl].append(
+                {
+                    "columnName": col["columnName"],
+                    "sourceColumn": col["sourceColumn"],
+                    "dataType": col["dataType"],
+                }
+            )
+
         # Deep-copy initial state for change tracking
         self._init_sources = json.loads(json.dumps(sources))
         self._init_tables = json.loads(json.dumps(tables))
+        self._init_columns_data = json.loads(
+            json.dumps(self._columns_data)
+        )
 
         self._edit_src_idx = -1
         self._edit_tbl_idx = -1
         self._delete_src_idx = -1
+        self._edit_col_table = ""
+        self._edit_col_idx = -1
 
         self._build()
 
@@ -330,6 +408,31 @@ class _DirectLakeManagerUI:
         )
 
         # ---- Tables page --------------------------------------------------
+        self._add_tbl_btn = widgets.Button(
+            description="   Add Table",
+            icon="plus",
+            button_style="primary",
+            layout=widgets.Layout(height="32px"),
+        )
+        self._add_tbl_btn.on_click(self._on_add_table_click)
+
+        tbl_header_bar = widgets.HBox(
+            [
+                widgets.HTML(
+                    value=(
+                        f'<div style="font-size:16px;font-weight:600;'
+                        f'color:{_C_TEXT}">Tables</div>'
+                    )
+                ),
+                self._add_tbl_btn,
+            ],
+            layout=widgets.Layout(
+                justify_content="space-between",
+                align_items="center",
+                padding="0 0 12px 0",
+            ),
+        )
+
         self._tbl_table_header = widgets.HBox(layout=widgets.Layout(display="none"))
         self._tbl_scroll = widgets.VBox(
             layout=widgets.Layout(overflow_y="auto", max_height="460px")
@@ -347,17 +450,64 @@ class _DirectLakeManagerUI:
         self._tbl_form = self._build_table_form()
         self._tbl_form.layout.display = "none"
 
+        self._add_tbl_form = self._build_add_table_form()
+        self._add_tbl_form.layout.display = "none"
+
         tables_page = widgets.VBox(
+            [
+                tbl_header_bar,
+                self._tbl_container,
+                self._tbl_form,
+                self._add_tbl_form,
+            ],
+            layout=widgets.Layout(padding="20px 24px"),
+        )
+
+        # ---- Columns page -------------------------------------------------
+        self._col_table_dd = widgets.Dropdown(
+            description="Table:",
+            options=[],
+            style={"description_width": "50px"},
+            layout=widgets.Layout(width="300px", height="32px"),
+        )
+        self._col_table_dd.observe(self._on_col_table_change, names=["value"])
+
+        col_header = widgets.HBox(
             [
                 widgets.HTML(
                     value=(
                         f'<div style="font-size:16px;font-weight:600;'
-                        f'color:{_C_TEXT};padding-bottom:12px">Tables</div>'
+                        f'color:{_C_TEXT}">Columns</div>'
                     )
                 ),
-                self._tbl_container,
-                self._tbl_form,
+                self._col_table_dd,
             ],
+            layout=widgets.Layout(
+                justify_content="space-between",
+                align_items="center",
+                padding="0 0 12px 0",
+            ),
+        )
+
+        self._col_table_header_bar = widgets.HBox(layout=widgets.Layout(display="none"))
+        self._col_scroll = widgets.VBox(
+            layout=widgets.Layout(overflow_y="auto", max_height="460px")
+        )
+        self._col_container = widgets.VBox(
+            [self._col_table_header_bar, self._col_scroll],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_BORDER}",
+                border_radius="12px",
+                overflow="hidden",
+                background=_C_SURFACE,
+            ),
+        )
+
+        self._col_form = self._build_column_form()
+        self._col_form.layout.display = "none"
+
+        columns_page = widgets.VBox(
+            [col_header, self._col_container, self._col_form],
             layout=widgets.Layout(padding="20px 24px"),
         )
 
@@ -450,8 +600,10 @@ class _DirectLakeManagerUI:
         # ---- Manual tab navigation ----------------------------------------
         self._sources_page = sources_page
         self._tables_page = tables_page
+        self._columns_page = columns_page
         self._temp_page = temp_page
         self._tables_page.layout.display = "none"
+        self._columns_page.layout.display = "none"
         self._temp_page.layout.display = "none"
 
         self._tab_src_btn = widgets.Button(
@@ -471,6 +623,14 @@ class _DirectLakeManagerUI:
                 border_radius="980px",
             ),
         )
+        self._tab_col_btn = widgets.Button(
+            description="▤  Columns",
+            icon="columns",
+            layout=widgets.Layout(
+                height="34px",
+                border_radius="980px",
+            ),
+        )
         self._tab_temp_btn = widgets.Button(
             description="🌡 Temperature",
             icon="thermometer-half",
@@ -481,10 +641,16 @@ class _DirectLakeManagerUI:
         )
         self._tab_src_btn.on_click(lambda _: self._switch_tab("sources"))
         self._tab_tbl_btn.on_click(lambda _: self._switch_tab("tables"))
+        self._tab_col_btn.on_click(lambda _: self._switch_tab("columns"))
         self._tab_temp_btn.on_click(lambda _: self._switch_tab("temperature"))
 
         tab_bar = widgets.HBox(
-            [self._tab_src_btn, self._tab_tbl_btn, self._tab_temp_btn],
+            [
+                self._tab_src_btn,
+                self._tab_tbl_btn,
+                self._tab_col_btn,
+                self._tab_temp_btn,
+            ],
             layout=widgets.Layout(
                 padding="10px 24px",
                 gap="6px",
@@ -516,6 +682,7 @@ class _DirectLakeManagerUI:
                 tab_bar,
                 self._sources_page,
                 self._tables_page,
+                self._columns_page,
                 self._temp_page,
                 self._bottom_bar,
             ],
@@ -532,6 +699,7 @@ class _DirectLakeManagerUI:
         # Initial render
         self._render_sources()
         self._render_tables()
+        self._refresh_col_table_dropdown()
         self._update_apply_btn()
 
     # ------------------------------------------------------------------
@@ -540,10 +708,13 @@ class _DirectLakeManagerUI:
 
     def _has_changes(self):
         """Return True if current state differs from the saved baseline."""
-        return json.dumps(self.sources, sort_keys=True) != json.dumps(
-            self._init_sources, sort_keys=True
-        ) or json.dumps(self.tables, sort_keys=True) != json.dumps(
-            self._init_tables, sort_keys=True
+        return (
+            json.dumps(self.sources, sort_keys=True)
+            != json.dumps(self._init_sources, sort_keys=True)
+            or json.dumps(self.tables, sort_keys=True)
+            != json.dumps(self._init_tables, sort_keys=True)
+            or json.dumps(self._columns_data, sort_keys=True)
+            != json.dumps(self._init_columns_data, sort_keys=True)
         )
 
     def _update_apply_btn(self):
@@ -557,11 +728,13 @@ class _DirectLakeManagerUI:
         pages = {
             "sources": self._sources_page,
             "tables": self._tables_page,
+            "columns": self._columns_page,
             "temperature": self._temp_page,
         }
         btns = {
             "sources": self._tab_src_btn,
             "tables": self._tab_tbl_btn,
+            "columns": self._tab_col_btn,
             "temperature": self._tab_temp_btn,
         }
         for key, page in pages.items():
@@ -570,7 +743,13 @@ class _DirectLakeManagerUI:
             btn.button_style = "primary" if key == tab else ""
 
         # Hide Apply Changes bar on the Temperature page
-        self._bottom_bar.layout.display = "none" if tab == "temperature" else None
+        self._bottom_bar.layout.display = (
+            "none" if tab == "temperature" else None
+        )
+
+        # Refresh Columns dropdown when switching to columns tab
+        if tab == "columns":
+            self._refresh_col_table_dropdown()
 
         # Lazy-load temperature data on first visit
         if tab == "temperature" and not self._temp_loaded:
@@ -863,6 +1042,74 @@ class _DirectLakeManagerUI:
         )
 
     # ------------------------------------------------------------------
+    # Add Table form
+    # ------------------------------------------------------------------
+
+    def _build_add_table_form(self):
+        desc_w = "140px"
+
+        self._add_tbl_form_title = widgets.HTML(value=self._form_heading("Add Table"))
+        self._add_tbl_f_table = widgets.Text(
+            description="Table Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._add_tbl_f_expr = widgets.Dropdown(
+            description="Expression:",
+            options=[],
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._add_tbl_f_entity = widgets.Text(
+            description="Entity Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._add_tbl_f_schema = widgets.Text(
+            description="Schema Name:",
+            value="dbo",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+
+        save_btn = widgets.Button(
+            description="Save",
+            button_style="primary",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        cancel_btn = widgets.Button(
+            description="Cancel",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        save_btn.on_click(self._on_save_new_table)
+        cancel_btn.on_click(lambda _: self._hide_add_table_form())
+
+        return widgets.VBox(
+            [
+                self._add_tbl_form_title,
+                self._add_tbl_f_table,
+                self._add_tbl_f_expr,
+                self._add_tbl_f_entity,
+                self._add_tbl_f_schema,
+                widgets.HBox(
+                    [cancel_btn, save_btn],
+                    layout=widgets.Layout(
+                        justify_content="flex-end",
+                        gap="8px",
+                        padding="8px 0 0 0",
+                    ),
+                ),
+            ],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_PRIMARY}",
+                border_radius="12px",
+                padding="16px 20px",
+                margin="12px 0 0 0",
+                background=_C_SURFACE,
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # Render source rows
     # ------------------------------------------------------------------
 
@@ -985,6 +1232,278 @@ class _DirectLakeManagerUI:
                 padding="0 8px 0 0",
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Columns page helpers
+    # ------------------------------------------------------------------
+
+    def _refresh_col_table_dropdown(self):
+        """Update the Columns page table dropdown from tables with column data."""
+        tables_with_cols = sorted(
+            set(
+                t["tableName"]
+                for t in self.tables
+                if t["tableName"] in self._columns_data
+            )
+        )
+        self._col_table_dd.options = tables_with_cols
+        if tables_with_cols and not self._col_table_dd.value:
+            self._col_table_dd.value = tables_with_cols[0]
+        if tables_with_cols:
+            self._render_columns()
+        else:
+            self._col_table_header_bar.layout.display = "none"
+            self._col_scroll.children = [
+                widgets.HTML(
+                    value=(
+                        f'<div style="text-align:center;padding:44px 24px;'
+                        f'color:{_C_SUBTLE};font-size:14px">'
+                        f'<div style="font-size:32px;margin-bottom:8px">'
+                        f"\U0001F4CB</div>"
+                        f"Add a new table to see its columns here.</div>"
+                    )
+                )
+            ]
+
+    def _on_col_table_change(self, change):
+        if change["new"]:
+            self._render_columns()
+
+    def _render_columns(self):
+        """Render the columns grid for the currently selected table."""
+        table_name = self._col_table_dd.value
+        cols = self._columns_data.get(table_name, [])
+        if not cols:
+            self._col_table_header_bar.layout.display = "none"
+            self._col_scroll.children = [
+                widgets.HTML(
+                    value=(
+                        f'<div style="text-align:center;padding:44px 24px;'
+                        f'color:{_C_SUBTLE};font-size:14px">'
+                        f"No columns found for this table.</div>"
+                    )
+                )
+            ]
+            return
+
+        header = widgets.HTML(
+            value=(
+                f'<div style="display:grid;grid-template-columns:{_COL_GRID};'
+                f"gap:12px;padding:11px 16px;background:{_C_HEADER_BG};"
+                f'border-bottom:1px solid {_C_BORDER}">'
+                f'<div style="{_HEADER_CELL}">Column Name</div>'
+                f'<div style="{_HEADER_CELL}">Source Column</div>'
+                f'<div style="{_HEADER_CELL}">Data Type</div></div>'
+            ),
+            layout=widgets.Layout(flex="1"),
+        )
+        self._col_table_header_bar.children = [
+            header,
+            widgets.HTML(
+                value="",
+                layout=widgets.Layout(min_width="40px"),
+            ),
+        ]
+        self._col_table_header_bar.layout.display = None
+
+        rows = []
+        for i, col in enumerate(cols):
+            rows.append(self._make_column_row(table_name, i, col))
+        self._col_scroll.children = rows
+
+    def _make_column_row(self, table_name, idx, col):
+        data_html = widgets.HTML(
+            value=(
+                f'<div style="display:grid;'
+                f'grid-template-columns:{_COL_GRID};'
+                f"gap:12px;padding:11px 16px;"
+                f"background:{_C_SURFACE};"
+                f'align-items:center;font-size:13px">'
+                f'<div style="font-weight:500;'
+                f'color:{_C_TEXT}">'
+                f"{_esc(col.get('columnName', ''))}</div>"
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(col.get('sourceColumn', ''))}</div>"
+                f'<div style="color:{_C_TEXT}">'
+                f"{_esc(col.get('dataType', ''))}</div>"
+                f"</div>"
+            ),
+            layout=widgets.Layout(flex="1"),
+        )
+
+        edit_btn = widgets.Button(
+            description="\u270E",
+            tooltip="Edit",
+            layout=widgets.Layout(width="34px", height="34px"),
+        )
+        edit_btn.on_click(
+            lambda _, t=table_name, i=idx: self._on_edit_column(t, i)
+        )
+
+        return widgets.HBox(
+            [data_html, edit_btn],
+            layout=widgets.Layout(
+                align_items="center",
+                border_bottom=f"1px solid {_C_BORDER}",
+                padding="0 8px 0 0",
+                overflow="hidden",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Column edit form
+    # ------------------------------------------------------------------
+
+    def _build_column_form(self):
+        desc_w = "140px"
+
+        self._col_form_title = widgets.HTML(
+            value=self._form_heading("Edit Column")
+        )
+        self._col_f_name = widgets.Text(
+            description="Column Name:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._col_f_src = widgets.Text(
+            description="Source Column:",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+        self._col_f_dtype = widgets.Dropdown(
+            description="Data Type:",
+            options=_DATA_TYPES,
+            value="String",
+            style={"description_width": desc_w},
+            layout=widgets.Layout(width="100%"),
+        )
+
+        save_btn = widgets.Button(
+            description="Save",
+            button_style="primary",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        cancel_btn = widgets.Button(
+            description="Cancel",
+            layout=widgets.Layout(height="32px", width="90px"),
+        )
+        save_btn.on_click(self._on_save_column)
+        cancel_btn.on_click(lambda _: self._hide_column_form())
+
+        return widgets.VBox(
+            [
+                self._col_form_title,
+                self._col_f_name,
+                self._col_f_src,
+                self._col_f_dtype,
+                widgets.HBox(
+                    [cancel_btn, save_btn],
+                    layout=widgets.Layout(
+                        justify_content="flex-end",
+                        gap="8px",
+                        padding="8px 0 0 0",
+                    ),
+                ),
+            ],
+            layout=widgets.Layout(
+                border=f"1px solid {_C_PRIMARY}",
+                border_radius="12px",
+                padding="16px 20px",
+                margin="12px 0 0 0",
+                background=_C_SURFACE,
+            ),
+        )
+
+    def _on_edit_column(self, table_name, idx):
+        self._edit_col_table = table_name
+        self._edit_col_idx = idx
+        col = self._columns_data[table_name][idx]
+        self._col_form_title.value = self._form_heading(
+            f"Edit Column \u2014 {_esc(col.get('columnName', ''))}"
+        )
+        self._col_f_name.value = col.get("columnName", "")
+        self._col_f_src.value = col.get("sourceColumn", "")
+        self._col_f_dtype.value = col.get("dataType", "String")
+        self._col_form.layout.display = None
+        self._clear_status()
+
+    def _on_save_column(self, _):
+        col_name = self._col_f_name.value.strip()
+        src_col = self._col_f_src.value.strip()
+        dtype = self._col_f_dtype.value
+
+        if not col_name:
+            self._show_status("Column name is required.", "warning")
+            return
+        if not src_col:
+            self._show_status("Source column is required.", "warning")
+            return
+
+        tbl = self._edit_col_table
+        idx = self._edit_col_idx
+        self._columns_data[tbl][idx]["columnName"] = col_name
+        self._columns_data[tbl][idx]["sourceColumn"] = src_col
+        self._columns_data[tbl][idx]["dataType"] = dtype
+
+        self._hide_column_form()
+        self._render_columns()
+        self._update_apply_btn()
+        self._show_status("Column updated.", "success")
+
+    def _hide_column_form(self):
+        self._col_form.layout.display = "none"
+
+    def _fetch_columns_for_table(self, table_name, entity_name, schema_name, expr_name):
+        """Fetch lakehouse/warehouse columns and populate _columns_data."""
+        # Find the source matching the expression
+        src = None
+        for s in self.sources:
+            if self._get_expr(s) == expr_name:
+                src = s
+                break
+        if not src:
+            return
+
+        item_name = src.get("itemName", "")
+        item_type = src.get("itemType", "")
+        ws_name = src.get("workspaceName", "")
+
+        try:
+            if item_type == "Lakehouse":
+                from sempy_labs.lakehouse._get_lakehouse_columns import (
+                    get_lakehouse_columns,
+                )
+
+                df = get_lakehouse_columns(lakehouse=item_name, workspace=ws_name)
+                df = df[df["Table Name"] == entity_name]
+                if schema_name:
+                    df = df[df["Schema Name"] == schema_name]
+            elif item_type == "Warehouse":
+                from sempy_labs.warehouse._items import get_warehouse_columns
+
+                df = get_warehouse_columns(warehouse=item_name, workspace=ws_name)
+                df = df[df["Table Name"] == entity_name]
+                if schema_name:
+                    df = df[df["Schema"] == schema_name]
+            else:
+                return
+
+            cols = []
+            for _, r in df.iterrows():
+                raw_type = str(r.get("Data Type", "string")).lower()
+                mapped_type = data_type_mapping.get(raw_type, "String")
+                col_name = r["Column Name"]
+                cols.append(
+                    {
+                        "columnName": col_name,
+                        "sourceColumn": col_name,
+                        "dataType": mapped_type,
+                    }
+                )
+            self._columns_data[table_name] = cols
+        except Exception:
+            # If fetching fails, create an empty column list
+            self._columns_data[table_name] = []
 
     # ------------------------------------------------------------------
     # Render temperature table
@@ -1163,25 +1682,36 @@ class _DirectLakeManagerUI:
 
     def _make_table_row(self, idx, tbl):
         orig = self._find_init_tbl(tbl["tableName"], tbl["partitionName"])
+        is_new = tbl.get("_isNew", False)
 
         dot = _change_dot()
         ch_entity = (
-            dot if (orig and orig.get("entityName") != tbl.get("entityName")) else ""
+            dot
+            if (not is_new and orig and orig.get("entityName") != tbl.get("entityName"))
+            else ""
         )
         ch_schema = (
-            dot if (orig and orig.get("schemaName") != tbl.get("schemaName")) else ""
+            dot
+            if (not is_new and orig and orig.get("schemaName") != tbl.get("schemaName"))
+            else ""
         )
         ch_expr = (
             dot
-            if (orig and orig.get("expressionName") != tbl.get("expressionName"))
+            if (
+                not is_new
+                and orig
+                and orig.get("expressionName") != tbl.get("expressionName")
+            )
             else ""
         )
+
+        row_bg = _C_ROW_NEW if is_new else _C_SURFACE
 
         data_html = widgets.HTML(
             value=(
                 f'<div style="display:grid;grid-template-columns:{_TBL_GRID};'
-                f"gap:12px;padding:11px 16px;align-items:center;"
-                f'font-size:13px">'
+                f"gap:12px;padding:11px 16px;background:{row_bg};"
+                f'align-items:center;font-size:13px">'
                 f'<div style="font-weight:500;color:{_C_TEXT}">'
                 f"{_esc(tbl.get('tableName', ''))}</div>"
                 f'<div style="color:{_C_TEXT}">'
@@ -1364,6 +1894,7 @@ class _DirectLakeManagerUI:
         self._tbl_f_entity.value = tbl.get("entityName", "")
         self._tbl_f_schema.value = tbl.get("schemaName", "")
         self._tbl_form.layout.display = None
+        self._hide_add_table_form()
         self._clear_status()
 
     def _on_save_table(self, _):
@@ -1391,18 +1922,117 @@ class _DirectLakeManagerUI:
         self._tbl_form.layout.display = "none"
 
     # ------------------------------------------------------------------
+    # Add Table callbacks
+    # ------------------------------------------------------------------
+
+    def _on_add_table_click(self, _):
+        self._add_tbl_f_table.value = ""
+        self._add_tbl_f_entity.value = ""
+        self._add_tbl_f_schema.value = "dbo"
+
+        # Only show expressions backed by Lakehouse or Warehouse sources
+        expr_names = list(
+            dict.fromkeys(
+                self._get_expr(s)
+                for s in self.sources
+                if self._get_expr(s) and s.get("itemType") in ("Lakehouse", "Warehouse")
+            )
+        )
+        if not expr_names:
+            self._show_status(
+                "Add Table requires a Lakehouse or Warehouse source.", "warning"
+            )
+            return
+
+        self._add_tbl_f_expr.options = expr_names
+        self._add_tbl_f_expr.value = expr_names[0]
+
+        self._add_tbl_form.layout.display = None
+        self._hide_table_form()
+        self._clear_status()
+
+    def _on_save_new_table(self, _):
+        table_name = self._add_tbl_f_table.value.strip()
+        expr = self._add_tbl_f_expr.value
+        entity = self._add_tbl_f_entity.value.strip()
+        schema = self._add_tbl_f_schema.value.strip()
+
+        if not table_name:
+            self._show_status("Table name is required.", "warning")
+            return
+        if not expr:
+            self._show_status("Expression is required.", "warning")
+            return
+        if not entity:
+            self._show_status("Entity name is required.", "warning")
+            return
+
+        # Check for duplicate table name
+        existing_names = {t["tableName"] for t in self.tables}
+        if table_name in existing_names:
+            self._show_status(f"Table '{_esc(table_name)}' already exists.", "warning")
+            return
+
+        self.tables.append(
+            {
+                "tableName": table_name,
+                "partitionName": table_name,
+                "expressionName": expr,
+                "entityName": entity,
+                "schemaName": schema or "dbo",
+                "mode": "DirectLake",
+                "_isNew": True,
+            }
+        )
+
+        # Fetch lakehouse/warehouse columns for the new table
+        self._fetch_columns_for_table(table_name, entity, schema or "dbo", expr)
+
+        self._hide_add_table_form()
+        self._render_tables()
+        self._update_apply_btn()
+        self._show_status(f"Table '{_esc(table_name)}' added.", "success")
+
+        # Navigate to Columns page filtered to the new table
+        self._col_table_dd.options = sorted(
+            set(
+                t["tableName"]
+                for t in self.tables
+                if t["tableName"] in self._columns_data
+            )
+        )
+        self._col_table_dd.value = table_name
+        self._switch_tab("columns")
+
+    def _hide_add_table_form(self):
+        self._add_tbl_form.layout.display = "none"
+
+    # ------------------------------------------------------------------
     # Apply changes
     # ------------------------------------------------------------------
 
     def _on_apply(self, _):
-        state = json.dumps({"sources": self.sources, "tables": self.tables})
+        state = json.dumps(
+            {
+                "sources": self.sources,
+                "tables": self.tables,
+                "columns": self._columns_data,
+            }
+        )
         try:
             _apply_changes(self.uid, state)
+            # Clear _isNew flags after successful apply
+            for tbl in self.tables:
+                tbl.pop("_isNew", None)
             # Reset baseline so change dots clear
             self._init_sources = json.loads(json.dumps(self.sources))
             self._init_tables = json.loads(json.dumps(self.tables))
+            self._init_columns_data = json.loads(
+                json.dumps(self._columns_data)
+            )
             self._render_sources()
             self._render_tables()
+            self._refresh_col_table_dropdown()
             self._update_apply_btn()
             self._show_status(
                 f"{icons.green_dot} Changes applied successfully.", "success"
@@ -1487,7 +2117,7 @@ def direct_lake_manager(
             )
 
     sources = _collect_sources(dataset=dataset_id, workspace=workspace_id)
-    tables = _collect_tables(dataset=dataset_id, workspace=workspace_id)
+    (tables, columns) = _collect_tables(dataset=dataset_id, workspace=workspace_id)
 
     uid = uuid.uuid4().hex[:10]
 
@@ -1501,6 +2131,7 @@ def direct_lake_manager(
         uid=uid,
         sources=sources,
         tables=tables,
+        columns=columns,
         dataset_name=dataset_name,
         dataset_id=str(dataset_id),
         workspace_id=str(workspace_id),
