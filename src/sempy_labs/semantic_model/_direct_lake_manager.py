@@ -1,4 +1,5 @@
 import sempy
+import sempy.fabric as fabric
 import json
 import uuid
 import html as _html
@@ -221,6 +222,8 @@ class _DirectLakeManagerUI:
         self.dataset_name = dataset_name
         self.dataset_id = dataset_id
         self.workspace_id = workspace_id
+        self.df_temp = None
+        self._temp_loaded = False
 
         # Deep-copy initial state for change tracking
         self._init_sources = json.loads(json.dumps(sources))
@@ -289,13 +292,18 @@ class _DirectLakeManagerUI:
             ),
         )
 
+        self._src_table_header = widgets.HBox(layout=widgets.Layout(display="none"))
+        self._src_scroll = widgets.VBox(
+            layout=widgets.Layout(overflow_y="auto", max_height="460px")
+        )
         self._src_container = widgets.VBox(
+            [self._src_table_header, self._src_scroll],
             layout=widgets.Layout(
                 border=f"1px solid {_C_BORDER}",
                 border_radius="12px",
                 overflow="hidden",
                 background=_C_SURFACE,
-            )
+            ),
         )
 
         # Source edit form (hidden)
@@ -312,13 +320,18 @@ class _DirectLakeManagerUI:
         )
 
         # ---- Tables page --------------------------------------------------
+        self._tbl_table_header = widgets.HBox(layout=widgets.Layout(display="none"))
+        self._tbl_scroll = widgets.VBox(
+            layout=widgets.Layout(overflow_y="auto", max_height="460px")
+        )
         self._tbl_container = widgets.VBox(
+            [self._tbl_table_header, self._tbl_scroll],
             layout=widgets.Layout(
                 border=f"1px solid {_C_BORDER}",
                 border_radius="12px",
                 overflow="hidden",
                 background=_C_SURFACE,
-            )
+            ),
         )
 
         self._tbl_form = self._build_table_form()
@@ -338,13 +351,57 @@ class _DirectLakeManagerUI:
             layout=widgets.Layout(padding="20px 24px"),
         )
 
+        # ---- Temperature page ---------------------------------------------
+        self._temp_container = widgets.HTML(
+            value=(
+                f'<div style="text-align:center;padding:44px 24px;'
+                f'color:{_C_SUBTLE};font-size:14px">'
+                f'<div style="font-size:32px;margin-bottom:8px">'
+                f"\U0001F321\uFE0F</div>"
+                f"Click the Temperature tab to load data.</div>"
+            ),
+            layout=widgets.Layout(margin="0"),
+        )
+
+        self._temp_rerun_btn = widgets.Button(
+            description="   Refresh",
+            icon="refresh",
+            button_style="primary",
+            layout=widgets.Layout(height="32px"),
+        )
+        self._temp_rerun_btn.on_click(lambda _: self._load_temperature())
+
+        temp_header = widgets.HBox(
+            [
+                widgets.HTML(
+                    value=(
+                        f'<div style="font-size:16px;font-weight:600;'
+                        f'color:{_C_TEXT}">Column Temperature</div>'
+                    )
+                ),
+                self._temp_rerun_btn,
+            ],
+            layout=widgets.Layout(
+                justify_content="space-between",
+                align_items="center",
+                padding="0 0 12px 0",
+            ),
+        )
+
+        temp_page = widgets.VBox(
+            [temp_header, self._temp_container],
+            layout=widgets.Layout(padding="20px 24px"),
+        )
+
         # ---- Manual tab navigation ----------------------------------------
         self._sources_page = sources_page
         self._tables_page = tables_page
+        self._temp_page = temp_page
         self._tables_page.layout.display = "none"
+        self._temp_page.layout.display = "none"
 
         self._tab_src_btn = widgets.Button(
-            description="Sources",
+            description="⛁  Sources",
             icon="database",
             button_style="primary",
             layout=widgets.Layout(
@@ -353,8 +410,16 @@ class _DirectLakeManagerUI:
             ),
         )
         self._tab_tbl_btn = widgets.Button(
-            description="Tables",
+            description="▦  Tables",
             icon="table",
+            layout=widgets.Layout(
+                height="34px",
+                border_radius="980px",
+            ),
+        )
+        self._tab_temp_btn = widgets.Button(
+            description="🌡 Temperature",
+            icon="thermometer-half",
             layout=widgets.Layout(
                 height="34px",
                 border_radius="980px",
@@ -362,9 +427,10 @@ class _DirectLakeManagerUI:
         )
         self._tab_src_btn.on_click(lambda _: self._switch_tab("sources"))
         self._tab_tbl_btn.on_click(lambda _: self._switch_tab("tables"))
+        self._tab_temp_btn.on_click(lambda _: self._switch_tab("temperature"))
 
         tab_bar = widgets.HBox(
-            [self._tab_src_btn, self._tab_tbl_btn],
+            [self._tab_src_btn, self._tab_tbl_btn, self._tab_temp_btn],
             layout=widgets.Layout(
                 padding="10px 24px",
                 gap="6px",
@@ -384,7 +450,7 @@ class _DirectLakeManagerUI:
 
         self._status = widgets.HTML(value="")
 
-        bottom_bar = widgets.HBox(
+        self._bottom_bar = widgets.HBox(
             [self._apply_btn, self._status],
             layout=widgets.Layout(padding="12px 24px", align_items="center"),
         )
@@ -396,7 +462,8 @@ class _DirectLakeManagerUI:
                 tab_bar,
                 self._sources_page,
                 self._tables_page,
-                bottom_bar,
+                self._temp_page,
+                self._bottom_bar,
             ],
             layout=widgets.Layout(
                 border=f"1px solid {_C_BORDER}",
@@ -433,16 +500,62 @@ class _DirectLakeManagerUI:
     # ------------------------------------------------------------------
 
     def _switch_tab(self, tab):
-        if tab == "sources":
-            self._sources_page.layout.display = None
-            self._tables_page.layout.display = "none"
-            self._tab_src_btn.button_style = "primary"
-            self._tab_tbl_btn.button_style = ""
-        else:
-            self._sources_page.layout.display = "none"
-            self._tables_page.layout.display = None
-            self._tab_src_btn.button_style = ""
-            self._tab_tbl_btn.button_style = "primary"
+        pages = {
+            "sources": self._sources_page,
+            "tables": self._tables_page,
+            "temperature": self._temp_page,
+        }
+        btns = {
+            "sources": self._tab_src_btn,
+            "tables": self._tab_tbl_btn,
+            "temperature": self._tab_temp_btn,
+        }
+        for key, page in pages.items():
+            page.layout.display = None if key == tab else "none"
+        for key, btn in btns.items():
+            btn.button_style = "primary" if key == tab else ""
+
+        # Hide Apply Changes bar on the Temperature page
+        self._bottom_bar.layout.display = "none" if tab == "temperature" else None
+
+        # Lazy-load temperature data on first visit
+        if tab == "temperature" and not self._temp_loaded:
+            self._load_temperature()
+
+    def _load_temperature(self):
+        """Fetch column temperature data and refresh the table."""
+        self._temp_container.value = (
+            f'<div style="text-align:center;padding:44px 24px;'
+            f'color:{_C_SUBTLE};font-size:14px">'
+            f"Loading temperature data\u2026</div>"
+        )
+        try:
+            df = fabric.list_columns(
+                dataset=self.dataset_id,
+                workspace=self.workspace_id,
+                extended=True,
+            )
+            df = df[
+                df["Type"] != "RowNumber"
+            ].copy()  # Exclude system-generated columns
+            self.df_temp = df[
+                [
+                    "Table Name",
+                    "Column Name",
+                    "Data Type",
+                    "Is Resident",
+                    "Temperature",
+                    "Last Accessed",
+                ]
+            ].sort_values(by="Temperature", ascending=False)
+            self._temp_loaded = True
+            self._temp_container.value = self._render_temp_table()
+        except Exception as e:
+            self._temp_container.value = (
+                f'<div style="text-align:center;padding:32px 24px;'
+                f'color:{_C_DANGER};font-size:14px">'
+                f"Error loading temperature data: {_esc(str(e))}</div>"
+            )
 
     # ------------------------------------------------------------------
     # Title bar
@@ -701,7 +814,8 @@ class _DirectLakeManagerUI:
 
     def _render_sources(self):
         if not self.sources:
-            self._src_container.children = [
+            self._src_table_header.layout.display = "none"
+            self._src_scroll.children = [
                 widgets.HTML(
                     value=(
                         f'<div style="text-align:center;padding:44px 24px;'
@@ -726,24 +840,22 @@ class _DirectLakeManagerUI:
             ),
             layout=widgets.Layout(flex="1"),
         )
-        # Spacer matching action button column width
-        header_row = widgets.HBox(
-            [
-                header,
-                widgets.HTML(
-                    value="",
-                    layout=widgets.Layout(
-                        min_width="76px" if len(self.sources) > 1 else "40px"
-                    ),
+        self._src_table_header.children = [
+            header,
+            widgets.HTML(
+                value="",
+                layout=widgets.Layout(
+                    min_width="76px" if len(self.sources) > 1 else "40px"
                 ),
-            ]
-        )
+            ),
+        ]
+        self._src_table_header.layout.display = None
 
-        rows = [header_row]
+        rows = []
         for i, src in enumerate(self.sources):
             rows.append(self._make_source_row(i, src))
 
-        self._src_container.children = rows
+        self._src_scroll.children = rows
 
     def _make_source_row(self, idx, src):
         expr = self._get_expr(src)
@@ -821,12 +933,85 @@ class _DirectLakeManagerUI:
         )
 
     # ------------------------------------------------------------------
+    # Render temperature table
+    # ------------------------------------------------------------------
+
+    def _render_temp_table(self):
+        """Render the temperature DataFrame as a styled HTML table."""
+        if self.df_temp is None or self.df_temp.empty:
+            return (
+                f'<div style="text-align:center;padding:44px 24px;'
+                f'color:{_C_SUBTLE};font-size:14px">'
+                f'<div style="font-size:32px;margin-bottom:8px">'
+                f"\U0001F321\uFE0F</div>No temperature data available.</div>"
+            )
+
+        _TEMP_COLORS = {
+            "Hot": (_C_DANGER_BG, _C_DANGER),
+            "Warm": (_C_WARNING_BG, _C_WARNING),
+            "Cold": (_C_PRIMARY_BG, _C_PRIMARY),
+        }
+        _TEMP_DEFAULT = (_C_HEADER_BG, _C_SUBTLE)
+
+        _RES_COLORS = {
+            True: (_C_SUCCESS_BG, _C_SUCCESS, "Yes"),
+            False: (_C_HEADER_BG, _C_SUBTLE, "No"),
+        }
+
+        html = (
+            f'<div style="border:1px solid {_C_BORDER};border-radius:12px;'
+            f'overflow-y:auto;max-height:500px;background:{_C_SURFACE};">'
+            f'<table style="width:100%;border-collapse:separate;'
+            f"border-spacing:0;font-size:13px;"
+            f"font-family:-apple-system,BlinkMacSystemFont,"
+            f'Segoe UI,Roboto,sans-serif">'
+            f'<thead><tr style="background:{_C_HEADER_BG};'
+            f'border-bottom:1px solid {_C_BORDER}">'
+        )
+        for col in self.df_temp.columns:
+            html += (
+                f'<th style="padding:11px 16px;text-align:left;{_HEADER_CELL};'
+                f"position:sticky;top:0;z-index:1;"
+                f'background:{_C_HEADER_BG};">'
+                f"{_esc(col)}</th>"
+            )
+        html += "</tr></thead><tbody>"
+
+        for _, row in self.df_temp.iterrows():
+            html += (
+                f'<tr style="border-bottom:1px solid {_C_BORDER};"'
+                f" onmouseover=\"this.style.background='#f9f9fb'\""
+                f" onmouseout=\"this.style.background='transparent'\">"
+            )
+            for col in self.df_temp.columns:
+                val = row[col]
+                if col == "Temperature":
+                    temp_str = str(val) if val is not None else ""
+                    bg, fg = _TEMP_COLORS.get(temp_str, _TEMP_DEFAULT)
+                    cell = _tag_html(temp_str, bg, fg)
+                elif col == "Is Resident":
+                    try:
+                        res_key = bool(val)
+                    except (TypeError, ValueError):
+                        res_key = False
+                    bg, fg, label = _RES_COLORS.get(res_key, _RES_COLORS[False])
+                    cell = _tag_html(label, bg, fg)
+                else:
+                    cell = _esc(str(val) if val is not None else "")
+                html += f'<td style="padding:11px 16px;color:{_C_TEXT}">{cell}</td>'
+            html += "</tr>"
+
+        html += "</tbody></table></div>"
+        return html
+
+    # ------------------------------------------------------------------
     # Render table rows
     # ------------------------------------------------------------------
 
     def _render_tables(self):
         if not self.tables:
-            self._tbl_container.children = [
+            self._tbl_table_header.layout.display = "none"
+            self._tbl_scroll.children = [
                 widgets.HTML(
                     value=(
                         f'<div style="text-align:center;padding:44px 24px;'
@@ -850,21 +1035,20 @@ class _DirectLakeManagerUI:
             ),
             layout=widgets.Layout(flex="1"),
         )
-        header_row = widgets.HBox(
-            [
-                header,
-                widgets.HTML(
-                    value="",
-                    layout=widgets.Layout(min_width="40px"),
-                ),
-            ]
-        )
+        self._tbl_table_header.children = [
+            header,
+            widgets.HTML(
+                value="",
+                layout=widgets.Layout(min_width="40px"),
+            ),
+        ]
+        self._tbl_table_header.layout.display = None
 
-        rows = [header_row]
+        rows = []
         for i, tbl in enumerate(self.tables):
             rows.append(self._make_table_row(i, tbl))
 
-        self._tbl_container.children = rows
+        self._tbl_scroll.children = rows
 
     def _make_table_row(self, idx, tbl):
         orig = self._find_init_tbl(tbl["tableName"], tbl["partitionName"])
