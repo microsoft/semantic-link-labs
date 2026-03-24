@@ -110,10 +110,15 @@ def import_metric_view(
     joins = definition.get("joins")
     source_database, source_schema, source_table = source.split(".")
 
+    # Collect catalogs (i.e. databases involved in the metric view)
+    catalogs = []
+    catalogs.append(source_database)
+
     # Determine relationships
     relationships = []
     for join in joins:
         database, schema, table = join["source"].split(".")
+        catalogs.append(database)
         left, right = join["on"].split("=")
 
         left = left.strip()
@@ -137,6 +142,9 @@ def import_metric_view(
                 "to_column": to_column,
             }
         )
+
+    catalogs = list(set(catalogs))
+    # TODO: create mirrors for each catalog
 
     table_list = {
         tbl
@@ -183,7 +191,7 @@ def import_metric_view(
     with connect_semantic_model(dataset=dataset, workspace=None) as tom:
 
         # Add expression
-        expression_name = ''
+        expression_name = 'DLMirror'
         tom.add_expression(name=expression_name, expression='')
         for t in table_list:
             tom.add_table(name=t)

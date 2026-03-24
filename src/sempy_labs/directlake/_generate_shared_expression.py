@@ -43,8 +43,7 @@ def generate_shared_expression(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_types = ["Lakehouse", "Warehouse"]
-    item_type = item_type.capitalize()
+    item_types = ["Lakehouse", "Warehouse", "MirroredAzureDatabricksCatalog", "SQLDatabase", "MirroredDatabase"]
     if item_type not in item_types:
         raise ValueError(
             f"{icons.red_dot} Invalid item type. Valid options: {item_types}."
