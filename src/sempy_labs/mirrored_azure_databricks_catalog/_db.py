@@ -6,6 +6,7 @@ from sempy._utils._log import log
 from sempy_labs.tom import connect_semantic_model
 from typing import List
 
+
 @log
 def list_databricks_metric_views(
     databricks_workspace: str, unity_catalog: str, schema: str, databricks_token: str
