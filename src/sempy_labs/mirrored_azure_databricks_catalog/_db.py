@@ -54,7 +54,7 @@ def list_databricks_metric_views(
                 {
                     "Name": name,
                     "View Definition": yaml_dict,
-                    "Columns": yaml_dict.get("columns", []),
+                    "Columns": t.get("columns", []),
                 }
             )
 
@@ -81,72 +81,113 @@ TYPE_MAPPING = {
     "timestamp_ntz": "DateTime",
 }
 
-with connect_semantic_model(dataset="bob", workspace=None) as tom:
 
-    def add_table_from_metric_view(
-        name: str,
-        databricks_workspace: str,
-        unity_catalog: str,
-        schema: str,
-        databricks_token: str,
-        metric_view: str,
-    ):
+def import_metric_view(
+    metric_view: str,
+    databricks_workspace: str,
+    unity_catalog: str,
+    schema: str,
+    databricks_token: str,
+):
 
-        mvs = list_databricks_metric_views(
-            databricks_workspace=databricks_workspace,
-            unity_catalog=unity_catalog,
-            schema=schema,
-            databricks_token=databricks_token,
+    mvs = list_databricks_metric_views(
+        databricks_workspace=databricks_workspace,
+        unity_catalog=unity_catalog,
+        schema=schema,
+        databricks_token=databricks_token,
+    )
+    # Find the first matching metric view
+    mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view), None)
+
+    if not mv_match:
+        print("The metrics view does not exist...")
+        return
+
+    # Safely extract definition and columns
+    definition = mv_match.get("Definition")
+    objects = mv_match.get("Columns")
+    source = definition.get("source")
+    joins = definition.get("joins")
+    source_database, source_schema, source_table = source.split(".")
+
+    # Determine relationships
+    relationships = []
+    for join in joins:
+        database, schema, table = join["source"].split(".")
+        left, right = join["on"].split("=")
+
+        left = left.strip()
+        right = right.strip()
+
+        from_table_alias, from_column = left.split(".")
+        to_table_alias, to_column = right.split(".")
+
+        if from_table_alias == "source":
+            from_table_alias = source_table
+        if to_table_alias == "source":
+            to_table_alias = source_table
+
+        relationships.append(
+            {
+                "from_database": database,
+                "from_schema": schema,
+                "from_table": from_table_alias,
+                "from_column": from_column,
+                "to_table": to_table_alias,
+                "to_column": to_column,
+            }
         )
-        # Find the first matching metric view
-        mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view), None)
 
-        if not mv_match:
-            print("The metrics view does not exist...")
-            return
+    table_list = {
+        tbl
+        for rel in relationships
+        for tbl in (rel["from_table"], rel["to_table"])
+    }
 
-        # Safely extract definition and columns
-        definition = mv_match.get("Definition")
-        objects = mv_match.get("Columns")
-        source = definition.get("source")
-        joins = definition.get("joins") # if joins exist - create a materialized view?
-        # tom.add_table(name=name)
-        # tom.add_entity_partition(table_name=name, entity_name='', expression='', schema_name='')
+    # Collect columns and measures
+    columns = {}
+    measures = {}
+    for c in objects:
+        type_json = json.loads(c.get("type_json"))
+        name = type_json.get("name")
+        type_text = c.get("type_text")
+        metadata = type_json.get("metadata")
+        obj_type = metadata.get("metric_view.type")  # dimension/measure
+        description = metadata.get("comment")
+        obj_expression = metadata.get("metric_view.expr")
+        raw_semantic = metadata.get("semantic_metadata")
+        semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
+        display_name = semantic_metadata.get("display_name", name)
+        format = semantic_metadata.get("format")
+        synonyms = semantic_metadata.get("synonyms", [])
+        if obj_type == "dimension":
+            columns[name] = {
+                "displayName": display_name,
+                "type": type_text,
+                "format": format,
+                "expression": obj_expression,
+                "description": description,
+                "synonyms": synonyms,
+            }
+        elif obj_type == "measure":
+            measures[name] = {
+                "expression": obj_expression,
+                "format": format,
+                "description": description,
+                "synonyms": synonyms,
+            }
+        else:
+            raise NotImplementedError()
 
-        # Collect columns and measures
-        columns = {}
-        measures = {}
-        for c in objects:
-            type_json = json.loads(c.get("type_json"))
-            name = type_json.get("name")
-            type_text = c.get("type_text")
-            metadata = type_json.get("metadata")
-            obj_type = metadata.get("metric_view.type")  # dimension/measure
-            description = metadata.get("comment")
-            obj_expression = metadata.get("metric_view.expr")
-            raw_semantic = metadata.get("semantic_metadata")
-            semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
-            display_name = semantic_metadata.get("display_name", name)
-            format = semantic_metadata.get("format")
-            synonyms = semantic_metadata.get("synonyms", [])
-            if obj_type == "dimension":
-                columns[name] = {
-                    "displayName": display_name,
-                    "type": type_text,
-                    "format": format,
-                    "expression": obj_expression,
-                    "description": description,
-                    "synonyms": synonyms,
-                }
-            elif obj_type == "measure":
-                measures[name] = {
-                    "expression": obj_expression,
-                    "format": format,
-                    "description": description,
-                    "synonyms": synonyms,
-                }
-            else:
-                raise NotImplementedError()
+    # Generate semantic model
+    with connect_semantic_model(dataset=dataset, workspace=None) as tom:
+
+        # Add expression
+        expression_name = ''
+        tom.add_expression(name=expression_name, expression='')
+        for t in table_list:
+            tom.add_table(name=t)
+            tom.add_entity_partition(table_name=t, entity_name='', expression=expression_name, schema_name='')
 
         for col_name, col_info in columns.items():
             type = col_info.get("type")
@@ -175,8 +216,6 @@ with connect_semantic_model(dataset="bob", workspace=None) as tom:
             expr = measure_info.get("expression")
             description = measure_info.get("description")
             dax_expr = expr.lower()  # TODO: map expression to dax
-            tom.add_measure(
-                table_name=name, measure_name=measure_name, expression=dax_expr
-            )
+            tom.add_measure(table_name=name, measure_name=measure_name, expression=dax_expr)
 
         # TODO: add synonyms to both columns and measures in TOM
