@@ -1,7 +1,11 @@
 from uuid import UUID
 from typing import Optional, Literal
+import pandas as pd
 from sempy_labs._helper_functions import (
     _base_api,
+    _create_dataframe,
+    resolve_item_id,
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     delete_item,
 )
@@ -184,3 +188,52 @@ def update_mirrored_azure_databricks_catalog(
         f"{icons.green_dot} The '{mirrored_azure_databricks_catalog}' mirrored Azure Databricks Catalog has been succesfully updated within the '{workspace_name}' workspace."
     )
     return response.json()
+
+
+@log
+def list_mirrored_azure_databricks_catalog_shortcuts(
+    mirrored_azure_databricks_catalog: str | UUID,
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(
+        item=mirrored_azure_databricks_catalog,
+        type="MirroredAzureDatabricksCatalog",
+        workspace=workspace,
+    )
+
+    columns = {
+        "Shortcut Name": "string",
+        "Shortcut Path": "string",
+        "Table Id": "string",
+        "Source Path": "string",
+        "Connection Id": "string",
+        "Workspace Url": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        f"/v1/workspaces/{workspace_id}/items/{item_id}/shortcuts", uses_pagination=True
+    )
+
+    rows = []
+    for r in responses:
+        for shortcut in r.get("value", []):
+            target = shortcut.get("target", {})
+            db = target.get("databricksCatalog", {})
+            rows.append(
+                {
+                    "Shortcut Name": shortcut.get("name"),
+                    "Shortcut Path": shortcut.get("path"),
+                    "Table Id": db.get("tableId"),
+                    "Source Path": db.get("path"),
+                    "Connection Id": db.get("connectionId"),
+                    "Workspace Url": db.get("workspaceUrl"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
+
+    return df

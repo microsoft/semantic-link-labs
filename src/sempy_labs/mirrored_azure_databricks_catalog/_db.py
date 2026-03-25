@@ -5,6 +5,14 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy._utils._log import log
 from sempy_labs.tom import connect_semantic_model
 from typing import List
+from sempy_labs._generate_semantic_model import create_blank_semantic_model
+from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
+from sempy_labs.connection._databricks import (
+    create_azure_databricks_workspace_connection,
+)
+from sempy_labs.mirrored_azure_databricks_catalog._items import (
+    create_mirrored_azure_databricks_catalog,
+)
 
 
 @log
@@ -82,7 +90,59 @@ TYPE_MAPPING = {
 }
 
 
-def import_metric_view(
+def sql_to_dax(expr: str) -> str:
+
+    return expr
+
+
+def convert_format(fmt: dict) -> str:
+    """
+    Converts the format from Databricks to a Power BI format string.
+    """
+
+    def decimals(dp):
+        if dp["type"] == "EXACT":
+            places = dp.get("places", 0)
+            return "." + ("0" * places) if places > 0 else ""
+        elif dp["type"] == "ALL":
+            return ".################"
+        return ""
+
+    def grouping(hide):
+        return "" if hide else ","
+
+    def abbreviation(abbrev):
+        if abbrev == "COMPACT":
+            return ",,"  # millions
+        return ""
+
+    symbol_map = {"USD": "$", "EUR": "€", "ILS": "₪"}
+
+    if "currency" in fmt:
+        f = fmt["currency"]
+        symbol = symbol_map.get(f.get("currency_code"), "")
+        return (
+            f"{symbol}#"
+            + grouping(f["hide_group_separator"])
+            + "0"
+            + abbreviation(f["abbreviation"])
+            + decimals(f["decimal_places"])
+        )
+
+    if "number" in fmt:
+        f = fmt["number"]
+        return (
+            "#"
+            + grouping(f["hide_group_separator"])
+            + "0"
+            + abbreviation(f["abbreviation"])
+            + decimals(f["decimal_places"])
+        )
+
+    return None
+
+
+def _collect_data_from_metric_view(
     metric_view: str,
     databricks_workspace: str,
     unity_catalog: str,
@@ -104,21 +164,36 @@ def import_metric_view(
         return
 
     # Safely extract definition and columns
-    definition = mv_match.get("Definition")
+    definition = mv_match.get("View Definition")
     objects = mv_match.get("Columns")
     source = definition.get("source")
     joins = definition.get("joins")
     source_database, source_schema, source_table = source.split(".")
 
-    # Collect catalogs (i.e. databases involved in the metric view)
-    catalogs = []
-    catalogs.append(source_database)
+    tables = []
+    relationships = []
+    columns = {}
+    measures = {}
+    tables.append(
+        {
+            "databaseName": source_database,
+            "schemaName": source_schema,
+            "tableName": source_table,
+            "isSource": True,
+        }
+    )
 
     # Determine relationships
-    relationships = []
     for join in joins:
         database, schema, table = join["source"].split(".")
-        catalogs.append(database)
+        tables.append(
+            {
+                "databaseName": database,
+                "schemaName": schema,
+                "tableName": table,
+                "isSource": False,
+            }
+        )
         left, right = join["on"].split("=")
 
         left = left.strip()
@@ -138,23 +213,32 @@ def import_metric_view(
                 "from_schema": schema,
                 "from_table": from_table_alias,
                 "from_column": from_column,
+                "to_database": database,  # assuming same DB for now
+                "to_schema": schema,  # ⚠️ adjust if different joins possible
                 "to_table": to_table_alias,
                 "to_column": to_column,
             }
         )
 
-    catalogs = list(set(catalogs))
     # TODO: create mirrors for each catalog
+    table_names = {t["tableName"] for t in tables}
+    source_table = next((t["tableName"] for t in tables if t["isSource"]), None)
 
-    table_list = {
-        tbl
-        for rel in relationships
-        for tbl in (rel["from_table"], rel["to_table"])
-    }
+    def extract_table_name(expression: str) -> str | None:
+        parts = expression.split(".")
+
+        # Must be exactly "xxx.yyyy"
+        if len(parts) != 2:
+            return None
+
+        left_part, _ = parts
+
+        if left_part.lower() == "source":
+            return source_table if source_table in table_names else None
+
+        return left_part if left_part in table_names else None
 
     # Collect columns and measures
-    columns = {}
-    measures = {}
     for c in objects:
         type_json = json.loads(c.get("type_json"))
         name = type_json.get("name")
@@ -168,8 +252,10 @@ def import_metric_view(
         display_name = semantic_metadata.get("display_name", name)
         format = semantic_metadata.get("format")
         synonyms = semantic_metadata.get("synonyms", [])
+
         if obj_type == "dimension":
             columns[name] = {
+                "tableName": extract_table_name(obj_expression),
                 "displayName": display_name,
                 "type": type_text,
                 "format": format,
@@ -179,6 +265,7 @@ def import_metric_view(
             }
         elif obj_type == "measure":
             measures[name] = {
+                "tableName": source_table,  # Default to source table
                 "expression": obj_expression,
                 "format": format,
                 "description": description,
@@ -187,31 +274,50 @@ def import_metric_view(
         else:
             raise NotImplementedError()
 
+    return columns  # , columns, measures, tables, relationships
+
+
+def gen_sm(name: str, workspace):
+
+    create_blank_semantic_model(dataset=name, workspace=workspace)
+
+    (relationships, columns, measures, tables) = _collect_data_from_metric_view()
+
+    expr = generate_shared_expression()
+
     # Generate semantic model
-    with connect_semantic_model(dataset=dataset, workspace=None) as tom:
+    with connect_semantic_model(dataset=name, workspace=workspace) as tom:
 
         # Add expression
-        expression_name = 'DLMirror'
-        tom.add_expression(name=expression_name, expression='')
-        for t in table_list:
-            tom.add_table(name=t)
-            tom.add_entity_partition(table_name=t, entity_name='', expression=expression_name, schema_name='')
+        expression_name = "DLMirror"
+        tom.add_expression(name=expression_name, expression=expr)
+        for t in tables:
+            table_name = t.get("tableName")
+            schema_name = t.get("schemaName")
+            tom.add_table(name=table_name)
+            tom.add_entity_partition(
+                table_name=table_name,
+                entity_name=table_name,
+                expression=expression_name,
+                schema_name=schema_name,
+            )
 
         for col_name, col_info in columns.items():
+            table_name = col_info.get("tableName")
             type = col_info.get("type")
             data_type = TYPE_MAPPING.get(type)
             display_name = col_info.get("displayName")
             desc = col_info.get("description")
             expr = col_info.get("expression")
             format = col_info.get("format")
-            synonyms = col_info.get("synonyms")
-            if expr != f"source.{col_name}":
+            #  synonyms = col_info.get("synonyms")
+            if not table_name:
                 print(
-                    f"Skipping column '{col_name}' as it is not a direct mapping to the source column."
+                    f"Skipping column {col_name} as its definition could not be determined from the expression."
                 )
                 continue
             tom.add_data_column(
-                table_name=name,
+                table_name=table_name,
                 column_name=display_name,
                 source_column=col_name,
                 data_type=data_type,
@@ -219,11 +325,27 @@ def import_metric_view(
             )
 
         for measure_name, measure_info in measures.items():
+            table_name = measure_info.get("tableName")
             format = measure_info.get("format")
-            synonyms = measure_info.get("synonyms")
+            #  synonyms = measure_info.get("synonyms")
             expr = measure_info.get("expression")
-            description = measure_info.get("description")
-            dax_expr = expr.lower()  # TODO: map expression to dax
-            tom.add_measure(table_name=name, measure_name=measure_name, expression=dax_expr)
+            desc = measure_info.get("description")
+            dax = sql_to_dax(expr)
+            converted_format = convert_format(format) if format else None
+            tom.add_measure(
+                table_name=table_name,
+                measure_name=measure_name,
+                expression=dax,
+                format_string=converted_format,
+                description=desc,
+            )
+
+        for r in relationships:
+            tom.add_relationship(
+                from_table=r["from_table"],
+                from_column=r["from_column"],
+                to_table=r["to_table"],
+                to_column=r["to_column"],
+            )
 
         # TODO: add synonyms to both columns and measures in TOM
