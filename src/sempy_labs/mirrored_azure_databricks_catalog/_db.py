@@ -120,7 +120,12 @@ def convert_format(fmt: dict) -> str:
 
     if "currency" in fmt:
         f = fmt["currency"]
-        symbol = symbol_map.get(f.get("currency_code"), "")
+        symbol = symbol_map.get(f.get("currency_code"))
+        if not symbol:
+            print(
+                f"Currency code '{f.get('currency_code')}' not recognized. Defaulting to no symbol."
+            )
+            return None
         return (
             f"{symbol}#"
             + grouping(f["hide_group_separator"])
@@ -274,14 +279,14 @@ def _collect_data_from_metric_view(
         else:
             raise NotImplementedError()
 
-    return columns  # , columns, measures, tables, relationships
+    return tables, relationships, columns, measures
 
 
 def gen_sm(name: str, workspace):
 
     create_blank_semantic_model(dataset=name, workspace=workspace)
 
-    (relationships, columns, measures, tables) = _collect_data_from_metric_view()
+    (tables, relationships, columns, measures) = _collect_data_from_metric_view()
 
     expr = generate_shared_expression()
 
