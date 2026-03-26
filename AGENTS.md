@@ -30,7 +30,7 @@ Semantic Link Labs depends on the `semantic-link-sempy` package as specified in 
 
 ```toml
 dependencies = [
-    "semantic-link-sempy>=0.13.0",
+    "semantic-link-sempy>=0.14.0",
     ...
 ]
 ```

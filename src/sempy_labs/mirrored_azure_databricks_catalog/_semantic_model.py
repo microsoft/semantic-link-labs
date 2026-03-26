@@ -1,72 +1,13 @@
-import requests
-import yaml
+import re
 import json
-from sempy.fabric.exceptions import FabricHTTPException
-from sempy._utils._log import log
 from sempy_labs.tom import connect_semantic_model
-from typing import List
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
-from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
-from sempy_labs.connection._databricks import (
-    create_azure_databricks_workspace_connection,
+from sempy_labs.directlake._generate_shared_expression import (
+    generate_shared_expression,
 )
-from sempy_labs.mirrored_azure_databricks_catalog._items import (
-    create_mirrored_azure_databricks_catalog,
+from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
+    list_databricks_metric_views,
 )
-
-
-@log
-def list_databricks_metric_views(
-    databricks_workspace: str, unity_catalog: str, schema: str, databricks_token: str
-) -> List[dict]:
-    """
-    Lists all metric views in a specified Unity Catalog and schema within an Azure Databricks workspace.
-
-    Parameters
-    ----------
-    databricks_workspace : str
-        The URL of the Azure Databricks workspace. Example: "https://dbc-12345x67-8xx9.cloud.databricks.com"
-    unity_catalog : str
-        The name of the Unity Catalog.
-    schema : str
-        The name of the schema within the Unity Catalog.
-    databricks_token : str
-        The personal access token for authenticating with the Azure Databricks REST API.
-
-    Returns
-    -------
-    List[dict]
-        A list of dictionaries, each containing details about a metric view, including its name, view definition, and columns.
-    """
-
-    headers = {
-        "Authorization": f"Bearer {databricks_token}",
-        "Content-Type": "application/json",
-    }
-    response = requests.get(
-        f"{databricks_workspace}/api/2.1/unity-catalog/tables?catalog_name={unity_catalog}&schema_name={schema}",
-        headers=headers,
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    rows = []
-    for t in response.json().get("tables"):
-        name = t.get("name")
-        table_type = t.get("table_type")
-        view_definition = t.get("view_definition")
-        if table_type == "METRIC_VIEW":
-            yaml_dict = yaml.safe_load(view_definition)
-            rows.append(
-                {
-                    "Name": name,
-                    "View Definition": yaml_dict,
-                    "Columns": t.get("columns", []),
-                }
-            )
-
-    return rows
 
 
 TYPE_MAPPING = {
@@ -90,6 +31,26 @@ TYPE_MAPPING = {
 }
 
 
+def check_tables_format(tables: list):
+
+    for t in tables:
+        parts = t.split('.')
+        if len(parts) != 3:
+            raise ValueError(f"Invalid table format: {t}. Expected 'catalog.schema.table'")
+
+
+def create_expression_name(base_expression_name: str = "MirrorDL", expression_names: list = None) -> str:
+
+    if not expression_names:
+        return base_expression_name
+    i = 1
+    new_expression_name = f"{base_expression_name}_{i}"
+    while new_expression_name in expression_names:
+        i += 1
+        new_expression_name = f"{base_expression_name}_{i}"
+    return new_expression_name
+
+
 def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
     """
     Convert a simple Databricks SQL measure expression to a DAX expression.
@@ -101,7 +62,6 @@ def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
     Returns:
         str: Converted DAX expression
     """
-    import re
 
     expr = expression.strip()
 

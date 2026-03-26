@@ -194,7 +194,8 @@ def update_mirrored_azure_databricks_catalog(
 def list_mirrored_azure_databricks_catalog_shortcuts(
     mirrored_azure_databricks_catalog: str | UUID,
     workspace: Optional[str | UUID] = None,
-) -> pd.DataFrame:
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict:
 
     workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(
@@ -216,6 +217,8 @@ def list_mirrored_azure_databricks_catalog_shortcuts(
     responses = _base_api(
         f"/v1/workspaces/{workspace_id}/items/{item_id}/shortcuts", uses_pagination=True
     )
+    if not return_dataframe:
+        return responses
 
     rows = []
     for r in responses:
@@ -232,6 +235,143 @@ def list_mirrored_azure_databricks_catalog_shortcuts(
                     "Workspace Url": db.get("workspaceUrl"),
                 }
             )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
+
+    return df
+
+
+@log
+def list_mirrored_azure_databricks_catalogs(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    columns = {
+        "Mirrored Azure Databricks Catalog Id": "string",
+        "Mirrored Azure Databricks Catalog Name": "string",
+        "Catalog Name": "string",
+        "Mirroring Mode": "string",
+        "Databricks Workspace Connection Id": "string",
+        "OneLake Tables Path": "string",
+        "SQL Endpoint Connection String": "string",
+        "SQL Endpoint Id": "string",
+        "Sync Status": "string",
+        "Last Sync DateTime": "datetime",
+        "Mirror Status": "string",
+        "Auto Sync": "string",
+        "Storage Connection Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        f"/v1/workspaces/{workspace_id}/mirroredAzureDatabricksCatalogs",
+        uses_pagination=True,
+    )
+
+    rows = []
+    for r in responses:
+        for catalog in r.get("value", []):
+            properties = catalog.get("properties", {})
+            rows.append(
+                {
+                    "Mirrored Azure Databricks Catalog Id": catalog.get("id"),
+                    "Mirrored Azure Databricks Catalog Name": catalog.get(
+                        "displayName"
+                    ),
+                    "Catalog Name": properties.get("catalogName"),
+                    "Mirroring Mode": properties.get("mirroringMode"),
+                    "Databricks Workspace Connection Id": properties.get(
+                        "databricksWorkspaceConnectionId"
+                    ),
+                    "OneLake Tables Path": properties.get("oneLakeTablesPath"),
+                    "SQL Endpoint Connection String": properties.get(
+                        "sqlEndpointProperties", {}
+                    ).get("connectionString"),
+                    "SQL Endpoint Id: ": properties.get(
+                        "sqlEndpointProperties", {}
+                    ).get("id"),
+                    "Sync Status": properties.get("syncDetails", {}).get("status"),
+                    "Last Sync DateTime": properties.get("syncDetails", {}).get(
+                        "lastSyncDateTime"
+                    ),
+                    "Mirror Status": properties.get("mirrorStatus"),
+                    "Auto Sync": properties.get("autoSync"),
+                    "Storage Connection Id": properties.get("storageConnectionId"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
+
+    return df
+
+
+@log
+def get_mirrored_azure_databricks_catalog(
+    mirrored_azure_databricks_catalog: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict:
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(
+        item=mirrored_azure_databricks_catalog,
+        type="MirroredAzureDatabricksCatalog",
+        workspace=workspace_id,
+    )
+
+    columns = {
+        "Mirrored Azure Databricks Catalog Id": "string",
+        "Mirrored Azure Databricks Catalog Name": "string",
+        "Catalog Name": "string",
+        "Mirroring Mode": "string",
+        "Databricks Workspace Connection Id": "string",
+        "OneLake Tables Path": "string",
+        "SQL Endpoint Connection String": "string",
+        "SQL Endpoint Id": "string",
+        "Sync Status": "string",
+        "Last Sync DateTime": "datetime",
+        "Mirror Status": "string",
+        "Auto Sync": "string",
+        "Storage Connection Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(
+        f"/v1/workspaces/{workspace_id}/mirroredAzureDatabricksCatalogs/{item_id}"
+    )
+
+    response_json = response.json()
+    if not return_dataframe:
+        return response_json
+
+    properties = response_json.get("properties", {})
+    rows = [
+        {
+            "Mirrored Azure Databricks Catalog Id": response_json.get("id"),
+            "Mirrored Azure Databricks Catalog Name": response_json.get("displayName"),
+            "Catalog Name": properties.get("catalogName"),
+            "Mirroring Mode": properties.get("mirroringMode"),
+            "Databricks Workspace Connection Id": properties.get(
+                "databricksWorkspaceConnectionId"
+            ),
+            "OneLake Tables Path": properties.get("oneLakeTablesPath"),
+            "SQL Endpoint Connection String": properties.get(
+                "sqlEndpointProperties", {}
+            ).get("connectionString"),
+            "SQL Endpoint Id: ": properties.get("sqlEndpointProperties", {}).get("id"),
+            "Sync Status": properties.get("syncDetails", {}).get("status"),
+            "Last Sync DateTime": properties.get("syncDetails", {}).get(
+                "lastSyncDateTime"
+            ),
+            "Mirror Status": properties.get("mirrorStatus"),
+            "Auto Sync": properties.get("autoSync"),
+            "Storage Connection Id": properties.get("storageConnectionId"),
+        }
+    ]
 
     if rows:
         df = pd.DataFrame(rows, columns=columns.keys())

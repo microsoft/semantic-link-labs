@@ -2262,6 +2262,7 @@ def _base_api(
         "internal",
         "kusto",
         "blob",
+        "databricks",
     ]:
         raise NotImplementedError(
             f"{icons.red_dot} The '{client}' client is not supported."
@@ -2294,6 +2295,8 @@ def _base_api(
         url = request
     elif client == "blob":
         url = f"https://onelake.blob.fabric.microsoft.com/{request}"
+    elif client == 'databricks':
+        url = request
     elif client == "internal":
         headers = get_pbi_token_headers()
         prefix = _get_url_prefix()

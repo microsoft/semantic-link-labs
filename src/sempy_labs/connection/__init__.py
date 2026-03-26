@@ -10,6 +10,7 @@ from ._items import (
 )
 from ._databricks import (
     create_databricks_connection,
+    create_azure_databricks_workspace_connection,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "create_vnet_connection",
     "create_cloud_connection",
     "create_databricks_connection",
+    "create_azure_databricks_workspace_connection",
 ]
