@@ -90,7 +90,40 @@ TYPE_MAPPING = {
 }
 
 
-def sql_to_dax(expr: str) -> str:
+def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
+    """
+    Convert a simple Databricks SQL measure expression to a DAX expression.
+
+    Parameters:
+        expression (str): SQL expression from Databricks metric view
+        source_table_name (str): Table name to use in DAX
+
+    Returns:
+        str: Converted DAX expression
+    """
+    import re
+
+    expr = expression.strip()
+
+    # 1. Handle COUNT(*)
+    if re.fullmatch(r"COUNT\s*\(\s*\*\s*\)", expr, re.IGNORECASE):
+        return f"COUNTROWS('{source_table_name}')"
+
+    # 2. Replace source.column -> 'table'[column]
+    def replace_source_column(match):
+        column = match.group(1)
+        return f"'{source_table_name}'[{column}]"
+
+    expr = re.sub(
+        r"\bsource\.([a-zA-Z_][a-zA-Z0-9_]*)\b",
+        replace_source_column,
+        expr,
+        flags=re.IGNORECASE,
+    )
+
+    # 3. Normalize common aggregations (optional but useful)
+    # e.g. SUM(source.col) -> SUM('table'[col])
+    # (Already handled by replacement above)
 
     return expr
 
@@ -116,7 +149,18 @@ def convert_format(fmt: dict) -> str:
             return ",,"  # millions
         return ""
 
-    symbol_map = {"USD": "$", "EUR": "€", "ILS": "₪"}
+    symbol_map = {
+        "USD": "$",  # US Dollar
+        "EUR": "€",  # Euro
+        "GBP": "£",  # British Pound
+        "ILS": "₪",  # Israeli Shekel
+        "JPY": "¥",  # Japanese Yen
+        "CNY": "¥",  # Chinese Yuan
+        "INR": "₹",  # Indian Rupee
+        "KRW": "₩",  # South Korean Won
+        "RUB": "₽",  # Russian Ruble
+        "TRY": "₺",  # Turkish Lira
+    }
 
     if "currency" in fmt:
         f = fmt["currency"]
@@ -335,7 +379,7 @@ def gen_sm(name: str, workspace):
             #  synonyms = measure_info.get("synonyms")
             expr = measure_info.get("expression")
             desc = measure_info.get("description")
-            dax = sql_to_dax(expr)
+            dax = convert_sql_to_dax(expr, table_name)
             converted_format = convert_format(format) if format else None
             tom.add_measure(
                 table_name=table_name,
