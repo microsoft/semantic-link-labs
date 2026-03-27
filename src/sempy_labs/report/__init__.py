@@ -41,6 +41,12 @@ from ._items import (
     list_reports,
     get_report,
 )
+from ._Fix_BarChart import (
+    fix_barcharts,
+)
+from ._Fix_ColumnChart import (
+    fix_columncharts,
+)
 
 __all__ = [
     "create_report_from_reportjson",
@@ -66,4 +72,6 @@ __all__ = [
     "upgrade_to_pbir",
     "list_reports",
     "get_report",
+    "fix_barcharts",
+    "fix_columncharts",
 ]
