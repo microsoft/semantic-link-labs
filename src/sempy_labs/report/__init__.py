@@ -41,6 +41,9 @@ from ._items import (
     list_reports,
     get_report,
 )
+from ._Fix_PageSize import (
+    fix_page_size,
+)
 
 __all__ = [
     "create_report_from_reportjson",
@@ -66,4 +69,5 @@ __all__ = [
     "upgrade_to_pbir",
     "list_reports",
     "get_report",
+    "fix_page_size",
 ]
