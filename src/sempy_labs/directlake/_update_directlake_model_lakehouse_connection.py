@@ -121,7 +121,7 @@ def update_direct_lake_model_connection(
         )
 
     shared_expression = generate_shared_expression(
-        item_name=source_name,
+        item=source_name,
         item_type=source_type,
         workspace=source_workspace,
         use_sql_endpoint=use_sql_endpoint,

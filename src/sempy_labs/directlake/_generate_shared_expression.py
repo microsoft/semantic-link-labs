@@ -13,7 +13,7 @@ from sempy._utils._log import log
 
 @log
 def generate_shared_expression(
-    item_name: Optional[str] = None,
+    item: Optional[str] = None,
     item_type: str = "Lakehouse",
     workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
@@ -23,11 +23,11 @@ def generate_shared_expression(
 
     Parameters
     ----------
-    item_name : str, default=None
-        The Fabric lakehouse or warehouse name.
+    item : str, default=None
+        The item name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     item_type : str, default="Lakehouse"
-        The Fabric item name. Valid options: 'Lakehouse', 'Warehouse'.
+        The Fabric item name. Valid options: 'Lakehouse', 'Warehouse', 'MirroredAzureDatabricksCatalog', 'SQLDatabase', 'MirroredDatabase'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the item.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -57,11 +57,11 @@ def generate_shared_expression(
 
     if item_type == "Lakehouse":
         (item_name, item_id) = resolve_lakehouse_name_and_id(
-            lakehouse=item_name, workspace=workspace_id
+            lakehouse=item, workspace=workspace_id
         )
     else:
         (item_name, item_id) = resolve_item_name_and_id(
-            item=item_name, type=item_type, workspace=workspace_id
+            item=item, type=item_type, workspace=workspace_id
         )
 
     if use_sql_endpoint:

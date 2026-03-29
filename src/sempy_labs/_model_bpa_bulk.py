@@ -232,7 +232,7 @@ def create_model_bpa_semantic_model(
 
     # Generate the shared expression based on the lakehouse and lakehouse workspace
     expr = generate_shared_expression(
-        item_name=lakehouse_name,
+        item=lakehouse_name,
         item_type="Lakehouse",
         workspace=lakehouse_workspace_id,
     )

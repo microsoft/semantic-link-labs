@@ -150,7 +150,7 @@ def generate_direct_lake_semantic_model(
 
     dfLC = get_lakehouse_columns(lakehouse=lakehouse, workspace=lakehouse_workspace_id)
     expr = generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace_id
+        item=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace_id
     )
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
