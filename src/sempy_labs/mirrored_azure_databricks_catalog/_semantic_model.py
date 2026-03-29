@@ -10,36 +10,56 @@ from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
 )
 
 
-TYPE_MAPPING = {
-    "boolean": "Boolean",
-    "tinyint": "Int64",
-    "smallint": "Int64",
-    "int": "Int64",
-    "integer": "Int64",
-    "bigint": "Int64",
-    "long": "Int64",
-    "float": "Double",
-    "double": "Double",
-    "decimal": "Decimal",
-    "string": "String",
-    "char": "String",
-    "varchar": "String",
-    "binary": "Binary",
-    "date": "DateTime",
-    "timestamp": "DateTime",
-    "timestamp_ntz": "DateTime",
-}
+def convert_column_data_type(str_type: str) -> str:
+
+    TYPE_MAPPING = {
+        "boolean": "Boolean",
+        "tinyint": "Int64",
+        "smallint": "Int64",
+        "int": "Int64",
+        "integer": "Int64",
+        "bigint": "Int64",
+        "long": "Int64",
+        "float": "Double",
+        "double": "Double",
+        "decimal": "Decimal",
+        "string": "String",
+        "char": "String",
+        "varchar": "String",
+        "binary": "Binary",
+        "date": "DateTime",
+        "timestamp": "DateTime",
+        "timestamp_ntz": "DateTime",
+    }
+    str_type = str_type.lower()
+    if str_type in TYPE_MAPPING:
+        return TYPE_MAPPING[str_type]
+    if "decimal" in str_type:
+        return "Decimal"
+    if "char" in str_type or "string" in str_type:
+        return "String"
+    if "int" in str_type or "long" in str_type:
+        return "Int64"
+    if "float" in str_type or "double" in str_type:
+        return "Double"
+    else:
+        print(f"Warning: Unrecognized data type '{str_type}'. Defaulting to 'String'.")
+        return "String"
 
 
 def check_tables_format(tables: list):
 
     for t in tables:
-        parts = t.split('.')
+        parts = t.split(".")
         if len(parts) != 3:
-            raise ValueError(f"Invalid table format: {t}. Expected 'catalog.schema.table'")
+            raise ValueError(
+                f"Invalid table format: {t}. Expected 'catalog.schema.table'"
+            )
 
 
-def create_expression_name(base_expression_name: str = "MirrorDL", expression_names: list = None) -> str:
+def create_expression_name(
+    base_expression_name: str = "MirrorDL", expression_names: list = None
+) -> str:
 
     if not expression_names:
         return base_expression_name
@@ -314,7 +334,7 @@ def gen_sm(name: str, workspace):
         for col_name, col_info in columns.items():
             table_name = col_info.get("tableName")
             type = col_info.get("type")
-            data_type = TYPE_MAPPING.get(type)
+            data_type = convert_column_data_type(type)
             display_name = col_info.get("displayName")
             desc = col_info.get("description")
             expr = col_info.get("expression")

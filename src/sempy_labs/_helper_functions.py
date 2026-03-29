@@ -2295,7 +2295,7 @@ def _base_api(
         url = request
     elif client == "blob":
         url = f"https://onelake.blob.fabric.microsoft.com/{request}"
-    elif client == 'databricks':
+    elif client == "databricks":
         url = request
     elif client == "internal":
         headers = get_pbi_token_headers()

@@ -21,7 +21,11 @@ def list_databricks_columns(
 ) -> pd.DataFrame:
 
     url = f"{databricks_workspace}/api/2.1/unity-catalog/tables?catalog_name={unity_catalog}&schema_name={schema}"
-    response = _base_api(request=url, client="databricks", headers=get_databricks_headers(databricks_token))
+    response = _base_api(
+        request=url,
+        client="databricks",
+        headers=get_databricks_headers(databricks_token),
+    )
 
     columns = {
         "Catalog Name": "str",
@@ -87,7 +91,11 @@ def list_databricks_metric_views(
         A list of dictionaries, each containing details about a metric view, including its name, view definition, and columns.
     """
 
-    response = _base_api(request=f"{databricks_workspace}/api/2.1/unity-catalog/tables?catalog_name={unity_catalog}&schema_name={schema}", client="databricks", headers=get_databricks_headers(databricks_token))
+    response = _base_api(
+        request=f"{databricks_workspace}/api/2.1/unity-catalog/tables?catalog_name={unity_catalog}&schema_name={schema}",
+        client="databricks",
+        headers=get_databricks_headers(databricks_token),
+    )
 
     rows = []
     for t in response.json().get("tables"):

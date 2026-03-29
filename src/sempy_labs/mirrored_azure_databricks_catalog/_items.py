@@ -89,7 +89,7 @@ def create_mirrored_azure_databricks_catalog(
     )
 
     print(
-        f"{icons.green_dot} The '{name}' mirrored Azure Databricks Catalog has been succesfully created within the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{name}' Mirrored Azure Databricks Catalog has been succesfully created within the '{workspace_name}' workspace."
     )
     return result.get("id")
 
