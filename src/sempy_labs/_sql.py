@@ -239,3 +239,32 @@ class ConnectSQLDatabase(ConnectBase):
             workspace=workspace,
             timeout=timeout,
         )
+
+
+class ConnectMirroredAzureDatabricksCatalog(ConnectBase):
+    def __init__(
+        self,
+        mirrored_azure_databricks_catalog: str | UUID,
+        workspace: Optional[Union[str, UUID]] = None,
+        timeout: int = 30,
+    ):
+        """
+        Run a SQL or T-SQL query against a Mirrored Azure Databricks Catalog.
+
+        Parameters
+        ----------
+        mirrored_azure_databricks_catalog : str | uuid.UUID
+            The name or ID of the Fabric Mirrored Azure Databricks Catalog.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
+        super().__init__(
+            item=mirrored_azure_databricks_catalog,
+            type="MirroredAzureDatabricksCatalog",
+            workspace=workspace,
+            timeout=timeout,
+        )
