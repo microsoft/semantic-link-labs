@@ -383,7 +383,7 @@ def gen_sm(name: str, workspace):
         # TODO: add synonyms to both columns and measures in TOM
 
 
-def infer_relationships(column_list, workspace):
+def infer_model_relationships(column_list, workspace):
 
     candidates = [c for c in column_list if c.get("columnName", "").endswith("ID")]
 
@@ -391,15 +391,15 @@ def infer_relationships(column_list, workspace):
         groups = defaultdict(list)
 
         for c in candidates:
-            groups[(c['columnName'], c['dataType'])].append(c)
+            groups[(c["columnName"], c["dataType"])].append(c)
 
         return [
             (c1, c2)
             for cols in groups.values()
             if len(cols) > 1
             for c1, c2 in combinations(cols, 2)
-            if (c1['tableName'], c1['sourceSchema'], c1['sourceCatalog']) !=
-            (c2['tableName'], c2['sourceSchema'], c2['sourceCatalog'])
+            if (c1["tableName"], c1["sourceSchema"], c1["sourceCatalog"])
+            != (c2["tableName"], c2["sourceSchema"], c2["sourceCatalog"])
         ]
 
     # ✅ Cache results to avoid repeated DB hits

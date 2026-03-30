@@ -1158,7 +1158,10 @@ def resolve_workspace_name_and_id(
 
 @log
 def resolve_item_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+    item: str | UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    error_out: bool = True,
 ) -> UUID:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -1173,9 +1176,12 @@ def resolve_item_id(
                 client="fabric_sp",
             )
         except FabricHTTPException:
-            raise ValueError(
-                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
-            )
+            if error_out:
+                raise ValueError(
+                    f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+                )
+            else:
+                return None
     else:
         if type is None:
             raise ValueError(
@@ -1193,7 +1199,7 @@ def resolve_item_id(
                     item_id = v.get("id")
                     break
 
-    if item_id is None:
+    if item_id is None and error_out:
         raise ValueError(
             f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
         )
@@ -1203,7 +1209,9 @@ def resolve_item_id(
 
 @log
 def resolve_item_name_and_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+    item: str | UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, UUID]:
 
     workspace_id = resolve_workspace_id(workspace)

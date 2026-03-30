@@ -120,7 +120,7 @@ def create_azure_databricks_workspace_connection(
     name : str
         The display name of the connection.
     url : str
-        The URL of the Azure Databricks workspace. Example: "https://dbc-12345x67-8xx9.cloud.databricks.com"
+        The URL of the Azure Databricks workspace. Example: "https://adb-0000000000000.00.azuredatabricks.net"
     databricks_token : str
         The personal access token for authenticating with the Azure Databricks REST API.
     privacy_level : typing.Literal["None", "Public", "Organizational", "Private"], default=None
