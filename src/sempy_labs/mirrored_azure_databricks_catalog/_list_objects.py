@@ -1,11 +1,19 @@
 import yaml
 import pandas as pd
-from typing import List
+import re
+from uuid import UUID
+from typing import List, Optional
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _create_dataframe,
     _base_api,
+    create_abfss_path,
+    resolve_workspace_id,
+    resolve_item_id,
+    _pure_python_notebook,
+    _get_delta_table,
 )
+import sempy_labs._icons as icons
 
 
 def get_databricks_headers(databricks_token: str) -> dict:
@@ -60,6 +68,59 @@ def list_databricks_columns(
                         "Table Type": table_type,
                     }
                 )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
+
+
+@log
+def list_columns(mirrored_azure_databricks_catalog: str | UUID, schema: str, table: str, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+
+    columns = {
+        "Schema Name": "str",
+        "Table Name": "str",
+        "Column Name": "str",
+        "Data Type": "str",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+    catalog_id = resolve_item_id(item=mirrored_azure_databricks_catalog, type="MirroredAzureDatabricksCatalog", workspace=workspace_id)
+    path = create_abfss_path(lakehouse_id=catalog_id, lakehouse_workspace_id=workspace_id, delta_table_name=table, schema=schema)
+
+    rows = []
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        table_schema = DeltaTable(path).schema()
+
+        for field in table_schema.fields:
+            col_name = field.name
+            match = re.search(r'"(.*?)"', str(field.type))
+            if not match:
+                raise ValueError(
+                    f"{icons.red_dot} Could not find data type for column {col_name}."
+                )
+            data_type = match.group(1)
+            rows.append({
+                "Schema Name": schema,
+                "Table Name": table,
+                "Column Name": col_name,
+                "Data Type": data_type,
+            })
+    else:
+        delta_table = _get_delta_table(path=path)
+        table_df = delta_table.toDF()
+
+        for col_name, data_type in table_df.dtypes:
+            rows.append({
+                "Schema Name": schema,
+                "Table Name": table,
+                "Column Name": col_name,
+                "Data Type": data_type,
+            })
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
