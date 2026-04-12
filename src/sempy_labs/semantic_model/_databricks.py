@@ -4,10 +4,11 @@ from uuid import UUID
 import time
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
-    resolve_item_name_and_id,
     resolve_workspace_name_and_id,
     resolve_item_id,
     resolve_workspace_id,
+    create_abfss_path,
+    retry,
 )
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs.directlake._generate_shared_expression import (
@@ -15,16 +16,17 @@ from sempy_labs.directlake._generate_shared_expression import (
 )
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
-#from sempy_labs.connection._databricks import (
+
+# from sempy_labs.connection._databricks import (
 #    create_azure_databricks_workspace_connection,
-#)
-#from sempy_labs.connection._items import list_connections
+# )
+# from sempy_labs.connection._items import list_connections
 from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
     list_columns,
 )
 from sempy_labs.mirrored_azure_databricks_catalog._items import (
-#    create_mirrored_azure_databricks_catalog,
-    #list_mirrored_azure_databricks_catalogs,
+    #    create_mirrored_azure_databricks_catalog,
+    # list_mirrored_azure_databricks_catalogs,
     get_mirrored_azure_databricks_catalog,
 )
 from sempy_labs.mirrored_azure_databricks_catalog._semantic_model import (
@@ -33,9 +35,10 @@ from sempy_labs.mirrored_azure_databricks_catalog._semantic_model import (
     convert_column_data_type,
     infer_model_relationships,
 )
-#from sempy_labs.mirrored_azure_databricks_catalog._refresh_catalog_metadata import (
+
+# from sempy_labs.mirrored_azure_databricks_catalog._refresh_catalog_metadata import (
 #    refresh_catalog_metadata,
-#)
+# )
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -60,19 +63,19 @@ def generate_databricks_connection_name(
 
 
 @log
-def create_semantic_model_from_databricks(
+def create_or_update_semantic_model_from_mirrored_azure_databricks(
     dataset: str | UUID,
-    #databricks_workspace: str,
-    #databricks_token: str,
+    # databricks_workspace: str,
+    # databricks_token: str,
     tables: List[str],
     mirrored_azure_databricks_catalogs: dict | List[dict],
-    #databricks_connection_name: Optional[str] = None,
+    # databricks_connection_name: Optional[str] = None,
     infer_relationships: bool = True,
     workspace: Optional[str | UUID] = None,
 ):
     """
     Creates or updates a semantic model based on tables in a Databricks workspace.
-    
+
     If infer_relationships is set to True, it will also attempt to infer relationships between tables based on column names and data types.
 
     Parameters
@@ -107,6 +110,8 @@ def create_semantic_model_from_databricks(
     workspace : Optional[str | uuid.UUID], default=None
         The name or ID of the workspace where the semantic model will be created or updated.
     """
+    import notebookutils
+
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     # Check if semantic model already exists
@@ -123,69 +128,62 @@ def create_semantic_model_from_databricks(
     if not isinstance(mirrored_azure_databricks_catalogs, list):
         mirrored_azure_databricks_catalogs = [mirrored_azure_databricks_catalogs]
 
+    # Resolve mirrored catalog ids and names, and get catalog names
     mirrors = []
-    for mac in mirrored_azure_databricks_catalogs:
-        if not isinstance(mac, dict):
-            raise ValueError(
-                "Each item in mirrored_azure_databricks_catalogs must be a dictionary with 'mirroredCatalog' and 'workspace' keys."
+    for mirror in mirrored_azure_databricks_catalogs:
+        mirrored_catalog = mirror.get("mirroredCatalog")
+        mirrored_workspace = mirror.get("workspace")
+        mirrored_workspace_id = resolve_workspace_id(mirrored_workspace)
+        mirrored_item_id = resolve_item_id(
+            item=mirrored_catalog,
+            type="MirroredAzureDatabricksCatalog",
+            workspace=mirrored_workspace_id,
+        )
+        catalog_name = (
+            get_mirrored_azure_databricks_catalog(
+                mirrored_azure_databricks_catalog=mirrored_item_id,
+                workspace=mirrored_workspace_id,
+                return_dataframe=False,
             )
-        if "mirroredCatalog" not in mac or "workspace" not in mac:
-            raise ValueError(
-                "Each dictionary in mirrored_azure_databricks_catalogs must contain 'mirroredCatalog' and 'workspace' keys."
-            )
-        mirror_workspace_id = resolve_workspace_id(mac["workspace"])
-        mirror_name, mirror_id = resolve_item_name_and_id(item=mac["mirroredCatalog"], type="MirroredAzureDatabricksCatalog", workspace=mirror_workspace_id)
-
-        mirror_definition = get_mirrored_azure_databricks_catalog(mirrored_databricks_catalog=mirror_id, workspace=mirror_workspace_id, return_dataframe=False)
-        catalog_name = mirror_definition.get("properties", {}).get("catalogName")
-        mirrors.append({
-            "mirrorId": mirror_id,
-            "mirrorName": mirror_name,
-            "catalogName": catalog_name,
-            "workspaceId": mirror_workspace_id,
-        })
-
-    # Check that the tables exist in the provided mirrors
-    for t in tables:
-        parts = t.split(".")
-        catalog_name, schema_name, table_name = parts
-        matching_mirrors = [m for m in mirrors if m["catalogName"] == catalog_name]
-        if not matching_mirrors:
-            raise ValueError(
-                f"{icons.red_dot} The catalog '{catalog_name}' for table '{t}' was not found in the provided mirrored Azure Databricks catalogs."
-            )
-        tables[t] = {
-            t: matching_mirrors[0]["mirrorId"]
-        }
+            .get("properties", {})
+            .get("catalogName")
+        )
+        mirrors.append(
+            {
+                "mirrorId": mirrored_item_id,
+                "workspaceId": mirrored_workspace_id,
+                "catalogName": catalog_name,
+            }
+        )
 
     # Create databricks connection if it doesn't exist
-    #databricks_workspace = databricks_workspace.rstrip("/")
-    #df = list_connections()
+    # databricks_workspace = databricks_workspace.rstrip("/")
+    # df = list_connections()
 
-    #databricks_connection_name = generate_databricks_connection_name(
+    # databricks_connection_name = generate_databricks_connection_name(
     #    name=databricks_connection_name, dataframe=df
-    #)
-    #df_filt = df[
+    # )
+    # df_filt = df[
     #    (df["Connection Type"] == "AzureDatabricksWorkspace")
     #    & (df["Connection Path"].str.rstrip("/") == databricks_workspace)
-    #]
-    #if df_filt.empty:
+    # ]
+    # if df_filt.empty:
     #    connection_id = create_azure_databricks_workspace_connection(
     #        name=databricks_connection_name,
     #        url=databricks_workspace,
     #        databricks_token=databricks_token,
     #        privacy_level=None,
     #    )
-    #else:
+    # else:
     #    connection_id = df_filt["Connection Id"].iloc[0]
 
     # Create mirrored catalog if it doesn't exist
-    #catalogs = list(set([catalog.split(".")[0] for catalog in tables]))
+    # catalogs = list(set([catalog.split(".")[0] for catalog in tables]))
 
-    #df = list_mirrored_azure_databricks_catalogs(workspace=workspace_id)
+    # df = list_mirrored_azure_databricks_catalogs(workspace=workspace_id)
 
-    #mirror_ids = {}
-    #for catalog in catalogs:
+    # mirror_ids = {}
+    # for catalog in catalogs:
     #    df_filt = df[
     #        (df["Catalog Name"] == catalog)
     #        & (df["Databricks Workspace Connection Id"] == connection_id)
@@ -205,16 +203,27 @@ def create_semantic_model_from_databricks(
     #        ]
 
     # Refresh catalog metadata to ensure we have the latest schema information
-    #for catalog, catalog_id in mirror_ids.items():
+    # for catalog, catalog_id in mirror_ids.items():
     #    refresh_catalog_metadata(
     #        mirrored_azure_databricks_catalog=catalog_id,
     #        workspace=workspace_id,
     #    )
 
     if not item_id:
-        create_blank_semantic_model(dataset=dataset, workspace=workspace_id)
+        item_id = create_blank_semantic_model(dataset=dataset, workspace=workspace_id)
 
-    time.sleep(10)
+    @retry(
+        sleep_time=1,
+        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
+    )
+    def dyn_connect():
+        with connect_semantic_model(
+            dataset=dataset, readonly=True, workspace=workspace_id
+        ) as tom:
+
+            tom.model
+
+    dyn_connect()
 
     # Generate semantic model
     with connect_semantic_model(
@@ -225,13 +234,36 @@ def create_semantic_model_from_databricks(
         for t in tables:
             parts = t.split(".")
             catalog_name, schema_name, table_name = parts
-            catalog_id = mirror_ids[catalog_name]
+
+            # Match catalog to mirrored catalog id
+            match = next(
+                (m for m in mirrors if m.get("catalogName") == catalog_name), {}
+            )
+            if not match:
+                raise ValueError(
+                    f"No mirrored catalog found for catalog name: {catalog_name}"
+                )
+
+            catalog_id = match.get("mirrorId")
+            catalog_workspace_id = match.get("workspaceId")
+
+            # Check if table exists
+            path = create_abfss_path(
+                lakehouse_id=catalog_id,
+                lakehouse_workspace_id=catalog_workspace_id,
+                delta_table_name=table_name,
+                schema=schema_name,
+            )
+            if not notebookutils.fs.exists(path):
+                raise ValueError(
+                    f"{icons.red_dot} The table {t} does not exist in the mirrored Azure Databricks catalog. Please check the table name and ensure it is in the format 'catalog.schema.table'. Path checked: {path}"
+                )
 
             # Generate the expression for the Mirrored Azure Databricks Catalog
             expr = generate_shared_expression(
                 item=catalog_id,
                 item_type="MirroredAzureDatabricksCatalog",
-                workspace=workspace,
+                workspace=catalog_workspace_id,
                 use_sql_endpoint=False,
             )
 
@@ -253,7 +285,12 @@ def create_semantic_model_from_databricks(
                 tom.add_expression(name=expression_name, expression=expr)
 
             # Determine the columns in the table
-            df = list_columns(mirrored_azure_databricks_catalog=catalog_id, schema=schema_name, table=table_name, workspace=workspace_id)
+            df = list_columns(
+                mirrored_azure_databricks_catalog=catalog_id,
+                schema=schema_name,
+                table=table_name,
+                workspace=workspace_id,
+            )
 
             # Only add table if it is found and has columns
             if df.empty:

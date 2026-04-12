@@ -106,7 +106,7 @@ def create_databricks_connection(
 def create_azure_databricks_workspace_connection(
     name: str,
     url: str,
-    #databricks_token: str,
+    # databricks_token: str,
     databricks_client_id: str,
     databricks_client_secret: str,
     tenant_id: str,
@@ -161,13 +161,18 @@ def create_azure_databricks_workspace_connection(
             ],
         },
         "displayName": name,
-        #"credentialDetails": {
+        # "credentialDetails": {
         #    "credentials": {"credentialType": "Key", "key": databricks_token},
         #    "singleSignOnType": "None",
         #    "skipTestConnection": False,
-        #},
+        # },
         "credentialDetails": {
-            "credentials": {"credentialType": "ServicePrincipal", "servicePrincipalClientId": databricks_client_id, "servicePrincipalSecret": databricks_client_secret, "tenantId": tenant_id},
+            "credentials": {
+                "credentialType": "ServicePrincipal",
+                "servicePrincipalClientId": databricks_client_id,
+                "servicePrincipalSecret": databricks_client_secret,
+                "tenantId": tenant_id,
+            },
             "singleSignOnType": "None",
             "skipTestConnection": False,
         },

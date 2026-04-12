@@ -76,7 +76,12 @@ def list_databricks_columns(
 
 
 @log
-def list_columns(mirrored_azure_databricks_catalog: str | UUID, schema: str, table: str, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_columns(
+    mirrored_azure_databricks_catalog: str | UUID,
+    schema: str,
+    table: str,
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
 
     columns = {
         "Schema Name": "str",
@@ -87,8 +92,17 @@ def list_columns(mirrored_azure_databricks_catalog: str | UUID, schema: str, tab
     df = _create_dataframe(columns=columns)
 
     workspace_id = resolve_workspace_id(workspace)
-    catalog_id = resolve_item_id(item=mirrored_azure_databricks_catalog, type="MirroredAzureDatabricksCatalog", workspace=workspace_id)
-    path = create_abfss_path(lakehouse_id=catalog_id, lakehouse_workspace_id=workspace_id, delta_table_name=table, schema=schema)
+    catalog_id = resolve_item_id(
+        item=mirrored_azure_databricks_catalog,
+        type="MirroredAzureDatabricksCatalog",
+        workspace=workspace_id,
+    )
+    path = create_abfss_path(
+        lakehouse_id=catalog_id,
+        lakehouse_workspace_id=workspace_id,
+        delta_table_name=table,
+        schema=schema,
+    )
 
     rows = []
     if _pure_python_notebook():
@@ -104,23 +118,27 @@ def list_columns(mirrored_azure_databricks_catalog: str | UUID, schema: str, tab
                     f"{icons.red_dot} Could not find data type for column {col_name}."
                 )
             data_type = match.group(1)
-            rows.append({
-                "Schema Name": schema,
-                "Table Name": table,
-                "Column Name": col_name,
-                "Data Type": data_type,
-            })
+            rows.append(
+                {
+                    "Schema Name": schema,
+                    "Table Name": table,
+                    "Column Name": col_name,
+                    "Data Type": data_type,
+                }
+            )
     else:
         delta_table = _get_delta_table(path=path)
         table_df = delta_table.toDF()
 
         for col_name, data_type in table_df.dtypes:
-            rows.append({
-                "Schema Name": schema,
-                "Table Name": table,
-                "Column Name": col_name,
-                "Data Type": data_type,
-            })
+            rows.append(
+                {
+                    "Schema Name": schema,
+                    "Table Name": table,
+                    "Column Name": col_name,
+                    "Data Type": data_type,
+                }
+            )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))

@@ -275,6 +275,7 @@ def list_mirrored_azure_databricks_catalogs(
     for r in responses:
         for catalog in r.get("value", []):
             properties = catalog.get("properties", {})
+            sql_endpoint_id = properties.get("sqlEndpointProperties", {}).get("id")
             rows.append(
                 {
                     "Mirrored Azure Databricks Catalog Id": catalog.get("id"),
@@ -290,9 +291,7 @@ def list_mirrored_azure_databricks_catalogs(
                     "SQL Endpoint Connection String": properties.get(
                         "sqlEndpointProperties", {}
                     ).get("connectionString"),
-                    "SQL Endpoint Id: ": properties.get(
-                        "sqlEndpointProperties", {}
-                    ).get("id"),
+                    "SQL Endpoint Id": sql_endpoint_id,
                     "Sync Status": properties.get("syncDetails", {}).get("status"),
                     "Last Sync DateTime": properties.get("syncDetails", {}).get(
                         "lastSyncDateTime"
@@ -349,6 +348,7 @@ def get_mirrored_azure_databricks_catalog(
         return response_json
 
     properties = response_json.get("properties", {})
+    sql_endpoint_id = properties.get("sqlEndpointProperties", {}).get("id")
     rows = [
         {
             "Mirrored Azure Databricks Catalog Id": response_json.get("id"),
@@ -362,7 +362,7 @@ def get_mirrored_azure_databricks_catalog(
             "SQL Endpoint Connection String": properties.get(
                 "sqlEndpointProperties", {}
             ).get("connectionString"),
-            "SQL Endpoint Id: ": properties.get("sqlEndpointProperties", {}).get("id"),
+            "SQL Endpoint Id": sql_endpoint_id,
             "Sync Status": properties.get("syncDetails", {}).get("status"),
             "Last Sync DateTime": properties.get("syncDetails", {}).get(
                 "lastSyncDateTime"
