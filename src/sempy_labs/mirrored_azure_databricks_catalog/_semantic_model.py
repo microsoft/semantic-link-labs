@@ -50,30 +50,6 @@ def convert_column_data_type(str_type: str) -> str:
         return "String"
 
 
-def check_tables_format(tables: list):
-
-    for t in tables:
-        parts = t.split(".")
-        if len(parts) != 3:
-            raise ValueError(
-                f"Invalid table format: {t}. Expected 'catalog.schema.table'"
-            )
-
-
-def create_expression_name(
-    base_expression_name: str = "MirrorDL", expression_names: list = None
-) -> str:
-
-    if not expression_names:
-        return base_expression_name
-    i = 1
-    new_expression_name = f"{base_expression_name}_{i}"
-    while new_expression_name in expression_names:
-        i += 1
-        new_expression_name = f"{base_expression_name}_{i}"
-    return new_expression_name
-
-
 def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
     """
     Convert a simple Databricks SQL measure expression to a DAX expression.

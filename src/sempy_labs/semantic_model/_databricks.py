@@ -2,6 +2,7 @@ import pandas as pd
 from typing import List, Optional
 from uuid import UUID
 import time
+from collections import Counter
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     resolve_workspace_name_and_id,
@@ -30,8 +31,6 @@ from sempy_labs.mirrored_azure_databricks_catalog._items import (
     get_mirrored_azure_databricks_catalog,
 )
 from sempy_labs.mirrored_azure_databricks_catalog._semantic_model import (
-    create_expression_name,
-    check_tables_format,
     convert_column_data_type,
     infer_model_relationships,
 )
@@ -62,6 +61,45 @@ def generate_databricks_connection_name(
     return name
 
 
+def check_tables_format(tables: list):
+
+    # Check that tables are in the correct format (catalog.schema.table)
+    for t in tables:
+        parts = t.split(".")
+        if len(parts) != 3:
+            raise ValueError(
+                f"Invalid table format: {t}. Expected 'catalog.schema.table'"
+            )
+
+    # Check that there are no duplicate catalog.schema.table names
+    if len(set(tables)) < len(tables):
+        raise ValueError(
+            f"Duplicate tables found in the input list. Please ensure all tables are unique. Duplicates: {[t for t in set(tables) if tables.count(t) > 1]}"
+        )
+
+    # Check that there are no duplicate table names. This is important to avoid confusion in the semantic model, as tables with the same name from different catalogs could lead to ambiguous references.
+    table_names = [t.split(".")[2] for t in tables]
+    duplicates = [name for name, count in Counter(table_names).items() if count > 1]
+    if duplicates:
+        raise ValueError(
+            f"Duplicate table names found in the input list. Please ensure all table names are unique. Duplicates: {duplicates}"
+        )
+
+
+def create_expression_name(
+    base_expression_name: str = "MirrorDL", expression_names: list = None
+) -> str:
+
+    if not expression_names:
+        return base_expression_name
+    i = 1
+    new_expression_name = f"{base_expression_name}_{i}"
+    while new_expression_name in expression_names:
+        i += 1
+        new_expression_name = f"{base_expression_name}_{i}"
+    return new_expression_name
+
+
 @log
 def create_or_update_semantic_model_from_mirrored_azure_databricks(
     dataset: str | UUID,
@@ -72,7 +110,7 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
     # databricks_connection_name: Optional[str] = None,
     infer_relationships: bool = True,
     workspace: Optional[str | UUID] = None,
-):
+) -> UUID:
     """
     Creates or updates a semantic model based on tables in a Databricks workspace.
 
@@ -109,6 +147,11 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
         Whether to infer relationships between tables based on column names and data types.
     workspace : Optional[str | uuid.UUID], default=None
         The name or ID of the workspace where the semantic model will be created or updated.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the created or updated semantic model.
     """
     import notebookutils
 
@@ -230,6 +273,11 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
         dataset=dataset, workspace=workspace_id, readonly=False
     ) as tom:
 
+        if not tom._can_add_direct_lake_tables():
+            raise ValueError(
+                f"{icons.red_dot} Adding Direct Lake tables to this semantic model is not supported. Please ensure that all tables in the semantic model are in Direct Lake mode and the Direct Lake sources do not use SQL endpoints."
+            )
+
         column_list = []
         for t in tables:
             parts = t.split(".")
@@ -342,7 +390,11 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
                     from_column=r.get("fromColumn"),
                     to_table=r.get("toTable"),
                     to_column=r.get("toColumn"),
+                    from_cardinality="Many",
+                    to_cardinality="One",
                 )
 
     time.sleep(5)
     refresh_semantic_model(dataset=dataset, workspace=workspace)
+
+    return item_id

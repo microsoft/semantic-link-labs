@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     resolve_lakehouse_id,
     _validate_weight,
+    resolve_workspace_name,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -5857,6 +5858,124 @@ class TOMWrapper:
             self.model.Cultures[culture_name].LinguisticMetadata.Content = json.dumps(
                 schema_file, indent=4
             )
+
+    # Direct Lake sources
+    def _extract_expression_list(expression) -> List:
+        """
+        Finds the pattern for DL/SQL & DL/OL expressions in the semantic model.
+        """
+
+        pattern_sql = r'Sql\.Database\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)'
+        pattern_no_sql = (
+            r'AzureStorage\.DataLake\(".*?/([0-9a-fA-F\-]{36})/([0-9a-fA-F\-]{36})"'
+        )
+
+        match_sql = re.search(pattern_sql, expression)
+        match_no_sql = re.search(pattern_no_sql, expression)
+
+        result = []
+        if match_sql:
+            value_1, value_2 = match_sql.groups()
+            result = [value_1, value_2, True]
+        elif match_no_sql:
+            value_1, value_2 = match_no_sql.groups()
+            result = [value_1, value_2, False]
+
+        return result
+
+    def _get_direct_lake_expressions(self) -> dict:
+        result = {}
+
+        for e in self.model.Expressions:
+            expr_name = e.Name
+            expr = e.Expression
+
+            list_values = self._extract_expression_list(expr)
+            if list_values:
+                result[expr_name] = list_values
+
+        return result
+
+    def get_direct_lake_sources(self) -> List[dict]:
+        """
+        Retrieves a list of the Direct Lake sources used in a semantic model, including their type, workspace, and whether they use a SQL endpoint.
+
+        Returns:
+        typing.List[dict]
+            A list of dictionaries, each containing details about a Direct Lake source used in the semantic model.
+            Example:
+            [
+                {
+                    "itemId": "123e4567-e89b-12d3-a456-426614174000",
+                    "itemName": "My Lakehouse",
+                    "itemType": "Lakehouse",
+                    "workspaceId": "123e4567-e89b-12d3-a456-426614174001",
+                    "workspaceName": "Workspace A",
+                    "usesSqlEndpoint": False,
+                    "expressionName": "DL Lake 1",
+                },
+                {
+                    "itemId": "123e4567-e89b-12d3-a456-426614174002",
+                    "itemName": "My Data Source",
+                    "itemType": "Warehouse",
+                    "workspaceId": "123e4567-e89b-12d3-a456-426614174001",
+                    "workspaceName": "Workspace A",
+                    "usesSqlEndpoint": False,
+                    "expressionName": "DL Warehouse 1",
+                }
+            ]
+
+        """
+
+        sql = "SqlAnalyticsEndpoint"
+        sources = []
+        expr = self._get_direct_lake_expressions()
+        for name, items in expr.items():
+            artifact_id = items[1]
+            uses_sql_endpoint = items[2]
+            result = _base_api(
+                request=f"metadata/artifacts/{artifact_id}", client="internal"
+            ).json()
+            item_type = result.get("artifactType")
+            item_name = result.get("displayName")
+            item_workspace_id = result.get("folderObjectId")
+            parent_artifact_id = result.get("parentArtifactObjectId")
+
+            type = "Lakehouse" if item_type == sql else item_type
+            item_id = parent_artifact_id if item_type == sql else artifact_id
+
+            sources.append(
+                {
+                    "itemId": item_id,
+                    "itemName": item_name,
+                    "itemType": type,
+                    "workspaceId": item_workspace_id,
+                    "workspaceName": resolve_workspace_name(item_workspace_id),
+                    "usesSqlEndpoint": uses_sql_endpoint,
+                    "expressionName": name,
+                }
+            )
+
+        return sources
+
+    def _can_add_direct_lake_tables(self) -> bool:
+        """
+        Only supporting adding Direct Lake tables to a model if all current tables are in Direct Lake mode and none of the Direct Lake sources use a SQL endpoint.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if any(p.Mode != TOM.ModeType.DirectLake for p in self.all_partitions()):
+            return False
+        sources = self.get_direct_lake_sources()
+        for source in sources:
+            if (
+                source.get("itemType") == "Lakehouse"
+                and source.get("usesSqlEndpoint") == True
+            ):
+                return False
+
+        return True
 
     def close(self):
 

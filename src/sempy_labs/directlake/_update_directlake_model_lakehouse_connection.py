@@ -10,10 +10,6 @@ from sempy_labs.tom import connect_semantic_model
 from typing import Optional, List, Literal
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs.directlake._sources import (
-    _get_direct_lake_expressions,
-    _extract_expression_list,
-)
 
 
 @log
@@ -127,12 +123,11 @@ def update_direct_lake_model_connection(
         use_sql_endpoint=use_sql_endpoint,
     )
 
-    expression_dict = _get_direct_lake_expressions(dataset=dataset, workspace=workspace)
-    expressions = list(expression_dict.keys())
-
     with connect_semantic_model(
         dataset=dataset_id, readonly=False, workspace=workspace_id
     ) as tom:
+        expression_dict = tom._get_direct_lake_expressions()
+        expressions = list(expression_dict.keys())
 
         if not tom.is_direct_lake():
             raise ValueError(
@@ -154,11 +149,10 @@ def update_direct_lake_model_connection(
             )
         else:
             import sempy
-
             sempy.fabric._client._utils._init_analysis_services()
             import Microsoft.AnalysisServices.Tabular as TOM
 
-            expr_list = _extract_expression_list(shared_expression)
+            expr_list = tom._extract_expression_list(shared_expression)
 
             expr_name = next(
                 (name for name, exp in expression_dict.items() if exp == expr_list),
