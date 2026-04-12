@@ -71,7 +71,9 @@ def create_semantic_model_from_databricks(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Creates or updates a semantic model based on tables in a Databricks workspace. The function will create a connection to the Databricks workspace, create mirrored catalogs for the specified tables, and generate a semantic model with entities and columns based on the tables' schemas. If infer_relationships is set to True, it will also attempt to infer relationships between tables based on column names and data types.
+    Creates or updates a semantic model based on tables in a Databricks workspace.
+    
+    If infer_relationships is set to True, it will also attempt to infer relationships between tables based on column names and data types.
 
     Parameters
     ----------
