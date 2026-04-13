@@ -5968,12 +5968,8 @@ class TOMWrapper:
         if any(p.Mode != TOM.ModeType.DirectLake for p in self.all_partitions()):
             return False
         sources = self.get_direct_lake_sources()
-        for source in sources:
-            if (
-                source.get("itemType") == "Lakehouse"
-                and source.get("usesSqlEndpoint") == True
-            ):
-                return False
+        if any(source.get("usesSqlEndpoint") == True for source in sources):
+            return False
 
         return True
 
