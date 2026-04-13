@@ -2867,3 +2867,63 @@ def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
     response = _base_api(request=f"metadata/models/{item_id}", client="internal")
 
     return response.json().get("model", {}).get("id")
+
+
+@log
+def list_columns_from_path(path: str) -> pd.DataFrame:
+
+    columns = {
+        "Schema Name": "str",
+        "Table Name": "str",
+        "Column Name": "str",
+        "Data Type": "str",
+    }
+    df = _create_dataframe(columns=columns)
+
+    rows = []
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        try:
+            dt = DeltaTable(path)
+            table_schema = dt.schema()
+
+            for field in table_schema.fields:
+                col_name = field.name
+                match = re.search(r'"(.*?)"', str(field.type))
+                if not match:
+                    raise ValueError(
+                        f"{icons.red_dot} Could not find data type for column {col_name}."
+                    )
+                data_type = match.group(1)
+                rows.append(
+                    {
+                        "Column Name": col_name,
+                        "Data Type": data_type,
+                    }
+                )
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{path}' table is not a valid delta table."
+            )
+    else:
+        try:
+            delta_table = _get_delta_table(path=path)
+            table_df = delta_table.toDF()
+
+            for col_name, data_type in table_df.dtypes:
+                rows.append(
+                    {
+                        "Column Name": col_name,
+                        "Data Type": data_type,
+                    }
+                )
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{path}' table is not a valid delta table."
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df

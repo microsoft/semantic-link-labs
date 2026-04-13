@@ -149,6 +149,7 @@ def update_direct_lake_model_connection(
             )
         else:
             import sempy
+
             sempy.fabric._client._utils._init_analysis_services()
             import Microsoft.AnalysisServices.Tabular as TOM
 
