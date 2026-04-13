@@ -28,6 +28,7 @@ from ._report_rebind import (
 )
 from ._report_bpa_rules import report_bpa_rules
 from ._report_bpa import run_report_bpa
+from ._fix_report_bpa import fix_report_bpa
 from ._export_report import (
     export_report,
 )
@@ -40,6 +41,10 @@ from ._upgrade_to_pbir import (
 from ._items import (
     list_reports,
     get_report,
+)
+from sempy_labs._pbi_fixer import (
+    pbi_fixer,
+    pbi_fixer_v2,
 )
 
 __all__ = [
@@ -58,6 +63,7 @@ __all__ = [
     "ReportWrapper",
     "report_bpa_rules",
     "run_report_bpa",
+    "fix_report_bpa",
     "get_report_datasources",
     "download_report",
     "save_report_as_pbip",
@@ -66,4 +72,6 @@ __all__ = [
     "upgrade_to_pbir",
     "list_reports",
     "get_report",
+    "pbi_fixer",
+    "pbi_fixer_v2",
 ]

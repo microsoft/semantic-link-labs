@@ -56,7 +56,7 @@ vis_type_mapping = {
 
 def generate_visual_file_path(page_file_path: str, visual_id: str) -> str:
 
-    return page_file_path.split("/page.json")[0] + f"/visuals/{visual_id}.json"
+    return page_file_path.split("/page.json")[0] + f"/visuals/{visual_id}/visual.json"
 
 
 def resolve_visual_type(visual_type: str) -> str:
