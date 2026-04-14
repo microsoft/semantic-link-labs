@@ -72,7 +72,7 @@ def generate_shared_expression(
 
         prop = response.json().get("properties", {})
 
-        if item_type == "Lakehouse":
+        if item_type in ["Lakehouse", "MirroredDatabase"]:
             sqlprop = prop.get("sqlEndpointProperties")
             sqlEPCS = sqlprop.get("connectionString")
             sqlepid = sqlprop.get("id")
