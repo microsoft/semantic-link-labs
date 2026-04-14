@@ -24,7 +24,7 @@ from sempy_labs._refresh_semantic_model import refresh_semantic_model
 def generate_direct_lake_semantic_model(
     dataset: str,
     tables: List[str],
-    source: Optional[str | UUID] = None,
+    source: str | UUID,
     source_type: Literal[
         "Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog"
     ] = "Lakehouse",
@@ -40,6 +40,16 @@ def generate_direct_lake_semantic_model(
     ----------
     dataset : str
         Name of the semantic model to be created.
+    tables : typing.List[str]
+        List of tables to include in the semantic model. Table names should be schema-qualified if there are multiple tables with the same name across schemas (e.g. "schema1.tableA", "schema2.tableA", "schema1.tableB").
+    source : str | uuid.UUID
+        The source item name or ID from which to generate the semantic model. This can be a Lakehouse, Mirrored Azure Databricks Catalog, Warehouse, or SQL Database.
+    source_type : typing.Literal["Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog"], default = "Lakehouse"
+        The type of the source item. Supported values are "Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog".
+    source_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID in which the source item resides. This parameter is required if the source item is not in the same workspace as the semantic model will be created, and is ignored if the source item is in the same workspace. Defaults to None which resolves to the workspace of the attached lakehouse or if no lakehouse attached, resolves to the workspace of the notebook.
+    use_sql_endpoint : bool, default=False
+        If True, the generated expression will use the SQL endpoint. If False, the generated expression will use Direct Lake over OneLake.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model will reside.
         Defaults to None which resolves to the workspace of the attached lakehouse

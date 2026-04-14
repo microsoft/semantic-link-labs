@@ -6079,7 +6079,9 @@ class TOMWrapper:
 
         return sources
 
-    def _can_add_direct_lake_tables(self) -> bool:
+    def _can_add_direct_lake_tables(
+        self, source, source_type, source_workspace
+    ) -> bool:
         """
         Only supporting adding Direct Lake tables to a model if all current tables are in Direct Lake mode and none of the Direct Lake sources use a SQL endpoint.
         """
@@ -6089,7 +6091,9 @@ class TOMWrapper:
         if any(p.Mode != TOM.ModeType.DirectLake for p in self.all_partitions()):
             return False
         sources = self.get_direct_lake_sources()
-        if any(source.get("usesSqlEndpoint") == True for source in sources):
+        if any(s.get("usesSqlEndpoint") for s in sources) and any(
+            x is not None for x in (source, source_type, source_workspace)
+        ):
             return False
 
         return True
@@ -6121,7 +6125,9 @@ class TOMWrapper:
             If True, uses the SQL endpoint of the artifact. If not, uses Direct Lake over OneLake.
         """
 
-        if not self._can_add_direct_lake_tables():
+        if not self._can_add_direct_lake_tables(
+            source=source, source_type=source_type, source_workspace=source_workspace
+        ):
             raise ValueError(
                 "Cannot add Direct Lake tables. Ensure all current tables are in Direct Lake mode and none of the Direct Lake sources use a SQL endpoint."
             )
