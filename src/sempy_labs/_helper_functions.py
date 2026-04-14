@@ -2927,3 +2927,40 @@ def list_columns_from_path(path: str) -> pd.DataFrame:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
+
+
+def convert_column_data_type(str_type: str) -> str:
+
+    TYPE_MAPPING = {
+        "boolean": "Boolean",
+        "tinyint": "Int64",
+        "smallint": "Int64",
+        "int": "Int64",
+        "integer": "Int64",
+        "bigint": "Int64",
+        "long": "Int64",
+        "float": "Double",
+        "double": "Double",
+        "decimal": "Decimal",
+        "string": "String",
+        "char": "String",
+        "varchar": "String",
+        "binary": "Binary",
+        "date": "DateTime",
+        "timestamp": "DateTime",
+        "timestamp_ntz": "DateTime",
+    }
+    str_type = str_type.lower()
+    if str_type in TYPE_MAPPING:
+        return TYPE_MAPPING[str_type]
+    if "decimal" in str_type:
+        return "Decimal"
+    if "char" in str_type or "string" in str_type:
+        return "String"
+    if "int" in str_type or "long" in str_type:
+        return "Int64"
+    if "float" in str_type or "double" in str_type:
+        return "Double"
+    else:
+        print(f"Warning: Unrecognized data type '{str_type}'. Defaulting to 'String'.")
+        return "String"

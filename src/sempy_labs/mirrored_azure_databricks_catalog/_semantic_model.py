@@ -2,6 +2,9 @@ from collections import defaultdict
 from itertools import combinations
 import re
 import json
+from sempy_labs._helper_functions import (
+    convert_column_data_type,
+)
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs.directlake._generate_shared_expression import (
@@ -11,43 +14,6 @@ from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
     list_databricks_metric_views,
 )
 from sempy_labs._sql import ConnectMirroredAzureDatabricksCatalog
-
-
-def convert_column_data_type(str_type: str) -> str:
-
-    TYPE_MAPPING = {
-        "boolean": "Boolean",
-        "tinyint": "Int64",
-        "smallint": "Int64",
-        "int": "Int64",
-        "integer": "Int64",
-        "bigint": "Int64",
-        "long": "Int64",
-        "float": "Double",
-        "double": "Double",
-        "decimal": "Decimal",
-        "string": "String",
-        "char": "String",
-        "varchar": "String",
-        "binary": "Binary",
-        "date": "DateTime",
-        "timestamp": "DateTime",
-        "timestamp_ntz": "DateTime",
-    }
-    str_type = str_type.lower()
-    if str_type in TYPE_MAPPING:
-        return TYPE_MAPPING[str_type]
-    if "decimal" in str_type:
-        return "Decimal"
-    if "char" in str_type or "string" in str_type:
-        return "String"
-    if "int" in str_type or "long" in str_type:
-        return "Int64"
-    if "float" in str_type or "double" in str_type:
-        return "Double"
-    else:
-        print(f"Warning: Unrecognized data type '{str_type}'. Defaulting to 'String'.")
-        return "String"
 
 
 def convert_sql_to_dax(expression: str, source_table_name: str) -> str:

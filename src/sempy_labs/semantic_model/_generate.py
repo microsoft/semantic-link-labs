@@ -4,16 +4,14 @@ import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     create_abfss_path,
     resolve_item_id,
-    resolve_item_name_and_id,
     resolve_workspace_id,
     resolve_workspace_name_and_id,
-    _base_api,
     retry,
     list_columns_from_path,
+    convert_column_data_type,
 )
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy_labs.lakehouse import get_lakehouse_tables, get_lakehouse_columns
 from sempy_labs.directlake._generate_shared_expression import (
     generate_shared_expression,
 )
@@ -50,14 +48,17 @@ def generate_direct_lake_semantic_model(
         If True, refreshes the newly created semantic model after it is created.
     """
 
-    if not isinstance(tables, list):
-        raise ValueError(
-            f"{icons.red_dot} The 'tables' parameter must be a list of table names."
-        )
+    if isinstance(tables, str):
+        tables = [tables]
 
     if len(tables) != len(set(tables)):
         raise ValueError(
             f"{icons.red_dot} Duplicate table names are not allowed in the 'tables' parameter."
+        )
+
+    if len(tables) != len({t.split(".", 1)[-1] for t in tables}):
+        raise ValueError(
+            f"{icons.red_dot} Duplicate table names are not allowed in the 'tables' parameter when considering schema-qualified names."
         )
 
     supported_sources = [
@@ -79,6 +80,13 @@ def generate_direct_lake_semantic_model(
         raise ValueError(
             f"{icons.red_dot} Unsupported source type '{source_type}'. Supported source types are: {supported_sources}."
         )
+
+    expr = generate_shared_expression(
+        item=source_id,
+        item_type=source_type,
+        workspace=source_workspace_id,
+        use_sql_endpoint=use_sql_endpoint,
+    )
 
     # Populate model map with table and column information
     model_map = {}
@@ -109,8 +117,20 @@ def generate_direct_lake_semantic_model(
 
         # Add columns
         for _, row in df.iterrows():
+            column_name = row["Column Name"]
+            data_type = row["Data Type"]
+            converted_data_type = convert_column_data_type(data_type)
+            if converted_data_type is None:
+                raise ValueError(
+                    f"{icons.red_dot} The data type '{data_type}' of column '{column_name}' in table '{t}' is not supported."
+                )
+            if converted_data_type == "Binary":
+                print(
+                    f"{icons.warning} The column '{column_name}' in table '{t}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
+                )
+                continue
             model_map[table_name]["columns"].append(
-                {"columnName": row["Column Name"], "dataType": row["Data Type"]}
+                {"columnName": column_name, "dataType": converted_data_type}
             )
 
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
@@ -125,13 +145,6 @@ def generate_direct_lake_semantic_model(
         raise ValueError(
             f"{icons.red_dot} A dataset with the name '{dataset}' already exists in the workspace '{workspace_name}'. Please choose a different name or delete the existing dataset."
         )
-
-    expr = generate_shared_expression(
-        item=source_id,
-        type=source_type,
-        workspace=source_workspace_id,
-        use_sql_endpoint=use_sql_endpoint,
-    )
 
     @retry(
         sleep_time=1,
@@ -155,7 +168,7 @@ def generate_direct_lake_semantic_model(
 
         for table_name, table_info in model_map.items():
             schema_name = table_info["schema"]
-            tom.add_table(table_name=table_name)
+            tom.add_table(name=table_name)
             tom.add_entity_partition(
                 table_name=table_name,
                 entity_name=table_name,
@@ -173,3 +186,5 @@ def generate_direct_lake_semantic_model(
 
     if refresh:
         refresh_semantic_model(dataset=dataset_id, workspace=workspace_id)
+
+    return dataset_id

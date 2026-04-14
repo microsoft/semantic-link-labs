@@ -70,27 +70,29 @@ def generate_shared_expression(
             request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
         )
 
-        prop = response.json().get("properties")
+        prop = response.json().get("properties", {})
 
         if item_type == "Lakehouse":
             sqlprop = prop.get("sqlEndpointProperties")
             sqlEPCS = sqlprop.get("connectionString")
             sqlepid = sqlprop.get("id")
             provStatus = sqlprop.get("provisioningStatus")
-        elif item_type == "Warehouse":
-            sqlEPCS = prop.get("connectionString")
+        else:
             sqlepid = item_id
             provStatus = None
+            sqlEPCS = prop.get("connectionString")
+            if item_type == "SQLDatabase":
+                raise ValueError(
+                    f"{icons.warning} SQL Database connections which use the SQL endpoint are not supported. Please set use_sql_endpoint=False."
+                )
+                # sqlEPCS = prop.get('serverFqdn', {}).split(',')[0]
 
         if provStatus == "InProgress":
             raise ValueError(
                 f"{icons.red_dot} The SQL Endpoint for the '{item_name}' {item_type.lower()} within the '{workspace_name}' workspace has not yet been provisioned. Please wait until it has been provisioned."
             )
 
-        start_expr = "let\n\tdatabase = "
-        end_expr = "\nin\n\tdatabase"
-        mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
-        return f"{start_expr}{mid_expr}{end_expr}"
+        return f"""let\n\tdatabase = Sql.Database("{sqlEPCS}", "{sqlepid}")\nin\n\tdatabase"""
     else:
         # Build DL/OL expression
         env = _get_fabric_context_setting("spark.trident.pbienv").lower()
