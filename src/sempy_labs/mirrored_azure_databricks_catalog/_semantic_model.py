@@ -1,3 +1,4 @@
+from typing import Optional, List
 from collections import defaultdict
 from itertools import combinations
 import re
@@ -14,6 +15,7 @@ from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
     list_databricks_metric_views,
 )
 from sempy_labs._sql import ConnectMirroredAzureDatabricksCatalog
+import sempy_labs._icons as icons
 
 
 def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
@@ -144,75 +146,79 @@ def _collect_data_from_metric_view(
     joins = definition.get("joins", [])
     source_catalog, source_schema, source_table = source.split(".")
 
-    tables = []
-    relationships = []
-    columns = {}
-    measures = {}
-    tables.append(
-        {
-            "catalogName": source_catalog,
-            "schemaName": source_schema,
-            "tableName": source_table,
-            "isSource": True,
-        }
-    )
+    model_map = {"sources": {}, "relationships": {}, "tables": {}}
+    model_map["sources"][source] = {
+        "catalogName": source_catalog,
+        "schemaName": source_schema,
+        "tableName": source_table,
+        "isSource": True,
+    }
 
     # Determine relationships
-    for join in joins:
-        catalog, schema, table = join["source"].split(".")
-        tables.append(
-            {
-                "catalogName": catalog,
-                "schemaName": schema,
-                "tableName": table,
-                "isSource": False,
-            }
-        )
+    for idx, join in enumerate(joins):
+        join_source = join.get("source")
+        catalog, schema, table = join_source.split(".")
+        model_map["sources"][join_source] = {
+            "catalogName": catalog,
+            "schemaName": schema,
+            "tableName": table,
+            "isSource": False,
+        }
 
-        r = join.get('on')
-        join_source = join.get('source')
-        join_name = join.get('name')
-        left, right = r.split('=')
+        r = join.get("on")
+        join_name = join.get("name")
+        left, right = r.split("=")
         from_object = left.strip()
         to_object = right.strip()
-        from_table_alias, from_column = from_object.split('.')
-        to_table_alias, to_column = to_object.split('.')
+        from_table_alias, from_column = from_object.split(".")
+        to_table_alias, to_column = to_object.split(".")
 
-        from_source = None
-        to_source = None
-        if from_table_alias == "source":
-            from_source = source
-        elif from_table_alias == join_name:
-            from_source = join_source
-        if to_table_alias == "source":
-            to_source = source
-        elif to_table_alias == join_name:
-            to_source = join_name
+        alias_to_source = {"source": source, join_name: join_source}
+
+        from_source = alias_to_source.get(from_table_alias)
+        to_source = alias_to_source.get(to_table_alias)
 
         if from_source is None or to_source is None:
             raise ValueError()
 
-        from_catalog, from_schema, from_table = from_source.split('.')
-        to_catalog, to_schema, to_table = to_source.split('.')
+        from_catalog, from_schema, from_table = from_source.split(".")
+        to_catalog, to_schema, to_table = to_source.split(".")
 
-        relationships.append(
-            {
-                "from_catalog": from_catalog,
-                "from_schema": from_schema,
-                "from_table": from_table,
-                "from_column": from_column,
-                "to_catalog": to_catalog,
-                "to_schema": to_schema,
-                "to_table": to_table,
-                "to_column": to_column,
-            }
-        )
+        model_map["relationships"][f"Relationship_{idx}"] = {
+            "from_catalog": from_catalog,
+            "from_schema": from_schema,
+            "from_table": from_table,
+            "from_column": from_column,
+            "to_catalog": to_catalog,
+            "to_schema": to_schema,
+            "to_table": to_table,
+            "to_column": to_column,
+        }
 
     # TODO: create mirrors for each catalog
-    table_names = {t["tableName"] for t in tables}
-    source_table = next((t["tableName"] for t in tables if t["isSource"]), None)
+    table_names = [s["tableName"] for s in model_map["sources"].values()]
 
-    def extract_table_name(expression: str) -> str | None:
+    duplicates = {t for t in table_names if table_names.count(t) > 1}
+    if duplicates:
+        raise ValueError(f"Duplicate table names found: {duplicates}")
+
+    # ✅ Build tables map
+    for s in model_map["sources"].values():
+        table_name = s["tableName"]
+
+        model_map["tables"][table_name] = {
+            "catalog": s["catalogName"],
+            "schema": s["schemaName"],
+            "columns": [],
+            "measures": [],
+        }
+
+    source_table = next(
+        (s.get("tableName") for s in model_map["sources"].values() if s["isSource"]),
+        None,
+    )
+
+    def extract_table_name(expression: str, source_table: str) -> str | None:
         parts = expression.split(".")
 
         # Must be exactly "xxx.yyyy"
@@ -230,7 +236,7 @@ def _collect_data_from_metric_view(
     for c in objects:
         type_json = json.loads(c.get("type_json"))
         name = type_json.get("name")
-        type_text = c.get("type_text")
+        data_type = c.get("type_text")
         metadata = type_json.get("metadata")
         obj_type = metadata.get("metric_view.type")  # dimension/measure
         description = metadata.get("comment")
@@ -242,34 +248,54 @@ def _collect_data_from_metric_view(
         synonyms = semantic_metadata.get("synonyms", [])
 
         if obj_type == "dimension":
-            columns[name] = {
-                "tableName": extract_table_name(obj_expression),
-                "displayName": display_name,
-                "type": type_text,
-                "format": format,
-                "expression": obj_expression,
-                "description": description,
-                "synonyms": synonyms,
-            }
+            table_name = extract_table_name(obj_expression, source_table)
+            if not table_name:
+                print(
+                    f"{icons.warning} Skipping the '{display_name}' column as it could not be determined from the expression."
+                )
+                continue
+            model_map["tables"][table_name]["columns"].append(
+                {
+                    "columnName": display_name,
+                    "sourceColumn": name,
+                    "dataType": convert_column_data_type(data_type),
+                    "format": format,
+                    "description": description,
+                    "expression": obj_expression,
+                    "synonyms": synonyms,
+                }
+            )
         elif obj_type == "measure":
-            measures[name] = {
-                "tableName": source_table,  # Default to source table
-                "expression": obj_expression,
-                "format": format,
-                "description": description,
-                "synonyms": synonyms,
-            }
+            model_map["tables"][source_table]["measures"].append(
+                {
+                    "measureName": display_name,
+                    "format": format,
+                    "description": description,
+                    "expression": convert_sql_to_dax(obj_expression, source_table),
+                    "synonyms": synonyms,
+                }
+            )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                f"Please raise a support issue that the '{obj_type}' object type is not supported."
+            )
 
-    return tables, relationships, columns, measures
+    return model_map
 
 
-def gen_sm(name: str, workspace):
+def gen_sm(
+    name: str,
+    model_map: dict,
+    sources: List[dict],
+    workspace: Optional[str | UUID] = None,
+):
 
-    create_blank_semantic_model(dataset=name, workspace=workspace)
+    create_blank_semantic_model(dataset=name, workspace=workspace, overwrite=False)
 
-    (tables, relationships, columns, measures) = _collect_data_from_metric_view()
+    catalogs = list({s["catalogName"] for s in model_map["sources"].values()})
+
+    if len(catalogs) > 1:
+        print("use generate and then")
 
     expr = generate_shared_expression()
 

@@ -6098,23 +6098,38 @@ class TOMWrapper:
 
         return True
 
-    def add_direct_lake_table(
+    def add_direct_lake_tables(
         self,
-        table_name: str,
-        source_table_name: str,
+        tables: dict,
         source: Optional[str | UUID] = None,
         source_type: Optional[str] = None,
         source_workspace: Optional[str | UUID] = None,
         use_sql_endpoint: bool = False,
     ):
         """
+        Adds table(s) (in Direct Lake mode) to the semantic model. The semantic model must only use Direct Lake mode and the sources must be viable for Direct Lake.
+
+        If the tables source from the same single source which already exists in the model, set source, source_type and source_workspace to None (or do not specify them at all).
 
         Parameters
         ----------
-        table_name : str
-            The name of the table to be added to the model.
-        source_table_name : str
-            The name of the source table in the Lakehouse or Warehouse to connect to. If using a table with a schema, enter it in 'schema.table' format.
+        tables : dict
+            The table or tables to be added to the model. Can be a single table name, a dictionary with table details, or a list of table names or dictionaries.
+
+            Example 1 (single table):
+                tables = {
+                    "Geography": "dbo.DimGeography"
+                }
+            Example 2 (single table, no schema):
+                tables = {
+                    "Geography": "DimGeography"
+                }
+            Example 3 (multiple tables):
+                tables = {
+                    "Geography": "dbo.DimGeography",
+                    "Sales": "dbo.FactSales",
+                    "Customer": "dbo.DimCustomer",
+                }
         source : str | uuid.UUID, default=None
             The source name or ID. This is the name or ID of the Lakehouse or Warehouse.
         source_type : str, default=None
@@ -6132,13 +6147,25 @@ class TOMWrapper:
                 "Cannot add Direct Lake tables. Ensure all current tables are in Direct Lake mode and none of the Direct Lake sources use a SQL endpoint."
             )
 
-        if any(t.Name == table_name for t in self.model.Tables):
-            print(f"A table with the name '{table_name}' already exists in the model.")
-            return
-
-        schema_name = None
-        if "." in source_table_name:
-            schema_name, source_table_name = source_table_name.split(".")
+        model_map = {}
+        for table_name, source_table_name in tables.items():
+            if any(t.Name == table_name for t in self.model.Tables):
+                print(
+                    f"A table with the name '{table_name}' already exists in the model."
+                )
+                return
+            if "." in source_table_name:
+                schema_name, source_table = source_table_name.split(".")
+            else:
+                schema_name = None
+                source_table = source_table_name
+            if table_name in model_map:
+                raise ValueError(f"Duplicate table name detected: {table_name}")
+            model_map[table_name] = {
+                "schemaName": schema_name,
+                "sourceTableName": source_table,
+                "columns": [],
+            }
 
         # Identify the shared expression
         sources = self.get_direct_lake_sources()
@@ -6222,49 +6249,64 @@ class TOMWrapper:
                 )
                 add_expression = True
 
-        # Identify columns
         if not source_workspace_id:
             source_workspace_id = resolve_workspace_id(source_workspace)
         if not source_id:
             source_id = resolve_item_id(
                 item=source, type=source_type, workspace=source_workspace_id
             )
-        path = create_abfss_path(
-            lakehouse_id=source_id,
-            lakehouse_workspace_id=source_workspace_id,
-            delta_table_name=source_table_name,
-            schema=schema_name,
-        )
 
-        df_columns = list_columns_from_path(path)
-        if df_columns.empty:
-            raise ValueError(
-                f"{icons.red_dot} No columns found at the specified source table. Please ensure the 'source_table_name' is correct and that the table contains columns."
+        # Finish model_map
+        for table_name, items in model_map.items():
+            source_table_name = items["sourceTableName"]
+            schema_name = items["schemaName"]
+            path = create_abfss_path(
+                lakehouse_id=source_id,
+                lakehouse_workspace_id=source_workspace_id,
+                delta_table_name=source_table_name,
+                schema=schema_name,
             )
+
+            df_columns = list_columns_from_path(path)
+            if df_columns.empty:
+                raise ValueError(
+                    f"{icons.red_dot} No columns found at the specified source table. Please ensure the 'source_table_name' is correct and that the table contains columns."
+                )
+            for _, r in df_columns.iterrows():
+                column_name = r["Column Name"]
+                data_type = r["Data Type"]
+                converted_data_type = convert_column_data_type(data_type)
+                model_map[table_name]["columns"].append(
+                    {
+                        "columnName": column_name,
+                        "dataType": converted_data_type,
+                    }
+                )
 
         # Create expression if necessary
         if add_expression:
             self.add_expression(name=expression_name, expression=expr)
 
         # Add elements to the model
-        t = self.add_table(name=table_name)
-        self.add_entity_partition(
-            table_name=table_name,
-            entity_name=source_table_name,
-            expression=expression_name,
-            schema_name=schema_name,
-        )
-        for _, row in df_columns.iterrows():
-            column_name = row["Column Name"]
-            data_type = row["Data Type"]
-            converted_data_type = convert_column_data_type(data_type)
-            self.add_data_column(
+        for table_name, items in model_map.items():
+            source_table_name = items["sourceTableName"]
+            schema_name = items["schemaName"]
+            self.add_table(name=table_name)
+            self.add_entity_partition(
                 table_name=table_name,
-                column_name=column_name,
-                source_column=column_name,
-                data_type=converted_data_type,
+                entity_name=source_table_name,
+                expression=expression_name,
+                schema_name=schema_name,
             )
-        return t
+            for column in items["columns"]:
+                column_name = column["columnName"]
+                data_type = column["dataType"]
+                self.add_data_column(
+                    table_name=table_name,
+                    column_name=column_name,
+                    source_column=column_name,
+                    data_type=data_type,
+                )
 
     def close(self):
 
