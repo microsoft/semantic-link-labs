@@ -141,8 +141,8 @@ def _collect_data_from_metric_view(
     definition = mv_match.get("View Definition")
     objects = mv_match.get("Columns")
     source = definition.get("source")
-    joins = definition.get("joins")
-    source_database, source_schema, source_table = source.split(".")
+    joins = definition.get("joins", [])
+    source_catalog, source_schema, source_table = source.split(".")
 
     tables = []
     relationships = []
@@ -150,7 +150,7 @@ def _collect_data_from_metric_view(
     measures = {}
     tables.append(
         {
-            "databaseName": source_database,
+            "catalogName": source_catalog,
             "schemaName": source_schema,
             "tableName": source_table,
             "isSource": True,
@@ -159,37 +159,51 @@ def _collect_data_from_metric_view(
 
     # Determine relationships
     for join in joins:
-        database, schema, table = join["source"].split(".")
+        catalog, schema, table = join["source"].split(".")
         tables.append(
             {
-                "databaseName": database,
+                "catalogName": catalog,
                 "schemaName": schema,
                 "tableName": table,
                 "isSource": False,
             }
         )
-        left, right = join["on"].split("=")
 
-        left = left.strip()
-        right = right.strip()
+        r = join.get('on')
+        join_source = join.get('source')
+        join_name = join.get('name')
+        left, right = r.split('=')
+        from_object = left.strip()
+        to_object = right.strip()
+        from_table_alias, from_column = from_object.split('.')
+        to_table_alias, to_column = to_object.split('.')
 
-        from_table_alias, from_column = left.split(".")
-        to_table_alias, to_column = right.split(".")
-
+        from_source = None
+        to_source = None
         if from_table_alias == "source":
-            from_table_alias = source_table
+            from_source = source
+        elif from_table_alias == join_name:
+            from_source = join_source
         if to_table_alias == "source":
-            to_table_alias = source_table
+            to_source = source
+        elif to_table_alias == join_name:
+            to_source = join_name
+
+        if from_source is None or to_source is None:
+            raise ValueError()
+
+        from_catalog, from_schema, from_table = from_source.split('.')
+        to_catalog, to_schema, to_table = to_source.split('.')
 
         relationships.append(
             {
-                "from_database": database,
-                "from_schema": schema,
-                "from_table": from_table_alias,
+                "from_catalog": from_catalog,
+                "from_schema": from_schema,
+                "from_table": from_table,
                 "from_column": from_column,
-                "to_database": database,  # assuming same DB for now
-                "to_schema": schema,  # ⚠️ adjust if different joins possible
-                "to_table": to_table_alias,
+                "to_catalog": to_catalog,
+                "to_schema": to_schema,
+                "to_table": to_table,
                 "to_column": to_column,
             }
         )
