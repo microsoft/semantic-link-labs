@@ -2964,3 +2964,103 @@ def convert_column_data_type(str_type: str) -> str:
     else:
         print(f"Warning: Unrecognized data type '{str_type}'. Defaulting to 'String'.")
         return "String"
+
+
+def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
+    """
+    Convert a simple Databricks SQL measure expression to a DAX expression.
+
+    Parameters:
+        expression (str): SQL expression from Databricks metric view
+        source_table_name (str): Table name to use in DAX
+
+    Returns:
+        str: Converted DAX expression
+    """
+
+    expr = expression.strip()
+
+    # 1. Handle COUNT(*)
+    if re.fullmatch(r"COUNT\s*\(\s*\*\s*\)", expr, re.IGNORECASE):
+        return f"COUNTROWS('{source_table_name}')"
+
+    # 2. Replace source.column -> 'table'[column]
+    def replace_source_column(match):
+        column = match.group(1)
+        return f"'{source_table_name}'[{column}]"
+
+    expr = re.sub(
+        r"\bsource\.([a-zA-Z_][a-zA-Z0-9_]*)\b",
+        replace_source_column,
+        expr,
+        flags=re.IGNORECASE,
+    )
+
+    # 3. Normalize common aggregations (optional but useful)
+    # e.g. SUM(source.col) -> SUM('table'[col])
+    # (Already handled by replacement above)
+
+    return expr
+
+
+def convert_format(fmt: dict) -> str:
+    """
+    Converts the format from Databricks to a Power BI format string.
+    """
+
+    def decimals(dp):
+        if dp["type"] == "EXACT":
+            places = dp.get("places", 0)
+            return "." + ("0" * places) if places > 0 else ""
+        elif dp["type"] == "ALL":
+            return ".################"
+        return ""
+
+    def grouping(hide):
+        return "" if hide else ","
+
+    def abbreviation(abbrev):
+        if abbrev == "COMPACT":
+            return ",,"  # millions
+        return ""
+
+    symbol_map = {
+        "USD": "$",  # US Dollar
+        "EUR": "€",  # Euro
+        "GBP": "£",  # British Pound
+        "ILS": "₪",  # Israeli Shekel
+        "JPY": "¥",  # Japanese Yen
+        "CNY": "¥",  # Chinese Yuan
+        "INR": "₹",  # Indian Rupee
+        "KRW": "₩",  # South Korean Won
+        "RUB": "₽",  # Russian Ruble
+        "TRY": "₺",  # Turkish Lira
+    }
+
+    if "currency" in fmt:
+        f = fmt["currency"]
+        symbol = symbol_map.get(f.get("currency_code"))
+        if not symbol:
+            print(
+                f"Currency code '{f.get('currency_code')}' not recognized. Defaulting to no symbol."
+            )
+            return None
+        return (
+            f"{symbol}#"
+            + grouping(f["hide_group_separator"])
+            + "0"
+            + abbreviation(f["abbreviation"])
+            + decimals(f["decimal_places"])
+        )
+
+    if "number" in fmt:
+        f = fmt["number"]
+        return (
+            "#"
+            + grouping(f["hide_group_separator"])
+            + "0"
+            + abbreviation(f["abbreviation"])
+            + decimals(f["decimal_places"])
+        )
+
+    return None

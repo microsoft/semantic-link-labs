@@ -1,10 +1,13 @@
-from typing import Optional, List
+from typing import Optional
 from collections import defaultdict
 from itertools import combinations
-import re
+from uuid import UUID
 import json
 from sempy_labs._helper_functions import (
     convert_column_data_type,
+    resolve_item_id,
+    resolve_workspace_id,
+    convert_sql_to_dax,
 )
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
@@ -16,106 +19,9 @@ from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
 )
 from sempy_labs._sql import ConnectMirroredAzureDatabricksCatalog
 import sempy_labs._icons as icons
-
-
-def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
-    """
-    Convert a simple Databricks SQL measure expression to a DAX expression.
-
-    Parameters:
-        expression (str): SQL expression from Databricks metric view
-        source_table_name (str): Table name to use in DAX
-
-    Returns:
-        str: Converted DAX expression
-    """
-
-    expr = expression.strip()
-
-    # 1. Handle COUNT(*)
-    if re.fullmatch(r"COUNT\s*\(\s*\*\s*\)", expr, re.IGNORECASE):
-        return f"COUNTROWS('{source_table_name}')"
-
-    # 2. Replace source.column -> 'table'[column]
-    def replace_source_column(match):
-        column = match.group(1)
-        return f"'{source_table_name}'[{column}]"
-
-    expr = re.sub(
-        r"\bsource\.([a-zA-Z_][a-zA-Z0-9_]*)\b",
-        replace_source_column,
-        expr,
-        flags=re.IGNORECASE,
-    )
-
-    # 3. Normalize common aggregations (optional but useful)
-    # e.g. SUM(source.col) -> SUM('table'[col])
-    # (Already handled by replacement above)
-
-    return expr
-
-
-def convert_format(fmt: dict) -> str:
-    """
-    Converts the format from Databricks to a Power BI format string.
-    """
-
-    def decimals(dp):
-        if dp["type"] == "EXACT":
-            places = dp.get("places", 0)
-            return "." + ("0" * places) if places > 0 else ""
-        elif dp["type"] == "ALL":
-            return ".################"
-        return ""
-
-    def grouping(hide):
-        return "" if hide else ","
-
-    def abbreviation(abbrev):
-        if abbrev == "COMPACT":
-            return ",,"  # millions
-        return ""
-
-    symbol_map = {
-        "USD": "$",  # US Dollar
-        "EUR": "€",  # Euro
-        "GBP": "£",  # British Pound
-        "ILS": "₪",  # Israeli Shekel
-        "JPY": "¥",  # Japanese Yen
-        "CNY": "¥",  # Chinese Yuan
-        "INR": "₹",  # Indian Rupee
-        "KRW": "₩",  # South Korean Won
-        "RUB": "₽",  # Russian Ruble
-        "TRY": "₺",  # Turkish Lira
-    }
-
-    if "currency" in fmt:
-        f = fmt["currency"]
-        symbol = symbol_map.get(f.get("currency_code"))
-        if not symbol:
-            print(
-                f"Currency code '{f.get('currency_code')}' not recognized. Defaulting to no symbol."
-            )
-            return None
-        return (
-            f"{symbol}#"
-            + grouping(f["hide_group_separator"])
-            + "0"
-            + abbreviation(f["abbreviation"])
-            + decimals(f["decimal_places"])
-        )
-
-    if "number" in fmt:
-        f = fmt["number"]
-        return (
-            "#"
-            + grouping(f["hide_group_separator"])
-            + "0"
-            + abbreviation(f["abbreviation"])
-            + decimals(f["decimal_places"])
-        )
-
-    return None
+from sempy_labs.mirrored_azure_databricks_catalog._items import (
+    get_mirrored_azure_databricks_catalog
+)
 
 
 def _collect_data_from_metric_view(
@@ -136,8 +42,7 @@ def _collect_data_from_metric_view(
     mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view), None)
 
     if not mv_match:
-        print("The metrics view does not exist...")
-        return
+        raise ValueError(f"The '{metric_view}' metric view does not exist or could not be found.")
 
     # Safely extract definition and columns
     definition = mv_match.get("View Definition")
@@ -156,7 +61,12 @@ def _collect_data_from_metric_view(
 
     # Determine relationships
     for idx, join in enumerate(joins):
+        join_name = join.get("name")
         join_source = join.get("source")
+        join_on = join.get("on")
+        if ' AND ' in join_on:
+            print(f"Joins with multiple conditions are not supported. Adjust the tables so that joins only have a single condition. Multi-conditional join: {join_on}.")
+            return
         catalog, schema, table = join_source.split(".")
         model_map["sources"][join_source] = {
             "catalogName": catalog,
@@ -165,9 +75,7 @@ def _collect_data_from_metric_view(
             "isSource": False,
         }
 
-        r = join.get("on")
-        join_name = join.get("name")
-        left, right = r.split("=")
+        left, right = join_on.split("=")
         from_object = left.strip()
         to_object = right.strip()
         from_table_alias, from_column = from_object.split(".")
@@ -179,7 +87,7 @@ def _collect_data_from_metric_view(
         to_source = alias_to_source.get(to_table_alias)
 
         if from_source is None or to_source is None:
-            raise ValueError()
+            raise ValueError(f"Could not resolve table aliases in the join condition: '{from_table_alias}' or '{to_table_alias}' not found among source and joins.")
 
         from_catalog, from_schema, from_table = from_source.split(".")
         to_catalog, to_schema, to_table = to_source.split(".")
@@ -207,8 +115,8 @@ def _collect_data_from_metric_view(
         table_name = s["tableName"]
 
         model_map["tables"][table_name] = {
-            "catalog": s["catalogName"],
-            "schema": s["schemaName"],
+            "catalogName": s["catalogName"],
+            "schemaName": s["schemaName"],
             "columns": [],
             "measures": [],
         }
@@ -286,83 +194,133 @@ def _collect_data_from_metric_view(
 def gen_sm(
     name: str,
     model_map: dict,
-    sources: List[dict],
+    sources: dict,
     workspace: Optional[str | UUID] = None,
 ):
+    """
+
+    Parameters
+    ----------
+    name : str
+        Name of the semantic model to create.
+    workspace : str | uuid.UUID, default=None
+        The workspace in which to create the semantic model.
+    sources : dict
+
+        Example:
+
+        sources = {
+            "catalog1": {
+                "mirror": "",
+                "workspace": "",
+            },
+            "catalog2": {
+                "mirror": "",
+                "workspace": "",
+            }
+        }
+    """
 
     create_blank_semantic_model(dataset=name, workspace=workspace, overwrite=False)
 
-    catalogs = list({s["catalogName"] for s in model_map["sources"].values()})
+    catalogs = {s["catalogName"] for s in model_map["sources"].values()}
 
-    if len(catalogs) > 1:
-        print("use generate and then")
+    mirrored_catalogs = {}
+    for catalog, items in sources.items():
+        mirror = items.get("mirror")
+        ws = items.get("workspace")
+        if not mirror or not ws:
+            raise ValueError(
+                f"{icons.warning} Skipping catalog '{catalog}' as it does not have a mirror and workspace defined in the sources."
+            )
+        mirror_workspace_id = resolve_workspace_id(workspace=ws)
+        mirror_id = resolve_item_id(item=mirror, type="MirroredAzureDatabricksCatalog", workspace=mirror_workspace_id)
+        mirror_catalog = get_mirrored_azure_databricks_catalog(mirrored_azure_databricks_catalog=mirror_id, workspace=mirror_workspace_id, return_dataframe=False).get('properties', {}).get('catalogName')
+        if catalog != mirror_catalog:
+            raise ValueError(
+                f"{icons.warning} The catalog name '{catalog}' in the model map does not match the catalog name '{mirror_catalog}' of the mirrored Azure Databricks Catalog item."
+            )
+        if catalog in mirrored_catalogs:
+            raise ValueError(
+                f"{icons.warning} Duplicate catalog '{catalog}' found in sources. Each catalog should only be listed once."
+            )
+        mirrored_catalogs[catalog] = {
+            "mirror_id": mirror_id,
+            "workspace_id": mirror_workspace_id,
+        }
 
-    expr = generate_shared_expression()
+    if catalogs != mirrored_catalogs.keys():
+        raise ValueError(
+            f"{icons.red_dot} The catalogs in the model map do not match the mirrored catalogs in the sources."
+        )
 
     # Generate semantic model
-    with connect_semantic_model(dataset=name, workspace=workspace) as tom:
+    with connect_semantic_model(dataset=name, workspace=workspace, readonly=False) as tom:
 
         # Add expression
-        expression_name = "DLMirror"
-        tom.add_expression(name=expression_name, expression=expr)
-        for t in tables:
-            table_name = t.get("tableName")
-            schema_name = t.get("schemaName")
-            tom.add_table(name=table_name)
+        for catalog, info in mirrored_catalogs.items():
+            mirror_id = info["mirror_id"]
+            mirror_workspace_id = info["workspace_id"]
+            mirror_expr = generate_shared_expression(
+                item=mirror_id,
+                type="MirroredAzureDatabricksCatalog",
+                workspace=mirror_workspace_id,
+                use_sql_endpoint=False,
+            )
+            tom.add_expression(name=f"Mirror_{catalog}", expression=mirror_expr)
+
+        for table_name, table_info in model_map["tables"].items():
+            catalog = table_info["catalogName"]
+            schema_name = table_info["schemaName"]
+            mirror_expr_name = f"Mirror_{catalog}"
+            tom.add_table(
+                name=table_name,
+            )
             tom.add_entity_partition(
                 table_name=table_name,
                 entity_name=table_name,
-                expression=expression_name,
+                expression=mirror_expr_name,
                 schema_name=schema_name,
             )
 
-        for col_name, col_info in columns.items():
-            table_name = col_info.get("tableName")
-            type = col_info.get("type")
-            data_type = convert_column_data_type(type)
-            display_name = col_info.get("displayName")
-            desc = col_info.get("description")
-            expr = col_info.get("expression")
-            format = col_info.get("format")
-            #  synonyms = col_info.get("synonyms")
-            if not table_name:
-                print(
-                    f"Skipping column {col_name} as its definition could not be determined from the expression."
+            for column in table_info["columns"]:
+                column_name = column["columnName"]
+                source_column = column["sourceColumn"]
+                data_type = column["dataType"]
+                # format = column.get("format")
+                # synonyms = column.get("synonyms")
+                desc = column.get("description")
+                tom.add_data_column(
+                    table_name=table_name,
+                    column_name=column_name,
+                    source_column=source_column,
+                    data_type=data_type,
+                    # dformat_string=convert_format(format) if format else None,
+                    description=desc,
                 )
-                continue
-            tom.add_data_column(
-                table_name=table_name,
-                column_name=display_name,
-                source_column=col_name,
-                data_type=data_type,
-                description=desc,
-            )
 
-        for measure_name, measure_info in measures.items():
-            table_name = measure_info.get("tableName")
-            format = measure_info.get("format")
-            #  synonyms = measure_info.get("synonyms")
-            expr = measure_info.get("expression")
-            desc = measure_info.get("description")
-            dax = convert_sql_to_dax(expr, table_name)
-            converted_format = convert_format(format) if format else None
-            tom.add_measure(
-                table_name=table_name,
-                measure_name=measure_name,
-                expression=dax,
-                format_string=converted_format,
-                description=desc,
-            )
+            for measure in table_info['measures'].items():
+                table_name = measure.get("tableName")
+                #format = measure.get("format")
+                #  synonyms = measure_info.get("synonyms")
+                expr = measure.get("expression")
+                desc = measure.get("description")
+                #converted_format = convert_format(format) if format else None
+                tom.add_measure(
+                    table_name=table_name,
+                    measure_name=measure,
+                    expression=expr,
+                    #format_string=converted_format,
+                    description=desc,
+                )
 
-        for r in relationships:
+        for r in model_map['relationships']:
             tom.add_relationship(
                 from_table=r["from_table"],
                 from_column=r["from_column"],
                 to_table=r["to_table"],
                 to_column=r["to_column"],
             )
-
-        # TODO: add synonyms to both columns and measures in TOM
 
 
 def infer_model_relationships(column_list, workspace):

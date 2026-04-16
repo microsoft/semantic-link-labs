@@ -6175,6 +6175,7 @@ class TOMWrapper:
             "Warehouse",
             "MirroredAzureDatabricksCatalog",
             "SQLDatabase",
+            "MirroredDatabase",
         ]
         add_expression = False
         expression_name = None
