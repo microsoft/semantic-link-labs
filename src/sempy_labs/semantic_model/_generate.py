@@ -26,7 +26,7 @@ def generate_direct_lake_semantic_model(
     tables: List[str],
     source: str | UUID,
     source_type: Literal[
-        "Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog"
+        "Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog", "MirroredDatabase"
     ] = "Lakehouse",
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = False,
