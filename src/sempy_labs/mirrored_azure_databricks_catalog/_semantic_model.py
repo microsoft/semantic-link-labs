@@ -20,7 +20,7 @@ from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
 from sempy_labs._sql import ConnectMirroredAzureDatabricksCatalog
 import sempy_labs._icons as icons
 from sempy_labs.mirrored_azure_databricks_catalog._items import (
-    get_mirrored_azure_databricks_catalog
+    get_mirrored_azure_databricks_catalog,
 )
 from sempy._utils._log import log
 
@@ -37,7 +37,9 @@ def _collect_data_from_metric_view(
     parts = metric_view.split(".")
 
     if len(parts) != 3:
-        raise ValueError(f"Invalid metric_view format: '{metric_view}' (expected 'catalog.schema.metric')")
+        raise ValueError(
+            f"Invalid metric_view format: '{metric_view}' (expected 'catalog.schema.metric')"
+        )
 
     catalog, schema, metric_view_name = parts
 
@@ -51,7 +53,9 @@ def _collect_data_from_metric_view(
     mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view_name), None)
 
     if not mv_match:
-        raise ValueError(f"The '{metric_view}' metric view does not exist or could not be found.")
+        raise ValueError(
+            f"The '{metric_view}' metric view does not exist or could not be found."
+        )
 
     # Safely extract definition and columns
     definition = mv_match.get("View Definition")
@@ -73,8 +77,10 @@ def _collect_data_from_metric_view(
         join_name = join.get("name")
         join_source = join.get("source")
         join_on = join.get("on")
-        if ' AND ' in join_on:
-            print(f"Joins with multiple conditions are not supported. Adjust the tables so that joins only have a single condition. Multi-conditional join: {join_on}.")
+        if " AND " in join_on:
+            print(
+                f"Joins with multiple conditions are not supported. Adjust the tables so that joins only have a single condition. Multi-conditional join: {join_on}."
+            )
             return
         catalog, schema, table = join_source.split(".")
         model_map["sources"][join_source] = {
@@ -96,7 +102,9 @@ def _collect_data_from_metric_view(
         to_source = alias_to_source.get(to_table_alias)
 
         if from_source is None or to_source is None:
-            raise ValueError(f"Could not resolve table aliases in the join condition: '{from_table_alias}' or '{to_table_alias}' not found among source and joins.")
+            raise ValueError(
+                f"Could not resolve table aliases in the join condition: '{from_table_alias}' or '{to_table_alias}' not found among source and joins."
+            )
 
         from_catalog, from_schema, from_table = from_source.split(".")
         to_catalog, to_schema, to_table = to_source.split(".")
@@ -201,7 +209,7 @@ def _collect_data_from_metric_view(
 
 
 @log
-def generate_semantic_model_from_metric_view(
+def _generate_semantic_model_from_metric_view(
     name: str,
     metric_view: str,
     databricks_workspace: str,
@@ -240,7 +248,11 @@ def generate_semantic_model_from_metric_view(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-    model_map = _collect_data_from_metric_view(metric_view=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    model_map = _collect_data_from_metric_view(
+        metric_view=metric_view,
+        databricks_workspace=databricks_workspace,
+        databricks_token=databricks_token,
+    )
 
     create_blank_semantic_model(dataset=name, workspace=workspace, overwrite=False)
 
@@ -255,8 +267,20 @@ def generate_semantic_model_from_metric_view(
                 f"{icons.warning} Skipping catalog '{catalog}' as it does not have a mirror and workspace defined in the sources."
             )
         mirror_workspace_id = resolve_workspace_id(workspace=ws)
-        mirror_id = resolve_item_id(item=mirror, type="MirroredAzureDatabricksCatalog", workspace=mirror_workspace_id)
-        mirror_catalog = get_mirrored_azure_databricks_catalog(mirrored_azure_databricks_catalog=mirror_id, workspace=mirror_workspace_id, return_dataframe=False).get('properties', {}).get('catalogName')
+        mirror_id = resolve_item_id(
+            item=mirror,
+            type="MirroredAzureDatabricksCatalog",
+            workspace=mirror_workspace_id,
+        )
+        mirror_catalog = (
+            get_mirrored_azure_databricks_catalog(
+                mirrored_azure_databricks_catalog=mirror_id,
+                workspace=mirror_workspace_id,
+                return_dataframe=False,
+            )
+            .get("properties", {})
+            .get("catalogName")
+        )
         if catalog != mirror_catalog:
             raise ValueError(
                 f"{icons.warning} The catalog name '{catalog}' in the model map does not match the catalog name '{mirror_catalog}' of the mirrored Azure Databricks Catalog item."
@@ -276,7 +300,9 @@ def generate_semantic_model_from_metric_view(
         )
 
     # Generate semantic model
-    with connect_semantic_model(dataset=name, workspace=workspace, readonly=False) as tom:
+    with connect_semantic_model(
+        dataset=name, workspace=workspace, readonly=False
+    ) as tom:
 
         # Add expression
         for catalog, info in mirrored_catalogs.items():
@@ -320,22 +346,22 @@ def generate_semantic_model_from_metric_view(
                     description=desc,
                 )
 
-            for measure in table_info['measures'].items():
+            for measure in table_info["measures"].items():
                 table_name = measure.get("tableName")
-                #format = measure.get("format")
+                # format = measure.get("format")
                 #  synonyms = measure_info.get("synonyms")
                 expr = measure.get("expression")
                 desc = measure.get("description")
-                #converted_format = convert_format(format) if format else None
+                # converted_format = convert_format(format) if format else None
                 tom.add_measure(
                     table_name=table_name,
                     measure_name=measure,
                     expression=expr,
-                    #format_string=converted_format,
+                    # format_string=converted_format,
                     description=desc,
                 )
 
-        for r in model_map['relationships']:
+        for r in model_map["relationships"]:
             tom.add_relationship(
                 from_table=r["from_table"],
                 from_column=r["from_column"],

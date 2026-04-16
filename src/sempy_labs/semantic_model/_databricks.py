@@ -42,7 +42,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 
 
-def generate_databricks_connection_name(
+def _generate_databricks_connection_name(
     name: str = None, dataframe: pd.DataFrame = None
 ) -> str:
     if name is not None:
@@ -61,7 +61,7 @@ def generate_databricks_connection_name(
     return name
 
 
-def check_tables_format(tables: list):
+def _check_tables_format(tables: list):
 
     # Check that tables are in the correct format (catalog.schema.table)
     for t in tables:
@@ -86,7 +86,7 @@ def check_tables_format(tables: list):
         )
 
 
-def create_expression_name(
+def _create_expression_name(
     base_expression_name: str = "MirrorDL", expression_names: list = None
 ) -> str:
 
@@ -101,7 +101,7 @@ def create_expression_name(
 
 
 @log
-def create_or_update_semantic_model_from_mirrored_azure_databricks(
+def _create_or_update_semantic_model_from_mirrored_azure_databricks(
     dataset: str | UUID,
     # databricks_workspace: str,
     # databricks_token: str,
@@ -166,7 +166,7 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
             f"The '{dataset}' semantic model does not already exist. If you want to create a new semantic model, please provide a name for the dataset instead of an id."
         )
 
-    check_tables_format(tables)
+    _check_tables_format(tables)
 
     if not isinstance(mirrored_azure_databricks_catalogs, list):
         mirrored_azure_databricks_catalogs = [mirrored_azure_databricks_catalogs]
@@ -203,7 +203,7 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
     # databricks_workspace = databricks_workspace.rstrip("/")
     # df = list_connections()
 
-    # databricks_connection_name = generate_databricks_connection_name(
+    # databricks_connection_name = _generate_databricks_connection_name(
     #    name=databricks_connection_name, dataframe=df
     # )
     # df_filt = df[
@@ -327,7 +327,7 @@ def create_or_update_semantic_model_from_mirrored_azure_databricks(
 
             # Add the expression if it does not exist
             if not found:
-                expression_name = create_expression_name(
+                expression_name = _create_expression_name(
                     expression_names=expression_names
                 )
                 tom.add_expression(name=expression_name, expression=expr)
