@@ -3235,33 +3235,10 @@ class TOMWrapper:
                 row = dfT_filt.iloc[0]
                 rowCount = str(row["Row Count"])
                 totalSize = str(row["Total Size"])
-                dict_size = str(row["Dictionary Size"])
-                data_size = str(row["Data Size"])
-                hierarchy_size = str(row["Hierarchy Size"])
-                user_hierarchy_size = str(row["User Hierarchy Size"])
-                relationship_size = str(row["Relationship Size"])
-                pct_db = str(row["% DB"])
-
                 self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
                 self.set_annotation(
                     object=t, name="Vertipaq_TotalSize", value=totalSize
                 )
-                self.set_annotation(object=t, name="Vertipaq_DataSize", value=data_size)
-                self.set_annotation(
-                    object=t, name="Vertipaq_DictionarySize", value=dict_size
-                )
-                self.set_annotation(
-                    object=t, name="Vertipaq_HierarchySize", value=hierarchy_size
-                )
-                self.set_annotation(
-                    object=t,
-                    name="Vertipaq_UserHierarchySize",
-                    value=user_hierarchy_size,
-                )
-                self.set_annotation(
-                    object=t, name="Vertipaq_RelationshipSize", value=relationship_size
-                )
-                self.set_annotation(object=t, name="Vertipaq_%DB", value=pct_db)
             for c in t.Columns:
                 dfC_filt = dfC[
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
@@ -3272,10 +3249,7 @@ class TOMWrapper:
                     dataSize = str(row["Data Size"])
                     dictSize = str(row["Dictionary Size"])
                     hierSize = str(row["Hierarchy Size"])
-                    is_resident = str(row["Is Resident"])
-                    temp = str(row["Temperature"])
                     card = str(row["Column Cardinality"])
-                    last_accessed = str(row["Last Accessed"])
                     self.set_annotation(
                         object=c, name="Vertipaq_TotalSize", value=totalSize
                     )
@@ -3290,15 +3264,6 @@ class TOMWrapper:
                     )
                     self.set_annotation(
                         object=c, name="Vertipaq_Cardinality", value=card
-                    )
-                    self.set_annotation(
-                        object=c, name="Vertipaq_IsResident", value=is_resident
-                    )
-                    self.set_annotation(
-                        object=c, name="Vertipaq_Temperature", value=temp
-                    )
-                    self.set_annotation(
-                        object=c, name="Vertipaq_LastAccessed", value=last_accessed
                     )
             for p in t.Partitions:
                 dfP_filt = dfP[
@@ -3331,9 +3296,7 @@ class TOMWrapper:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
             if not dfR_filt.empty:
                 relSize = str(dfR_filt["Used Size"].iloc[0])
-                mult = str(dfR_filt["Multiplicity"].iloc[0])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
-                self.set_annotation(object=r, name="Vertipaq_Multiplicity", value=mult)
         try:
             runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
@@ -4096,26 +4059,22 @@ class TOMWrapper:
                 )
 
             elif i == 0:
-                text = p.Expression
-                text = text.rstrip()
+                text = p.Source.Expression.rstrip()
 
-                ind = text.rfind(" ") + 1
-                obj = text[ind:]
-                pattern = r"in\s*[^ ]*"
-                matches = list(re.finditer(pattern, text))
-
-                if matches:
-                    last_match = matches[-1]
-                    text_before_last_match = text[: last_match.start()]
-
-                    print(text_before_last_match)
-                else:
+                # Find the last "in <identifier>" block
+                match = re.search(r"in\s+(\S.*?)$", text, re.DOTALL)
+                if not match:
                     raise ValueError(f"{icons.red_dot} Invalid M-partition expression.")
 
-                endExpr = f'#"Filtered Rows IR" = Table.SelectRows({obj}, each [{column_name}] >= RangeStart and [{column_name}] <= RangeEnd)\n#"Filtered Rows IR"'
-                finalExpr = text_before_last_match + endExpr
-
-                p.Expression = finalExpr
+                obj = match.group(1).strip()
+                text_before = text[:match.start()].rstrip()
+                if not text_before.endswith(","):
+                    text_before += ","
+                new_step = (
+                    f'\n    #"Filtered Rows IR" = Table.SelectRows({obj}, '
+                    f'each [{column_name}] >= RangeStart and [{column_name}] <= RangeEnd)'
+                )
+                p.Source.Expression = f'{text_before}{new_step}\nin\n    #"Filtered Rows IR"'
             i += 1
 
         # Add expressions
