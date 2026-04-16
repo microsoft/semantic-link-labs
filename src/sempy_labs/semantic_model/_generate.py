@@ -34,7 +34,7 @@ def generate_direct_lake_semantic_model(
     refresh: bool = True,
 ):
     """
-    Dynamically generates a Direct Lake semantic model based on tables in a Fabric lakehouse.
+    Dynamically generates a Direct Lake semantic model based on tables in Fabric.
 
     Parameters
     ----------
@@ -43,9 +43,9 @@ def generate_direct_lake_semantic_model(
     tables : typing.List[str]
         List of tables to include in the semantic model. Table names should be schema-qualified if there are multiple tables with the same name across schemas (e.g. "schema1.tableA", "schema2.tableA", "schema1.tableB").
     source : str | uuid.UUID
-        The source item name or ID from which to generate the semantic model. This can be a Lakehouse, Mirrored Azure Databricks Catalog, Warehouse, or SQL Database.
-    source_type : typing.Literal["Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog"], default = "Lakehouse"
-        The type of the source item. Supported values are "Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog".
+        The source item name or ID from which to generate the semantic model. This can be a Lakehouse, Mirrored Azure Databricks Catalog, Warehouse, SQL Database, or Mirrored Database.
+    source_type : typing.Literal["Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog", "MirroredDatabase"], default = "Lakehouse"
+        The type of the source item. Supported values are "Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog", "MirroredDatabase".
     source_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the source item resides. This parameter is required if the source item is not in the same workspace as the semantic model will be created, and is ignored if the source item is in the same workspace. Defaults to None which resolves to the workspace of the attached lakehouse or if no lakehouse attached, resolves to the workspace of the notebook.
     use_sql_endpoint : bool, default=False
