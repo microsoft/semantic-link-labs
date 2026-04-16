@@ -22,24 +22,33 @@ import sempy_labs._icons as icons
 from sempy_labs.mirrored_azure_databricks_catalog._items import (
     get_mirrored_azure_databricks_catalog
 )
+from sempy._utils._log import log
 
 
 def _collect_data_from_metric_view(
     metric_view: str,
     databricks_workspace: str,
-    unity_catalog: str,
-    schema: str,
     databricks_token: str,
 ):
+    """
+    Generates a model map of sources, tables, columns, measures, relationships based on a Databricks Metric View.
+    """
+
+    parts = metric_view.split(".")
+
+    if len(parts) != 3:
+        raise ValueError(f"Invalid metric_view format: '{metric_view}' (expected 'catalog.schema.metric')")
+
+    catalog, schema, metric_view_name = parts
 
     mvs = list_databricks_metric_views(
         databricks_workspace=databricks_workspace,
-        unity_catalog=unity_catalog,
+        unity_catalog=catalog,
         schema=schema,
         databricks_token=databricks_token,
     )
     # Find the first matching metric view
-    mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view), None)
+    mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view_name), None)
 
     if not mv_match:
         raise ValueError(f"The '{metric_view}' metric view does not exist or could not be found.")
@@ -191,9 +200,12 @@ def _collect_data_from_metric_view(
     return model_map
 
 
-def gen_sm(
+@log
+def generate_semantic_model_from_metric_view(
     name: str,
-    model_map: dict,
+    metric_view: str,
+    databricks_workspace: str,
+    databricks_token: str,
     sources: dict,
     workspace: Optional[str | UUID] = None,
 ):
@@ -203,8 +215,12 @@ def gen_sm(
     ----------
     name : str
         Name of the semantic model to create.
-    workspace : str | uuid.UUID, default=None
-        The workspace in which to create the semantic model.
+    metric_view : str
+        In the format of catalog.schema.metric_view_name. This metric view will be used as the source to generate the semantic model.
+    databricks_workspace : str
+        The Databricks workspace URL (e.g. "https://adb-1234567890123456.7.azuredatabricks.net").
+    databricks_token : str
+        A Databricks personal access token with permissions to read the metric view and its underlying tables.
     sources : dict
 
         Example:
@@ -219,12 +235,17 @@ def gen_sm(
                 "workspace": "",
             }
         }
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    model_map = _collect_data_from_metric_view(metric_view=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
 
     create_blank_semantic_model(dataset=name, workspace=workspace, overwrite=False)
 
+    # Validate catalogs
     catalogs = {s["catalogName"] for s in model_map["sources"].values()}
-
     mirrored_catalogs = {}
     for catalog, items in sources.items():
         mirror = items.get("mirror")

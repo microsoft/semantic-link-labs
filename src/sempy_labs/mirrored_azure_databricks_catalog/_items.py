@@ -138,6 +138,8 @@ def update_mirrored_azure_databricks_catalog(
 
     Parameters
     ----------
+    mirrored_azure_databricks_catalog : str | uuid.UUID
+        The name or ID of the mirrored Azure Databricks catalog to be updated.
     name : str
         The display name of the mirrored Azure Databricks Catalog.
     auto_sync : bool, Default=None
