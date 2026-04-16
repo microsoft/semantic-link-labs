@@ -97,7 +97,7 @@ def create_databricks_connection(
         request="/v1/connections", payload=payload, method="post", status_codes=201
     )
 
-    print(f"{icons.green_dot} The '{name}' connection has been succesfully created.")
+    print(f"{icons.green_dot} The '{name}' connection has been successfully created.")
 
     return response.json().get("id")
 

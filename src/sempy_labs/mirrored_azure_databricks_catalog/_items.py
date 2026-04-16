@@ -89,7 +89,7 @@ def create_mirrored_azure_databricks_catalog(
     )
 
     print(
-        f"{icons.green_dot} The '{name}' Mirrored Azure Databricks Catalog has been succesfully created within the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{name}' Mirrored Azure Databricks Catalog has been successfully created within the '{workspace_name}' workspace."
     )
     return result.get("id")
 
@@ -142,8 +142,8 @@ def update_mirrored_azure_databricks_catalog(
         The display name of the mirrored Azure Databricks Catalog.
     auto_sync : bool, Default=None
         Enable or disable automatic synchronization for the catalog. Defaults to None, which means autoSync will be disabled.
-    mirroring_mode : typing.Literal["Full", "Partial"], Default="Full"
-        The mirroring mode for the catalog. Can be either "Full" or "Partial".
+    mirroring_mode : typing.Literal["Full", "Partial"], Default=None
+        The mirroring mode for the catalog. Can be either "Full" or "Partial". If None (the default), the existing mirroring mode is left unchanged.
     storage_connection_id : uuid.UUID, default=None
         The storage connection id. This is required when mirroring_mode is set to "Full".
     description : str, default=None
@@ -176,6 +176,11 @@ def update_mirrored_azure_databricks_catalog(
     if storage_connection_id:
         payload["publicUpdateableExtendedProperties"]["storageConnectionId"] = str(
             storage_connection_id
+        )
+
+    if payload == {"publicUpdateableExtendedProperties": {}}:
+        raise ValueError(
+            f"{icons.red_dot} At least one updatable property must be provided to update the mirrored Azure Databricks Catalog."
         )
 
     response = _base_api(
