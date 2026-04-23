@@ -124,6 +124,8 @@ def generate_direct_lake_semantic_model(
     from sempy_labs._generate_semantic_model import create_blank_semantic_model
     from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
+    print(f"Please transition to using the 'generate_direct_lake_semantic_model' function within the sempy_labs.semantic_model package.")
+
     if isinstance(lakehouse_tables, str):
         lakehouse_tables = [lakehouse_tables]
 
