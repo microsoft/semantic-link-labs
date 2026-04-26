@@ -2897,3 +2897,344 @@ def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
     response = _base_api(request=f"metadata/models/{item_id}", client="internal")
 
     return response.json().get("model", {}).get("id")
+
+
+def _resolve_function(func_name: str, namespace):
+    """
+    Resolve a function name string into a callable using only the provided namespace.
+
+    This resolver supports:
+      - Direct function names (e.g., "my_function")
+      - Single-level dotted names where the left side is an object in `namespace`
+        and the right side is an attribute of that object (e.g., "admin.list_events")
+
+    It does NOT:
+      - Import modules
+      - Resolve multi-level dotted paths (e.g., "a.b.c.func")
+      - Search outside the supplied `namespace`
+
+    Resolution fails immediately if any part of the name cannot be found.
+
+    Parameters
+    ----------
+    func_name : str
+        Name of the function to resolve. May be a simple name or a single-level
+        dotted path.
+
+    namespace : dict
+        Dictionary in which the function or root object must exist (typically `globals()`).
+
+    Returns
+    -------
+    callable
+        The resolved function object.
+
+    Raises
+    ------
+    ValueError
+        If the function name cannot be resolved, or if any part of a dotted path
+        does not exist in the provided namespace.
+    """
+
+    # Split the function name into parts (e.g., "admin.list_events" → ["admin", "list_events"])
+    parts = func_name.split(".")
+
+    # ---------------------------------------------------------
+    # Case 1: simple function name (no dots)
+    # ---------------------------------------------------------
+    if len(parts) == 1:
+        name = parts[0]
+
+        # The function must exist directly in the namespace
+        if name in namespace:
+            return namespace[name]
+        else:
+            # Fail if not found
+            raise ValueError(
+                f"{icons.red_dot} Function '{func_name}' not found in namespace!"
+            )
+    else:
+        # ---------------------------------------------------------
+        # Case 2: dotted path (object.attribute)
+        # ---------------------------------------------------------
+
+        # The first element must exist in the namespace (e.g., "admin")
+        module_name = parts[0]
+        name = parts[1]
+        if module_name in namespace:
+            return getattr(namespace[module_name], name)
+        else:
+            # Fail if not found
+            raise ValueError(f"{icons.red_dot} '{module_name}' not found in namespace!")
+
+
+def _count_rows(obj):
+    """
+    Count the number of logical records represented by an arbitrary object.
+
+    This utility normalizes row‑counting behavior across heterogeneous
+    structures (DataFrames, Series, lists, dicts), ensuring consistent
+    semantics when aggregating or merging results from multiple API calls.
+
+    Parameters
+    ----------
+    obj : Any
+        The object whose logical row count should be inferred. Supported
+        structures include:
+        - pandas.DataFrame
+        - pandas.Series
+        - list of dicts
+        - dict of lists
+        - any other object, which is treated as a single record
+
+    Behavior
+    --------
+    - DataFrame → number of rows.
+    - Series → number of elements.
+    - List of dicts → each element is one logical record.
+    - Mixed or non-dict lists → treated as a single record.
+    - Dict of lists → lists interpreted as column vectors; the maximum
+      list length is used as the row count.
+    - Any other type → treated as a single logical record.
+
+    Error Handling
+    --------------
+    - Never raises due to malformed or unexpected structures.
+    - Silently ignores non-countable values inside dicts/lists.
+    - Falls back to a row count of 1 on any exception.
+
+    Returns
+    -------
+    int
+        The inferred number of logical records represented by `obj`.
+    """
+
+    try:
+        # DataFrame → number of rows
+        if isinstance(obj, pd.DataFrame):
+            return len(obj)
+
+        # Series → number of elements
+        if isinstance(obj, pd.Series):
+            return len(obj)
+
+        # List of dicts → treat each element as a row
+        if isinstance(obj, list):
+            if all(isinstance(x, dict) for x in obj):
+                return len(obj)
+            # Mixed list → fallback to 1 row
+            return 1
+
+        # Dict with lists → assume lists represent columns
+        if isinstance(obj, dict):
+            list_lengths = []
+            for v in obj.values():
+                if isinstance(v, list):
+                    try:
+                        list_lengths.append(len(v))
+                    except Exception:
+                        # Non-countable list element → ignore
+                        pass
+
+            if list_lengths:
+                return max(list_lengths)  # pandas-like behavior
+
+            return 1  # single logical record
+
+        # Anything else → treat as 1 record
+        return 1
+
+    except Exception as e:
+        # Optional: enable this for debugging
+        # print(f"count_rows error: {e} (type={type(obj)})")
+        return 1
+
+
+def _deep_merge(a, b):
+    """
+    Recursively merge two objects of arbitrary structure.
+
+    Merge rules:
+    - pandas.DataFrame + pandas.DataFrame:
+        Concatenate rows (axis=0), index ignored.
+    - pandas.Series + pandas.Series:
+        Concatenate values (axis=0), index ignored.
+    - dict + dict:
+        Recursively merge keys. If a key exists in both, merge their values.
+    - list + list:
+        Concatenate lists.
+    - Any other combination:
+        Primitive overwrite → b replaces a.
+
+    Parameters
+    ----------
+    a : any
+        First object.
+    b : any
+        Second object.
+
+    Returns
+    -------
+    any
+        The merged result following the rules above.
+    """
+
+    # DataFrame + DataFrame → row-wise concat
+    if isinstance(a, pd.DataFrame) and isinstance(b, pd.DataFrame):
+        return pd.concat([a, b], ignore_index=True)
+
+    # Series + Series → concat
+    if isinstance(a, pd.Series) and isinstance(b, pd.Series):
+        return pd.concat([a, b], ignore_index=True)
+
+    # dict + dict → recursive merge
+    if isinstance(a, dict) and isinstance(b, dict):
+        merged = {}
+        keys = set(a.keys()) | set(b.keys())
+        for k in keys:
+            if k in a and k in b:
+                merged[k] = _deep_merge(a[k], b[k])
+            elif k in a:
+                merged[k] = a[k]
+            else:
+                merged[k] = b[k]
+        return merged
+
+    # list + list → concatenate
+    if isinstance(a, list) and isinstance(b, list):
+        return a + b
+
+    # Anything else → b wins
+    return b
+
+
+@log
+def execute_in_timeslots(
+    func_name, parameters_list, max_per_slot, slot_seconds, namespace
+):
+    """
+    Execute a function repeatedly using a fixed‑window rate limiter, merging
+    results and logging progress.
+
+    This helper resolves the target function once, then executes it for each
+    parameter set in `parameters_list` while enforcing a fixed‑window rate
+    limit. Results from each call are merged using `_deep_merge`, and row
+    counts are accumulated via `_count_rows`. If any call fails, the function
+    logs the error and returns partial results immediately.
+
+    Parameters
+    ----------
+    func_name : str
+        Name of the function to execute. May be a simple name or a single-level
+        dotted path. Resolved once using `_resolve_function` against `namespace`.
+
+    parameters_list : list of dict
+        A list where each element is a dictionary of keyword arguments to pass
+        to the resolved function. Each dictionary represents one independent
+        execution.
+
+    max_per_slot : int
+        Maximum number of allowed calls within a single fixed window.
+
+    slot_seconds : float
+        Duration (in seconds) of each fixed‑window interval.
+
+    namespace : dict
+        Namespace (typically `globals()`) used to resolve `func_name` into a
+        callable. No imports are performed.
+
+    Behavior
+    --------
+    - Resolves the target function once for efficiency.
+    - Iterates through each parameter set and executes the function.
+    - Enforces a **fixed‑window** rate limit:
+        * Tracks a single window start timestamp (`window_start`).
+        * Allows up to `max_per_slot` calls within each `slot_seconds` window.
+        * If the window expires (`elapsed >= slot_seconds`), the window resets.
+        * If the call limit is reached before expiration, the function sleeps
+          until the window duration has passed, then resets.
+    - Merges each result into an accumulated structure using `_deep_merge`.
+    - Counts logical rows returned by each call via `_count_rows`.
+    - Logs progress, rate‑limit state, and call details.
+
+    Error Handling
+    --------------
+    - Any exception during a function call is logged.
+    - Execution stops immediately on error.
+    - Partial merged results accumulated so far are returned.
+
+    Returns
+    -------
+    dict or pandas.DataFrame or None
+        The merged result of all successful calls. The structure depends on the
+        return type of the underlying function and the behavior of `_deep_merge`.
+    """
+
+    results = None  # Accumulated DataFrame OR merged dict
+    total_rows = 0  # Total number of rows returned across all calls
+
+    # Initialize sliding‑window rate limiting
+    window_start = time.time()
+    calls_in_window = 1
+
+    # Resolve the function only once for efficiency
+    func = _resolve_function(func_name, namespace)
+
+    # Iterate over each parameters
+    for idx, params in enumerate(parameters_list, start=1):
+
+        elapsed = time.time() - window_start
+
+        print("====================================================")
+        print(f"Iteration {idx}")
+
+        if elapsed >= slot_seconds:
+            print(f"{icons.in_progress} Window expired → resetting window.")
+            window_start = time.time()
+            elapsed = time.time() - window_start
+            calls_in_window = 1
+
+        elif calls_in_window > max_per_slot:
+            sleep_time = slot_seconds - elapsed
+            print(
+                f"{icons.in_progress} Rate limit reached → sleeping {sleep_time:.2f}s"
+            )
+            time.sleep(sleep_time)
+            window_start = time.time()
+            elapsed = time.time() - window_start
+            calls_in_window = 1
+            print(f"{icons.in_progress} Window reset after sleep.")
+
+        print(f"Elapsed in current window: {elapsed:.2f}s")
+        print(f"Calls in current window: {calls_in_window}/{max_per_slot}")
+
+        try:
+            call_str = (
+                f"{func_name}("
+                + ", ".join([f"{k}={repr(v)}" for k, v in params.items()])
+                + ")"
+            )
+            print(f"Executing now: {call_str}")
+
+            # Execute the resolved function
+            result = func(**params)
+
+            rows_idx = 0
+            results = _deep_merge(results, result)
+            rows_idx = _count_rows(result)
+
+            total_rows += rows_idx
+
+            print(f"{icons.green_dot} Returned '{rows_idx}' rows: {call_str}.")
+            print(f"{icons.green_dot} Partial results '{total_rows}'.")
+
+            calls_in_window += 1
+
+        except Exception as e:
+            print(f"{icons.red_dot} ERROR during execution of {call_str}: '{e}'!")
+            print(f"{icons.yellow_dot} Returning partial results: '{total_rows}'.")
+            return results
+
+    print(f"{icons.green_dot} Total results: '{total_rows}'.")
+
+    return results

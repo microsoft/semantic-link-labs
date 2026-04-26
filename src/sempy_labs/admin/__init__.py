@@ -29,6 +29,7 @@ from ._reports import (
 )
 from ._activities import (
     list_activity_events,
+    list_activity_events_multiple_days,
 )
 from ._scanner import (
     scan_workspaces,
@@ -131,6 +132,7 @@ __all__ = [
     "list_external_data_shares",
     "revoke_external_data_share",
     "list_activity_events",
+    "list_activity_events_multiple_days",
     "list_modified_workspaces",
     "list_git_connections",
     "list_reports",

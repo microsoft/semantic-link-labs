@@ -1,11 +1,13 @@
 import pandas as pd
 from typing import Optional
 from dateutil.parser import parse as dtparser
+from datetime import datetime, timedelta
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
+    execute_in_timeslots,
 )
 import sempy_labs._icons as icons
 
@@ -169,3 +171,86 @@ def list_activity_events(
         return df
     else:
         return response_json
+
+
+@log
+def list_activity_events_multiple_days(
+    start_day: str,
+    num_days: int,
+    inc_days: int = 1,
+    activity_filter: Optional[str] = None,
+    user_id_filter: Optional[str] = None,
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict:
+    """
+    Retrieves audit activity events for multiple days by repeatedly calling the
+    `Admin - Get Activity Events` API for each day in the generated window.
+
+    This is a wrapper around the single-day `list_activity_events` function.
+    For each iteration, it constructs a full-day ISO8601 time window
+    (00:00:00.000Z → 23:59:59.999Z) and executes the calls in rate-limited
+    timeslots.
+
+    Parameters
+    ----------
+    start_day : str
+        The first day to query, in format ``"YYYY-MM-DD"``.
+        Example: ``"2024-09-25"``.
+
+    num_days : int
+        Number of day-windows to retrieve. A value of 3 means three separate
+        24-hour windows will be queried.
+
+    inc_days : int, default=1
+        Step size (in days) between each window.
+        Example: ``inc_days=2`` queries every other day.
+
+    activity_filter : str, optional
+        Filter for activity types.
+        Example: ``"viewreport"``.
+
+    user_id_filter : str, optional
+        Email address of the user to filter on.
+
+    return_dataframe : bool, default=True
+        If True, returns a pandas DataFrame.
+        If False, returns a dict.
+
+    Returns
+    -------
+    pandas.DataFrame or dict
+        Aggregated results from all generated day-windows, returned either as a
+        concatenated DataFrame or a dict depending on `return_dataframe`.
+    """
+
+    func_name = "list_activity_events"
+    parameters_list = []
+    max_per_slot = 200
+    slot_seconds = 60
+    namespace = globals()
+
+    # Normalize start_day
+    start_date = datetime.strptime(start_day, "%Y-%m-%d").date()
+
+    # Build the list of tasks
+    for i in range(num_days):
+        day = start_date + timedelta(days=i * inc_days)
+
+        start_iso = day.strftime("%Y-%m-%dT00:00:00.000Z")
+        end_iso = day.strftime("%Y-%m-%dT23:59:59.999Z")
+
+        parameters_list.append(
+            {
+                "start_time": start_iso,
+                "end_time": end_iso,
+                "activity_filter": activity_filter,
+                "user_id_filter": user_id_filter,
+                "return_dataframe": return_dataframe,
+            }
+        )
+
+    results = execute_in_timeslots(
+        func_name, parameters_list, max_per_slot, slot_seconds, namespace
+    )
+
+    return results

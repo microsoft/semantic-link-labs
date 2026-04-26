@@ -615,7 +615,7 @@ def _display_delta_analyzer_ui(
             # ~7.5px per char at 11px uppercase + 32px padding + 16px resize handle
             col_w = max(int(len(str(c)) * 7.5) + 48, 80)
             arrow = (
-                ' <span class="da-{uid}-sort-arrow">\u25BC</span>'.format(uid=uid)
+                ' <span class="da-{uid}-sort-arrow">\u25bc</span>'.format(uid=uid)
                 if c == sort_col
                 else ""
             )
@@ -1096,7 +1096,7 @@ def _display_delta_analyzer_ui(
                 table.querySelectorAll('.da-' + uid + '-sort-arrow').forEach(function(el) {{ el.remove(); }});
                 var arrow = document.createElement('span');
                 arrow.className = 'da-' + uid + '-sort-arrow';
-                arrow.textContent = asc ? ' \u25B2' : ' \u25BC';
+                arrow.textContent = asc ? ' \u25b2' : ' \u25bc';
                 th.appendChild(arrow);
             }});
         }});
