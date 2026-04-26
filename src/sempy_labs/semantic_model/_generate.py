@@ -147,6 +147,8 @@ def generate_direct_lake_semantic_model(
             model_map[table_name]["columns"].append(
                 {"columnName": column_name, "dataType": converted_data_type}
             )
+    if not model_map:
+        raise ValueError(f"{icons.red_dot} No valid tables were provided given the source provided.")
 
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
