@@ -13,6 +13,7 @@ from ._items import (
     list_mirrored_azure_databricks_catalogs,
     get_mirrored_azure_databricks_catalog,
 )
+
 __all__ = [
     "refresh_catalog_metadata",
     "discover_catalogs",

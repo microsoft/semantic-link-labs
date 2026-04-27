@@ -8,10 +8,6 @@ from ._items import (
     create_vnet_connection,
     create_cloud_connection,
 )
-from ._databricks import (
-    create_databricks_connection,
-    create_azure_databricks_workspace_connection,
-)
 
 __all__ = [
     "create_on_prem_connection",
@@ -22,6 +18,4 @@ __all__ = [
     "list_item_connections",
     "create_vnet_connection",
     "create_cloud_connection",
-    "create_databricks_connection",
-    "create_azure_databricks_workspace_connection",
 ]
