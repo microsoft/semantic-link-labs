@@ -23,7 +23,7 @@ from sempy_labs._refresh_semantic_model import refresh_semantic_model
 @log
 def generate_direct_lake_semantic_model(
     dataset: str,
-    tables: List[str],
+    tables: List[str] | dict,
     source: str | UUID,
     source_type: Literal[
         "Lakehouse",
@@ -44,8 +44,16 @@ def generate_direct_lake_semantic_model(
     ----------
     dataset : str
         Name of the semantic model to be created.
-    tables : typing.List[str]
-        List of tables to include in the semantic model. Table names should be schema-qualified if there are multiple tables with the same name across schemas (e.g. "schema1.tableA", "schema2.tableA", "schema1.tableB").
+    tables : typing.List[str] | dict
+        List or dictionary of tables to include in the semantic model. Table names should be schema-qualified if there are multiple tables with the same name across schemas (e.g. "schema1.tableA", "schema2.tableA", "schema1.tableB").
+
+        Example 1:
+            tables = ["dbo.sales", "dbo.geography"]
+        Example 2:
+            tables = {
+                "Sales": "dbo.sales",
+                "Geography": "dbo.geography",
+            }
     source : str | uuid.UUID
         The source item name or ID from which to generate the semantic model. This can be a Lakehouse, Mirrored Azure Databricks Catalog, Warehouse, SQL Database, or Mirrored Database.
     source_type : typing.Literal["Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog", "MirroredDatabase"], default = "Lakehouse"
@@ -62,17 +70,19 @@ def generate_direct_lake_semantic_model(
         If True, refreshes the newly created semantic model after it is created.
     """
 
+    # Convert to dictionary
     if isinstance(tables, str):
         tables = [tables]
+    if isinstance(tables, list):
+        if len(tables) != len({t.split(".", 1)[-1] for t in tables}):
+            raise ValueError(
+                f"{icons.red_dot} Duplicate table names are not allowed in the 'tables' parameter when considering schema-qualified names."
+            )
+        tables = {t.split(".", 1)[-1]: t for t in tables}
 
-    if len(tables) != len(set(tables)):
+    if len(tables.keys()) != tables:
         raise ValueError(
             f"{icons.red_dot} Duplicate table names are not allowed in the 'tables' parameter."
-        )
-
-    if len(tables) != len({t.split(".", 1)[-1] for t in tables}):
-        raise ValueError(
-            f"{icons.red_dot} Duplicate table names are not allowed in the 'tables' parameter when considering schema-qualified names."
         )
 
     supported_sources = [
@@ -105,18 +115,18 @@ def generate_direct_lake_semantic_model(
 
     # Populate model map with table and column information
     model_map = {}
-    for t in tables:
+    for table_name, table_source_name in tables.items():
         # Handle schema + table
-        if "." in t:
-            schema_name, table_name = t.split(".", 1)
+        if "." in table_source_name:
+            schema_name, entity_name = table_source_name.split(".", 1)
         else:
             schema_name = None
-            table_name = t
+            entity_name = table_source_name
 
         path = create_abfss_path(
             lakehouse_id=source_id,
             lakehouse_workspace_id=source_workspace_id,
-            delta_table_name=table_name,
+            delta_table_name=entity_name,
             schema=schema_name,
         )
 
@@ -124,11 +134,11 @@ def generate_direct_lake_semantic_model(
 
         if df.empty:
             raise ValueError(
-                f"{icons.red_dot} The table '{t}' does not exist in the source or has no columns."
+                f"{icons.red_dot} The table '{table_source_name}' does not exist in the source or has no columns."
             )
 
         # Initialize table entry
-        model_map[table_name] = {"schema": schema_name, "columns": []}
+        model_map[table_name] = {"schema": schema_name, "entityName": entity_name, "columns": []}
 
         # Add columns
         for _, row in df.iterrows():
@@ -137,11 +147,11 @@ def generate_direct_lake_semantic_model(
             converted_data_type = convert_column_data_type(data_type)
             if converted_data_type is None:
                 raise ValueError(
-                    f"{icons.red_dot} The data type '{data_type}' of column '{column_name}' in table '{t}' is not supported."
+                    f"{icons.red_dot} The data type '{data_type}' of column '{column_name}' in table '{table_source_name}' is not supported."
                 )
             if converted_data_type == "Binary":
                 print(
-                    f"{icons.warning} The column '{column_name}' in table '{t}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
+                    f"{icons.warning} The column '{column_name}' in table '{table_source_name}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
                 )
                 continue
             model_map[table_name]["columns"].append(
@@ -187,19 +197,21 @@ def generate_direct_lake_semantic_model(
 
         for table_name, table_info in model_map.items():
             schema_name = table_info["schema"]
+            entity_name = table_info["entityName"]
             tom.add_table(name=table_name)
             tom.add_entity_partition(
                 table_name=table_name,
-                entity_name=table_name,
+                entity_name=entity_name,
                 expression=expression_name,
                 schema_name=schema_name,
             )
             for column in table_info["columns"]:
                 column_name = column["columnName"]
+                data_type = column["dataType"]
                 tom.add_data_column(
                     table_name=table_name,
                     column_name=column_name,
-                    data_type=column["dataType"],
+                    data_type=data_type,
                     source_column=column_name,
                 )
 

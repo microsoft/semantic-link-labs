@@ -95,7 +95,7 @@ def generate_shared_expression(
         return f"""let\n\tdatabase = Sql.Database("{sqlEPCS}", "{sqlepid}")\nin\n\tdatabase"""
     else:
         # Build DL/OL expression
-        env = _get_fabric_context_setting("spark.trident.pbienv").lower()
-        env = "" if env == "prod" else f"{env}-"
+        #env = _get_fabric_context_setting("spark.trident.pbienv").lower()
+        #env = "" if env == "prod" else f"{env}-"
 
-        return f"""let\n\tSource = AzureStorage.DataLake("https://{env}onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""
+        return f"""let\n\tSource = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""

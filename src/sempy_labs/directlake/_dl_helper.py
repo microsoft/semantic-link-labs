@@ -1,16 +1,13 @@
 import sempy.fabric as fabric
 import numpy as np
 import pandas as pd
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Literal
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name_and_id,
-    retry,
-    _convert_data_type,
     resolve_dataset_name_and_id,
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
 )
 
 
@@ -37,7 +34,7 @@ def check_fallback_reason(
     """
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(
         dataset, workspace=workspace_id
     )
@@ -101,8 +98,16 @@ def generate_direct_lake_semantic_model(
     ----------
     dataset : str
         Name of the semantic model to be created.
-    tables : typing.List[str]
-        List of tables to include in the semantic model. Table names should be schema-qualified if there are multiple tables with the same name across schemas (e.g. "schema1.tableA", "schema2.tableA", "schema1.tableB").
+    tables : typing.List[str] | dict
+        List or dictionary of tables to include in the semantic model. Table names should be schema-qualified if there are multiple tables with the same name across schemas (e.g. "schema1.tableA", "schema2.tableA", "schema1.tableB").
+
+        Example 1:
+            tables = ["dbo.sales", "dbo.geography"]
+        Example 2:
+            tables = {
+                "Sales": "dbo.sales",
+                "Geography": "dbo.geography",
+            }
     source : str | uuid.UUID
         The source item name or ID from which to generate the semantic model. This can be a Lakehouse, Mirrored Azure Databricks Catalog, Warehouse, SQL Database, or Mirrored Database.
     source_type : typing.Literal["Lakehouse", "Warehouse", "SQLDatabase", "MirroredAzureDatabricksCatalog", "MirroredDatabase"], default = "Lakehouse"
