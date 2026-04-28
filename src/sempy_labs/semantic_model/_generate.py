@@ -138,7 +138,11 @@ def generate_direct_lake_semantic_model(
             )
 
         # Initialize table entry
-        model_map[table_name] = {"schema": schema_name, "entityName": entity_name, "columns": []}
+        model_map[table_name] = {
+            "schema": schema_name,
+            "entityName": entity_name,
+            "columns": [],
+        }
 
         # Add columns
         for _, row in df.iterrows():

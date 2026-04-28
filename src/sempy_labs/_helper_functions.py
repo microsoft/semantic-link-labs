@@ -2966,41 +2966,116 @@ def convert_column_data_type(str_type: str) -> str:
         return "String"
 
 
-def convert_sql_to_dax(expression: str, source_table_name: str) -> str:
+def convert_sql_to_dax(
+    sql: str, column_table_map: dict[str, str], default_table: str
+) -> str:
     """
-    Convert a simple Databricks SQL measure expression to a DAX expression.
+    Convert a Databricks metric SQL expression to DAX.
 
-    Parameters:
-        expression (str): SQL expression from Databricks metric view
-        source_table_name (str): Table name to use in DAX
+    Parameters
+    ----------
+    sql : str
+        SQL expression
+    column_table_map : dict
+        Mapping of column name -> table name
+    default_table : str
+        Fallback table if column not found
 
-    Returns:
-        str: Converted DAX expression
+    Returns
+    -------
+    str : DAX expression
     """
 
-    expr = expression.strip()
+    def get_table(col: str) -> str:
+        return column_table_map.get(col.strip("`"), default_table)
 
-    # 1. Handle COUNT(*)
-    if re.fullmatch(r"COUNT\s*\(\s*\*\s*\)", expr, re.IGNORECASE):
-        return f"COUNTROWS('{source_table_name}')"
+    def col_ref(col: str) -> str:
+        col_clean = col.strip("`")
+        return f"'{get_table(col_clean)}'[{col_clean}]"
 
-    # 2. Replace source.column -> 'table'[column]
-    def replace_source_column(match):
-        column = match.group(1)
-        return f"'{source_table_name}'[{column}]"
+    dax = sql.strip()
 
-    expr = re.sub(
-        r"\bsource\.([a-zA-Z_][a-zA-Z0-9_]*)\b",
-        replace_source_column,
-        expr,
+    # --- MEASURE(...) -> [Measure]
+    dax = re.sub(r"MEASURE\(`([^`]+)`\)", r"[\1]", dax)
+
+    # --- COUNT(*) -> COUNTROWS(table)
+    dax = re.sub(
+        r"COUNT\s*\(\s*\*\s*\)",
+        f"COUNTROWS('{default_table}')",
+        dax,
         flags=re.IGNORECASE,
     )
 
-    # 3. Normalize common aggregations (optional but useful)
-    # e.g. SUM(source.col) -> SUM('table'[col])
-    # (Already handled by replacement above)
+    # --- COUNT(DISTINCT col) -> DISTINCTCOUNT(table[col])
+    dax = re.sub(
+        r"COUNT\s*\(\s*DISTINCT\s+([^)]+)\)",
+        lambda m: f"DISTINCTCOUNT({col_ref(m.group(1))})",
+        dax,
+        flags=re.IGNORECASE,
+    )
 
-    return expr
+    # --- SUM / AVG / MAX
+    for func in ["SUM", "AVG", "MAX"]:
+        dax = re.sub(
+            rf"{func}\(([^)]+)\)",
+            lambda m: f"{'AVERAGE' if func=='AVG' else func}({col_ref(m.group(1))})",
+            dax,
+            flags=re.IGNORECASE,
+        )
+
+    # --- FILTER (WHERE ...)
+    def handle_filter(match):
+        expr = match.group(1)
+        condition = match.group(2)
+
+        # Replace known columns only (longer names first to avoid partial matches)
+        for col in sorted(column_table_map.keys(), key=len, reverse=True):
+            pattern = rf"(?<![A-Za-z0-9_`])`?{re.escape(col)}`?(?![A-Za-z0-9_])"
+            condition = re.sub(pattern, col_ref(col), condition)
+
+        # Fix IN (...) → IN {...}
+        condition = re.sub(
+            r"IN\s*\(([^)]+)\)",
+            lambda m: f"IN {{{m.group(1)}}}",
+            condition,
+            flags=re.IGNORECASE,
+        )
+
+        return f"CALCULATE({expr}, {condition})"
+
+    dax = re.sub(
+        r"(.+?)\s+FILTER\s*\(\s*WHERE\s+(.+?)\)",
+        handle_filter,
+        dax,
+        flags=re.IGNORECASE,
+    )
+
+    # --- IN (...) handling (basic)
+    dax = re.sub(
+        r"IN\s*\(([^)]+)\)",
+        lambda m: f"IN {{{m.group(1)}}}",
+        dax,
+        flags=re.IGNORECASE,
+    )
+
+    # --- OVER() -> ALL(table)
+    dax = re.sub(
+        r"(MAX\([^)]+\))\s+OVER\(\)",
+        lambda m: f"CALCULATE({m.group(1)}, ALL('{default_table}'))",
+        dax,
+        flags=re.IGNORECASE,
+    )
+
+    # --- NULLIF(x, 0) -> handled via DIVIDE later
+    dax = re.sub(r"NULLIF\(([^,]+),\s*0\)", r"\1", dax, flags=re.IGNORECASE)
+
+    # --- Replace / with DIVIDE (safe)
+    if "/" in dax:
+        parts = dax.split("/")
+        if len(parts) == 2:
+            dax = f"DIVIDE({parts[0].strip()}, {parts[1].strip()})"
+
+    return dax
 
 
 def convert_format(fmt: dict) -> str:
