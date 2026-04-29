@@ -2939,6 +2939,7 @@ def convert_column_data_type(str_type: str) -> str:
         "integer": "Int64",
         "bigint": "Int64",
         "long": "Int64",
+        "short": "Int64",
         "float": "Double",
         "double": "Double",
         "decimal": "Decimal",
@@ -2966,6 +2967,26 @@ def convert_column_data_type(str_type: str) -> str:
         return "String"
 
 
+def protect_strings(text):
+    strings = {}
+
+    def replacer(match):
+        key = f"__str{len(strings)}__"
+        strings[key] = match.group(0)
+        return key
+
+    text = re.sub(r"'[^']*'", replacer, text)
+    return text, strings
+
+
+def restore_strings(text, strings):
+    for key, value in strings.items():
+        # convert SQL 'string' → DAX "string"
+        dax_value = '"' + value.strip("'") + '"'
+        text = text.replace(key, dax_value)
+    return text
+
+
 def convert_sql_to_dax(
     sql: str, column_table_map: dict[str, str], default_table: str
 ) -> str:
@@ -2983,7 +3004,8 @@ def convert_sql_to_dax(
 
     Returns
     -------
-    str : DAX expression
+    str
+        DAX expression
     """
 
     def get_table(col: str) -> str:
@@ -3028,18 +3050,24 @@ def convert_sql_to_dax(
         expr = match.group(1)
         condition = match.group(2)
 
-        # Replace known columns only (longer names first to avoid partial matches)
+        # 🔒 Step 1: protect string literals
+        condition, strings = protect_strings(condition)
+
+        # 🔁 Step 2: replace columns safely
         for col in sorted(column_table_map.keys(), key=len, reverse=True):
             pattern = rf"(?<![A-Za-z0-9_`])`?{re.escape(col)}`?(?![A-Za-z0-9_])"
             condition = re.sub(pattern, col_ref(col), condition)
 
-        # Fix IN (...) → IN {...}
+        # IN (...) → IN {...}
         condition = re.sub(
             r"IN\s*\(([^)]+)\)",
             lambda m: f"IN {{{m.group(1)}}}",
             condition,
             flags=re.IGNORECASE,
         )
+
+        # 🔓 Step 3: restore strings as DAX strings
+        condition = restore_strings(condition, strings)
 
         return f"CALCULATE({expr}, {condition})"
 

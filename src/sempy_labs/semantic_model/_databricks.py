@@ -17,10 +17,10 @@ from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs.directlake._generate_shared_expression import (
     generate_shared_expression,
 )
-from sempy_labs.mirrored_azure_databricks_catalog._list_objects import (
+from sempy_labs._databricks import (
     list_databricks_metric_views,
+    list_databricks_tables,
 )
-from sempy_labs._sql import ConnectMirroredAzureDatabricksCatalog
 import sempy_labs._icons as icons
 from sempy_labs.mirrored_azure_databricks_catalog._items import (
     get_mirrored_azure_databricks_catalog,
@@ -74,11 +74,12 @@ def _collect_data_from_metric_view(
         "catalogName": source_catalog,
         "schemaName": source_schema,
         "tableName": source_table,
-        "sourceName": 'source',
+        "sourceName": "source",
         "isSource": True,
         "mirrorId": None,
         "mirrorWorkspaceId": None,
         "columns": [],
+        "measures": [],
     }
 
     # Determine relationships
@@ -86,7 +87,7 @@ def _collect_data_from_metric_view(
         join_name = join.get("name")
         join_source = join.get("source")
         join_on = join.get("on", {})
-        join_using = join.get('using', [])
+        join_using = join.get("using", [])
 
         catalog, schema, table = join_source.split(".")
         model_map["sources"][join_source] = {
@@ -98,6 +99,7 @@ def _collect_data_from_metric_view(
             "mirrorId": None,
             "mirrorWorkspaceId": None,
             "columns": [],
+            "measures": [],
         }
 
         if join_on:
@@ -126,7 +128,11 @@ def _collect_data_from_metric_view(
             from_catalog, from_schema, from_table = from_source.split(".")
             to_catalog, to_schema, to_table = to_source.split(".")
         elif join_using:
-            from_catalog, from_schema, from_table = source_catalog, source_schema, source_table
+            from_catalog, from_schema, from_table = (
+                source_catalog,
+                source_schema,
+                source_table,
+            )
             to_catalog, to_schema, to_table = catalog, schema, table
             if len(join_using) > 1:
                 print(
@@ -155,6 +161,29 @@ def _collect_data_from_metric_view(
     if duplicates:
         raise ValueError(f"Duplicate table names found: {duplicates}")
 
+    # Check table type
+    for source, properties in model_map["sources"].items():
+        cat = properties.get("catalogName")
+        sch = properties.get("schemaName")
+        tbl = properties.get("tableName")
+        df = list_databricks_tables(
+            databricks_workspace=databricks_workspace,
+            databricks_token=databricks_token,
+            unity_catalog=cat,
+            schema=sch,
+            table_name=tbl,
+        )
+        if df.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{source}' table was not found in the source."
+            )
+        data_source_format = df["Data Source Format"].iloc[0]
+        table_type = df["Table Type"].iloc[0]
+        if data_source_format != "DELTA":
+            raise ValueError(
+                f"{icons.red_dot} Only delta tables are supported. The '{source}' table is a '{table_type}' which is not in delta format and is not supported."
+            )
+
     # ✅ Build tables map
     for s in model_map["sources"].values():
         table_name = s["tableName"]
@@ -180,9 +209,9 @@ def _collect_data_from_metric_view(
 
         left_part, _ = parts
 
-        for join_source, properties in model_map['sources'].items():
-            table_name = properties.get('tableName')
-            source_name = properties.get('sourceName')
+        for join_source, properties in model_map["sources"].items():
+            table_name = properties.get("tableName")
+            source_name = properties.get("sourceName")
             if left_part == source_name:
                 return table_name
 
@@ -209,18 +238,18 @@ def _collect_data_from_metric_view(
                 print(
                     f"{icons.warning} Skipping the '{display_name}' column as it could not be determined from the expression."
                 )
-                continue
-            model_map["tables"][table_name]["columns"].append(
-                {
-                    "columnName": display_name,
-                    "sourceColumn": name,
-                    "dataType": convert_column_data_type(data_type),
-                    "format": format,
-                    "description": description,
-                    "expression": obj_expression,
-                    "synonyms": synonyms,
-                }
-            )
+            else:
+                model_map["tables"][table_name]["columns"].append(
+                    {
+                        "columnName": display_name,
+                        "sourceColumn": obj_expression.split(".")[1],
+                        "dataType": convert_column_data_type(data_type),
+                        "format": format,
+                        "description": description,
+                        "expression": obj_expression,
+                        "synonyms": synonyms,
+                    }
+                )
         elif obj_type == "measure":
             model_map["tables"][source_table]["measures"].append(
                 {
@@ -256,8 +285,8 @@ def generate_semantic_model_from_metric_view(
         * Calculated columns are ignored and not added to the semantic model
         * Measures based on calculated columns are ignored and not added to the semantic model.
         * Relationships based on multiple columns per table are not supported.
-        * Metric Views which rely on Materialized Views in Databricks are not supported as they do not show up in Azure Mirrored Databricks Catalogs.
-        * Metric views use SQL for measure expressions. This is converted to DAX. Not all measures may properly convert to DAX
+        * Metric Views which are based on tables which are not in Delta format are not supported. As such, Materialized Views and Streaming Tables are not supported.
+        * Metric Views use SQL for measure expressions. This is converted to DAX. Not all measures may properly convert to DAX
 
     Parameters
     ----------
@@ -339,7 +368,7 @@ def generate_semantic_model_from_metric_view(
         df_filt = df[df["Connection Id"] == mirror_connection_id]
         if df_filt.empty:
             raise ValueError(
-                f"{icons.red_dot} No connection found for mirror catalog '{mirror_catalog_name}'."
+                f"{icons.red_dot} No connection found for the mirrored catalog from the '{source}' source."
             )
         mirror_connection_workspace = df_filt["Connection Path"].iloc[0].rstrip("/")
 
@@ -377,17 +406,23 @@ def generate_semantic_model_from_metric_view(
         if not ((c, m, w) in seen or seen.add((c, m, w)))
     ]
 
-    for source, properties in model_map['sources'].items():
-        mirror_id = properties.get('mirrorId')
-        mirror_workspace_id = properties.get('mirrorWorkspaceId')
-        table_name = properties.get('tableName')
-        schema_name = properties.get('schemaName')
+    source_table_name = None
+    source_full_table_name = None
+    for source, properties in model_map["sources"].items():
+        mirror_id = properties.get("mirrorId")
+        mirror_workspace_id = properties.get("mirrorWorkspaceId")
+        table_name = properties.get("tableName")
+        schema_name = properties.get("schemaName")
+        is_source = properties.get("isSource")
+        if is_source:
+            source_table_name = table_name
+            source_full_table_name = source
         path = create_abfss_path(
-                lakehouse_id=mirror_id,
-                lakehouse_workspace_id=mirror_workspace_id,
-                delta_table_name=table_name,
-                schema=schema_name,
-            )
+            lakehouse_id=mirror_id,
+            lakehouse_workspace_id=mirror_workspace_id,
+            delta_table_name=table_name,
+            schema=schema_name,
+        )
 
         df = list_columns_from_path(path=path)
         if df.empty:
@@ -395,22 +430,89 @@ def generate_semantic_model_from_metric_view(
                 f"{icons.red_dot} The table '{table_name}' does not exist in the source or has no columns."
             )
 
+        # Get columns for the specific table directly
+        cols = model_map.get("tables", {}).get(table_name, {}).get("columns", [])
+
+        # Index columns by sourceColumn for O(1) lookup
+        cols_lookup = {c.get("sourceColumn"): c for c in cols}
+
         # Add columns
         for _, row in df.iterrows():
-            column_name = row["Column Name"]
+            source_column = row["Column Name"]
             data_type = row["Data Type"]
             converted_data_type = convert_column_data_type(data_type)
+            col_prop = cols_lookup.get(source_column)
+
+            is_hidden = col_prop is None
+            desc = col_prop.get("description") if col_prop else None
+            column_name = (
+                col_prop.get("columnName")
+                if col_prop and col_prop.get("columnName")
+                else source_column
+            )
+            synonyms = col_prop.get("synonyms", []) if col_prop else []
+
             if converted_data_type is None:
                 raise ValueError(
-                    f"{icons.red_dot} The data type '{data_type}' of column '{column_name}' in table '{table_name}' is not supported."
+                    f"{icons.red_dot} The data type '{data_type}' of column '{source_column}' in table '{table_name}' is not supported."
                 )
             if converted_data_type == "Binary":
                 print(
-                    f"{icons.warning} The column '{column_name}' in table '{table_name}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
+                    f"{icons.warning} The column '{source_column}' in table '{table_name}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
                 )
                 continue
-            model_map['sources'][source]["columns"].append(
-                {"columnName": column_name, "dataType": converted_data_type}
+            model_map["sources"][source]["columns"].append(
+                {
+                    "columnName": column_name,
+                    "dataType": converted_data_type,
+                    "sourceColumn": source_column,
+                    "isHidden": is_hidden,
+                    "description": desc,
+                    "synonyms": synonyms,
+                }
+            )
+
+    # Add measures
+    column_table_map = {}
+    for source, prop in model_map["sources"].items():
+        columns = prop.get("columns")
+        table_name = prop.get("tableName")
+        for c in columns:
+            column_name = c.get("columnName")
+            is_hidden = c.get("isHidden")
+            if not is_hidden:
+                column_table_map[column_name] = table_name
+
+    for source, prop in model_map["sources"].items():
+        columns = prop.get("columns")
+        table_name = prop.get("tableName")
+        for c in columns:
+            column_name = c.get("columnName")
+            is_hidden = c.get("isHidden")
+            lower_keys = {k.lower() for k in column_table_map}
+            if column_name.lower() not in lower_keys:
+                column_table_map[column_name] = table_name
+
+    for _, prop in model_map["tables"].items():
+        measures = prop.get("measures", [])
+        for m in measures:
+            m_name = m.get("measureName")
+            desc = m.get("description")
+            expr = m.get("expression")
+            syn = m.get("synonyms", [])
+            dax = convert_sql_to_dax(
+                sql=expr,
+                column_table_map=column_table_map,
+                default_table=source_table_name,
+            )
+            model_map["sources"][source_full_table_name]["measures"].append(
+                {
+                    "measureName": m_name,
+                    "description": desc,
+                    "expression_sql": expr,
+                    "expression_dax": dax,
+                    "synonyms": syn,
+                }
             )
 
     # Generate semantic model
@@ -449,15 +551,16 @@ def generate_semantic_model_from_metric_view(
             )
             tom.add_expression(name=f"Mirror_{catalog_name}", expression=mirror_expr)
 
-        for source, properties in model_map['sources'].items():
+        for source, properties in model_map["sources"].items():
 
-            table_name = properties.get('tableName')
-            schema_name = properties.get('schemaName')
-            catalog_name = properties.get('catalogName')
-            is_source = properties.get('isSource')
+            table_name = properties.get("tableName")
+            schema_name = properties.get("schemaName")
+            catalog_name = properties.get("catalogName")
+            is_source = properties.get("isSource")
             if is_source:
                 source_table_name = table_name
-            columns = properties.get('columns', [])
+            columns = properties.get("columns", [])
+            measures = properties.get("measures", [])
             mirror_expr_name = f"Mirror_{catalog_name}"
 
             tom.add_table(
@@ -473,65 +576,24 @@ def generate_semantic_model_from_metric_view(
             for column in columns:
                 column_name = column.get("columnName")
                 data_type = column.get("dataType")
+                source_column = column.get("sourceColumn")
+                description = column.get("description")
+                is_hidden = column.get("isHidden")
                 tom.add_data_column(
                     table_name=table_name,
                     column_name=column_name,
-                    source_column=column_name,
+                    source_column=source_column,
                     data_type=data_type,
-                    is_hidden=True,
+                    hidden=is_hidden,
+                    description=description,
                 )
 
-        for table_name, table_info in model_map["tables"].items():
-            #catalog = table_info["catalogName"]
-            #schema_name = table_info["schemaName"]
-            #mirror_expr_name = f"Mirror_{catalog}"
-            #tom.add_table(
-            #    name=table_name,
-            #)
-            #tom.add_entity_partition(
-            #    table_name=table_name,
-            #    entity_name=table_name,
-            #    expression=mirror_expr_name,
-            #    schema_name=schema_name,
-            #)
-
-            for column in table_info.get("columns", []):
-                column_name = column.get("columnName")
-                source_column = column.get("sourceColumn")
-                data_type = column.get("dataType")
-                desc = column.get("description")
-                # format = column.get("format")
-                # synonyms = column.get("synonyms")
-                c = tom.model.Tables[table_name].Columns[source_column]
-                c.Name = column_name
-                c.IsHidden = False
-                c.Description = desc
-                #tom.add_data_column(
-                #    table_name=table_name,
-                #    column_name=column_name,
-                #    source_column=source_column,
-                #    data_type=data_type,
-                    # dformat_string=convert_format(format) if format else None,
-                #    description=desc,
-                #)
-
-        # Add measures afterwards
-        column_table_map = {{c.Name: c.Parent.Name} for c in tom.all_columns()}
-        for table_name, table_info in model_map["tables"].items():
-            for measure in table_info.get("measures", []):
-                measure_name = measure.get("measureName")
-                expr = measure.get("expression")
-                desc = measure.get("description")
-                dax = convert_sql_to_dax(sql=expr, column_table_map=column_table_map, default_table=source_table_name),
-                # format = measure.get("format")
-                #  synonyms = measure_info.get("synonyms")
-                # converted_format = convert_format(format) if format else None
+            for measure in measures:
                 tom.add_measure(
                     table_name=table_name,
-                    measure_name=measure_name,
-                    expression=dax,
-                    # format_string=converted_format,
-                    description=desc,
+                    measure_name=measure.get("measureName"),
+                    expression=measure.get("expression_dax"),
+                    description=measure.get("description"),
                 )
 
         column_lookup = {c for c in tom.all_columns()}
@@ -561,31 +623,32 @@ def generate_semantic_model_from_metric_view(
                 None,
             )
 
-            if not to_column:
-                from_column_data_type = next(
-                    (
-                        c.DataType
-                        for c in column_lookup
-                        if c.Parent.Name == from_table and c.SourceColumn == from_source_column
-                    ),
-                    None,
-                )
-                to_column = tom.add_data_column(
-                    table_name=to_table,
-                    column_name=to_source_column,
-                    source_column=to_source_column,
-                    data_type=str(from_column_data_type),
-                )
+            # if not to_column:
+            #    from_column_data_type = next(
+            #        (
+            #            c.DataType
+            #            for c in column_lookup
+            #            if c.Parent.Name == from_table
+            #            and c.SourceColumn == from_source_column
+            #        ),
+            #        None,
+            #    )
+            #    to_column = tom.add_data_column(
+            #        table_name=to_table,
+            #        column_name=to_source_column,
+            #        source_column=to_source_column,
+            #        data_type=str(from_column_data_type),
+            #    )
 
-            if not from_column or not to_column:
-                raise ValueError(
-                    f"Column not found for relationship '{name}': "
-                    f"{from_table}.{from_source_column} -> {to_table}.{to_source_column}"
-                )
+            # if not from_column or not to_column:
+            #    raise ValueError(
+            #        f"Column not found for relationship '{name}': "
+            #        f"{from_table}.{from_source_column} -> {to_table}.{to_source_column}"
+            #    )
 
             # Hide key columns
-            from_column.IsHidden = True
-            to_column.IsHidden = True
+            # from_column.IsHidden = True
+            # to_column.IsHidden = True
 
             tom.add_relationship(
                 from_table=from_table,
@@ -599,82 +662,4 @@ def generate_semantic_model_from_metric_view(
     if refresh:
         refresh_semantic_model(dataset=model_id, workspace=workspace_id)
 
-
-def infer_model_relationships(column_list, workspace):
-
-    candidates = [c for c in column_list if c.get("columnName", "").endswith("ID")]
-
-    def find_column_relationships(candidates):
-        groups = defaultdict(list)
-
-        for c in candidates:
-            groups[(c["columnName"], c["dataType"])].append(c)
-
-        return [
-            (c1, c2)
-            for cols in groups.values()
-            if len(cols) > 1
-            for c1, c2 in combinations(cols, 2)
-            if (c1["tableName"], c1["sourceSchema"], c1["sourceCatalog"])
-            != (c2["tableName"], c2["sourceSchema"], c2["sourceCatalog"])
-        ]
-
-    # ✅ Cache results to avoid repeated DB hits
-    cardinality_cache = {}
-
-    def is_unique(source, schema, table, column, workspace):
-        key = (source, schema, table, column)
-
-        if key not in cardinality_cache:
-            with ConnectMirroredAzureDatabricksCatalog(
-                mirrored_azure_databricks_catalog=source, workspace=workspace
-            ) as sql:
-                df = sql.query(
-                    f"""SELECT COUNT(DISTINCT {column}) AS ct_col,
-                            COUNT({column}) AS ct_tbl
-                        FROM {schema}.{table}"""
-                )
-            ct_col, ct_tbl = df.iloc[0]
-            cardinality_cache[key] = ct_col == ct_tbl
-
-        return cardinality_cache[key]
-
-    # ✅ Build relationships
-    relationships = []
-
-    for left, right in find_column_relationships(candidates):
-
-        left_key = (
-            left["sourceCatalog"],
-            left["sourceSchema"],
-            left["tableName"],
-            left["columnName"],
-        )
-        right_key = (
-            right["sourceCatalog"],
-            right["sourceSchema"],
-            right["tableName"],
-            right["columnName"],
-        )
-
-        # Check uniqueness (dimension side)
-        if is_unique(*left_key, workspace=workspace):
-            relationships.append(
-                {
-                    "fromTable": right["tableName"],
-                    "fromColumn": right["columnName"],
-                    "toTable": left["tableName"],
-                    "toColumn": left["columnName"],
-                }
-            )
-        elif is_unique(*right_key, workspace=workspace):
-            relationships.append(
-                {
-                    "fromTable": left["tableName"],
-                    "fromColumn": left["columnName"],
-                    "toTable": right["tableName"],
-                    "toColumn": right["columnName"],
-                }
-            )
-
-    return relationships
+    return model_map
