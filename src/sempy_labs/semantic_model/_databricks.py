@@ -1,6 +1,4 @@
 from typing import Optional, List
-from collections import defaultdict
-from itertools import combinations
 from uuid import UUID
 import json
 from sempy_labs._helper_functions import (
@@ -30,6 +28,89 @@ from sempy_labs.connection._items import list_connections
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
 
+def _validate_metric_view_format(metric_view: str):
+    parts = metric_view.split(".")
+    if len(parts) != 3:
+        raise ValueError(
+            f"Invalid metric_view format: '{metric_view}' (expected 'catalog.schema.metric')"
+        )
+    return parts
+
+
+def _validate_metric_view_exists(
+    catalog: str,
+    schema: str,
+    metric_view_name: str,
+    databricks_workspace: str,
+    databricks_token: str,
+):
+
+    mvs = list_databricks_metric_views(
+        databricks_workspace=databricks_workspace,
+        unity_catalog=catalog,
+        schema=schema,
+        databricks_token=databricks_token,
+    )
+    # Find the first matching metric view
+    mv = next((mv for mv in mvs if mv.get("Name") == metric_view_name), None)
+
+    if not mv:
+        raise ValueError(
+            f"{icons.red_dot} The '{metric_view_name}' metric view does not exist or could not be found."
+        )
+    return mv
+
+
+def _validate_tables(model_map: dict, databricks_workspace: str, databricks_token: str):
+
+    table_names = [s["tableName"] for s in model_map["sources"].values()]
+
+    duplicates = {t for t in table_names if table_names.count(t) > 1}
+    if duplicates:
+        raise ValueError(f"Duplicate table names found: {duplicates}")
+
+    # Check table type
+    for source, properties in model_map["sources"].items():
+        cat = properties.get("catalogName")
+        sch = properties.get("schemaName")
+        tbl = properties.get("tableName")
+        df = list_databricks_tables(
+            databricks_workspace=databricks_workspace,
+            databricks_token=databricks_token,
+            unity_catalog=cat,
+            schema=sch,
+            table_name=tbl,
+        )
+        if df.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{source}' table was not found in the source."
+            )
+        data_source_format = df["Data Source Format"].iloc[0]
+        table_type = df["Table Type"].iloc[0]
+        if data_source_format != "DELTA":
+            raise ValueError(
+                f"{icons.red_dot} Only delta tables are supported. The '{source}' table is a '{table_type}' which is not in delta format and is not supported."
+            )
+
+
+def _extract_table_name(expression: str, model_map: dict) -> str | None:
+    parts = expression.split(".")
+
+    # Must be exactly "xxx.yyyy"
+    if len(parts) != 2:
+        return None
+
+    left_part, _ = parts
+
+    for _, properties in model_map["sources"].items():
+        table_name = properties.get("tableName")
+        source_name = properties.get("sourceName")
+        if left_part == source_name:
+            return table_name
+
+    return None
+
+
 def _collect_data_from_metric_view(
     metric_view: str,
     databricks_workspace: str,
@@ -39,37 +120,27 @@ def _collect_data_from_metric_view(
     Generates a model map of sources, tables, columns, measures, relationships based on a Databricks Metric View.
     """
 
-    parts = metric_view.split(".")
+    catalog, schema, metric_view_name = _validate_metric_view_format(metric_view)
 
-    if len(parts) != 3:
-        raise ValueError(
-            f"Invalid metric_view format: '{metric_view}' (expected 'catalog.schema.metric')"
-        )
-
-    catalog, schema, metric_view_name = parts
-
-    mvs = list_databricks_metric_views(
-        databricks_workspace=databricks_workspace,
-        unity_catalog=catalog,
+    mv = _validate_metric_view_exists(
+        catalog=catalog,
         schema=schema,
+        metric_view_name=metric_view_name,
+        databricks_workspace=databricks_workspace,
         databricks_token=databricks_token,
     )
-    # Find the first matching metric view
-    mv_match = next((mv for mv in mvs if mv.get("Name") == metric_view_name), None)
-
-    if not mv_match:
-        raise ValueError(
-            f"The '{metric_view}' metric view does not exist or could not be found."
-        )
 
     # Safely extract definition and columns
-    definition = mv_match.get("View Definition")
-    objects = mv_match.get("Columns")
+    definition = mv.get("View Definition")
+    objects = mv.get("Columns")
     source = definition.get("source")
+    dimensions = definition.get("dimensions", [])
     joins = definition.get("joins", [])
     source_catalog, source_schema, source_table = source.split(".")
 
     model_map = {"sources": {}, "relationships": {}, "tables": {}}
+
+    # Add primary source to model map
     model_map["sources"][source] = {
         "catalogName": source_catalog,
         "schemaName": source_schema,
@@ -155,34 +226,11 @@ def _collect_data_from_metric_view(
             "to_column": to_column,
         }
 
-    table_names = [s["tableName"] for s in model_map["sources"].values()]
-
-    duplicates = {t for t in table_names if table_names.count(t) > 1}
-    if duplicates:
-        raise ValueError(f"Duplicate table names found: {duplicates}")
-
-    # Check table type
-    for source, properties in model_map["sources"].items():
-        cat = properties.get("catalogName")
-        sch = properties.get("schemaName")
-        tbl = properties.get("tableName")
-        df = list_databricks_tables(
-            databricks_workspace=databricks_workspace,
-            databricks_token=databricks_token,
-            unity_catalog=cat,
-            schema=sch,
-            table_name=tbl,
-        )
-        if df.empty:
-            raise ValueError(
-                f"{icons.red_dot} The '{source}' table was not found in the source."
-            )
-        data_source_format = df["Data Source Format"].iloc[0]
-        table_type = df["Table Type"].iloc[0]
-        if data_source_format != "DELTA":
-            raise ValueError(
-                f"{icons.red_dot} Only delta tables are supported. The '{source}' table is a '{table_type}' which is not in delta format and is not supported."
-            )
+    _validate_tables(
+        model_map=model_map,
+        databricks_workspace=databricks_workspace,
+        databricks_token=databricks_token,
+    )
 
     # ✅ Build tables map
     for s in model_map["sources"].values():
@@ -195,27 +243,22 @@ def _collect_data_from_metric_view(
             "measures": [],
         }
 
+    sources = {
+        s.get("sourceName"): s.get("tableName") for s in model_map["sources"].values()
+    }
+
     source_table = next(
         (s.get("tableName") for s in model_map["sources"].values() if s["isSource"]),
         None,
     )
 
-    def extract_table_name(expression: str) -> str | None:
-        parts = expression.split(".")
+    def get_table(expr, alias_map):
+        import re
 
-        # Must be exactly "xxx.yyyy"
-        if len(parts) != 2:
-            return None
+        matches = re.findall(r"\b(\w+)\.", expr)
+        tables = [alias_map[m] for m in matches if m in alias_map]
 
-        left_part, _ = parts
-
-        for join_source, properties in model_map["sources"].items():
-            table_name = properties.get("tableName")
-            source_name = properties.get("sourceName")
-            if left_part == source_name:
-                return table_name
-
-        return None
+        return tables[0] if len(tables) == 1 else tables
 
     # Collect columns and measures
     for c in objects:
@@ -231,25 +274,34 @@ def _collect_data_from_metric_view(
         display_name = semantic_metadata.get("display_name", name)
         format = semantic_metadata.get("format")
         synonyms = semantic_metadata.get("synonyms", [])
+        is_calc_column = False
 
         if obj_type == "dimension":
-            table_name = extract_table_name(obj_expression)
+            table_name = _extract_table_name(
+                expression=obj_expression, model_map=model_map
+            )
             if not table_name:
                 print(
                     f"{icons.warning} Skipping the '{display_name}' column as it could not be determined from the expression."
                 )
+                table_name = get_table(obj_expression, sources)
+                is_calc_column = True
+                source_column = display_name.replace(" ", "")
             else:
-                model_map["tables"][table_name]["columns"].append(
-                    {
-                        "columnName": display_name,
-                        "sourceColumn": obj_expression.split(".")[1],
-                        "dataType": convert_column_data_type(data_type),
-                        "format": format,
-                        "description": description,
-                        "expression": obj_expression,
-                        "synonyms": synonyms,
-                    }
-                )
+                source_column = obj_expression.split(".")[1]
+
+            model_map["tables"][table_name]["columns"].append(
+                {
+                    "columnName": display_name,
+                    "sourceColumn": source_column,
+                    "dataType": convert_column_data_type(data_type),
+                    "format": format,
+                    "description": description,
+                    "expression": obj_expression,
+                    "synonyms": synonyms,
+                    "isCalcColumn": is_calc_column,
+                }
+            )
         elif obj_type == "measure":
             model_map["tables"][source_table]["measures"].append(
                 {
@@ -277,6 +329,7 @@ def generate_semantic_model_from_metric_view(
     sources: dict | List[dict],
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
+    test_run: bool = False,
 ):
     """
     Creates a Direct Lake semantic model based on an Azure Databricks metric view. Before running this function, ensure that the Mirrored Azure Databricks Catalog(s) have been set up in Fabric for all catalogs referenced by the metric view.
@@ -286,7 +339,7 @@ def generate_semantic_model_from_metric_view(
         * Measures based on calculated columns are ignored and not added to the semantic model.
         * Relationships based on multiple columns per table are not supported.
         * Metric Views which are based on tables which are not in Delta format are not supported. As such, Materialized Views and Streaming Tables are not supported.
-        * Metric Views use SQL for measure expressions. This is converted to DAX. Not all measures may properly convert to DAX
+        * Metric Views use SQL for measure expressions. This is converted to DAX. Not all measures may properly convert to DAX. Complex expressions may not convert properly and may require manual adjustment after the semantic model is generated.
 
     Parameters
     ----------
@@ -303,27 +356,31 @@ def generate_semantic_model_from_metric_view(
 
         Example 1:
 
-        sources = {
-                    "mirror": "mkcat",
-                    "workspace": None,
-                }
+            sources = {
+                        "mirror": "MirrorA", # Name or ID of the Mirrored Azure Databricks Catalog
+                        "workspace": None, # Name or ID of the workspace where the Mirrored Azure Databricks Catalog is located. If None, it will resolve to the workspace of the attached lakehouse or if no lakehouse attached, resolves to the workspace of the notebook.
+                      }
 
         Example 2:
 
-        sources = [
-            {
-                "mirror": "mkcat",
-                "workspace": None,
-            },
-            {
-                "mirror": "mkcatdim",
-                "workspace": 'Workspace B',
-            }
-        ]
+            sources = [
+                        {
+                            "mirror": "mkcat",
+                            "workspace": None,
+                        },
+                        {
+                            "mirror": "mkcatdim",
+                            "workspace": 'Workspace B',
+                        }
+                      ]
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    refresh : bool, default=True
+        If True, refreshes the semantic model upon creation.
+    test_run : bool, default=False
+        If True, does not create the semantic model. It returns the blueprint for creating the semantic model.
     """
     workspace_id = resolve_workspace_id(workspace)
 
@@ -373,9 +430,13 @@ def generate_semantic_model_from_metric_view(
         mirror_connection_workspace = df_filt["Connection Path"].iloc[0].rstrip("/")
 
         if mirror_connection_workspace != databricks_workspace:
-            raise ValueError()
+            raise ValueError(
+                f"{icons.red_dot} The mirrored catalog from the '{source}' source is connected to a different Databricks workspace than the one specified in the function parameters. Please ensure the mirrored catalog is connected to the correct Databricks workspace or update the databricks_workspace parameter to match the workspace of the mirrored catalog. Mirror catalog workspace: {mirror_connection_workspace}, specified databricks_workspace: {databricks_workspace}."
+            )
         if mirror_catalog_name not in catalogs:
-            raise ValueError()
+            raise ValueError(
+                f"{icons.red_dot} The mirrored catalog '{mirror_catalog_name}' from the '{source}' source is not found in the list of catalogs."
+            )
 
         for source, items in model_map.get("sources").items():
             cat = items.get("catalogName")
@@ -414,6 +475,7 @@ def generate_semantic_model_from_metric_view(
         table_name = properties.get("tableName")
         schema_name = properties.get("schemaName")
         is_source = properties.get("isSource")
+        source_name = properties.get("sourceName")
         if is_source:
             source_table_name = table_name
             source_full_table_name = source
@@ -461,6 +523,13 @@ def generate_semantic_model_from_metric_view(
                     f"{icons.warning} The column '{source_column}' in table '{table_name}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
                 )
                 continue
+
+            def fixed_column_name(column_name: str):
+                if " " in column_name:
+                    return f"`{column_name}`"
+                else:
+                    return column_name
+
             model_map["sources"][source]["columns"].append(
                 {
                     "columnName": column_name,
@@ -469,19 +538,30 @@ def generate_semantic_model_from_metric_view(
                     "isHidden": is_hidden,
                     "description": desc,
                     "synonyms": synonyms,
+                    "fullSourceColumnName": (
+                        f"{source_name}.{fixed_column_name(source_column)}"
+                        if source_name
+                        else source_column
+                    ),
+                    "fullColumnName": f"{table_name}.{fixed_column_name(column_name)}",
                 }
             )
 
     # Add measures
-    column_table_map = {}
+    column_map = {}
     for source, prop in model_map["sources"].items():
         columns = prop.get("columns")
         table_name = prop.get("tableName")
         for c in columns:
             column_name = c.get("columnName")
             is_hidden = c.get("isHidden")
+            full_source_column_name = c.get("fullSourceColumnName")
+            full_column_name = c.get("fullColumnName")
+            fcn = f"'{table_name}'[{column_name}]"
             if not is_hidden:
-                column_table_map[column_name] = table_name
+                column_map[column_name] = fcn
+                column_map[full_source_column_name] = fcn
+                column_map[full_column_name] = fcn
 
     for source, prop in model_map["sources"].items():
         columns = prop.get("columns")
@@ -489,9 +569,27 @@ def generate_semantic_model_from_metric_view(
         for c in columns:
             column_name = c.get("columnName")
             is_hidden = c.get("isHidden")
-            lower_keys = {k.lower() for k in column_table_map}
+            full_source_column_name = c.get("fullSourceColumnName")
+            full_column_name = c.get("fullColumnName")
+            fcn = f"'{table_name}'[{column_name}]"
+            lower_keys = {k.lower() for k in column_map}
             if column_name.lower() not in lower_keys:
-                column_table_map[column_name] = table_name
+                column_map[column_name] = fcn
+                column_map[full_source_column_name] = fcn
+                column_map[full_column_name] = fcn
+
+    calc_columns = []
+    for table_name, prop in model_map["tables"].items():
+        columns = prop.get("columns", [])
+        for c in columns:
+            column_name = c.get("columnName")
+            source_column = c.get("sourceColumn")
+            fcn = f"'{table_name}'[{column_name}]"
+            if c.get("isCalcColumn"):
+                calc_columns.append(fcn)
+                column_map[column_name] = fcn
+                column_map[source_column] = fcn
+                column_map[f"{table_name}.{source_column}"] = fcn
 
     for _, prop in model_map["tables"].items():
         measures = prop.get("measures", [])
@@ -500,11 +598,17 @@ def generate_semantic_model_from_metric_view(
             desc = m.get("description")
             expr = m.get("expression")
             syn = m.get("synonyms", [])
+            is_hidden = False
             dax = convert_sql_to_dax(
                 sql=expr,
-                column_table_map=column_table_map,
+                column_map=column_map,
                 default_table=source_table_name,
             )
+            for c in calc_columns:
+                if c in dax:
+                    dax = f""" /* NOT SUPPORTED AS THIS MEASURE USES A CALCULATED COLUMN. {dax} */ """
+                    is_hidden = True
+                    break
             model_map["sources"][source_full_table_name]["measures"].append(
                 {
                     "measureName": m_name,
@@ -512,8 +616,15 @@ def generate_semantic_model_from_metric_view(
                     "expression_sql": expr,
                     "expression_dax": dax,
                     "synonyms": syn,
+                    "isHidden": is_hidden,
                 }
             )
+
+    # Delete tables from model map as they are not needed for model generation and to avoid confusion. The necessary table information has already been incorporated into the sources.
+    del model_map["tables"]
+
+    if test_run:
+        return model_map
 
     # Generate semantic model
     model_id = create_blank_semantic_model(
@@ -594,6 +705,7 @@ def generate_semantic_model_from_metric_view(
                     measure_name=measure.get("measureName"),
                     expression=measure.get("expression_dax"),
                     description=measure.get("description"),
+                    is_hidden=measure.get("isHidden"),
                 )
 
         column_lookup = {c for c in tom.all_columns()}
