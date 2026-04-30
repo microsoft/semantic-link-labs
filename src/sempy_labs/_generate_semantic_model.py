@@ -376,9 +376,9 @@ def deploy_semantic_model(
                         ].Source.SchemaName = schema_name
             # Set annotations
             if perspective is not None:
-                tom.set_annotation(object=tom.model, name=f'{prefix}SemanticModelID', value=source_dataset_id)
+                tom.set_annotation(object=tom.model, name=f'{prefix}SemanticModelID', value=str(source_dataset_id))
                 tom.set_annotation(object=tom.model, name=f'{prefix}SemanticModelName', value=source_dataset_name)
-                tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceID', value=source_workspace_id)
+                tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceID', value=str(source_workspace_id))
                 tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceName', value=source_workspace_name)
             if filters is not None:
                 for table_name, filter in filters:
