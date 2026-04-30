@@ -308,7 +308,7 @@ def deploy_semantic_model(
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
 
-    (source_dataset_id, source_dataset_name) = resolve_item_name_and_id(item=source_dataset, type="SemanticModel", workspace=source_workspace_id)
+    (source_dataset_name, source_dataset_id) = resolve_item_name_and_id(item=source_dataset, type="SemanticModel", workspace=source_workspace_id)
 
     dfD = fabric.list_datasets(workspace=target_workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == target_dataset]
