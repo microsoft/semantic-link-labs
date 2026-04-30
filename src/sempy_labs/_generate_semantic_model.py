@@ -301,10 +301,10 @@ def deploy_semantic_model(
 
     if (
         target_dataset == source_dataset
-        and target_workspace_id == source_workspace_id
+        and str(target_workspace_id) == str(source_workspace_id)
     ):
         raise ValueError(
-            f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' "
+            f"{icons.red_dot} The 'source_dataset' and 'target_dataset' parameters have the same value. And, the 'source_workspace' and 'target_workspace' "
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
 
