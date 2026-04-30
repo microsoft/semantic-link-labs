@@ -381,8 +381,8 @@ def deploy_semantic_model(
                 tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceID', value=str(source_workspace_id))
                 tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceName', value=source_workspace_name)
             if filters is not None:
-                for table_name, filter in filters:
-                    tom.set_annotation(object=tom.model.Tables[table_name], name=f'MiniModel_{perspective}', value=filter)
+                for table_name, filter_value in filters.items():
+                    tom.set_annotation(object=tom.model.Tables[table_name], name=f'MiniModel_{perspective}', value=filter_value)
 
     if refresh_target_dataset:
         refresh_semantic_model(dataset=target_dataset, workspace=target_workspace_id)
