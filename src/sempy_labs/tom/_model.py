@@ -2470,8 +2470,9 @@ class TOMWrapper:
 
     def hide_key_columns(self):
         """
-        Hides all columns in the semantic model that are used in a relationship and have an `Int64 <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.datatype?view=analysisservices-dotnet>`_
-        data type.
+        Hides all columns in the semantic model that are used in a relationship and have an
+        `Int64 <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.datatype?view=analysisservices-dotnet>`_
+        data type. This reduces clutter in the field list while preserving relationship functionality.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
