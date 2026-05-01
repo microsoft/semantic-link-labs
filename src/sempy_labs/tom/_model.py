@@ -2446,6 +2446,29 @@ class TOMWrapper:
             f"{icons.green_dot} The '{table_name}' table has been marked as a date table using the '{column_name}' column as its primary date key."
         )
 
+    def mark_primary_keys(self):
+        """
+        Identifies all primary key columns in the semantic model (columns used on the "one" side of a relationship)
+        and sets the `IsKey <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.iskey>`_
+        property to True for those columns.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        primary_keys = set()
+        for r in self.model.Relationships:
+            if r.FromCardinality == TOM.RelationshipEndCardinality.One:
+                primary_keys.add((r.FromTable.Name, r.FromColumn.Name))
+            if r.ToCardinality == TOM.RelationshipEndCardinality.One:
+                primary_keys.add((r.ToTable.Name, r.ToColumn.Name))
+
+        for table_name, column_name in primary_keys:
+            c = self.model.Tables[table_name].Columns[column_name]
+            if not c.IsKey:
+                c.IsKey = True
+                print(
+                    f"{icons.green_dot} The '{column_name}' column in the '{table_name}' table has been marked as a primary key."
+                )
+
     def has_aggs(self):
         """
         Identifies if a semantic model has any `aggregations <https://learn.microsoft.com/power-bi/transform-model/aggregations-advanced>`_.
