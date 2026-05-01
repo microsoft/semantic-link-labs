@@ -35,7 +35,6 @@ from uuid import UUID
 import sempy_labs._authentication as auth
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 
-
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
     import Microsoft.AnalysisServices.Tabular as TOM
@@ -90,8 +89,8 @@ class TOMWrapper:
                     f"{icons.red_dot} A token provider must be provided when connecting to an Azure AS workspace."
                 )
         else:
-            (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-            (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+            workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+            dataset_name, dataset_id = resolve_dataset_name_and_id(
                 dataset, workspace_id
             )
             self._dataset_id = dataset_id
@@ -2467,6 +2466,26 @@ class TOMWrapper:
                 c.IsKey = True
                 print(
                     f"{icons.green_dot} The '{column_name}' column in the '{table_name}' table has been marked as a primary key."
+                )
+
+    def hide_key_columns(self):
+        """
+        Hides all columns in the semantic model that are used in a relationship and have an `Int64 <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.datatype?view=analysisservices-dotnet>`_
+        data type.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        key_columns = set()
+        for r in self.model.Relationships:
+            key_columns.add((r.FromTable.Name, r.FromColumn.Name))
+            key_columns.add((r.ToTable.Name, r.ToColumn.Name))
+
+        for table_name, column_name in key_columns:
+            c = self.model.Tables[table_name].Columns[column_name]
+            if c.DataType == TOM.DataType.Int64 and not c.IsHidden:
+                c.IsHidden = True
+                print(
+                    f"{icons.green_dot} The '{column_name}' column in the '{table_name}' table has been hidden."
                 )
 
     def has_aggs(self):
@@ -4881,7 +4900,7 @@ class TOMWrapper:
             measure_mapping[m.Name] = (m.Parent.Name, m.Expression)
 
         for m in measures:
-            (table_name, expr) = measure_mapping.get(m, (None, None))
+            table_name, expr = measure_mapping.get(m, (None, None))
 
             payload["scenarioDefinition"]["generateModelItemDescriptions"][
                 "modelItems"
@@ -5747,7 +5766,7 @@ class TOMWrapper:
 
         updated = False
 
-        (obj, syn_exists) = self._get_synonym_info(
+        obj, syn_exists = self._get_synonym_info(
             lm=lm, object=object, synonym_name=synonym_name
         )
 
@@ -5873,7 +5892,7 @@ class TOMWrapper:
             )
             return
 
-        (obj, syn_exists) = self._get_synonym_info(
+        obj, syn_exists = self._get_synonym_info(
             lm=lm, object=object, synonym_name=synonym_name
         )
 
@@ -6138,7 +6157,7 @@ class TOMWrapper:
                 f"{icons.warning} This function only supports single-sourced Direct Lake semantic models."
             )
             return
-        (item_id, item_name, item_type, item_workspace_id, item_workspace_name) = next(
+        item_id, item_name, item_type, item_workspace_id, item_workspace_name = next(
             (
                 s.get("itemId"),
                 s.get("itemName"),
