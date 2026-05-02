@@ -2461,7 +2461,7 @@ class TOMWrapper:
             if r.ToCardinality == TOM.RelationshipEndCardinality.One:
                 primary_keys.add((r.ToTable.Name, r.ToColumn.Name))
 
-        for table_name, column_name in primary_keys:
+        for table_name, column_name in sorted(primary_keys):
             c = self.model.Tables[table_name].Columns[column_name]
             if not c.IsKey:
                 c.IsKey = True
