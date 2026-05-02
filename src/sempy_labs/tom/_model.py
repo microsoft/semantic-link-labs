@@ -2465,9 +2465,6 @@ class TOMWrapper:
             c = self.model.Tables[table_name].Columns[column_name]
             if not c.IsKey:
                 c.IsKey = True
-                print(
-                    f"{icons.green_dot} The '{column_name}' column in the '{table_name}' table has been marked as a primary key."
-                )
 
     def has_aggs(self):
         """
