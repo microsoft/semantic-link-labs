@@ -2485,9 +2485,6 @@ class TOMWrapper:
             c = self.model.Tables[table_name].Columns[column_name]
             if c.DataType == TOM.DataType.Int64 and not c.IsHidden:
                 c.IsHidden = True
-                print(
-                    f"{icons.green_dot} The '{column_name}' column in the '{table_name}' table has been hidden."
-                )
 
     def has_aggs(self):
         """
