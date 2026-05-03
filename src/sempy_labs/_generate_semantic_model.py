@@ -17,6 +17,8 @@ from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from uuid import UUID
+from datetime import datetime
+import ast
 
 
 @log
@@ -282,6 +284,10 @@ def deploy_semantic_model(
     filters : dict, default=None
         Filters to apply to the target semantic model. See the example below. If filters are specified, a perspective must also be specified.
 
+        If filters are applied, you must use a PySpark notebook and the default lakehouse must be in the same workspace as the source lakehouse used by the semantic model.
+
+        Filters are only supported for Direct Lake semantic models where the data is sourced from a single Lakehouse.
+
         filters = {
             "Geography": "City = 'Verdery' ",
             "Sales": "SaleKey > 100",
@@ -299,16 +305,17 @@ def deploy_semantic_model(
     if target_dataset is None:
         target_dataset = source_dataset
 
-    if (
-        target_dataset == source_dataset
-        and str(target_workspace_id) == str(source_workspace_id)
+    if target_dataset == source_dataset and str(target_workspace_id) == str(
+        source_workspace_id
     ):
         raise ValueError(
             f"{icons.red_dot} The 'source_dataset' and 'target_dataset' parameters have the same value. And, the 'source_workspace' and 'target_workspace' "
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
 
-    (source_dataset_name, source_dataset_id) = resolve_item_name_and_id(item=source_dataset, type="SemanticModel", workspace=source_workspace_id)
+    (source_dataset_name, source_dataset_id) = resolve_item_name_and_id(
+        item=source_dataset, type="SemanticModel", workspace=source_workspace_id
+    )
 
     dfD = fabric.list_datasets(workspace=target_workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == target_dataset]
@@ -319,7 +326,7 @@ def deploy_semantic_model(
 
     if filters is not None and perspective is None:
         raise ValueError(
-            "If filters are specified, a perspective must also be specified."
+            f"{icons.red_dot} If filters are specified, a perspective must also be specified."
         )
 
     if perspective is not None:
@@ -354,10 +361,16 @@ def deploy_semantic_model(
             dataset=target_dataset, bim_file=bim, workspace=target_workspace_id
         )
 
-    prefix = "MasterModel_"
+    (target_dataset_name, target_dataset_id) = resolve_item_name_and_id(
+        item=target_dataset, type="SemanticModel", workspace=target_workspace_id
+    )
+
+    now = str(datetime.now())
+    filters_value = filters or {}
+
     if filters is not None or perspective is not None:
         with connect_semantic_model(
-            dataset=target_dataset, workspace=target_workspace_id, readonly=False
+            dataset=target_dataset_id, workspace=target_workspace_id, readonly=False
         ) as tom:
             if filters is not None:
                 # Update the entities of the partitions in the target semantic model if filters were applied
@@ -374,18 +387,74 @@ def deploy_semantic_model(
                         tom.model.Tables[table_name].Partitions[
                             partition_name
                         ].Source.SchemaName = schema_name
-            # Set annotations
-            if perspective is not None:
-                tom.set_annotation(object=tom.model, name=f'{prefix}SemanticModelID', value=str(source_dataset_id))
-                tom.set_annotation(object=tom.model, name=f'{prefix}SemanticModelName', value=source_dataset_name)
-                tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceID', value=str(source_workspace_id))
-                tom.set_annotation(object=tom.model, name=f'{prefix}WorkspaceName', value=source_workspace_name)
-            if filters is not None:
-                for table_name, filter_value in filters.items():
-                    tom.set_annotation(object=tom.model.Tables[table_name], name=f'MiniModel_{perspective}', value=filter_value)
+            # Set annotations to mini model
+            source_annotation_value = {
+                "datasetId": source_dataset_id,
+                "datasetName": source_dataset_name,
+                "workspaceId": source_workspace_id,
+                "workspaceName": source_workspace_name,
+                "lastUpdatedDate": now,
+                "perspective": perspective,
+                "filters": filters_value,
+            }
+            tom.set_annotation(
+                object=tom.model,
+                name=icons.prefix_master,
+                value=str(source_annotation_value),
+            )
 
+            # Remove mini model annotations from the master model if they exist (cleanup)
+            ann_to_remove = [a.Name for a in tom.model.Annotations if a.Name.startswith(icons.prefix_mini)]
+            for ann in ann_to_remove:
+                tom.remove_annotation(object=tom.model, name=ann)
+
+    # Set annotations to the master model
+    if filters is not None or perspective is not None:
+        with connect_semantic_model(
+            dataset=source_dataset_id, workspace=source_workspace_id, readonly=False
+        ) as tom:
+
+            ann_name = f"{icons.prefix_mini}_{perspective}"
+
+            # --- Get existing annotation safely ---
+            try:
+                ann_value = tom.get_annotation_value(object=tom.model, name=ann_name)
+                ann_list = ast.literal_eval(ann_value) if ann_value else []
+            except Exception:
+                ann_list = []
+
+            # --- Build lookup (faster than loop) ---
+            index = {a.get("datasetId"): a for a in ann_list}
+
+            if target_dataset_id in index:
+                # --- Update existing ---
+                entry = index[target_dataset_id]
+                entry.update(
+                    {
+                        "datasetName": target_dataset_name,
+                        "workspaceId": target_workspace_id,
+                        "workspaceName": target_workspace_name,
+                        "lastUpdatedDate": now,
+                        "filters": filters_value,
+                    }
+                )
+            else:
+                # --- Add new ---
+                ann_list.append(
+                    {
+                        "datasetId": target_dataset_id,
+                        "datasetName": target_dataset_name,
+                        "workspaceId": target_workspace_id,
+                        "workspaceName": target_workspace_name,
+                        "lastUpdatedDate": now,
+                        "filters": filters_value,
+                    }
+                )
+
+            # --- Save once ---
+            tom.set_annotation(object=tom.model, name=ann_name, value=str(ann_list))
     if refresh_target_dataset:
-        refresh_semantic_model(dataset=target_dataset, workspace=target_workspace_id)
+        refresh_semantic_model(dataset=target_dataset_id, workspace=target_workspace_id)
 
     if perspective is not None:
         return df_added

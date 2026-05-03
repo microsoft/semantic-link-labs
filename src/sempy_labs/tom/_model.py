@@ -22,6 +22,7 @@ from sempy_labs._helper_functions import (
     _table_ref,
     resolve_workspace_name,
     to_delta_table_name,
+    _update_dataframe_datatypes,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -5994,7 +5995,8 @@ class TOMWrapper:
         """
         Retrieves a list of the Direct Lake sources used in a semantic model, including their type, workspace, and whether they use a SQL endpoint.
 
-        Returns:
+        Returns
+        -------
         typing.List[dict]
             A list of dictionaries, each containing details about a Direct Lake source used in the semantic model.
             Example:
@@ -6271,6 +6273,132 @@ class TOMWrapper:
             #    self.model.Tables[table_name].Partitions[partition_name].Source.SchemaName = schema
 
         return queries
+
+    def get_mini_model_properties(self) -> dict:
+        """
+        Retrieves the properties of the mini model (if the semantic model is a mini model).
+
+        Returns
+        -------
+        dict
+            A dictionary containing the properties of the mini model.
+        """
+
+        for a in self.model.Annotations:
+            if a.Name.startswith(icons.prefix_master):
+
+                try:
+                    ann = ast.literal_eval(a.Value) if a.Value else {}
+                except Exception:
+                    return {}
+
+                return {
+                    "masterSemanticModelName": ann.get("datasetName"),
+                    "masterSemanticModelId": ann.get("datasetId"),
+                    "masterSemanticModelWorkspaceName": ann.get("workspaceName"),
+                    "masterSemanticModelWorkspaceId": ann.get("workspaceId"),
+                    "miniModelPerspective": ann.get("perspective"),
+                    "miniModelFilters": ann.get("filters") or {},
+                    "miniModelLastUpdatedDate": ann.get("lastUpdatedDate"),
+                }
+
+        return None
+
+    def is_mini_model(self) -> bool:
+        """
+        Identifies whether the semantic model is a mini model (and is derived from a master model).
+
+        Returns
+        -------
+        bool
+            An indication whether the semantic model is a mini model.
+        """
+        if self.get_mini_model_properties():
+            return True
+        else:
+            return False
+
+    def list_mini_models(self, show_filters: bool = False) -> pd.DataFrame:
+        """
+        Shows a list of the semantic model's downstream mini models.
+
+        Parameters
+        ----------
+        show_filters : bool, default=False
+            If True, shows the filters used in creating the downstream mini model.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A dataframe showing a list of the semantic model's downstream mini model(s).
+        """
+
+        columns = {
+            "Mini Model Name": "str",
+            "Semantic Model Name": "str",
+            "Semantic Model Id": "str",
+            "Workspace Name": "str",
+            "Workspace Id": "str",
+            "Last Updated Date": "datetime",
+        }
+
+        if show_filters:
+            columns.update(
+                {
+                    "Table Name": "str",
+                    "Filter Value": "str",
+                }
+            )
+
+        df = _create_dataframe(columns=columns)
+
+        rows = []
+        for a in self.model.Annotations:
+            if not a.Name.startswith(icons.prefix_mini):
+                continue
+
+            mini_model_name = a.Name.split("_")[2]
+            try:
+                ann_list = ast.literal_eval(a.Value) if a.Value else []
+            except Exception:
+                continue
+
+            for ann in ann_list:
+                dataset_id = ann.get("datasetId")
+                if not self._dataset_id == dataset_id:
+                    base = {
+                        "Mini Model Name": mini_model_name,
+                        "Semantic Model Name": ann.get("datasetName"),
+                        "Semantic Model Id": ann.get("datasetId"),
+                        "Workspace Name": ann.get("workspaceName"),
+                        "Workspace Id": ann.get("workspaceId"),
+                        "Last Updated Date": ann.get("lastUpdatedDate"),
+                    }
+
+                    if not show_filters:
+                        rows.append(base)
+                    else:
+                        filters = ann.get("filters") or {}
+
+                        if not filters:
+                            rows.append(
+                                {**base, "Table Name": None, "Filter Value": None}
+                            )
+                        else:
+                            for table, value in filters.items():
+                                rows.append(
+                                    {
+                                        **base,
+                                        "Table Name": table,
+                                        "Filter Value": value,
+                                    }
+                                )
+
+        if rows:
+            df = pd.DataFrame(rows)
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+        return df
 
     def close(self):
 

@@ -1009,12 +1009,12 @@ def save_as_delta_table(
             "table_or_uri": file_path,
             "data": spark_df,
             "mode": write_mode,
-            #"schema": schema_map,
+            # "schema": schema_map,
         }
 
         if merge_schema:
             write_args["schema_mode"] = "merge"
-            #write_args["engine"] = "rust"
+            # write_args["engine"] = "rust"
 
         write_deltalake(**write_args)
     else:

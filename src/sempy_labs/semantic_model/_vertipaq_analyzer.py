@@ -189,8 +189,10 @@ def vertipaq_analyzer(
 
     if export is not None:
         export = export.lower()
-    if export not in (None, 'table'):
-        raise ValueError(f"{icons.red_dot} Invalid value for 'export'. Expected None or 'table'.")
+    if export not in (None, "table"):
+        raise ValueError(
+            f"{icons.red_dot} Invalid value for 'export'. Expected None or 'table'."
+        )
 
     from sempy_labs.tom import connect_semantic_model
 
@@ -1015,7 +1017,7 @@ def vertipaq_analyzer(
 
     # Export vertipaq to delta tables in lakehouse
     if export == "table":
-        #dfs = create_dfs(column_formatting="data_type")
+        # dfs = create_dfs(column_formatting="data_type")
 
         print(
             f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
@@ -1045,7 +1047,7 @@ def vertipaq_analyzer(
             "Timestamp": now,
         }
 
-        #df_map = {
+        # df_map = {
         #    k: final_dict[k]["data"]
         #    for k in [
         #        "Columns",
@@ -1055,7 +1057,7 @@ def vertipaq_analyzer(
         #        "Hierarchies",
         #        "Model",
         #    ]
-        #}
+        # }
 
         ordered_prefix = [
             "Capacity Name",
@@ -1068,8 +1070,8 @@ def vertipaq_analyzer(
         ]
 
         for obj, df in final_dict.items():
-            if obj == 'Model Summary':
-                obj = 'Model'
+            if obj == "Model Summary":
+                obj = "Model"
 
             # Add metadata columns
             df = df.assign(**base_metadata)

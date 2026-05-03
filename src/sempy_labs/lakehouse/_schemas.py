@@ -253,7 +253,9 @@ def create_schema(
     if schema_exists(schema=name, lakehouse=lakehouse_id, workspace=workspace_id):
         return
 
-    path = create_abfss_path(lakehouse_id=lakehouse_id, lakehouse_workspace_id=workspace_id)
+    path = create_abfss_path(
+        lakehouse_id=lakehouse_id, lakehouse_workspace_id=workspace_id
+    )
 
     path += f"/Tables/{name}"
     notebookutils.fs.mkdirs(path)
