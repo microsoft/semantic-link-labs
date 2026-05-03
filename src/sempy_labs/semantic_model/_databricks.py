@@ -132,9 +132,8 @@ def _collect_data_from_metric_view(
 
     # Safely extract definition and columns
     definition = mv.get("View Definition")
-    objects = mv.get("Columns")
+    objects = mv.get("Objects", [])
     source = definition.get("source")
-    dimensions = definition.get("dimensions", [])
     joins = definition.get("joins", [])
     source_catalog, source_schema, source_table = source.split(".")
 
@@ -735,33 +734,6 @@ def generate_semantic_model_from_metric_view(
                 None,
             )
 
-            # if not to_column:
-            #    from_column_data_type = next(
-            #        (
-            #            c.DataType
-            #            for c in column_lookup
-            #            if c.Parent.Name == from_table
-            #            and c.SourceColumn == from_source_column
-            #        ),
-            #        None,
-            #    )
-            #    to_column = tom.add_data_column(
-            #        table_name=to_table,
-            #        column_name=to_source_column,
-            #        source_column=to_source_column,
-            #        data_type=str(from_column_data_type),
-            #    )
-
-            # if not from_column or not to_column:
-            #    raise ValueError(
-            #        f"Column not found for relationship '{name}': "
-            #        f"{from_table}.{from_source_column} -> {to_table}.{to_source_column}"
-            #    )
-
-            # Hide key columns
-            # from_column.IsHidden = True
-            # to_column.IsHidden = True
-
             tom.add_relationship(
                 from_table=from_table,
                 from_column=from_column.Name,
@@ -770,6 +742,9 @@ def generate_semantic_model_from_metric_view(
                 from_cardinality="Many",
                 to_cardinality="One",
             )
+
+            tom.hide_key_columns()
+            tom.mark_primary_keys()
 
     if refresh:
         refresh_semantic_model(dataset=model_id, workspace=workspace_id)

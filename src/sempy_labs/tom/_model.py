@@ -6309,6 +6309,44 @@ class TOMWrapper:
                     data_type=data_type,
                 )
 
+    def mark_primary_keys(self):
+        """
+        Identifies all primary key columns in the semantic model (columns used on the "one" side of a relationship)
+        and sets the `IsKey <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.iskey>`_
+        property to True for those columns.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        primary_keys = set()
+        for r in self.model.Relationships:
+            if r.FromCardinality == TOM.RelationshipEndCardinality.One:
+                primary_keys.add((r.FromTable.Name, r.FromColumn.Name))
+            if r.ToCardinality == TOM.RelationshipEndCardinality.One:
+                primary_keys.add((r.ToTable.Name, r.ToColumn.Name))
+
+        for table_name, column_name in sorted(primary_keys):
+            c = self.model.Tables[table_name].Columns[column_name]
+            if not c.IsKey:
+                c.IsKey = True
+
+    def hide_key_columns(self):
+        """
+        Hides all columns in the semantic model that are used in a relationship and have an
+        `Int64 <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.datatype?view=analysisservices-dotnet>`_
+        data type. This reduces clutter in the field list while preserving relationship functionality.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        key_columns = set()
+        for r in self.model.Relationships:
+            key_columns.add((r.FromTable.Name, r.FromColumn.Name))
+            key_columns.add((r.ToTable.Name, r.ToColumn.Name))
+
+        for table_name, column_name in key_columns:
+            c = self.model.Tables[table_name].Columns[column_name]
+            if c.DataType == TOM.DataType.Int64 and not c.IsHidden:
+                c.IsHidden = True
+
     def close(self):
 
         # DAX Formatting

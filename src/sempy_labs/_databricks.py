@@ -112,7 +112,7 @@ def list_databricks_metric_views(
                 {
                     "Name": name,
                     "View Definition": yaml_dict,
-                    "Columns": t.get("columns", []),
+                    "Objects": t.get("columns", []),
                 }
             )
 
