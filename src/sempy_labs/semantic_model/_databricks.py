@@ -334,11 +334,11 @@ def generate_semantic_model_from_metric_view(
     Creates a Direct Lake semantic model based on an Azure Databricks metric view. Before running this function, ensure that the Mirrored Azure Databricks Catalog(s) have been set up in Fabric for all catalogs referenced by the metric view.
 
     Limitations:
-        * Calculated columns are ignored and not added to the semantic model
+        * Calculated columns are ignored and not added to the semantic model.
         * Measures based on calculated columns are ignored and not added to the semantic model.
         * Relationships based on multiple columns per table are not supported.
         * Metric Views which are based on tables which are not in Delta format are not supported. As such, Materialized Views and Streaming Tables are not supported.
-        * Metric Views use SQL for measure expressions. This is converted to DAX. Not all measures may properly convert to DAX. Complex expressions may not convert properly and may require manual adjustment after the semantic model is generated.
+        * Metric Views use SQL for measure expressions. This is converted to DAX. Complex expressions may not convert properly and may require manual adjustment after the semantic model is generated.
 
     Parameters
     ----------
@@ -704,7 +704,7 @@ def generate_semantic_model_from_metric_view(
                     measure_name=measure.get("measureName"),
                     expression=measure.get("expression_dax"),
                     description=measure.get("description"),
-                    is_hidden=measure.get("isHidden"),
+                    hidden=measure.get("isHidden"),
                 )
 
         column_lookup = {c for c in tom.all_columns()}

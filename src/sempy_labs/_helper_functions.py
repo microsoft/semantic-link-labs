@@ -2967,78 +2967,42 @@ def convert_column_data_type(str_type: str) -> str:
         return "String"
 
 
-def convert_sql_to_dax(
-    sql: str, column_map: dict[str, str], default_table: str = "Fact"
-) -> str:
+def convert_sql_to_dax(sql: str, column_map: dict[str, str], default_table: str = "summary") -> str:
     dax = sql.strip()
 
-    # -------------------------
-    # Helpers
-    # -------------------------
-
+    # =========================================================
+    # 1. STRING PROTECTION (CRITICAL - MUST BE FIRST)
+    # =========================================================
     def protect_strings(text):
         strings = {}
 
-        def replacer(match):
+        def repl(m):
             key = f"__str{len(strings)}__"
-            strings[key] = match.group(0)
+            strings[key] = m.group(0)
             return key
 
-        text = re.sub(r"'[^']*'", replacer, text)
-        return text, strings
+        return re.sub(r"'[^']*'", repl, text), strings
 
     def restore_strings(text, strings):
-        for key, value in strings.items():
-            dax_value = '"' + value.strip("'") + '"'
-            text = text.replace(key, dax_value)
+        for k, v in strings.items():
+            text = text.replace(k, '"' + v.strip("'") + '"')
         return text
 
-    def protect_dax_refs(text):
-        refs = {}
+    dax, strings = protect_strings(dax)
 
-        def replacer(match):
-            key = f"__col{len(refs)}__"
-            refs[key] = match.group(0)
-            return key
+    # =========================================================
+    # 2. MEASURE → COLUMN
+    # =========================================================
+    dax = re.sub(
+        r"\bMEASURE\(`([^`]+)`\)",
+        r"[\1]",
+        dax,
+        flags=re.IGNORECASE,
+    )
 
-        text = re.sub(r"'[^']+'\[[^\]]+\]", replacer, text)
-        return text, refs
-
-    def restore_dax_refs(text, refs):
-        for key, value in refs.items():
-            text = text.replace(key, value)
-        return text
-
-    def replace_columns_safe(text):
-        # protect already-formed DAX refs
-        refs = {}
-
-        def protect(match):
-            key = f"__col{len(refs)}__"
-            refs[key] = match.group(0)
-            return key
-
-        text = re.sub(r"'[^']+'\[[^\]]+\]", protect, text)
-
-        # replace only raw identifiers
-        for col in sorted(column_map.keys(), key=len, reverse=True):
-            pattern = rf"(?<!\[)(?<![A-Za-z0-9_`])`?{re.escape(col)}`?(?![A-Za-z0-9_])"
-            text = re.sub(pattern, column_map[col], text)
-
-        # restore protected refs
-        for key, val in refs.items():
-            text = text.replace(key, val)
-
-        return text
-
-    # -------------------------
-    # MEASURE(...)
-    # -------------------------
-    dax = re.sub(r"\bMEASURE\(`([^`]+)`\)", r"[\1]", dax, flags=re.IGNORECASE)
-
-    # -------------------------
-    # COUNT(*)
-    # -------------------------
+    # =========================================================
+    # 3. COUNT(*)
+    # =========================================================
     dax = re.sub(
         r"\bCOUNT\s*\(\s*\*\s*\)",
         f"COUNTROWS('{default_table}')",
@@ -3046,19 +3010,19 @@ def convert_sql_to_dax(
         flags=re.IGNORECASE,
     )
 
-    # -------------------------
-    # COUNT(DISTINCT ...)
-    # -------------------------
+    # =========================================================
+    # 4. COUNT DISTINCT
+    # =========================================================
     dax = re.sub(
         r"\bCOUNT\s*\(\s*DISTINCT\s+([^)]+)\)",
-        lambda m: f"DISTINCTCOUNT({m.group(1)})",
+        r"DISTINCTCOUNT(\1)",
         dax,
         flags=re.IGNORECASE,
     )
 
-    # -------------------------
-    # Aggregations
-    # -------------------------
+    # =========================================================
+    # 5. AGGREGATIONS
+    # =========================================================
     for func in ["SUM", "AVG", "MAX", "MIN"]:
         dax = re.sub(
             rf"\b{func}\s*\(([^)]+)\)",
@@ -3067,30 +3031,12 @@ def convert_sql_to_dax(
             flags=re.IGNORECASE,
         )
 
-    # -------------------------
-    # FILTER (WHERE ...)
-    # -------------------------
+    # =========================================================
+    # 6. FILTER (WHERE → CALCULATE)
+    # =========================================================
     def handle_filter(match):
         expr = match.group(1)
         condition = match.group(2)
-
-        # protect string literals
-        condition, strings = protect_strings(condition)
-
-        # replace columns
-        # condition = replace_columns(condition)
-
-        # IN (...) → IN {...}
-        condition = re.sub(
-            r"\bIN\s*\(([^)]+)\)",
-            lambda m: f"IN {{{m.group(1)}}}",
-            condition,
-            flags=re.IGNORECASE,
-        )
-
-        # restore strings as DAX strings
-        condition = restore_strings(condition, strings)
-
         return f"CALCULATE({expr}, {condition})"
 
     dax = re.sub(
@@ -3100,9 +3046,44 @@ def convert_sql_to_dax(
         flags=re.IGNORECASE,
     )
 
-    # -------------------------
-    # OVER()
-    # -------------------------
+    # =========================================================
+    # 7. IN (...) → IN {...}
+    # =========================================================
+    dax = re.sub(
+        r"\bIN\s*\(([^)]+)\)",
+        lambda m: f"IN {{{m.group(1)}}}",
+        dax,
+        flags=re.IGNORECASE,
+    )
+
+    # =========================================================
+    # 8. SAFE DIVISION (CORE FIX)
+    # =========================================================
+    def handle_division(text):
+
+        def repl(m):
+            left = m.group(1).strip()
+            right = m.group(2).strip()
+
+            # NULLIF(x,0) → x
+            right = re.sub(
+                r"NULLIF\(([^,]+),\s*0\)",
+                r"\1",
+                right,
+                flags=re.IGNORECASE,
+            )
+
+            return f"DIVIDE({left}, {right})"
+
+        # only split top-level expressions
+        pattern = r"(.+?)\s*/\s*(.+)"
+        return re.sub(pattern, repl, text)
+
+    dax = handle_division(dax)
+
+    # =========================================================
+    # 9. WINDOW FUNCTIONS
+    # =========================================================
     dax = re.sub(
         r"(MAX\([^)]+\))\s+OVER\(\)",
         lambda m: f"CALCULATE({m.group(1)}, ALL('{default_table}'))",
@@ -3110,27 +3091,40 @@ def convert_sql_to_dax(
         flags=re.IGNORECASE,
     )
 
-    # -------------------------
-    # NULLIF(x, 0)
-    # -------------------------
-    dax = re.sub(
-        r"NULLIF\(([^,]+),\s*0\)",
-        r"\1",
-        dax,
-        flags=re.IGNORECASE,
-    )
+    # =========================================================
+    # 10. RESTORE STRINGS (AFTER ALL LOGIC)
+    # =========================================================
+    dax = restore_strings(dax, strings)
 
-    # -------------------------
-    # Division → DIVIDE
-    # -------------------------
-    match = re.match(r"(.+?)\s*/\s*(.+)", dax)
-    if match:
-        dax = f"DIVIDE({match.group(1).strip()}, {match.group(2).strip()})"
+    # =========================================================
+    # 11. TABLE QUOTE FIXES
+    # =========================================================
+    dax = re.sub(r'COUNTROWS\("([^"]+)"\)', r"COUNTROWS('\1')", dax)
+    dax = re.sub(r'ALL\("([^"]+)"\)', r"ALL('\1')", dax)
 
-    # -------------------------
-    # Final column replacement
-    # -------------------------
-    dax = replace_columns_safe(dax)
+    # =========================================================
+    # 12. COLUMN REPLACEMENT
+    # =========================================================
+    def replace_columns(text):
+        refs = {}
+
+        def protect(m):
+            key = f"__col{len(refs)}__"
+            refs[key] = m.group(0)
+            return key
+
+        text = re.sub(r"'[^']+'\[[^\]]+\]", protect, text)
+
+        for col in sorted(column_map.keys(), key=len, reverse=True):
+            pattern = rf"(?<!\[)(?<![A-Za-z0-9_`])`?{re.escape(col)}`?(?![A-Za-z0-9_])"
+            text = re.sub(pattern, column_map[col], text)
+
+        for k, v in refs.items():
+            text = text.replace(k, v)
+
+        return text
+
+    dax = replace_columns(dax)
 
     return dax
 
