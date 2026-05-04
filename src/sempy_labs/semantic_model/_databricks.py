@@ -18,6 +18,7 @@ from sempy_labs.directlake._generate_shared_expression import (
 from sempy_labs._databricks import (
     list_databricks_metric_views,
     list_databricks_tables,
+    list_permissions,
 )
 import sempy_labs._icons as icons
 from sempy_labs.mirrored_azure_databricks_catalog._items import (
@@ -392,6 +393,19 @@ def generate_semantic_model_from_metric_view(
         databricks_workspace=databricks_workspace,
         databricks_token=databricks_token,
     )
+
+    # Set Roles according to DBX permissions
+    #catalog, schema, table = metric_view.split('.')
+
+    #if infer_row_level_security:
+    #    df_perm = list_permissions(object=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    view_permissions = df_perm[df_perm['Privilege'].isin(['SELECT'])]['Principal'].tolist()
+    #    df_perm = list_permissions(object=f"{catalog}.{schema}", databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    schema_permissions = df_perm[df_perm['Privilege'].isin(['USE_SCHEMA'])]['Principal'].tolist()
+    #    df_perm = list_permissions(object=catalog, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    catalog_permissions = df_perm[df_perm['Privilege'].isin(['USE_CATALOG'])]['Principal'].tolist()
+
+    #    inferred_permissions = set(view_permissions) | set(schema_permissions) | set(catalog_permissions)
 
     df = list_connections()
 

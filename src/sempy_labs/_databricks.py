@@ -190,3 +190,64 @@ def list_databricks_tables(
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
+
+
+@log
+def list_permissions(object: str, databricks_workspace: str, databricks_token: str, return_dataframe: bool = True) -> pd.DataFrame | dict:
+
+    """
+    Lists the permissions associated with an object (i.e table, view, metric view) in a Databricks workspace.
+
+    Parameters
+    ----------
+    object : str
+        This can either be a catalog, schema, or table. If specifying a table, the format should be "catalog.schema.table". If specifying a schema, the format should be "catalog.schema". If specifying a catalog, just provide the catalog name.
+    databricks_workspace : str
+        The URL of the Azure Databricks workspace. Example: "https://dbc-12345x67-8xx9.cloud.databricks.com"
+    databricks_token : str
+        The personal access token for authenticating with the Azure Databricks REST API.
+    return_dataframe : bool, default=True
+        If True, returns the permissions as a pandas DataFrame. If False, returns the raw JSON response as a dictionary.
+
+    Returns
+    -------
+    pandas.DataFrame | dict
+        If return_dataframe is True, returns a DataFrame with columns for Principal, Privilege, Inherited From Type, and Inherited From Name.
+        If return_dataframe is False, returns the raw JSON response from the API as a dictionary.
+    """
+
+    type = None
+    parts = object.split(".")
+    if len(parts) == 3:
+        type = 'table'
+    elif len(parts) == 2:
+        type = 'schema'
+    elif len(parts) == 1:
+        type = 'catalog'
+    else:
+        raise ValueError("Invalid object format. Expected format: 'catalog.schema.table' or 'catalog.schema' or 'catalog'.")
+
+    
+    resp = _base_api(
+        request=f"{databricks_workspace}/api/2.1/unity-catalog/effective-permissions/{type}/{object}",
+        client="databricks",
+        headers=get_databricks_headers(databricks_token),
+    ).json()
+
+    if not return_dataframe:
+        return resp
+
+    rows = []
+    for p in resp.get('privilege_assignments', []):
+        name = p.get('principal')
+        prs = p.get('privileges')
+        for priv in prs:
+            rows.append({
+                "Principal": name,
+                "Privilege": priv.get('privilege'),
+                "Inherited From Type": priv.get('inherited_from_type'),
+                "Inherited From Name": priv.get('inherited_from_name'),
+            })
+    df = pd.DataFrame(rows)
+
+    return df
