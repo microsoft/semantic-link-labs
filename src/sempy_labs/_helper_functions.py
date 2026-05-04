@@ -2873,8 +2873,6 @@ def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
 def list_columns_from_path(path: str) -> pd.DataFrame:
 
     columns = {
-        "Schema Name": "str",
-        "Table Name": "str",
         "Column Name": "str",
         "Data Type": "str",
     }

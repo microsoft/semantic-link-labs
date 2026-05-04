@@ -18,7 +18,6 @@ from sempy_labs.directlake._generate_shared_expression import (
 from sempy_labs._databricks import (
     list_databricks_metric_views,
     list_databricks_tables,
-    list_permissions,
 )
 import sempy_labs._icons as icons
 from sempy_labs.mirrored_azure_databricks_catalog._items import (
@@ -516,7 +515,7 @@ def generate_semantic_model_from_metric_view(
             source_column = row["Column Name"]
             data_type = row["Data Type"]
             converted_data_type = convert_column_data_type(data_type)
-            col_prop = cols_lookup.get(source_column)
+            col_prop = cols_lookup.get(source_column) or cols_lookup.get(f"`{source_column}`")
 
             is_hidden = col_prop is None
             desc = col_prop.get("description") if col_prop else None
