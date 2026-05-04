@@ -6264,7 +6264,9 @@ class TOMWrapper:
                 test_run=True,
             )
             if not is_valid:
-                raise ValueError(f"{icons.red_dot} The generated SQL for the '{table_name}' table is not valid. Query: {query}")
+                raise ValueError(
+                    f"{icons.red_dot} The generated SQL for the '{table_name}' table is not valid. Query: {query}"
+                )
 
             prepared.append((name, query))
 

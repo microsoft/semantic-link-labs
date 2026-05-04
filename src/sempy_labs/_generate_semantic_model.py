@@ -404,7 +404,11 @@ def deploy_semantic_model(
             )
 
             # Remove mini model annotations from the master model if they exist (cleanup)
-            ann_to_remove = [a.Name for a in tom.model.Annotations if a.Name.startswith(icons.prefix_mini)]
+            ann_to_remove = [
+                a.Name
+                for a in tom.model.Annotations
+                if a.Name.startswith(icons.prefix_mini)
+            ]
             for ann in ann_to_remove:
                 tom.remove_annotation(object=tom.model, name=ann)
 
