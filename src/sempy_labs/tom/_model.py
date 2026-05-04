@@ -6057,7 +6057,7 @@ class TOMWrapper:
     def _create_mlvs_based_on_filters(
         self,
         filters: dict,
-        schema: Optional[str] = None,
+        schema: str,
     ):
         """Create materialized lake views for a filtered subset of a Direct Lake semantic model.
 
@@ -6085,7 +6085,7 @@ class TOMWrapper:
             ``Customer``, the resulting ``Sales`` materialized view will include
             both the ``SaleKey > 100`` predicate and a join to ``Customer``
             constrained to ``City = 'San Isidro'``.
-        schema : str, default=None
+        schema : str
             The name of the schema in which to create the materialized lake views.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -6249,14 +6249,26 @@ class TOMWrapper:
         # Build materialized views for the filtered (and propagated) tables
         create_schema(name=schema, lakehouse=item_id, workspace=item_workspace_id)
 
+        prepared = []
         for table_name, items in queries.items():
             query = items.get("sql")
             entity_name = items.get("entityName")
+            name = f"{schema}.{entity_name}"
 
-            if schema:
-                name = f"{schema}.{entity_name}"
-            else:
-                name = entity_name
+            is_valid = create_materialized_lake_view(
+                name=name,
+                query=query,
+                lakehouse=item_id,
+                workspace=item_workspace_id,
+                replace=True,
+                test_run=True,
+            )
+            if not is_valid:
+                raise ValueError(f"{icons.red_dot} The generated SQL for the '{table_name}' table is not valid. Query: {query}")
+
+            prepared.append((name, query))
+
+        for name, query in prepared:
             create_materialized_lake_view(
                 name=name,
                 query=query,
@@ -6264,13 +6276,6 @@ class TOMWrapper:
                 workspace=item_workspace_id,
                 replace=True,
             )
-
-            # Repoint partition to new entity
-            # partition_name = next(p.Name for p in self.model.Tables[table_name].Partitions)
-            # self.model.Tables[table_name].Partitions[partition_name].Source.EntityName = entity_name
-
-            # if schema:
-            #    self.model.Tables[table_name].Partitions[partition_name].Source.SchemaName = schema
 
         return queries
 
