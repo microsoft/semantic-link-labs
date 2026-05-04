@@ -177,7 +177,7 @@ def create_materialized_lake_view(
     Parameters
     ----------
     name : str
-        The name of the materialized lake view (not including the lakehouse or workspace names). For schema-enabled lakehouses, include the name in schema_name.view_name format.
+        The name of the materialized lake view (not including the lakehouse or workspace names). This must be in schema_name.view_name format.
     query : str
         The SQL query that defines the materialized lake view. The query must be a valid SQL query that can be executed in the context of the lakehouse.
     lakehouse : str | uuid.UUID, default=None
