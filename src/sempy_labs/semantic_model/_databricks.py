@@ -322,7 +322,7 @@ def _collect_data_from_metric_view(
 
 @log
 def generate_semantic_model_from_metric_view(
-    name: str,
+    dataset: str,
     metric_view: str,
     databricks_workspace: str,
     databricks_token: str,
