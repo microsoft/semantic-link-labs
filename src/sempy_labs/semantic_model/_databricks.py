@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     retry,
     create_abfss_path,
     list_columns_from_path,
+    convert_format_from_databricks,
 )
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
@@ -268,11 +269,11 @@ def _collect_data_from_metric_view(
         obj_type = metadata.get("metric_view.type")  # dimension/measure
         description = metadata.get("comment")
         obj_expression = metadata.get("metric_view.expr")
-        raw_semantic = metadata.get("semantic_metadata")
-        semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
-        display_name = semantic_metadata.get("display_name", name)
-        format = semantic_metadata.get("format")
-        synonyms = semantic_metadata.get("synonyms", [])
+        #raw_semantic = metadata.get("semantic_metadata")
+        #semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
+        display_name = metadata.get("display_name", name)
+        format = c.get('metadata', {}).get("format")
+        synonyms = metadata.get("synonyms", [])
         is_calc_column = False
 
         if obj_type == "dimension":
@@ -519,6 +520,7 @@ def generate_semantic_model_from_metric_view(
 
             is_hidden = col_prop is None
             desc = col_prop.get("description") if col_prop else None
+            format = col_prop.get("format") if col_prop else None
             column_name = (
                 col_prop.get("columnName")
                 if col_prop and col_prop.get("columnName")
@@ -548,6 +550,8 @@ def generate_semantic_model_from_metric_view(
                     "dataType": converted_data_type,
                     "sourceColumn": source_column,
                     "isHidden": is_hidden,
+                    "format_dbx": format,
+                    "format_pbi": convert_format_from_databricks(format),
                     "description": desc,
                     "synonyms": synonyms,
                     "fullSourceColumnName": (
@@ -610,6 +614,7 @@ def generate_semantic_model_from_metric_view(
             desc = m.get("description")
             expr = m.get("expression")
             syn = m.get("synonyms", [])
+            format = m.get("format")
             is_hidden = False
             dax = convert_sql_to_dax(
                 sql=expr,
@@ -627,8 +632,10 @@ def generate_semantic_model_from_metric_view(
                     "description": desc,
                     "expression_sql": expr,
                     "expression_dax": dax,
-                    "synonyms": syn,
                     "isHidden": is_hidden,
+                    "format_dbx": format,
+                    "format_pbi": convert_format_from_databricks(format),
+                    "synonyms": syn,
                 }
             )
 
@@ -702,6 +709,7 @@ def generate_semantic_model_from_metric_view(
                 source_column = column.get("sourceColumn")
                 description = column.get("description")
                 is_hidden = column.get("isHidden")
+                format_string = column.get("format_pbi")
                 tom.add_data_column(
                     table_name=table_name,
                     column_name=column_name,
@@ -709,6 +717,7 @@ def generate_semantic_model_from_metric_view(
                     data_type=data_type,
                     hidden=is_hidden,
                     description=description,
+                    format_string=format_string,
                 )
 
             for measure in measures:
@@ -718,6 +727,7 @@ def generate_semantic_model_from_metric_view(
                     expression=measure.get("expression_dax"),
                     description=measure.get("description"),
                     hidden=measure.get("isHidden"),
+                    format_string=measure.get("format_pbi"),
                 )
 
         column_lookup = {c for c in tom.all_columns()}

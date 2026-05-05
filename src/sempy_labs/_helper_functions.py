@@ -3127,64 +3127,179 @@ def convert_sql_to_dax(sql: str, column_map: dict[str, str], default_table: str 
     return dax
 
 
-def convert_format(fmt: dict) -> str:
+def convert_format_from_databricks(fmt: dict = None) -> str | None:
     """
-    Converts the format from Databricks to a Power BI format string.
+    Convert Databricks metric view format dictionary
+    into a Power BI format string.
+
+    Returns
+    -------
+    str | None
     """
 
-    def decimals(dp):
-        if dp["type"] == "EXACT":
-            places = dp.get("places", 0)
-            return "." + ("0" * places) if places > 0 else ""
-        elif dp["type"] == "ALL":
-            return ".################"
+    if not fmt:
+        return None
+
+    # =========================
+    # Currency symbol resolver
+    # =========================
+    def get_currency_symbol(code: str) -> str:
+        symbols = {
+            "USD": "$", "AUD": "$", "CAD": "$",
+            "EUR": "€", "GBP": "£",
+            "ILS": "₪", "JPY": "¥", "CNY": "¥",
+            "INR": "₹", "KRW": "₩",
+            "RUB": "₽", "TRY": "₺",
+            "BRL": "R$", "MXN": "$",
+            "ZAR": "R", "CHF": "CHF ",
+            "SEK": "kr", "NOK": "kr", "DKK": "kr",
+            "PLN": "zł", "CZK": "Kč",
+            "HUF": "Ft",
+            "AED": "د.إ", "SAR": "﷼",
+            "DZD": "DZD ",
+        }
+        return symbols.get((code or "").upper(), f"{code.upper()} " if code else "")
+
+    # =========================
+    # Helpers
+    # =========================
+    def build_decimal_part(decimal_info: dict, abbreviation: str) -> str:
+        if not decimal_info:
+            return ""
+
+        dtype = decimal_info.get("type")
+        places = decimal_info.get("places", 0)
+
+        # COMPACT → cap decimals
+        if abbreviation == "COMPACT":
+            max_places = min(places if places else 2, 2)
+            return "." + ("#" * max_places) if max_places > 0 else ""
+
+        if dtype == "ALL":
+            return ".########"
+
+        if places == 0:
+            return ""
+
+        if dtype == "EXACT":
+            return "." + ("0" * places)
+
+        if dtype == "MAX":
+            return "." + ("#" * places)
+
         return ""
 
-    def grouping(hide):
-        return "" if hide else ","
+    def build_scientific(decimal_info: dict) -> str:
+        if not decimal_info:
+            return "0E+00"
 
-    def abbreviation(abbrev):
-        if abbrev == "COMPACT":
-            return ",,"  # millions
-        return ""
+        dtype = decimal_info.get("type")
+        places = decimal_info.get("places", 2)
 
-    symbol_map = {
-        "USD": "$",  # US Dollar
-        "EUR": "€",  # Euro
-        "GBP": "£",  # British Pound
-        "ILS": "₪",  # Israeli Shekel
-        "JPY": "¥",  # Japanese Yen
-        "CNY": "¥",  # Chinese Yuan
-        "INR": "₹",  # Indian Rupee
-        "KRW": "₩",  # South Korean Won
-        "RUB": "₽",  # Russian Ruble
-        "TRY": "₺",  # Turkish Lira
-    }
+        if dtype == "EXACT":
+            return f"0.{ '0'*places }E+00" if places > 0 else "0E+00"
 
-    if "currency" in fmt:
-        f = fmt["currency"]
-        symbol = symbol_map.get(f.get("currency_code"))
-        if not symbol:
-            print(
-                f"Currency code '{f.get('currency_code')}' not recognized. Defaulting to no symbol."
-            )
-            return None
-        return (
-            f"{symbol}#"
-            + grouping(f["hide_group_separator"])
-            + "0"
-            + abbreviation(f["abbreviation"])
-            + decimals(f["decimal_places"])
-        )
+        if dtype == "MAX":
+            return f"0.{ '#'*places }E+00" if places > 0 else "0E+00"
 
-    if "number" in fmt:
-        f = fmt["number"]
-        return (
-            "#"
-            + grouping(f["hide_group_separator"])
-            + "0"
-            + abbreviation(f["abbreviation"])
-            + decimals(f["decimal_places"])
-        )
+        if dtype == "ALL":
+            return "0.00E+00"  # controlled default
 
+        return "0.00E+00"
+
+    def apply_grouping(base: str, hide_group_separator: bool) -> str:
+        if hide_group_separator:
+            return base.replace("#,0", "0")
+        return base
+
+    def apply_compact(base: str, abbreviation: str) -> str:
+        if abbreviation == "COMPACT":
+            return base + ",,"
+        return base
+
+    # =========================
+    # Validation
+    # =========================
+    if not fmt or not isinstance(fmt, dict):
+        return None
+
+    key = next(iter(fmt), None)
+    if not key:
+        return None
+
+    props = fmt.get(key, {})
+
+    decimal_info = props.get("decimal_places")
+    abbreviation = props.get("abbreviation", "NONE")
+    hide_group = props.get("hide_group_separator", False)
+
+    # =========================
+    # NUMBER PLAIN
+    # =========================
+    if key == "number_plain":
+        if abbreviation == "SCIENTIFIC":
+            return build_scientific(decimal_info)
+
+        decimal_part = build_decimal_part(decimal_info, abbreviation)
+        base = f"#,0{decimal_part}"
+        base = apply_grouping(base, hide_group)
+        base = apply_compact(base, abbreviation)
+        return base
+
+    # =========================
+    # NUMBER CURRENCY
+    # =========================
+    if key == "number_currency":
+        symbol = get_currency_symbol(props.get("currency_code"))
+
+        if abbreviation == "SCIENTIFIC":
+            return f"{symbol}{build_scientific(decimal_info)}"
+
+        decimal_part = build_decimal_part(decimal_info, abbreviation)
+        base = f"{symbol}#,0{decimal_part}"
+        base = apply_grouping(base, hide_group)
+        base = apply_compact(base, abbreviation)
+        return base
+
+    # =========================
+    # NUMBER PERCENT
+    # =========================
+    if key == "number_percent":
+        if abbreviation == "SCIENTIFIC":
+            return build_scientific(decimal_info) + "%"
+
+        decimal_part = build_decimal_part(decimal_info, abbreviation)
+        return f"0{decimal_part}%"
+
+    # =========================
+    # NUMBER BYTES
+    # =========================
+    if key == "number_bytes":
+        decimal_part = build_decimal_part(decimal_info, abbreviation)
+        base = f"#,0{decimal_part}"
+        base = apply_grouping(base, hide_group)
+        return base
+
+    # =========================
+    # DATE
+    # =========================
+    if key == "date":
+        return {
+            "YEAR_MONTH_DAY": "yyyy-MM-dd",
+            "MONTH_DAY_YEAR": "MM/dd/yyyy",
+        }.get(props.get("date_format"))
+
+    # =========================
+    # DATE TIME
+    # =========================
+    if key == "date_time":
+        date_part = {
+            "YEAR_MONTH_DAY": "yyyy-MM-dd"
+        }.get(props.get("date_format"), "yyyy-MM-dd")
+
+        return f"{date_part} HH:mm:ss"
+
+    # =========================
+    # FALLBACK
+    # =========================
     return None
