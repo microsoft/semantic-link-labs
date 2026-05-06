@@ -2,14 +2,16 @@ from typing import Optional, List
 from uuid import UUID
 import json
 from sempy_labs._helper_functions import (
-    convert_column_data_type,
     resolve_item_id,
     resolve_workspace_id,
-    convert_sql_to_dax,
     retry,
     create_abfss_path,
     list_columns_from_path,
+)
+from sempy_labs.semantic_model._helper import (
+    convert_column_data_type,
     convert_format_from_databricks,
+    convert_sql_to_dax,
 )
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
