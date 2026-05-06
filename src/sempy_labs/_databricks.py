@@ -193,8 +193,12 @@ def list_databricks_tables(
 
 
 @log
-def list_permissions(object: str, databricks_workspace: str, databricks_token: str, return_dataframe: bool = True) -> pd.DataFrame | dict:
-
+def list_permissions(
+    object: str,
+    databricks_workspace: str,
+    databricks_token: str,
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict:
     """
     Lists the permissions associated with an object (i.e table, view, metric view) in a Databricks workspace.
 
@@ -219,15 +223,16 @@ def list_permissions(object: str, databricks_workspace: str, databricks_token: s
     type = None
     parts = object.split(".")
     if len(parts) == 3:
-        type = 'table'
+        type = "table"
     elif len(parts) == 2:
-        type = 'schema'
+        type = "schema"
     elif len(parts) == 1:
-        type = 'catalog'
+        type = "catalog"
     else:
-        raise ValueError("Invalid object format. Expected format: 'catalog.schema.table' or 'catalog.schema' or 'catalog'.")
+        raise ValueError(
+            "Invalid object format. Expected format: 'catalog.schema.table' or 'catalog.schema' or 'catalog'."
+        )
 
-    
     resp = _base_api(
         request=f"{databricks_workspace}/api/2.1/unity-catalog/effective-permissions/{type}/{object}",
         client="databricks",
@@ -238,16 +243,18 @@ def list_permissions(object: str, databricks_workspace: str, databricks_token: s
         return resp
 
     rows = []
-    for p in resp.get('privilege_assignments', []):
-        name = p.get('principal')
-        prs = p.get('privileges')
+    for p in resp.get("privilege_assignments", []):
+        name = p.get("principal")
+        prs = p.get("privileges")
         for priv in prs:
-            rows.append({
-                "Principal": name,
-                "Privilege": priv.get('privilege'),
-                "Inherited From Type": priv.get('inherited_from_type'),
-                "Inherited From Name": priv.get('inherited_from_name'),
-            })
+            rows.append(
+                {
+                    "Principal": name,
+                    "Privilege": priv.get("privilege"),
+                    "Inherited From Type": priv.get("inherited_from_type"),
+                    "Inherited From Name": priv.get("inherited_from_name"),
+                }
+            )
     df = pd.DataFrame(rows)
 
     return df

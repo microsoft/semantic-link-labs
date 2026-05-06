@@ -269,10 +269,10 @@ def _collect_data_from_metric_view(
         obj_type = metadata.get("metric_view.type")  # dimension/measure
         description = metadata.get("comment")
         obj_expression = metadata.get("metric_view.expr")
-        #raw_semantic = metadata.get("semantic_metadata")
-        #semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
+        # raw_semantic = metadata.get("semantic_metadata")
+        # semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
         display_name = metadata.get("display_name", name)
-        format = c.get('metadata', {}).get("format")
+        format = c.get("metadata", {}).get("format")
         synonyms = metadata.get("synonyms", [])
         is_calc_column = False
 
@@ -395,9 +395,9 @@ def generate_semantic_model_from_metric_view(
     )
 
     # Set Roles according to DBX permissions
-    #catalog, schema, table = metric_view.split('.')
+    # catalog, schema, table = metric_view.split('.')
 
-    #if infer_row_level_security:
+    # if infer_row_level_security:
     #    df_perm = list_permissions(object=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
     #    view_permissions = df_perm[df_perm['Privilege'].isin(['SELECT'])]['Principal'].tolist()
     #    df_perm = list_permissions(object=f"{catalog}.{schema}", databricks_workspace=databricks_workspace, databricks_token=databricks_token)
@@ -516,7 +516,9 @@ def generate_semantic_model_from_metric_view(
             source_column = row["Column Name"]
             data_type = row["Data Type"]
             converted_data_type = convert_column_data_type(data_type)
-            col_prop = cols_lookup.get(source_column) or cols_lookup.get(f"`{source_column}`")
+            col_prop = cols_lookup.get(source_column) or cols_lookup.get(
+                f"`{source_column}`"
+            )
 
             is_hidden = col_prop is None
             desc = col_prop.get("description") if col_prop else None

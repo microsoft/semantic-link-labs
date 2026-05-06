@@ -2965,7 +2965,9 @@ def convert_column_data_type(str_type: str) -> str:
         return "String"
 
 
-def convert_sql_to_dax(sql: str, column_map: dict[str, str], default_table: str = "summary") -> str:
+def convert_sql_to_dax(
+    sql: str, column_map: dict[str, str], default_table: str = "summary"
+) -> str:
     dax = sql.strip()
 
     # =========================================================
@@ -3145,17 +3147,30 @@ def convert_format_from_databricks(fmt: dict = None) -> str | None:
     # =========================
     def get_currency_symbol(code: str) -> str:
         symbols = {
-            "USD": "$", "AUD": "$", "CAD": "$",
-            "EUR": "€", "GBP": "£",
-            "ILS": "₪", "JPY": "¥", "CNY": "¥",
-            "INR": "₹", "KRW": "₩",
-            "RUB": "₽", "TRY": "₺",
-            "BRL": "R$", "MXN": "$",
-            "ZAR": "R", "CHF": "CHF ",
-            "SEK": "kr", "NOK": "kr", "DKK": "kr",
-            "PLN": "zł", "CZK": "Kč",
+            "USD": "$",
+            "AUD": "$",
+            "CAD": "$",
+            "EUR": "€",
+            "GBP": "£",
+            "ILS": "₪",
+            "JPY": "¥",
+            "CNY": "¥",
+            "INR": "₹",
+            "KRW": "₩",
+            "RUB": "₽",
+            "TRY": "₺",
+            "BRL": "R$",
+            "MXN": "$",
+            "ZAR": "R",
+            "CHF": "CHF ",
+            "SEK": "kr",
+            "NOK": "kr",
+            "DKK": "kr",
+            "PLN": "zł",
+            "CZK": "Kč",
             "HUF": "Ft",
-            "AED": "د.إ", "SAR": "﷼",
+            "AED": "د.إ",
+            "SAR": "﷼",
             "DZD": "DZD ",
         }
         return symbols.get((code or "").upper(), f"{code.upper()} " if code else "")
@@ -3293,9 +3308,9 @@ def convert_format_from_databricks(fmt: dict = None) -> str | None:
     # DATE TIME
     # =========================
     if key == "date_time":
-        date_part = {
-            "YEAR_MONTH_DAY": "yyyy-MM-dd"
-        }.get(props.get("date_format"), "yyyy-MM-dd")
+        date_part = {"YEAR_MONTH_DAY": "yyyy-MM-dd"}.get(
+            props.get("date_format"), "yyyy-MM-dd"
+        )
 
         return f"{date_part} HH:mm:ss"
 
