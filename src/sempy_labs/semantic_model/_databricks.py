@@ -64,17 +64,16 @@ def _validate_metric_view_exists(
 
 def _validate_tables(model_map: dict, databricks_workspace: str, databricks_token: str):
 
-    table_names = [s["tableName"] for s in model_map["sources"].values()]
+    table_names = [s["tableName"] for s in model_map["tables"]]
 
     duplicates = {t for t in table_names if table_names.count(t) > 1}
     if duplicates:
         raise ValueError(f"Duplicate table names found: {duplicates}")
 
     # Check table type
-    for source, properties in model_map["sources"].items():
-        cat = properties.get("catalogName")
-        sch = properties.get("schemaName")
-        tbl = properties.get("tableName")
+    for t in model_map["tables"]:
+        source_object = t.get('sourceObject')
+        cat, sch, tbl = source_object.split('.')
         df = list_databricks_tables(
             databricks_workspace=databricks_workspace,
             databricks_token=databricks_token,
@@ -84,13 +83,13 @@ def _validate_tables(model_map: dict, databricks_workspace: str, databricks_toke
         )
         if df.empty:
             raise ValueError(
-                f"{icons.red_dot} The '{source}' table was not found in the source."
+                f"{icons.red_dot} The '{source_object}' table was not found in the source."
             )
         data_source_format = df["Data Source Format"].iloc[0]
         table_type = df["Table Type"].iloc[0]
         if data_source_format != "DELTA":
             raise ValueError(
-                f"{icons.red_dot} Only delta tables are supported. The '{source}' table is a '{table_type}' which is not in delta format and is not supported."
+                f"{icons.red_dot} Only delta tables are supported. The '{source_object}' table is a '{table_type}' which is not in delta format and is not supported."
             )
 
 
@@ -112,11 +111,39 @@ def _extract_table_name(expression: str, model_map: dict) -> str | None:
     return None
 
 
-def _collect_data_from_metric_view(
+def _add_table_to_model_map(source_object: str, model_map: dict, is_source = False, source_name = 'source', source_list = None) -> dict:
+
+    # Check if table already exists in model map
+
+    catalog, _, table = source_object.split(".")
+
+    source = next((s for s in source_list if s.get('catalogName') == catalog), None)
+    if not source:
+        raise ValueError(
+            f"{icons.red_dot} No mirror found for catalog '{catalog}' in the sources list. Please ensure all catalogs have a corresponding mirror and workspace defined in the sources."
+        )
+    source_item_id, source_workspace_id = source.get("itemId"), source.get("workspaceId")
+
+    model_map['tables'].append({
+        "tableName": table,
+        "sourceObject": source_object,
+        "isSource": is_source,
+        "sourceName": source_name,
+        "sourceItemId": source_item_id,
+        "sourceWorkspaceId": source_workspace_id,
+        "columns": [],
+        "measures": [],
+    })
+
+    return model_map
+
+
+def _create_model_map(
     metric_view: str,
     databricks_workspace: str,
     databricks_token: str,
-):
+    sources: dict | List[dict],
+) -> dict:
     """
     Generates a model map of sources, tables, columns, measures, relationships based on a Databricks Metric View.
     """
@@ -134,44 +161,100 @@ def _collect_data_from_metric_view(
     # Safely extract definition and columns
     definition = mv.get("View Definition")
     objects = mv.get("Objects", [])
-    source = definition.get("source")
+    source_object = definition.get("source")
     joins = definition.get("joins", [])
-    source_catalog, source_schema, source_table = source.split(".")
+    source_catalog, source_schema, source_table = source_object.split(".")
 
-    model_map = {"sources": {}, "relationships": {}, "tables": {}}
+    # Collect object properties
+    object_list = []
+    for o in objects:
+        name = o.get('name')
+        metadata = json.loads(o.get('type_json', {})).get('metadata', {})
+        format = o.get('metadata', {}).get('format')
+        object_type = metadata.get('metric_view.type')
+        synonyms = o.get('metadata', {}).get('synonyms', [])
+        description = o.get('comment')
+        display_name = o.get('metadata', {}).get('display_name') or name
+        obj_expression = metadata.get("metric_view.expr")
 
-    # Add primary source to model map
-    model_map["sources"][source] = {
-        "catalogName": source_catalog,
-        "schemaName": source_schema,
-        "tableName": source_table,
-        "sourceName": "source",
-        "isSource": True,
-        "mirrorId": None,
-        "mirrorWorkspaceId": None,
-        "columns": [],
-        "measures": [],
-    }
+        object_list.append({
+            "name": name,
+            "type": object_type,
+            "displayName": display_name,
+            "expression": obj_expression,
+            "description": description,
+            "format": format,
+            "dataType": o.get('type_text'),
+            "synonyms": synonyms,
+            "identified": False,
+            "tableName": None,
+        })
 
-    # Determine relationships
-    for idx, join in enumerate(joins):
+
+    # Map sources to IDs
+    df_conn = list_connections()
+
+    if isinstance(sources, dict):
+        sources = [sources]
+
+    source_list = []
+    for source in sources:
+        mirror = source.get("mirror")
+        ws = source.get("workspace")
+        if "mirror" not in source or "workspace" not in source:
+            raise ValueError(
+                f"{icons.warning} Skipping catalog '{source}' as it does not have a mirror and workspace defined in the sources."
+            )
+        mirror_workspace_id = resolve_workspace_id(workspace=ws)
+        mirror_id = resolve_item_id(
+            item=mirror,
+            type="MirroredAzureDatabricksCatalog",
+            workspace=mirror_workspace_id,
+        )
+        mirror_catalog = get_mirrored_azure_databricks_catalog(
+            mirrored_azure_databricks_catalog=mirror_id,
+            workspace=mirror_workspace_id,
+            return_dataframe=False,
+        )
+
+        mirror_catalog_name = mirror_catalog.get("properties", {}).get("catalogName")
+        mirror_connection_id = mirror_catalog.get("properties", {}).get(
+            "databricksWorkspaceConnectionId"
+        )
+
+        df_filt = df_conn[df_conn["Connection Id"] == mirror_connection_id]
+        if df_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} No connection found for the mirrored catalog from the '{source}' source."
+            )
+        mirror_connection_workspace = df_filt["Connection Path"].iloc[0].rstrip("/")
+
+        if mirror_connection_workspace != databricks_workspace:
+            raise ValueError(
+                f"{icons.red_dot} The mirrored catalog from the '{source}' source is connected to a different Databricks workspace than the one specified in the function parameters. Please ensure the mirrored catalog is connected to the correct Databricks workspace or update the databricks_workspace parameter to match the workspace of the mirrored catalog. Mirror catalog workspace: {mirror_connection_workspace}, specified databricks_workspace: {databricks_workspace}."
+            )
+        source_list.append({
+            "itemId": mirror_id,
+            "workspaceId": mirror_workspace_id,
+            "catalogName": mirror_catalog_name,
+        })
+
+    # Establish model map
+    model_map = {"tables": [], "relationships": []}
+
+    # Add source table to model map    
+    model_map = _add_table_to_model_map(source_object=source_object, model_map=model_map, is_source=True, source_name='source', source_list=source_list)
+
+    # Determine relationships and add joined tables to model map
+    for join in joins:
         join_name = join.get("name")
         join_source = join.get("source")
         join_on = join.get("on", {})
         join_using = join.get("using", [])
 
         catalog, schema, table = join_source.split(".")
-        model_map["sources"][join_source] = {
-            "catalogName": catalog,
-            "schemaName": schema,
-            "tableName": table,
-            "sourceName": join_name,
-            "isSource": False,
-            "mirrorId": None,
-            "mirrorWorkspaceId": None,
-            "columns": [],
-            "measures": [],
-        }
+
+        model_map = _add_table_to_model_map(source_object=join_source, model_map=model_map, is_source=False, source_name=join_name, source_list=source_list)
 
         if join_on:
             if " AND " in join_on:
@@ -186,7 +269,7 @@ def _collect_data_from_metric_view(
             from_table_alias, from_column = from_object.split(".")
             to_table_alias, to_column = to_object.split(".")
 
-            alias_to_source = {"source": source, join_name: join_source}
+            alias_to_source = {"source": source_object, join_name: join_source}
 
             from_source = alias_to_source.get(from_table_alias)
             to_source = alias_to_source.get(to_table_alias)
@@ -215,16 +298,12 @@ def _collect_data_from_metric_view(
         else:
             raise NotImplementedError("Unsupported join type.")
 
-        model_map["relationships"][f"Relationship_{idx}"] = {
-            "from_catalog": from_catalog,
-            "from_schema": from_schema,
+        model_map['relationships'].append({
             "from_table": from_table,
             "from_column": from_column,
-            "to_catalog": to_catalog,
-            "to_schema": to_schema,
             "to_table": to_table,
             "to_column": to_column,
-        }
+        })
 
     _validate_tables(
         model_map=model_map,
@@ -232,97 +311,181 @@ def _collect_data_from_metric_view(
         databricks_token=databricks_token,
     )
 
-    # ✅ Build tables map
-    for s in model_map["sources"].values():
-        table_name = s["tableName"]
+    cols = [o for o in object_list if o.get('type') == 'dimension']
+    measures = [o for o in object_list if o.get('type') == 'measure']
 
-        model_map["tables"][table_name] = {
-            "catalogName": s["catalogName"],
-            "schemaName": s["schemaName"],
-            "columns": [],
-            "measures": [],
-        }
-
-    sources = {
-        s.get("sourceName"): s.get("tableName") for s in model_map["sources"].values()
-    }
-
-    source_table = next(
-        (s.get("tableName") for s in model_map["sources"].values() if s["isSource"]),
-        None,
-    )
-
-    def get_table(expr, alias_map):
-        import re
-
-        matches = re.findall(r"\b(\w+)\.", expr)
-        tables = [alias_map[m] for m in matches if m in alias_map]
-
-        return tables[0] if len(tables) == 1 else tables
-
-    # Collect columns and measures
-    for c in objects:
-        type_json = json.loads(c.get("type_json"))
-        name = type_json.get("name")
-        data_type = c.get("type_text")
-        metadata = type_json.get("metadata")
-        obj_type = metadata.get("metric_view.type")  # dimension/measure
-        description = metadata.get("comment")
-        obj_expression = metadata.get("metric_view.expr")
-        #raw_semantic = metadata.get("semantic_metadata")
-        #semantic_metadata = json.loads(raw_semantic) if raw_semantic else {}
-        display_name = metadata.get("display_name", name)
-        format = c.get('metadata', {}).get("format")
-        synonyms = metadata.get("synonyms", [])
-        is_calc_column = False
-
-        if obj_type == "dimension":
-            table_name = _extract_table_name(
-                expression=obj_expression, model_map=model_map
+    # Add columns to model map
+    for t in model_map.get('tables', []):
+        #print(t)
+        src_obj = t.get('sourceObject')
+        src_name = t.get('sourceName')
+        #print(src_name)
+        src_item_id = t.get("sourceItemId")
+        src_workspace_id = t.get("sourceWorkspaceId")
+        t_name = t.get('tableName')
+        
+        sch_name = src_obj.split('.')[1]
+  
+        path = create_abfss_path(
+                lakehouse_id=src_item_id,
+                lakehouse_workspace_id=src_workspace_id,
+                delta_table_name=t_name,
+                schema=sch_name,
             )
-            if not table_name:
-                print(
-                    f"{icons.warning} Skipping the '{display_name}' column as it could not be determined from the expression."
-                )
-                table_name = get_table(obj_expression, sources)
-                is_calc_column = True
-                source_column = display_name.replace(" ", "")
+
+        df_table = list_columns_from_path(path=path)
+        if df_table.empty:
+            raise ValueError(
+                f"{icons.red_dot} The table '{t_name}' does not exist in the source or has no columns."
+            )
+        
+        def fix_source_column(column_name: str):
+            if " " in column_name:
+                return f"`{column_name}`"
             else:
-                source_column = obj_expression.split(".")[1]
+                return column_name
+        # Add columns
+        for _, row in df_table.iterrows():
+            source_column = row["Column Name"]
+            data_type = row["Data Type"]
+            converted_data_type = convert_column_data_type(data_type)
 
-            model_map["tables"][table_name]["columns"].append(
-                {
-                    "columnName": display_name,
-                    "sourceColumn": source_column,
-                    "dataType": convert_column_data_type(data_type),
-                    "format": format,
-                    "description": description,
-                    "expression": obj_expression,
-                    "synonyms": synonyms,
-                    "isCalcColumn": is_calc_column,
-                }
-            )
-        elif obj_type == "measure":
-            model_map["tables"][source_table]["measures"].append(
-                {
-                    "measureName": display_name,
-                    "format": format,
-                    "description": description,
-                    "expression": obj_expression,
-                    "synonyms": synonyms,
-                }
-            )
-        else:
-            raise NotImplementedError(
-                f"Please raise a support issue that the '{obj_type}' object type is not supported."
-            )
+            if converted_data_type is None:
+                raise ValueError(
+                    f"{icons.red_dot} The data type '{data_type}' of column '{source_column}' in table '{t_name}' is not supported."
+                )
+            if converted_data_type == "Binary":
+                print(
+                    f"{icons.warning} The column '{source_column}' in table '{t_name}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
+                )
+                continue
+            column_name = source_column
+            expression, description, format_string = None, None, None
+            fixed_source_column = fix_source_column(source_column)
+            is_hidden = True
+            for col in cols:
+                if col.get('expression') == f"{src_name}.{fixed_source_column}":
+                    column_name = col.get('displayName') or source_column
+                    expression = col.get('expression')
+                    format_string = col.get('format')
+                    description = col.get('description')
+                    is_hidden = False
+                    col['identified'] = True
+                    break
 
+            fixed_column_name = fix_source_column(column_name)
+            t['columns'].append({
+                "columnName": column_name,
+                "sourceColumn": source_column,
+                "fixedSourceColumn": fixed_source_column,
+                "expression": expression,
+                "dataType": converted_data_type,
+                "isHidden": is_hidden,
+                "description": description,
+                "format_dbx": format_string,
+                "format_pbi": convert_format_from_databricks(format_string),
+                "isCalcColumn": False,
+                "daxFullObjectName": f"'{t_name}'[{column_name}]",
+                "columnReferences": list(set([f"{src_name}.{fixed_source_column}", fixed_source_column, fixed_column_name])),
+            })
+    
+    # Add calculated columns
+    calc_columns = []
+    for col in cols:
+        if not col.get('identified'):
+            print(f"{icons.warning} Skipping the '{col.get('name')}' column as calculated columns are not supported.")
+            
+            expr = col.get('expression') or ""
+            source_column = col.get('name')
+            column_name = col.get('displayName') or source_column
+            fixed_source_column = fix_source_column(source_column)
+            tbl_name = None
+            calc_columns.append(fixed_source_column)
+
+            # Find matching table
+            for t in model_map['tables']:
+                for t_col in t.get('columns', []):
+                    full_ref = f"{t.get('sourceName')}.{t_col.get('fixedSourceColumn')}"
+                    if full_ref in expr:
+                        tbl_name = t.get('tableName')
+                        break
+                if tbl_name:
+                    break  # <-- break outer loop too
+
+            if not tbl_name:
+                print(f"{icons.warning} Could not determine table for column '{column_name}'")
+                continue
+
+            # Append calculated column
+            for t in model_map['tables']:
+                src_name = t.get('sourceName')
+                if t['tableName'] == tbl_name:
+                    t.setdefault('columns', []).append({
+                        "columnName": column_name,
+                        "sourceColumn": col.get('name'),
+                        "expression": col.get('expression'),
+                        "dataType": convert_column_data_type(col.get('dataType')),
+                        "isHidden": False,
+                        "description": col.get('description'),
+                        "format_dbx": col.get('format'),
+                        "format_pbi": convert_format_from_databricks(col.get('format')),
+                        "isCalcColumn": True,
+                        "daxFullObjectName": f"'{tbl_name}'[{column_name}]",
+                        "columnReferences": list(set([f"{src_name}.{fixed_source_column}", fixed_source_column])),
+                    })
+                    break
+
+    # Create column map for DAX references
+    column_map = {}
+    for t in model_map['tables']:
+        for c in t['columns']:
+            fcn = c['daxFullObjectName']
+            for ref in c.get('columnReferences', []):
+                column_map[ref] = fcn
+
+    # Add measures
+    for t in model_map['tables']:
+        if t.get('isSource'):
+            for m in measures:
+                measure_name = m.get('displayName') or m.get('name')
+                expression = m.get('expression')
+                dax = convert_sql_to_dax(sql=expression, column_map=column_map, default_table=t.get('tableName'))
+                for calc_column in calc_columns:
+                    if calc_column in expression:
+                        dax = f"""/* NOT SUPPORTED AS THIS MEASURE USES A CALCULATED COLUMN. {dax} */ """
+                        break
+                format = m.get('format')
+                is_hidden = False
+                t['measures'].append({
+                    "measureName": measure_name,
+                    "description": m.get('description'),
+                    "expression_sql": expression,
+                    "expression_dax": dax,
+                    "isHidden": is_hidden,
+                    "format_dbx": format,
+                    "format_pbi": convert_format_from_databricks(format),
+                    "synonyms": m.get('synonyms', []),
+                })
+    
     return model_map
+
+    # Set Roles according to DBX permissions
+    #catalog, schema, table = metric_view.split('.')
+
+    #if infer_row_level_security:
+    #    df_perm = list_permissions(object=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    view_permissions = df_perm[df_perm['Privilege'].isin(['SELECT'])]['Principal'].tolist()
+    #    df_perm = list_permissions(object=f"{catalog}.{schema}", databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    schema_permissions = df_perm[df_perm['Privilege'].isin(['USE_SCHEMA'])]['Principal'].tolist()
+    #    df_perm = list_permissions(object=catalog, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    catalog_permissions = df_perm[df_perm['Privilege'].isin(['USE_CATALOG'])]['Principal'].tolist()
+
+    #    inferred_permissions = set(view_permissions) | set(schema_permissions) | set(catalog_permissions)
 
 
 @log
 def generate_semantic_model_from_metric_view(
-    dataset: str,
+    name: str,
     metric_view: str,
     databricks_workspace: str,
     databricks_token: str,
@@ -384,266 +547,30 @@ def generate_semantic_model_from_metric_view(
     """
     workspace_id = resolve_workspace_id(workspace)
 
-    if isinstance(sources, dict):
-        sources = [sources]
-
     databricks_workspace = databricks_workspace.rstrip("/")
-    model_map = _collect_data_from_metric_view(
+    model_map = _create_model_map(
         metric_view=metric_view,
         databricks_workspace=databricks_workspace,
         databricks_token=databricks_token,
+        sources=sources,
     )
-
-    # Set Roles according to DBX permissions
-    #catalog, schema, table = metric_view.split('.')
-
-    #if infer_row_level_security:
-    #    df_perm = list_permissions(object=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
-    #    view_permissions = df_perm[df_perm['Privilege'].isin(['SELECT'])]['Principal'].tolist()
-    #    df_perm = list_permissions(object=f"{catalog}.{schema}", databricks_workspace=databricks_workspace, databricks_token=databricks_token)
-    #    schema_permissions = df_perm[df_perm['Privilege'].isin(['USE_SCHEMA'])]['Principal'].tolist()
-    #    df_perm = list_permissions(object=catalog, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
-    #    catalog_permissions = df_perm[df_perm['Privilege'].isin(['USE_CATALOG'])]['Principal'].tolist()
-
-    #    inferred_permissions = set(view_permissions) | set(schema_permissions) | set(catalog_permissions)
-
-    df = list_connections()
-
-    # Validate catalogs
-    catalogs = {s["catalogName"] for s in model_map["sources"].values()}
-    for source in sources:
-        mirror = source.get("mirror")
-        ws = source.get("workspace")
-        if "mirror" not in source or "workspace" not in source:
-            raise ValueError(
-                f"{icons.warning} Skipping catalog '{source}' as it does not have a mirror and workspace defined in the sources."
-            )
-        mirror_workspace_id = resolve_workspace_id(workspace=ws)
-        mirror_id = resolve_item_id(
-            item=mirror,
-            type="MirroredAzureDatabricksCatalog",
-            workspace=mirror_workspace_id,
-        )
-        mirror_catalog = get_mirrored_azure_databricks_catalog(
-            mirrored_azure_databricks_catalog=mirror_id,
-            workspace=mirror_workspace_id,
-            return_dataframe=False,
-        )
-
-        mirror_catalog_name = mirror_catalog.get("properties", {}).get("catalogName")
-        mirror_connection_id = mirror_catalog.get("properties", {}).get(
-            "databricksWorkspaceConnectionId"
-        )
-
-        df_filt = df[df["Connection Id"] == mirror_connection_id]
-        if df_filt.empty:
-            raise ValueError(
-                f"{icons.red_dot} No connection found for the mirrored catalog from the '{source}' source."
-            )
-        mirror_connection_workspace = df_filt["Connection Path"].iloc[0].rstrip("/")
-
-        if mirror_connection_workspace != databricks_workspace:
-            raise ValueError(
-                f"{icons.red_dot} The mirrored catalog from the '{source}' source is connected to a different Databricks workspace than the one specified in the function parameters. Please ensure the mirrored catalog is connected to the correct Databricks workspace or update the databricks_workspace parameter to match the workspace of the mirrored catalog. Mirror catalog workspace: {mirror_connection_workspace}, specified databricks_workspace: {databricks_workspace}."
-            )
-        if mirror_catalog_name not in catalogs:
-            raise ValueError(
-                f"{icons.red_dot} The mirrored catalog '{mirror_catalog_name}' from the '{source}' source is not found in the list of catalogs."
-            )
-
-        for source, items in model_map.get("sources").items():
-            cat = items.get("catalogName")
-            if cat == mirror_catalog_name:
-                model_map["sources"][source]["mirrorId"] = mirror_id
-                model_map["sources"][source]["mirrorWorkspaceId"] = mirror_workspace_id
-
-    for source, items in model_map["sources"].items():
-        catalog_name = items.get("catalogName")
-        mirror_id = items.get("mirrorId")
-        mirror_workspace_id = items.get("mirrorWorkspaceId")
-        if mirror_id is None or mirror_workspace_id is None:
-            raise ValueError(
-                f"{icons.red_dot} No mirror defined for source catalog '{catalog_name}'. Please ensure all catalogs have a corresponding mirror and workspace defined in the sources."
-            )
-
-    seen = set()
-    mirrors = [
-        {"catalogName": c, "mirrorId": m, "mirrorWorkspaceId": w}
-        for items in model_map["sources"].values()
-        for (c, m, w) in [
-            (
-                items.get("catalogName"),
-                items.get("mirrorId"),
-                items.get("mirrorWorkspaceId"),
-            )
-        ]
-        if not ((c, m, w) in seen or seen.add((c, m, w)))
-    ]
-
-    source_table_name = None
-    source_full_table_name = None
-    for source, properties in model_map["sources"].items():
-        mirror_id = properties.get("mirrorId")
-        mirror_workspace_id = properties.get("mirrorWorkspaceId")
-        table_name = properties.get("tableName")
-        schema_name = properties.get("schemaName")
-        is_source = properties.get("isSource")
-        source_name = properties.get("sourceName")
-        if is_source:
-            source_table_name = table_name
-            source_full_table_name = source
-        path = create_abfss_path(
-            lakehouse_id=mirror_id,
-            lakehouse_workspace_id=mirror_workspace_id,
-            delta_table_name=table_name,
-            schema=schema_name,
-        )
-
-        df = list_columns_from_path(path=path)
-        if df.empty:
-            raise ValueError(
-                f"{icons.red_dot} The table '{table_name}' does not exist in the source or has no columns."
-            )
-
-        # Get columns for the specific table directly
-        cols = model_map.get("tables", {}).get(table_name, {}).get("columns", [])
-
-        # Index columns by sourceColumn for O(1) lookup
-        cols_lookup = {c.get("sourceColumn"): c for c in cols}
-
-        # Add columns
-        for _, row in df.iterrows():
-            source_column = row["Column Name"]
-            data_type = row["Data Type"]
-            converted_data_type = convert_column_data_type(data_type)
-            col_prop = cols_lookup.get(source_column) or cols_lookup.get(f"`{source_column}`")
-
-            is_hidden = col_prop is None
-            desc = col_prop.get("description") if col_prop else None
-            format = col_prop.get("format") if col_prop else None
-            column_name = (
-                col_prop.get("columnName")
-                if col_prop and col_prop.get("columnName")
-                else source_column
-            )
-            synonyms = col_prop.get("synonyms", []) if col_prop else []
-
-            if converted_data_type is None:
-                raise ValueError(
-                    f"{icons.red_dot} The data type '{data_type}' of column '{source_column}' in table '{table_name}' is not supported."
-                )
-            if converted_data_type == "Binary":
-                print(
-                    f"{icons.warning} The column '{source_column}' in table '{table_name}' has data type 'Binary' which is not supported in Direct Lake semantic models. This column will be skipped."
-                )
-                continue
-
-            def fixed_column_name(column_name: str):
-                if " " in column_name:
-                    return f"`{column_name}`"
-                else:
-                    return column_name
-
-            model_map["sources"][source]["columns"].append(
-                {
-                    "columnName": column_name,
-                    "dataType": converted_data_type,
-                    "sourceColumn": source_column,
-                    "isHidden": is_hidden,
-                    "format_dbx": format,
-                    "format_pbi": convert_format_from_databricks(format),
-                    "description": desc,
-                    "synonyms": synonyms,
-                    "fullSourceColumnName": (
-                        f"{source_name}.{fixed_column_name(source_column)}"
-                        if source_name
-                        else source_column
-                    ),
-                    "fullColumnName": f"{table_name}.{fixed_column_name(column_name)}",
-                }
-            )
-
-    # Add measures
-    column_map = {}
-    for source, prop in model_map["sources"].items():
-        columns = prop.get("columns")
-        table_name = prop.get("tableName")
-        for c in columns:
-            column_name = c.get("columnName")
-            is_hidden = c.get("isHidden")
-            full_source_column_name = c.get("fullSourceColumnName")
-            full_column_name = c.get("fullColumnName")
-            fcn = f"'{table_name}'[{column_name}]"
-            if not is_hidden:
-                column_map[column_name] = fcn
-                column_map[full_source_column_name] = fcn
-                column_map[full_column_name] = fcn
-
-    for source, prop in model_map["sources"].items():
-        columns = prop.get("columns")
-        table_name = prop.get("tableName")
-        for c in columns:
-            column_name = c.get("columnName")
-            is_hidden = c.get("isHidden")
-            full_source_column_name = c.get("fullSourceColumnName")
-            full_column_name = c.get("fullColumnName")
-            fcn = f"'{table_name}'[{column_name}]"
-            lower_keys = {k.lower() for k in column_map}
-            if column_name.lower() not in lower_keys:
-                column_map[column_name] = fcn
-                column_map[full_source_column_name] = fcn
-                column_map[full_column_name] = fcn
-
-    calc_columns = []
-    for table_name, prop in model_map["tables"].items():
-        columns = prop.get("columns", [])
-        for c in columns:
-            column_name = c.get("columnName")
-            source_column = c.get("sourceColumn")
-            fcn = f"'{table_name}'[{column_name}]"
-            if c.get("isCalcColumn"):
-                calc_columns.append(fcn)
-                column_map[column_name] = fcn
-                column_map[source_column] = fcn
-                column_map[f"{table_name}.{source_column}"] = fcn
-
-    for _, prop in model_map["tables"].items():
-        measures = prop.get("measures", [])
-        for m in measures:
-            m_name = m.get("measureName")
-            desc = m.get("description")
-            expr = m.get("expression")
-            syn = m.get("synonyms", [])
-            format = m.get("format")
-            is_hidden = False
-            dax = convert_sql_to_dax(
-                sql=expr,
-                column_map=column_map,
-                default_table=source_table_name,
-            )
-            for c in calc_columns:
-                if c in dax:
-                    dax = f""" /* NOT SUPPORTED AS THIS MEASURE USES A CALCULATED COLUMN. {dax} */ """
-                    is_hidden = True
-                    break
-            model_map["sources"][source_full_table_name]["measures"].append(
-                {
-                    "measureName": m_name,
-                    "description": desc,
-                    "expression_sql": expr,
-                    "expression_dax": dax,
-                    "isHidden": is_hidden,
-                    "format_dbx": format,
-                    "format_pbi": convert_format_from_databricks(format),
-                    "synonyms": syn,
-                }
-            )
-
-    # Delete tables from model map as they are not needed for model generation and to avoid confusion. The necessary table information has already been incorporated into the sources.
-    del model_map["tables"]
 
     if test_run:
         return model_map
+
+    # Extract list of mirrors
+    seen = set()
+    mirrors = []
+
+    for t in model_map['tables']:
+        key = (t.get('sourceItemId'), t.get('sourceWorkspaceId'))
+        
+        if key not in seen:
+            seen.add(key)
+            mirrors.append({
+                "mirrorId": key[0],
+                "workspaceId": key[1],
+            })
 
     # Generate semantic model
     model_id = create_blank_semantic_model(
@@ -666,63 +593,51 @@ def generate_semantic_model_from_metric_view(
         dataset=model_id, workspace=workspace_id, readonly=False
     ) as tom:
 
-        source_table_name = None
-
         # Add expressions
-        for mirror in mirrors:
-            catalog_name = mirror.get("catalogName")
-            mirror_id = mirror.get("mirrorId")
-            mirror_workspace_id = mirror.get("mirrorWorkspaceId")
+        for t in model_map['tables']:
+            tbl_name = t.get('tableName')
+            mirror_id = t.get('sourceItemId')
+            mirror_workspace_id = t.get('sourceWorkspaceId')
+            catalog_name, schema_name, t_name = t.get('sourceObject').split('.')
             mirror_expr = generate_shared_expression(
                 item=mirror_id,
                 item_type="MirroredAzureDatabricksCatalog",
                 workspace=mirror_workspace_id,
                 use_sql_endpoint=False,
             )
-            tom.add_expression(name=f"Mirror_{catalog_name}", expression=mirror_expr)
+            expr_name = f"Mirror_{catalog_name}"
+            if not any(e for e in tom.model.Expressions if e.Name == expr_name):
+                tom.add_expression(name=expr_name, expression=mirror_expr)
 
-        for source, properties in model_map["sources"].items():
-
-            table_name = properties.get("tableName")
-            schema_name = properties.get("schemaName")
-            catalog_name = properties.get("catalogName")
-            is_source = properties.get("isSource")
-            if is_source:
-                source_table_name = table_name
-            columns = properties.get("columns", [])
-            measures = properties.get("measures", [])
-            mirror_expr_name = f"Mirror_{catalog_name}"
-
-            tom.add_table(
-                name=table_name,
-            )
+            tom.add_table(name=tbl_name)
             tom.add_entity_partition(
-                table_name=table_name,
-                entity_name=table_name,
-                expression=mirror_expr_name,
+                table_name=tbl_name,
+                entity_name=tbl_name,
+                expression=expr_name,
                 schema_name=schema_name,
             )
 
-            for column in columns:
+            for column in t.get('columns', []):
                 column_name = column.get("columnName")
                 data_type = column.get("dataType")
                 source_column = column.get("sourceColumn")
                 description = column.get("description")
                 is_hidden = column.get("isHidden")
                 format_string = column.get("format_pbi")
-                tom.add_data_column(
-                    table_name=table_name,
-                    column_name=column_name,
-                    source_column=source_column,
-                    data_type=data_type,
-                    hidden=is_hidden,
-                    description=description,
-                    format_string=format_string,
-                )
+                if column.get('isCalcColumn', False) == False:
+                    tom.add_data_column(
+                        table_name=tbl_name,
+                        column_name=column_name,
+                        source_column=source_column,
+                        data_type=data_type,
+                        hidden=is_hidden,
+                        description=description,
+                        format_string=format_string,
+                    )
 
-            for measure in measures:
+            for measure in t.get('measures', []):
                 tom.add_measure(
-                    table_name=table_name,
+                    table_name=tbl_name,
                     measure_name=measure.get("measureName"),
                     expression=measure.get("expression_dax"),
                     description=measure.get("description"),
@@ -732,12 +647,11 @@ def generate_semantic_model_from_metric_view(
 
         column_lookup = {c for c in tom.all_columns()}
         relationships = model_map.get("relationships", {})
-        for name, properties in relationships.items():
-            from_table = properties.get("from_table")
-            from_source_column = properties.get("from_column")
-
-            to_table = properties.get("to_table")
-            to_source_column = properties.get("to_column")
+        for r in relationships:
+            from_table = r.get("from_table")
+            from_source_column = r.get("from_column")
+            to_table = r.get("to_table")
+            to_source_column = r.get("to_column")
 
             from_column = next(
                 (
