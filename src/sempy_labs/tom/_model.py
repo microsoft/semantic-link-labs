@@ -6300,10 +6300,10 @@ class TOMWrapper:
                     return {}
 
                 return {
-                    "masterSemanticModelName": ann.get("datasetName"),
-                    "masterSemanticModelId": ann.get("datasetId"),
-                    "masterSemanticModelWorkspaceName": ann.get("workspaceName"),
-                    "masterSemanticModelWorkspaceId": ann.get("workspaceId"),
+                    "masterSemanticModelName": ann.get("sourceDatasetName"),
+                    "masterSemanticModelId": ann.get("sourceDatasetId"),
+                    "masterSemanticModelWorkspaceName": ann.get("sourceWorkspaceName"),
+                    "masterSemanticModelWorkspaceId": ann.get("sourceWorkspaceId"),
                     "miniModelPerspective": ann.get("perspective"),
                     "miniModelFilters": ann.get("filters") or {},
                     "miniModelLastUpdatedDate": ann.get("lastUpdatedDate"),
@@ -6325,7 +6325,7 @@ class TOMWrapper:
         else:
             return False
 
-    def list_mini_models(self, show_filters: bool = False) -> pd.DataFrame:
+    def __list_mini_models(self, show_filters: bool = False) -> pd.DataFrame:
         """
         Shows a list of the semantic model's downstream mini models.
 

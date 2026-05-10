@@ -389,10 +389,10 @@ def deploy_semantic_model(
                         ].Source.SchemaName = schema_name
             # Set annotations to mini model
             source_annotation_value = {
-                "datasetId": source_dataset_id,
-                "datasetName": source_dataset_name,
-                "workspaceId": source_workspace_id,
-                "workspaceName": source_workspace_name,
+                "sourceDatasetId": source_dataset_id,
+                "sourceDatasetName": source_dataset_name,
+                "sourceWorkspaceId": source_workspace_id,
+                "sourceWorkspaceName": source_workspace_name,
                 "lastUpdatedDate": now,
                 "perspective": perspective,
                 "filters": filters_value,
@@ -404,59 +404,59 @@ def deploy_semantic_model(
             )
 
             # Remove mini model annotations from the master model if they exist (cleanup)
-            ann_to_remove = [
-                a.Name
-                for a in tom.model.Annotations
-                if a.Name.startswith(icons.prefix_mini)
-            ]
-            for ann in ann_to_remove:
-                tom.remove_annotation(object=tom.model, name=ann)
+            #ann_to_remove = [
+            #    a.Name
+            #    for a in tom.model.Annotations
+            #    if a.Name.startswith(icons.prefix_mini)
+            #]
+            #for ann in ann_to_remove:
+            #    tom.remove_annotation(object=tom.model, name=ann)
 
     # Set annotations to the master model
-    if filters is not None or perspective is not None:
-        with connect_semantic_model(
-            dataset=source_dataset_id, workspace=source_workspace_id, readonly=False
-        ) as tom:
+    #if filters is not None or perspective is not None:
+    #    with connect_semantic_model(
+    #        dataset=source_dataset_id, workspace=source_workspace_id, readonly=False
+    #    ) as tom:
 
-            ann_name = f"{icons.prefix_mini}_{perspective}"
+    #        ann_name = f"{icons.prefix_mini}_{perspective}"
 
             # --- Get existing annotation safely ---
-            try:
-                ann_value = tom.get_annotation_value(object=tom.model, name=ann_name)
-                ann_list = ast.literal_eval(ann_value) if ann_value else []
-            except Exception:
-                ann_list = []
+    #        try:
+    #            ann_value = tom.get_annotation_value(object=tom.model, name=ann_name)
+    #            ann_list = ast.literal_eval(ann_value) if ann_value else []
+    #        except Exception:
+    #            ann_list = []
 
             # --- Build lookup (faster than loop) ---
-            index = {a.get("datasetId"): a for a in ann_list}
+    #        index = {a.get("datasetId"): a for a in ann_list}
 
-            if target_dataset_id in index:
-                # --- Update existing ---
-                entry = index[target_dataset_id]
-                entry.update(
-                    {
-                        "datasetName": target_dataset_name,
-                        "workspaceId": target_workspace_id,
-                        "workspaceName": target_workspace_name,
-                        "lastUpdatedDate": now,
-                        "filters": filters_value,
-                    }
-                )
-            else:
-                # --- Add new ---
-                ann_list.append(
-                    {
-                        "datasetId": target_dataset_id,
-                        "datasetName": target_dataset_name,
-                        "workspaceId": target_workspace_id,
-                        "workspaceName": target_workspace_name,
-                        "lastUpdatedDate": now,
-                        "filters": filters_value,
-                    }
-                )
+    #        if target_dataset_id in index:
+    #            # --- Update existing ---
+    #            entry = index[target_dataset_id]
+    #            entry.update(
+    #                {
+    #                    "datasetName": target_dataset_name,
+    #                    "workspaceId": target_workspace_id,
+    #                    "workspaceName": target_workspace_name,
+    #                    "lastUpdatedDate": now,
+    #                    "filters": filters_value,
+    #                }
+    #            )
+    #        else:
+    #            # --- Add new ---
+    #            ann_list.append(
+    #                {
+    #                    "datasetId": target_dataset_id,
+    #                    "datasetName": target_dataset_name,
+    #                    "workspaceId": target_workspace_id,
+    #                    "workspaceName": target_workspace_name,
+    #                    "lastUpdatedDate": now,
+    #                    "filters": filters_value,
+    #                }
+    #            )
 
             # --- Save once ---
-            tom.set_annotation(object=tom.model, name=ann_name, value=str(ann_list))
+    #        tom.set_annotation(object=tom.model, name=ann_name, value=str(ann_list))
     if refresh_target_dataset:
         refresh_semantic_model(dataset=target_dataset_id, workspace=target_workspace_id)
 
