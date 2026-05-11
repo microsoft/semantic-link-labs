@@ -23,10 +23,11 @@ classifiers = [
 license= { text = "MIT License" }
 
 dependencies = [
-    "semantic-link-sempy>=0.14.0",
+    "semantic-link-sempy>=0.14.1",
     "anytree",
     "polib",
     "jsonpath_ng",
+    "anywidget",
 ]
 
 [tool.setuptools.packages.find]
@@ -44,7 +45,7 @@ test = [
 Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,jsonpath_ng.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,synapse.ml.services.*,polib.*,jsonpath_ng.*,anywidget.*"
 ignore_missing_imports = true
 
 [tool.flake8]
