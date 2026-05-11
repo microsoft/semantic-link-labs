@@ -30,7 +30,10 @@ from pyspark.sql.types import StructType, StructField, StringType
 from uuid import UUID
 from pathlib import Path
 import ipywidgets as _ipyw
-import sempy_labs.semantic_model._bpa_rules as bpa_rules
+
+_BPA_RULES_PATH = Path(__file__).parent / "_bpa_rules.json"
+with open(_BPA_RULES_PATH, "r", encoding="utf-8") as _f:
+    _BPA_RULES = json.load(_f)
 
 
 severity_map = {
@@ -461,7 +464,8 @@ def bpa(
             ]
         )
 
-    rules = bpa_rules.rules
+    if rules is None:
+        rules = [dict(r) for r in _BPA_RULES]
 
     # Open TOM connection once upfront
     with connect_semantic_model(
