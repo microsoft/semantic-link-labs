@@ -511,6 +511,26 @@ function render({ model, el }) {
             (ws ? escapeHtml(ws) : "");
     }
 
+    // Theme toggle button (light/dark)
+    const SUN_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.3 3.3l1.05 1.05M11.65 11.65l1.05 1.05M3.3 12.7l1.05-1.05M11.65 4.35l1.05-1.05"/></svg>`;
+    const MOON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>`;
+    const themeBtn = document.createElement("button");
+    themeBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    themeBtn.type = "button";
+    function renderThemeBtn() {
+        const isDark = model.get("dark_mode") === true;
+        themeBtn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
+        themeBtn.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+        themeBtn.setAttribute("aria-label", themeBtn.title);
+    }
+    themeBtn.addEventListener("click", () => {
+        model.set("dark_mode", !(model.get("dark_mode") === true));
+        model.save_changes();
+    });
+    model.on("change:dark_mode", renderThemeBtn);
+    renderThemeBtn();
+    header.appendChild(themeBtn);
+
     const select = document.createElement("select");
     select.className = "slls-pe-select";
     header.appendChild(select);
