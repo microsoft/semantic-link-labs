@@ -137,11 +137,6 @@ _WIDGET_CSS = """
     background-color: var(--slls-accent-soft);
     color: var(--slls-text);
 }
-.slls-pe-select option.slls-pe-option-new {
-    color: var(--slls-accent);
-    font-weight: 500;
-    border-top: 1px solid var(--slls-border);
-}
 
 .slls-pe-input {
     appearance: none;
@@ -446,7 +441,6 @@ function render({ model, el }) {
     model.on("change:dark_mode", applyTheme);
     el.appendChild(root);
 
-    const NEW_SENTINEL = "__new__";
     const ICON_SVG = {
         // Column: a tall rounded vertical bar — like a database column.
         columns: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -534,6 +528,16 @@ function render({ model, el }) {
     const select = document.createElement("select");
     select.className = "slls-pe-select";
     header.appendChild(select);
+
+    // "New perspective" button — sits next to the dropdown.
+    const PLUS_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3.25v9.5M3.25 8h9.5"/></svg>`;
+    const newBtn = document.createElement("button");
+    newBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    newBtn.type = "button";
+    newBtn.innerHTML = PLUS_SVG;
+    newBtn.title = "New perspective";
+    newBtn.setAttribute("aria-label", "New perspective");
+    header.appendChild(newBtn);
 
     const createRow = document.createElement("div");
     createRow.className = "slls-pe-create-row";
@@ -737,11 +741,14 @@ function render({ model, el }) {
             if (p === cur) opt.selected = true;
             select.appendChild(opt);
         }
-        const optNew = document.createElement("option");
-        optNew.value = NEW_SENTINEL;
-        optNew.textContent = "+ New Perspective…";
-        optNew.className = "slls-pe-option-new";
-        select.appendChild(optNew);
+        if (persps.length === 0) {
+            const optEmpty = document.createElement("option");
+            optEmpty.value = "";
+            optEmpty.textContent = "No perspectives";
+            optEmpty.disabled = true;
+            optEmpty.selected = true;
+            select.appendChild(optEmpty);
+        }
         deleteBtn.disabled = persps.length === 0;
         saveBtn.disabled = persps.length === 0;
     }
@@ -958,25 +965,28 @@ function render({ model, el }) {
     // ============== Events ==============
     select.addEventListener("change", () => {
         const v = select.value;
-        if (v === NEW_SENTINEL) {
-            createRow.classList.add("show");
-            select.style.display = "none";
-            newInput.value = "";
-            newInput.focus();
-        } else {
-            model.set("selected_perspective", v);
-            model.save_changes();
-            reloadFromModel();
-            setStatus("");
-        }
+        model.set("selected_perspective", v);
+        model.save_changes();
+        reloadFromModel();
+        setStatus("");
     });
+
+    function enterCreate() {
+        createRow.classList.add("show");
+        select.style.display = "none";
+        newBtn.style.display = "none";
+        newInput.value = "";
+        newInput.focus();
+    }
 
     function exitCreate() {
         createRow.classList.remove("show");
         select.style.display = "";
+        newBtn.style.display = "";
         select.value = getSelected() || "";
     }
 
+    newBtn.addEventListener("click", enterCreate);
     cancelBtn.addEventListener("click", exitCreate);
 
     okBtn.addEventListener("click", () => {
