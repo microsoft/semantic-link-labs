@@ -167,7 +167,8 @@ def create_materialized_lake_view(
     workspace: Optional[str | UUID] = None,
     replace: bool = False,
     partition_columns: List[str] = None,
-):
+    test_run: bool = False,
+) -> bool | None:
     """
     Creates a materialized lake view within a lakehouse.
 
@@ -176,7 +177,7 @@ def create_materialized_lake_view(
     Parameters
     ----------
     name : str
-        The name of the materialized lake view (not including the lakehouse or workspace names). For schema-enabled lakehouses, include the name in schema_name.view_name format.
+        The name of the materialized lake view (not including the lakehouse or workspace names). This must be in schema_name.view_name format.
     query : str
         The SQL query that defines the materialized lake view. The query must be a valid SQL query that can be executed in the context of the lakehouse.
     lakehouse : str | uuid.UUID, default=None
@@ -190,12 +191,22 @@ def create_materialized_lake_view(
         If True, it will replace the existing materialized lake view if one exists.
     partition_columns : typing.List[str], default=None
         The columns to partition the materialized lake view by.
+    test_run : bool, default=False
+        If True, the function will indicate whether the materialized lake view would be created successfully without actually creating it. This is useful for validating the input parameters and the SQL query before executing the creation of the materialized lake view.
     """
 
     import fmlv
     from sempy_labs.lakehouse._schemas import create_schema
 
     spark = _create_spark_session()
+
+    if test_run:
+        try:
+            spark.sql(query).limit(1).collect()
+            is_valid = True
+        except Exception:
+            is_valid = False
+        return is_valid
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
