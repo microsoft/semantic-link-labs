@@ -38,8 +38,9 @@ def list_apps(
     """
 
     columns = {
-        "App Name": "string",
         "App Id": "string",
+        "Workspace Id": "string",
+        "App Name": "string",
         "Description": "string",
         "Published By": "string",
         "Last Update": "datetime_coerce",
@@ -62,8 +63,9 @@ def list_apps(
     for v in response.json().get("value", []):
         rows.append(
             {
-                "App Name": v.get("name"),
                 "App Id": v.get("id"),
+                "Workspace Id": v.get("workspaceId"),
+                "App Name": v.get("name"),
                 "Description": v.get("description"),
                 "Published By": v.get("publishedBy"),
                 "Last Update": v.get("lastUpdate"),
