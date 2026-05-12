@@ -13,7 +13,6 @@ from sempy_labs.semantic_model._helper import (
     convert_format_from_databricks,
     convert_sql_to_dax,
 )
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs.directlake._generate_shared_expression import (
     generate_shared_expression,
@@ -606,6 +605,8 @@ def generate_semantic_model_from_metric_view(
     test_run : bool, default=False
         If True, does not create the semantic model. It returns the blueprint for creating the semantic model.
     """
+    from sempy_labs.tom import connect_semantic_model
+
     workspace_id = resolve_workspace_id(workspace)
 
     databricks_workspace = databricks_workspace.rstrip("/")
