@@ -8,9 +8,9 @@ from sempy_labs._helper_functions import (
 )
 
 
-def get_databricks_headers(databricks_token: str) -> dict:
+def get_databricks_headers(token: str) -> dict:
     return {
-        "Authorization": f"Bearer {databricks_token}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
 
@@ -20,7 +20,7 @@ def list_databricks_columns(
     databricks_workspace: str,
     unity_catalog: str,
     schema: str,
-    databricks_token: str,
+    token: str,
     table_name: Optional[str] = None,
 ) -> pd.DataFrame:
 
@@ -28,7 +28,7 @@ def list_databricks_columns(
     response = _base_api(
         request=url,
         client="databricks",
-        headers=get_databricks_headers(databricks_token),
+        headers=get_databricks_headers(token),
     )
 
     columns = {
@@ -73,7 +73,7 @@ def list_databricks_columns(
 
 @log
 def list_databricks_metric_views(
-    databricks_workspace: str, unity_catalog: str, schema: str, databricks_token: str
+    databricks_workspace: str, unity_catalog: str, schema: str, token: str
 ) -> List[dict]:
     """
     Lists all metric views in a specified Unity Catalog and schema within an Azure Databricks workspace.
@@ -86,7 +86,7 @@ def list_databricks_metric_views(
         The name of the Unity Catalog.
     schema : str
         The name of the schema within the Unity Catalog.
-    databricks_token : str
+    token : str
         The personal access token for authenticating with the Azure Databricks REST API.
 
     Returns
@@ -98,7 +98,7 @@ def list_databricks_metric_views(
     response = _base_api(
         request=f"{databricks_workspace}/api/2.1/unity-catalog/tables?catalog_name={unity_catalog}&schema_name={schema}",
         client="databricks",
-        headers=get_databricks_headers(databricks_token),
+        headers=get_databricks_headers(token),
     )
 
     rows = []
@@ -124,7 +124,7 @@ def list_databricks_tables(
     databricks_workspace: str,
     unity_catalog: str,
     schema: str,
-    databricks_token: str,
+    token: str,
     table_name: Optional[str] = None,
 ) -> pd.DataFrame:
     """
@@ -138,7 +138,7 @@ def list_databricks_tables(
         The name of the Unity Catalog.
     schema : str
         The name of the schema within the Unity Catalog.
-    databricks_token : str
+    token : str
         The personal access token for authenticating with the Azure Databricks REST API.
 
     Returns
@@ -155,7 +155,7 @@ def list_databricks_tables(
     response = _base_api(
         request=url,
         client="databricks",
-        headers=get_databricks_headers(databricks_token),
+        headers=get_databricks_headers(token),
     )
 
     columns = {
@@ -196,7 +196,7 @@ def list_databricks_tables(
 def list_permissions(
     object: str,
     databricks_workspace: str,
-    databricks_token: str,
+    token: str,
     return_dataframe: bool = True,
 ) -> pd.DataFrame | dict:
     """
@@ -208,7 +208,7 @@ def list_permissions(
         This can either be a catalog, schema, or table. If specifying a table, the format should be "catalog.schema.table". If specifying a schema, the format should be "catalog.schema". If specifying a catalog, just provide the catalog name.
     databricks_workspace : str
         The URL of the Azure Databricks workspace. Example: "https://dbc-12345x67-8xx9.cloud.databricks.com"
-    databricks_token : str
+    token : str
         The personal access token for authenticating with the Azure Databricks REST API.
     return_dataframe : bool, default=True
         If True, returns the permissions as a pandas DataFrame. If False, returns the raw JSON response as a dictionary.
@@ -236,7 +236,7 @@ def list_permissions(
     resp = _base_api(
         request=f"{databricks_workspace}/api/2.1/unity-catalog/effective-permissions/{type}/{object}",
         client="databricks",
-        headers=get_databricks_headers(databricks_token),
+        headers=get_databricks_headers(token),
     ).json()
 
     if not return_dataframe:

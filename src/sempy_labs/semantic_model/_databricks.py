@@ -44,14 +44,14 @@ def _validate_metric_view_exists(
     schema: str,
     metric_view_name: str,
     databricks_workspace: str,
-    databricks_token: str,
+    token: str,
 ):
 
     mvs = list_databricks_metric_views(
         databricks_workspace=databricks_workspace,
         unity_catalog=catalog,
         schema=schema,
-        databricks_token=databricks_token,
+        token=token,
     )
     # Find the first matching metric view
     mv = next((mv for mv in mvs if mv.get("Name") == metric_view_name), None)
@@ -63,21 +63,22 @@ def _validate_metric_view_exists(
     return mv
 
 
-def _validate_tables(model_map: dict, databricks_workspace: str, databricks_token: str):
+def _validate_tables(model_map: dict, databricks_workspace: str, token: str):
 
-    table_names = [s["tableName"] for s in model_map["tables"]]
+    tables = model_map["model"]["tables"]
+    table_names = [s["tableName"] for s in tables]
 
     duplicates = {t for t in table_names if table_names.count(t) > 1}
     if duplicates:
         raise ValueError(f"Duplicate table names found: {duplicates}")
 
     # Check table type
-    for t in model_map["tables"]:
+    for t in tables:
         source_object = t.get("sourceObject")
         cat, sch, tbl = source_object.split(".")
         df = list_databricks_tables(
             databricks_workspace=databricks_workspace,
-            databricks_token=databricks_token,
+            token=token,
             unity_catalog=cat,
             schema=sch,
             table_name=tbl,
@@ -133,9 +134,10 @@ def _add_table_to_model_map(
         "workspaceId"
     )
 
-    model_map["tables"].append(
+    model_map["model"]["tables"].append(
         {
             "tableName": table,
+            "description": "",
             "sourceObject": source_object,
             "isSource": is_source,
             "sourceName": source_name,
@@ -152,7 +154,7 @@ def _add_table_to_model_map(
 def _create_model_map(
     metric_view: str,
     databricks_workspace: str,
-    databricks_token: str,
+    token: str,
     sources: dict | List[dict],
 ) -> dict:
     """
@@ -166,7 +168,7 @@ def _create_model_map(
         schema=schema,
         metric_view_name=metric_view_name,
         databricks_workspace=databricks_workspace,
-        databricks_token=databricks_token,
+        token=token,
     )
 
     # Safely extract definition and columns
@@ -254,7 +256,14 @@ def _create_model_map(
         )
 
     # Establish model map
-    model_map = {"tables": [], "relationships": []}
+    model_map = {
+        "model": {
+            "name": metric_view_name,
+            "description": mv.get("Comment") or "",
+            "tables": [],
+            "relationships": [],
+        }
+    }
 
     # Add source table to model map
     model_map = _add_table_to_model_map(
@@ -324,30 +333,32 @@ def _create_model_map(
         else:
             raise NotImplementedError("Unsupported join type.")
 
-        model_map["relationships"].append(
+        model_map["model"]["relationships"].append(
             {
-                "from_table": from_table,
-                "from_column": from_column,
-                "to_table": to_table,
-                "to_column": to_column,
+                "name": None,
+                "fromTable": from_table,
+                "fromColumn": from_column,
+                "toTable": to_table,
+                "toColumn": to_column,
+                "fromCardinality": "Many",
+                "toCardinality": "One",
             }
         )
 
     _validate_tables(
         model_map=model_map,
         databricks_workspace=databricks_workspace,
-        databricks_token=databricks_token,
+        token=token,
     )
 
     cols = [o for o in object_list if o.get("type") == "dimension"]
     measures = [o for o in object_list if o.get("type") == "measure"]
 
     # Add columns to model map
-    for t in model_map.get("tables", []):
-        # print(t)
+    for t in model_map["model"].get("tables", []):
         src_obj = t.get("sourceObject")
         src_name = t.get("sourceName")
-        # print(src_name)
+
         src_item_id = t.get("sourceItemId")
         src_workspace_id = t.get("sourceWorkspaceId")
         t_name = t.get("tableName")
@@ -405,17 +416,20 @@ def _create_model_map(
             fixed_column_name = fix_source_column(column_name)
             t["columns"].append(
                 {
-                    "columnName": column_name,
+                    "name": column_name,
                     "sourceColumn": source_column,
                     "fixedSourceColumn": fixed_source_column,
                     "expression": expression,
-                    "dataType": converted_data_type,
+                    "sourceDataType": data_type,
+                    "pbiDataType": converted_data_type,
                     "isHidden": is_hidden,
+                    "isKey": False,
                     "description": description,
-                    "format_dbx": format_string,
-                    "format_pbi": convert_format_from_databricks(format_string),
-                    "isCalcColumn": False,
-                    "daxFullObjectName": f"'{t_name}'[{column_name}]",
+                    "sourceFormat": format_string,
+                    "pbiFormat": convert_format_from_databricks(format_string),
+                    "isCalculated": False,
+                    "synonyms": [],
+                    "fullDAXObjectName": f"'{t_name}'[{column_name}]",
                     "columnReferences": list(
                         set(
                             [
@@ -444,7 +458,7 @@ def _create_model_map(
             calc_columns.append(fixed_source_column)
 
             # Find matching table
-            for t in model_map["tables"]:
+            for t in model_map["model"]["tables"]:
                 for t_col in t.get("columns", []):
                     full_ref = f"{t.get('sourceName')}.{t_col.get('fixedSourceColumn')}"
                     if full_ref in expr:
@@ -460,23 +474,28 @@ def _create_model_map(
                 continue
 
             # Append calculated column
-            for t in model_map["tables"]:
+            for t in model_map["model"]["tables"]:
                 src_name = t.get("sourceName")
                 if t["tableName"] == tbl_name:
                     t.setdefault("columns", []).append(
                         {
-                            "columnName": column_name,
+                            "name": column_name,
                             "sourceColumn": col.get("name"),
                             "expression": col.get("expression"),
-                            "dataType": convert_column_data_type(col.get("dataType")),
+                            "sourceDataType": col.get("dataType"),
+                            "pbiDataType": convert_column_data_type(
+                                col.get("dataType")
+                            ),
                             "isHidden": False,
+                            "isKey": False,
                             "description": col.get("description"),
-                            "format_dbx": col.get("format"),
-                            "format_pbi": convert_format_from_databricks(
+                            "sourceFormat": col.get("format"),
+                            "pbiFormat": convert_format_from_databricks(
                                 col.get("format")
                             ),
-                            "isCalcColumn": True,
-                            "daxFullObjectName": f"'{tbl_name}'[{column_name}]",
+                            "isCalculated": True,
+                            "synonyms": col.get("synonyms", []),
+                            "fullDAXObjectName": f"'{tbl_name}'[{column_name}]",
                             "columnReferences": list(
                                 set(
                                     [
@@ -491,14 +510,14 @@ def _create_model_map(
 
     # Create column map for DAX references
     column_map = {}
-    for t in model_map["tables"]:
+    for t in model_map["model"]["tables"]:
         for c in t["columns"]:
-            fcn = c["daxFullObjectName"]
+            fcn = c["fullDAXObjectName"]
             for ref in c.get("columnReferences", []):
                 column_map[ref] = fcn
 
     # Add measures
-    for t in model_map["tables"]:
+    for t in model_map["model"]["tables"]:
         if t.get("isSource"):
             for m in measures:
                 measure_name = m.get("displayName") or m.get("name")
@@ -516,13 +535,13 @@ def _create_model_map(
                 is_hidden = False
                 t["measures"].append(
                     {
-                        "measureName": measure_name,
+                        "name": measure_name,
                         "description": m.get("description"),
-                        "expression_sql": expression,
-                        "expression_dax": dax,
+                        "sourceExpression": expression,
+                        "daxExpression": dax,
                         "isHidden": is_hidden,
-                        "format_dbx": format,
-                        "format_pbi": convert_format_from_databricks(format),
+                        "sourceFormat": format,
+                        "pbiFormat": convert_format_from_databricks(format),
                         "synonyms": m.get("synonyms", []),
                     }
                 )
@@ -533,11 +552,11 @@ def _create_model_map(
     # catalog, schema, table = metric_view.split('.')
 
     # if infer_row_level_security:
-    #    df_perm = list_permissions(object=metric_view, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    df_perm = list_permissions(object=metric_view, databricks_workspace=databricks_workspace, token=token)
     #    view_permissions = df_perm[df_perm['Privilege'].isin(['SELECT'])]['Principal'].tolist()
-    #    df_perm = list_permissions(object=f"{catalog}.{schema}", databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    df_perm = list_permissions(object=f"{catalog}.{schema}", databricks_workspace=databricks_workspace, token=token)
     #    schema_permissions = df_perm[df_perm['Privilege'].isin(['USE_SCHEMA'])]['Principal'].tolist()
-    #    df_perm = list_permissions(object=catalog, databricks_workspace=databricks_workspace, databricks_token=databricks_token)
+    #    df_perm = list_permissions(object=catalog, databricks_workspace=databricks_workspace, token=token)
     #    catalog_permissions = df_perm[df_perm['Privilege'].isin(['USE_CATALOG'])]['Principal'].tolist()
 
     #    inferred_permissions = set(view_permissions) | set(schema_permissions) | set(catalog_permissions)
@@ -548,7 +567,7 @@ def generate_semantic_model_from_metric_view(
     name: str,
     metric_view: str,
     databricks_workspace: str,
-    databricks_token: str,
+    token: str,
     sources: dict | List[dict],
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
@@ -572,7 +591,7 @@ def generate_semantic_model_from_metric_view(
         In the format of catalog.schema.metric_view_name. This metric view will be used as the source to generate the semantic model.
     databricks_workspace : str
         The Databricks workspace URL (e.g. "https://adb-1234567890123456.7.azuredatabricks.net").
-    databricks_token : str
+    token : str
         A Databricks personal access token with permissions to read the metric view and its underlying tables.
     sources : dict | typing.List[dict]
         A dictionary or list of dictionaries of the Mirrored Azure Databricks Catalog(s) used as source(s) for the metric view.
@@ -613,7 +632,7 @@ def generate_semantic_model_from_metric_view(
     model_map = _create_model_map(
         metric_view=metric_view,
         databricks_workspace=databricks_workspace,
-        databricks_token=databricks_token,
+        token=token,
         sources=sources,
     )
 
@@ -624,7 +643,7 @@ def generate_semantic_model_from_metric_view(
     seen = set()
     mirrors = []
 
-    for t in model_map["tables"]:
+    for t in model_map["model"]["tables"]:
         key = (t.get("sourceItemId"), t.get("sourceWorkspaceId"))
 
         if key not in seen:
@@ -658,7 +677,7 @@ def generate_semantic_model_from_metric_view(
     ) as tom:
 
         # Add expressions
-        for t in model_map["tables"]:
+        for t in model_map["model"]["tables"]:
             tbl_name = t.get("tableName")
             mirror_id = t.get("sourceItemId")
             mirror_workspace_id = t.get("sourceWorkspaceId")
@@ -682,13 +701,13 @@ def generate_semantic_model_from_metric_view(
             )
 
             for column in t.get("columns", []):
-                column_name = column.get("columnName")
-                data_type = column.get("dataType")
+                column_name = column.get("name")
+                data_type = column.get("pbiDataType")
                 source_column = column.get("sourceColumn")
                 description = column.get("description")
                 is_hidden = column.get("isHidden")
-                format_string = column.get("format_pbi")
-                if column.get("isCalcColumn", False) == False:
+                format_string = column.get("pbiFormat")
+                if column.get("isCalculated", False) == False:
                     tom.add_data_column(
                         table_name=tbl_name,
                         column_name=column_name,
@@ -702,20 +721,20 @@ def generate_semantic_model_from_metric_view(
             for measure in t.get("measures", []):
                 tom.add_measure(
                     table_name=tbl_name,
-                    measure_name=measure.get("measureName"),
-                    expression=measure.get("expression_dax"),
+                    measure_name=measure.get("name"),
+                    expression=measure.get("daxExpression"),
                     description=measure.get("description"),
                     hidden=measure.get("isHidden"),
-                    format_string=measure.get("format_pbi"),
+                    format_string=measure.get("pbiFormat"),
                 )
 
         column_lookup = {c for c in tom.all_columns()}
-        relationships = model_map.get("relationships", {})
+        relationships = model_map["model"].get("relationships", [])
         for r in relationships:
-            from_table = r.get("from_table")
-            from_source_column = r.get("from_column")
-            to_table = r.get("to_table")
-            to_source_column = r.get("to_column")
+            from_table = r.get("fromTable")
+            from_source_column = r.get("fromColumn")
+            to_table = r.get("toTable")
+            to_source_column = r.get("toColumn")
 
             from_column = next(
                 (

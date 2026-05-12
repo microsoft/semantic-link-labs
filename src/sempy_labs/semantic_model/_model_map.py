@@ -7,8 +7,8 @@ model_map = {
                 "tableName": "Segment",
                 "description": "This is a segment table.",
                 "sourceName": "database.schema.table",
-                "sourceitemId": "",  # Map to a fabric item
-                "sourceworkspaceId": "",  # Map to a fabric workspace
+                "sourceItemId": "",  # Map to a fabric item
+                "sourceWorkspaceId": "",  # Map to a fabric workspace
                 "columns": [
                     {
                         "name": "Summary Segment",

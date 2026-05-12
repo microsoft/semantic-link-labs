@@ -10,7 +10,7 @@ def create_databricks_connection(
     name: str,
     server_hostname: str,
     http_path: str,
-    databricks_token: str,
+    token: str,
     catalog: Optional[str] = None,
     privacy_level: Optional[
         Literal["None", "Public", "Organizational", "Private"]
@@ -28,7 +28,7 @@ def create_databricks_connection(
         The server hostname of the Azure Databricks workspace. Example: "dbc-12345x67-8xx9.cloud.databricks.com"
     http_path : str
         The HTTP path for the Azure Databricks workspace. Example: "/sql/1.0/endpoints/12345678-90ab-cdef-1234-567890abcdef"
-    databricks_token : str
+    token : str
         The personal access token for authenticating with the Azure Databricks REST API.
     catalog : str, default=None
         The default catalog to use for the connection. This is optional and can be set to None.
@@ -74,7 +74,7 @@ def create_databricks_connection(
         },
         "displayName": name,
         "credentialDetails": {
-            "credentials": {"credentialType": "Key", "key": databricks_token},
+            "credentials": {"credentialType": "Key", "key": token},
             "singleSignOnType": "None",
             "skipTestConnection": False,
         },

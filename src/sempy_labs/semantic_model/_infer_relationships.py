@@ -7,13 +7,13 @@ from sempy._utils._log import log
 @log
 def infer_model_relationships(column_list, workspace):
 
-    candidates = [c for c in column_list if c.get("columnName", "").endswith("ID")]
+    candidates = [c for c in column_list if c.get("name", "").endswith("ID")]
 
     def find_column_relationships(candidates):
         groups = defaultdict(list)
 
         for c in candidates:
-            groups[(c["columnName"], c["dataType"])].append(c)
+            groups[(c["name"], c["pbiDataType"])].append(c)
 
         return [
             (c1, c2)
@@ -53,13 +53,13 @@ def infer_model_relationships(column_list, workspace):
             left["sourceCatalog"],
             left["sourceSchema"],
             left["tableName"],
-            left["columnName"],
+            left["name"],
         )
         right_key = (
             right["sourceCatalog"],
             right["sourceSchema"],
             right["tableName"],
-            right["columnName"],
+            right["name"],
         )
 
         # Check uniqueness (dimension side)
@@ -67,18 +67,18 @@ def infer_model_relationships(column_list, workspace):
             relationships.append(
                 {
                     "fromTable": right["tableName"],
-                    "fromColumn": right["columnName"],
+                    "fromColumn": right["name"],
                     "toTable": left["tableName"],
-                    "toColumn": left["columnName"],
+                    "toColumn": left["name"],
                 }
             )
         elif is_unique(*right_key, workspace=workspace):
             relationships.append(
                 {
                     "fromTable": left["tableName"],
-                    "fromColumn": left["columnName"],
+                    "fromColumn": left["name"],
                     "toTable": right["tableName"],
-                    "toColumn": right["columnName"],
+                    "toColumn": right["name"],
                 }
             )
 

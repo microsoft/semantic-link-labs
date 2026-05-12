@@ -86,7 +86,15 @@ def convert_sql_to_dax(
     return converter.emit(tree)
 
 
-_AGG_TO_ITER = {"SUM": "SUMX", "AVERAGE": "AVERAGEX", "MIN": "MINX", "MAX": "MAXX", "COUNT": "COUNTX", "RANK": "RANKX", "PRODUCT": "PRODUCTX"}
+_AGG_TO_ITER = {
+    "SUM": "SUMX",
+    "AVERAGE": "AVERAGEX",
+    "MIN": "MINX",
+    "MAX": "MAXX",
+    "COUNT": "COUNTX",
+    "RANK": "RANKX",
+    "PRODUCT": "PRODUCTX",
+}
 
 
 class _SqlToDaxConverter:

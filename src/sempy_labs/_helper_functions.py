@@ -2925,4 +2925,3 @@ def list_columns_from_path(path: str) -> pd.DataFrame:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
-
