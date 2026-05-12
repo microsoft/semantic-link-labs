@@ -17,7 +17,6 @@ import sempy_labs._icons as icons
 from sempy_labs.directlake._generate_shared_expression import (
     generate_shared_expression,
 )
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
@@ -180,6 +179,10 @@ def generate_direct_lake_semantic_model(
         raise ValueError(
             f"{icons.red_dot} A dataset with the name '{dataset}' already exists in the workspace '{workspace_name}'. Please choose a different name or delete the existing dataset."
         )
+
+    # Imported lazily to avoid a circular import: sempy_labs.tom._model imports
+    # from sempy_labs.semantic_model._helper, which triggers this module.
+    from sempy_labs.tom import connect_semantic_model
 
     @retry(
         sleep_time=1,
