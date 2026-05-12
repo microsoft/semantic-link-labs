@@ -1,6 +1,5 @@
 from uuid import UUID
 from typing import Optional, List
-from sempy_labs.tom import connect_semantic_model
 from sempy._utils._log import log
 
 
@@ -43,6 +42,7 @@ def get_direct_lake_sources(
         ]
 
     """
+    from sempy_labs.tom import connect_semantic_model
 
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         return tom.get_direct_lake_sources()

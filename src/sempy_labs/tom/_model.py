@@ -20,6 +20,8 @@ from sempy_labs._helper_functions import (
     _validate_weight,
     resolve_workspace_name,
     list_columns_from_path,
+)
+from sempy_labs.semantic_model._helper import (
     convert_column_data_type,
 )
 from sempy_labs._list_functions import list_relationships

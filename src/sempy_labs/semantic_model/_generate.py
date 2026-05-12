@@ -8,6 +8,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     retry,
     list_columns_from_path,
+)
+from sempy_labs.semantic_model._helper import (
     convert_column_data_type,
 )
 from sempy._utils._log import log
