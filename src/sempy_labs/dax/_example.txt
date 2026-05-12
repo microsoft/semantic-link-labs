@@ -1,0 +1,95 @@
+VAR __LastVisibleDate =
+    MAX ( 'Date'[Date] )
+
+VAR __RollingWindow =
+    DATESINPERIOD (
+        'Date'[Date],
+        __LastVisibleDate,
+        -90,
+        DAY
+    )
+
+VAR __CustomerRevenue =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            ALLSELECTED ( 'Customer'[CustomerKey] ),
+            'Customer'[CustomerKey]
+        ),
+        "@Revenue",
+            CALCULATE (
+                SUMX (
+                    'Sales',
+                    'Sales'[ExtendedAmount]
+                        - 'Sales'[DiscountAmount]
+                ),
+                __RollingWindow
+            )
+    )
+
+VAR __RankedCustomers =
+    ADDCOLUMNS (
+        __CustomerRevenue,
+        "@Rank",
+            RANKX (
+                __CustomerRevenue,
+                [@Revenue],
+                ,
+                DESC,
+                DENSE
+            )
+    )
+
+VAR __TopCustomers =
+    FILTER (
+        __RankedCustomers,
+        [@Rank] <= 10
+    )
+
+VAR __TopRevenue =
+    SUMX (
+        __TopCustomers,
+        [@Revenue]
+    )
+
+VAR __TotalRevenue =
+    CALCULATE (
+        SUMX (
+            'Sales',
+            'Sales'[ExtendedAmount]
+                - 'Sales'[DiscountAmount]
+        ),
+        __RollingWindow,
+        REMOVEFILTERS ( 'Customer' )
+    )
+
+VAR __WeightedGrowthFactor =
+    AVERAGEX (
+        VALUES ( 'Product'[Category] ),
+        VAR __CurrentRevenue =
+            CALCULATE (
+                SUM ( 'Sales'[ExtendedAmount] ),
+                __RollingWindow
+            )
+        VAR __PriorRevenue =
+            CALCULATE (
+                SUM ( 'Sales'[ExtendedAmount] ),
+                DATESINPERIOD (
+                    'Date'[Date],
+                    DATEADD ( __LastVisibleDate, -90, DAY ),
+                    -90,
+                    DAY
+                )
+            )
+        RETURN
+            DIVIDE (
+                __CurrentRevenue - __PriorRevenue,
+                __PriorRevenue
+            )
+    )
+
+RETURN
+    DIVIDE (
+        __TopRevenue,
+        __TotalRevenue
+    )
+        * ( 1 + __WeightedGrowthFactor )

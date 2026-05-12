@@ -404,30 +404,30 @@ def deploy_semantic_model(
             )
 
             # Remove mini model annotations from the master model if they exist (cleanup)
-            #ann_to_remove = [
+            # ann_to_remove = [
             #    a.Name
             #    for a in tom.model.Annotations
             #    if a.Name.startswith(icons.prefix_mini)
-            #]
-            #for ann in ann_to_remove:
+            # ]
+            # for ann in ann_to_remove:
             #    tom.remove_annotation(object=tom.model, name=ann)
 
     # Set annotations to the master model
-    #if filters is not None or perspective is not None:
+    # if filters is not None or perspective is not None:
     #    with connect_semantic_model(
     #        dataset=source_dataset_id, workspace=source_workspace_id, readonly=False
     #    ) as tom:
 
     #        ann_name = f"{icons.prefix_mini}_{perspective}"
 
-            # --- Get existing annotation safely ---
+    # --- Get existing annotation safely ---
     #        try:
     #            ann_value = tom.get_annotation_value(object=tom.model, name=ann_name)
     #            ann_list = ast.literal_eval(ann_value) if ann_value else []
     #        except Exception:
     #            ann_list = []
 
-            # --- Build lookup (faster than loop) ---
+    # --- Build lookup (faster than loop) ---
     #        index = {a.get("datasetId"): a for a in ann_list}
 
     #        if target_dataset_id in index:
@@ -455,7 +455,7 @@ def deploy_semantic_model(
     #                }
     #            )
 
-            # --- Save once ---
+    # --- Save once ---
     #        tom.set_annotation(object=tom.model, name=ann_name, value=str(ann_list))
     if refresh_target_dataset:
         refresh_semantic_model(dataset=target_dataset_id, workspace=target_workspace_id)
