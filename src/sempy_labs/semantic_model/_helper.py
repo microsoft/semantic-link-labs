@@ -99,7 +99,18 @@ class _SqlToDaxConverter:
         rel_from_to: Set[Tuple[str, str]],
     ) -> None:
         self.column_map = column_map or {}
-        self._column_map_lower = {k.lower(): v for k, v in self.column_map.items()}
+        # Build a case-insensitive lookup. ``column_map`` keys may be wrapped
+        # in backticks (e.g. ```Energy Source```) or appear as
+        # ``table.`column with spaces```. Normalize by also registering
+        # variants with all backticks stripped so the resolver can match
+        # identifiers parsed by sqlglot (whose ``Column.name`` strips the
+        # quotes).
+        self._column_map_lower: dict = {}
+        for k, v in self.column_map.items():
+            self._column_map_lower.setdefault(k.lower(), v)
+            stripped = k.replace("`", "")
+            if stripped and stripped != k:
+                self._column_map_lower.setdefault(stripped.lower(), v)
         self.default_table = default_table
         self.rel_from_to = rel_from_to
         # When non-empty, columns belonging to a table other than the
