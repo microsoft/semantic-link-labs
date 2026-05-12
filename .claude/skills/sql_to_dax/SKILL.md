@@ -429,17 +429,39 @@ CALCULATE(
 
 ## Unbounded Window
 
+An unbounded window (`OVER ()` with no PARTITION BY, ORDER BY, or frame)
+ignores the current filter context entirely. Translate it to the
+**iterator form of the aggregate over `ALL(<table>)`** — not to
+`CALCULATE(<agg>, ALL(<table>))`.
+
+| SQL aggregate | DAX |
+|---|---|
+| `SUM(col) OVER ()` | `SUMX(ALL('table'), 'table'[col])` |
+| `AVG(col) OVER ()` | `AVERAGEX(ALL('table'), 'table'[col])` |
+| `MIN(col) OVER ()` | `MINX(ALL('table'), 'table'[col])` |
+| `MAX(col) OVER ()` | `MAXX(ALL('table'), 'table'[col])` |
+| `COUNT(col) OVER ()` | `COUNTX(ALL('table'), 'table'[col])` |
+| `COUNT(*) OVER ()` | `COUNTROWS(ALL('table'))` |
+| `COUNT(DISTINCT col) OVER ()` | `CALCULATE(DISTINCTCOUNT('table'[col]), ALL('table'))` |
+
 ### SQL
 ```sql
-MAX(metric) OVER ()
+MAX(cutoff) OVER ()
 ```
 
 ### DAX
 ```dax
-CALCULATE(
-    MAX('table'[metric]),
-    ALL('table')
-)
+MAXX(ALL('table'), 'table'[cutoff])
+```
+
+### SQL
+```sql
+SUM(amount) OVER ()
+```
+
+### DAX
+```dax
+SUMX(ALL('table'), 'table'[amount])
 ```
 
 ---

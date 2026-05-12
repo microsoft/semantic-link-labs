@@ -434,10 +434,96 @@ class _SqlToDaxConverter:
                 f"DATESINPERIOD({order_col_dax}, MAX({order_col_dax}), "
                 f"-{n_preceding}, DAY))"
             )
-        if spec is None and order is None and partition is None:
-            return f"CALCULATE({body_dax}, ALL('{self.default_table}'))"
+        if not spec and not order and not partition:
+            return self._emit_unbounded_window(body_node, body_dax)
         # Unsupported window shape — fall back to the body without the window.
         return body_dax
+
+    def _emit_unbounded_window(self, body_node, body_dax: str) -> str:
+        """Emit DAX for ``<agg>(...) OVER ()`` — no partition, order, or frame.
+
+        For a simple aggregate (``SUM`` / ``AVG`` / ``MIN`` / ``MAX``) the
+        result is the iterator form over ``ALL(<table>)``::
+
+            MAX(cutoff) OVER ()
+              ->  MAXX(ALL('table'), 'table'[cutoff])
+
+        ``COUNT(*)`` becomes ``COUNTROWS(ALL(<table>))``, and
+        ``COUNT(DISTINCT col)`` becomes
+        ``CALCULATE(DISTINCTCOUNT(col), ALL(<table>))``. Anything else
+        falls back to ``CALCULATE(<body>, ALL('default_table'))``.
+        """
+
+        agg_map = {
+            exp.Sum: "SUM",
+            exp.Avg: "AVERAGE",
+            exp.Min: "MIN",
+            exp.Max: "MAX",
+        }
+
+        if isinstance(body_node, tuple(agg_map.keys())):
+            func = agg_map[type(body_node)]
+            arg = body_node.this
+            while isinstance(arg, exp.Paren):
+                arg = arg.this
+            iter_table = self._select_iter_table(arg)
+            self._iter_table_stack.append(iter_table)
+            try:
+                arg_dax = self.emit(arg)
+            finally:
+                self._iter_table_stack.pop()
+            return f"{_AGG_TO_ITER[func]}(ALL('{iter_table}'), {arg_dax})"
+
+        if isinstance(body_node, exp.Count):
+            arg = body_node.this
+            if arg is None or isinstance(arg, exp.Star):
+                return f"COUNTROWS(ALL('{self.default_table}'))"
+            if isinstance(arg, exp.Distinct):
+                inner_col = (arg.expressions or [None])[0]
+                if inner_col is not None:
+                    iter_table = self._select_iter_table(inner_col)
+                    return (
+                        f"CALCULATE(DISTINCTCOUNT({self.emit(inner_col)}), "
+                        f"ALL('{iter_table}'))"
+                    )
+            iter_table = self._select_iter_table(arg)
+            self._iter_table_stack.append(iter_table)
+            try:
+                arg_dax = self.emit(arg)
+            finally:
+                self._iter_table_stack.pop()
+            return f"COUNTX(ALL('{iter_table}'), {arg_dax})"
+
+        # Non-aggregate body — fall back to CALCULATE over ALL(default_table).
+        return f"CALCULATE({body_dax}, ALL('{self.default_table}'))"
+
+    def _select_iter_table(self, node) -> str:
+        """Choose the iterator table for ``node`` (same logic as
+        ``_emit_iterator``).
+
+        Prefers the "many" side of a supplied relationship; otherwise falls
+        back to ``default_table`` if it is among the referenced tables,
+        then to the first referenced table, then to ``default_table``.
+        """
+        ref_tables: list = []
+        for c in node.find_all(exp.Column):
+            dax = self.lookup_column(c.table, c.name)
+            tbl = self._table_of_dax_ref(dax) if dax else c.table
+            if tbl and tbl not in ref_tables:
+                ref_tables.append(tbl)
+
+        if self.rel_from_to and len(ref_tables) > 1:
+            for cand in ref_tables:
+                for other in ref_tables:
+                    if cand == other:
+                        continue
+                    if (cand, other) in self.rel_from_to:
+                        return cand
+        if self.default_table and self.default_table in ref_tables:
+            return self.default_table
+        if ref_tables:
+            return ref_tables[0]
+        return self.default_table
 
     # ---------- Anonymous functions (DIV0, MEASURE, etc.) ----------
 
