@@ -719,7 +719,7 @@ def generate_semantic_model_from_metric_view(
                     )
 
             for measure in t.get("measures", []):
-                tom.add_measure(
+                m = tom.add_measure(
                     table_name=tbl_name,
                     measure_name=measure.get("name"),
                     expression=measure.get("daxExpression"),
@@ -727,6 +727,7 @@ def generate_semantic_model_from_metric_view(
                     hidden=measure.get("isHidden"),
                     format_string=measure.get("pbiFormat"),
                 )
+                tom.set_annotation(object=m, name="SourceExpression", value=measure.get("sourceExpression"))
 
         column_lookup = {c for c in tom.all_columns()}
         relationships = model_map["model"].get("relationships", [])
