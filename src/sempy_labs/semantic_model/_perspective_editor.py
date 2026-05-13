@@ -1150,9 +1150,7 @@ def perspective_editor(
             measures = sorted([m.Name for m in table.Measures])
             hierarchies = sorted([h.Name for h in table.Hierarchies])
             hidden_columns = [
-                c.Name
-                for c in tom.all_columns()
-                if c.Parent == table and c.IsHidden
+                c.Name for c in tom.all_columns() if c.Parent == table and c.IsHidden
             ]
             hidden_measures = [m.Name for m in table.Measures if m.IsHidden]
             hidden_hierarchies = [h.Name for h in table.Hierarchies if h.IsHidden]
@@ -1175,7 +1173,9 @@ def perspective_editor(
                 tbl = pt.Table.Name
                 members[tbl] = {
                     "columns": sorted(pc.Column.Name for pc in pt.PerspectiveColumns),
-                    "measures": sorted(pm.Measure.Name for pm in pt.PerspectiveMeasures),
+                    "measures": sorted(
+                        pm.Measure.Name for pm in pt.PerspectiveMeasures
+                    ),
                     "hierarchies": sorted(
                         ph.Hierarchy.Name for ph in pt.PerspectiveHierarchies
                     ),
@@ -1268,9 +1268,7 @@ def perspective_editor(
                     obj = tom.model.Perspectives[perspective_name]
                     tom.remove_object(object=obj)
                     tom.model.SaveChanges()
-                    new_list = [
-                        x for x in widget.perspectives if x != perspective_name
-                    ]
+                    new_list = [x for x in widget.perspectives if x != perspective_name]
                     new_members = dict(widget.perspective_members)
                     new_members.pop(perspective_name, None)
                     widget.perspective_members = new_members
