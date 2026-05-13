@@ -727,7 +727,11 @@ def generate_semantic_model_from_metric_view(
                     hidden=measure.get("isHidden"),
                     format_string=measure.get("pbiFormat"),
                 )
-                tom.set_annotation(object=m, name="SourceExpression", value=measure.get("sourceExpression"))
+                tom.set_annotation(
+                    object=m,
+                    name="SourceExpression",
+                    value=measure.get("sourceExpression"),
+                )
 
         column_lookup = {c for c in tom.all_columns()}
         relationships = model_map["model"].get("relationships", [])

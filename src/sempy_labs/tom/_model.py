@@ -6567,7 +6567,7 @@ class TOMWrapper:
             _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
-    
+
     def _can_add_direct_lake_tables(
         self, source, source_type, source_workspace
     ) -> bool:
