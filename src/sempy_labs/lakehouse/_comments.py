@@ -48,7 +48,7 @@ def extract_table_comments(
 
     schema = None
     if "." in table:
-        schema, table = table.split(".")
+        schema, table = table.split(".", 1)
 
     if _pure_python_notebook():
         from deltalake import DeltaTable
