@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     resolve_workspace_id,
     resolve_item_id,
+    _update_dataframe_datatypes,
 )
 from uuid import UUID
 from sempy._utils._log import log
@@ -108,5 +109,6 @@ def list_tables_mirroring_status(
 
     if rows:
         df = pd.DataFrame(rows, columns=columns.keys())
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
