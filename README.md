@@ -131,6 +131,12 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.15.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.0) (May 13, 2026)
+* [0.14.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.3) (April 13, 2026)
+* [0.14.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.2) (April 7, 2026)
+* [0.14.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.1) (March 23, 2026)
+* [0.14.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.0) (March 18, 2026)
+* [0.13.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.2) (February 27, 2026)
 * [0.13.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.1) (February 12, 2026)
 * [0.13.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.0) (February 10, 2026)
 * [0.12.10](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.10) (January 22, 2026)
