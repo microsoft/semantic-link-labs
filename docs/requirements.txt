@@ -12,3 +12,4 @@ IPython
 polib
 jsonpath_ng
 anywidget
+sqlglot

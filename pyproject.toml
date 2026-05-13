@@ -28,6 +28,7 @@ dependencies = [
     "polib",
     "jsonpath_ng",
     "anywidget",
+    "sqlglot",
 ]
 
 [tool.setuptools.packages.find]
@@ -45,7 +46,7 @@ test = [
 Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,synapse.ml.services.*,polib.*,jsonpath_ng.*,anywidget.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,synapse.ml.services.*,polib.*,jsonpath_ng.*,anywidget.*,sqlglot.*"
 ignore_missing_imports = true
 
 [tool.flake8]

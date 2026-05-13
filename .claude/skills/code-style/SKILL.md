@@ -114,7 +114,7 @@ mypy --show-error-codes src/sempy_labs
 From `pyproject.toml`:
 ```toml
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,synapse.ml.services.*,polib.*,jsonpath_ng.*,anywidget.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,synapse.ml.services.*,polib.*,jsonpath_ng.*,anywidget.*,sqlglot.*"
 ignore_missing_imports = true
 ```
 
