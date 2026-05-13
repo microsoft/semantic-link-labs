@@ -98,6 +98,7 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "Connection Info": "string",
         "Database Name": "string",
         "Server FQDN": "string",
+        "Sensitivity Label Id": "string",
     }
     df = _create_dataframe(columns=columns)
 
@@ -119,6 +120,7 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                     "Connection Info": prop.get("connectionInfo"),
                     "Database Name": prop.get("databaseName"),
                     "Server FQDN": prop.get("serverFqdn"),
+                    "Sensitivity Label Id": v.get("sensitivityLabel", {}).get("id"),
                 }
             )
 

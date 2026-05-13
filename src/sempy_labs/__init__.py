@@ -193,6 +193,7 @@ from ._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
     ConnectSQLDatabase,
+    ConnectMirroredAzureDatabricksCatalog,
 )
 from ._workspace_identity import (
     provision_workspace_identity,
@@ -373,6 +374,7 @@ __all__ = [
     "ConnectWarehouse",
     "ConnectLakehouse",
     "ConnectSQLDatabase",
+    "ConnectMirroredAzureDatabricksCatalog",
     "update_semantic_model_from_bim",
     "list_connections",
     "get_semantic_model_size",

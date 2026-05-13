@@ -80,4 +80,5 @@ items = {
     "Lakehouse": "lakehouses",
     "EventSchemaSet": "EventSchemaSets",
     "DataAgent": "DataAgents",
+    "MirroredCatalog": "mirroredCatalogs",
 }

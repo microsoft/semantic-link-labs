@@ -17,8 +17,7 @@ from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from uuid import UUID
-from datetime import datetime
-import ast
+import time
 
 
 @log
@@ -27,7 +26,7 @@ def create_blank_semantic_model(
     compatibility_level: int = 1702,
     workspace: Optional[str | UUID] = None,
     overwrite: bool = True,
-):
+) -> UUID:
     """
     Creates a new blank semantic model (no tables/columns etc.).
 
@@ -43,13 +42,18 @@ def create_blank_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model in the workspace if it exists.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the created semantic model.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
-    if len(dfD_filt) > 0 and not overwrite:
+    if not dfD_filt.empty and not overwrite:
         raise ValueError(
             f"{icons.warning} The '{dataset}' semantic model already exists within the '{workspace_name}' workspace. The 'overwrite' parameter is set to False so the blank new semantic model was not created."
         )
@@ -61,7 +65,7 @@ def create_blank_semantic_model(
         )
 
     # If the model does not exist
-    if len(dfD_filt) == 0:
+    if dfD_filt.empty:
         tmsl = f"""
         {{
             "createOrReplace": {{
@@ -117,9 +121,24 @@ def create_blank_semantic_model(
 
     fabric.execute_tmsl(script=tmsl, workspace=workspace_id)
 
-    return print(
+    print(
         f"{icons.green_dot} The '{dataset}' semantic model was created within the '{workspace_name}' workspace."
     )
+
+    start_time = time.time()
+    timeout = 120  # 2 minutes (in seconds)
+
+    while True:
+        df = fabric.list_datasets(workspace=workspace_id, mode="rest")
+        df_filt = df[df["Dataset Name"] == dataset]
+
+        if not df_filt.empty:
+            return df_filt["Dataset Id"].iloc[0]
+
+        if time.time() - start_time > timeout:
+            raise TimeoutError("Dataset not found within 2 minutes")
+
+        time.sleep(2)
 
 
 @log

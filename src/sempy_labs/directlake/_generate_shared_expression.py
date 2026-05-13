@@ -13,7 +13,7 @@ from sempy._utils._log import log
 
 @log
 def generate_shared_expression(
-    item_name: Optional[str] = None,
+    item: Optional[str] = None,
     item_type: str = "Lakehouse",
     workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
@@ -23,11 +23,11 @@ def generate_shared_expression(
 
     Parameters
     ----------
-    item_name : str, default=None
-        The Fabric lakehouse or warehouse name.
+    item : str, default=None
+        The item name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     item_type : str, default="Lakehouse"
-        The Fabric item name. Valid options: 'Lakehouse', 'Warehouse'.
+        The Fabric item name. Valid options: 'Lakehouse', 'Warehouse', 'MirroredAzureDatabricksCatalog', 'SQLDatabase', 'MirroredDatabase'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the item.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -43,8 +43,13 @@ def generate_shared_expression(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_types = ["Lakehouse", "Warehouse"]
-    item_type = item_type.capitalize()
+    item_types = [
+        "Lakehouse",
+        "Warehouse",
+        "MirroredAzureDatabricksCatalog",
+        "SQLDatabase",
+        "MirroredDatabase",
+    ]
     if item_type not in item_types:
         raise ValueError(
             f"{icons.red_dot} Invalid item type. Valid options: {item_types}."
@@ -52,11 +57,11 @@ def generate_shared_expression(
 
     if item_type == "Lakehouse":
         (item_name, item_id) = resolve_lakehouse_name_and_id(
-            lakehouse=item_name, workspace=workspace_id
+            lakehouse=item, workspace=workspace_id
         )
     else:
         (item_name, item_id) = resolve_item_name_and_id(
-            item=item_name, type=item_type, workspace=workspace_id
+            item=item, type=item_type, workspace=workspace_id
         )
 
     if use_sql_endpoint:
@@ -65,30 +70,32 @@ def generate_shared_expression(
             request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
         )
 
-        prop = response.json().get("properties")
+        prop = response.json().get("properties", {})
 
-        if item_type == "Lakehouse":
+        if item_type in ["Lakehouse", "MirroredDatabase"]:
             sqlprop = prop.get("sqlEndpointProperties")
             sqlEPCS = sqlprop.get("connectionString")
             sqlepid = sqlprop.get("id")
             provStatus = sqlprop.get("provisioningStatus")
-        elif item_type == "Warehouse":
-            sqlEPCS = prop.get("connectionString")
+        else:
             sqlepid = item_id
             provStatus = None
+            sqlEPCS = prop.get("connectionString")
+            if item_type == "SQLDatabase":
+                raise ValueError(
+                    f"{icons.warning} SQL Database connections which use the SQL endpoint are not supported. Please set use_sql_endpoint=False."
+                )
+                # sqlEPCS = prop.get('serverFqdn', {}).split(',')[0]
 
         if provStatus == "InProgress":
             raise ValueError(
                 f"{icons.red_dot} The SQL Endpoint for the '{item_name}' {item_type.lower()} within the '{workspace_name}' workspace has not yet been provisioned. Please wait until it has been provisioned."
             )
 
-        start_expr = "let\n\tdatabase = "
-        end_expr = "\nin\n\tdatabase"
-        mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
-        return f"{start_expr}{mid_expr}{end_expr}"
+        return f"""let\n\tdatabase = Sql.Database("{sqlEPCS}", "{sqlepid}")\nin\n\tdatabase"""
     else:
         # Build DL/OL expression
-        env = _get_fabric_context_setting("spark.trident.pbienv").lower()
-        env = "" if env == "prod" else f"{env}-"
+        # env = _get_fabric_context_setting("spark.trident.pbienv").lower()
+        # env = "" if env == "prod" else f"{env}-"
 
-        return f"""let\n\tSource = AzureStorage.DataLake("https://{env}onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""
+        return f"""let\n\tSource = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""

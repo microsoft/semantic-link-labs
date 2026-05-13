@@ -8,6 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from sempy_labs._helper_functions import (
     _base_api,
+    create_abfss_path,
     format_dax_object_name,
     generate_guid,
     _make_list_unique,
@@ -23,6 +24,11 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name,
     to_delta_table_name,
     _update_dataframe_datatypes,
+    resolve_workspace_name,
+    list_columns_from_path,
+)
+from sempy_labs.semantic_model._helper import (
+    convert_column_data_type,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -35,6 +41,7 @@ import ast
 from uuid import UUID
 import sempy_labs._authentication as auth
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -581,6 +588,11 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+
+        Returns
+        -------
+        TOM.Object
+            The column object which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -620,6 +632,8 @@ class TOMWrapper:
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
         self.model.Tables[table_name].Columns.Add(obj)
+
+        return obj
 
     def add_calculated_column(
         self,
@@ -669,6 +683,11 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+
+        Returns
+        -------
+        TOM.Object
+            The column object which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -708,6 +727,7 @@ class TOMWrapper:
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
         self.model.Tables[table_name].Columns.Add(obj)
+        return obj
 
     def add_calculation_item(
         self,
@@ -736,6 +756,11 @@ class TOMWrapper:
             The format string expression for the calculation item.
         description : str, default=None
             A description of the calculation item.
+
+        Returns
+        -------
+        TOM.Object
+            The calculation item which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -751,6 +776,7 @@ class TOMWrapper:
             fsd.Expression = format_string_expression
             obj.FormatStringDefinition = fsd
         self.model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
+        return obj
 
     def add_role(
         self,
@@ -770,6 +796,11 @@ class TOMWrapper:
             Defaults to None which resolves to 'Read'.
         description : str, default=None
             A description of the role.
+
+        Returns
+        -------
+        TOM.Object
+            The role which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -783,6 +814,8 @@ class TOMWrapper:
         if description is not None:
             obj.Description = description
         self.model.Roles.Add(obj)
+
+        return obj
 
     def set_compatibility_level(self, compatibility_level: int):
         """
@@ -973,6 +1006,11 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+
+        Returns
+        -------
+        TOM.Object
+            The hierarchy which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1015,6 +1053,8 @@ class TOMWrapper:
             lvl.LineageTag = generate_guid()
             self.model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
 
+        return obj
+
     def add_relationship(
         self,
         from_table: str,
@@ -1055,6 +1095,11 @@ class TOMWrapper:
             Defaults to None which resolves to 'OneDirection'.
         rely_on_referential_integrity : bool, default=False
             Setting for the rely on referential integrity of the relationship.
+
+        Returns
+        -------
+        TOM.Object
+            The relationship which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -1100,6 +1145,8 @@ class TOMWrapper:
 
         self.model.Relationships.Add(rel)
 
+        return rel
+
     def add_calculation_group(
         self,
         name: str,
@@ -1123,6 +1170,11 @@ class TOMWrapper:
             Whether the calculation group is hidden/visible.
         column_name : str, default="Name"
             The name of the calculation group column.
+
+        Returns
+        -------
+        TOM.Object
+            The calculation group which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1160,6 +1212,8 @@ class TOMWrapper:
         self.model.DiscourageImplicitMeasures = True
         self.model.Tables.Add(tbl)
 
+        return tbl
+
     def add_expression(
         self,
         name: str,
@@ -1183,6 +1237,11 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+
+        Returns
+        -------
+        TOM.Object
+            The expression which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1201,6 +1260,8 @@ class TOMWrapper:
 
         self.model.Expressions.Add(exp)
 
+        return exp
+
     def add_translation(self, language: str):
         """
         Adds a `translation language <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ (culture) to a semantic model.
@@ -1209,6 +1270,11 @@ class TOMWrapper:
         ----------
         language : str
             The language code (i.e. 'it-IT' for Italian).
+
+        Returns
+        -------
+        TOM.Object
+            The translation which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1221,6 +1287,8 @@ class TOMWrapper:
             cul.LinguisticMetadata = lm
             self.model.Cultures.Add(cul)
 
+            return cul
+
     def add_perspective(self, perspective_name: str):
         """
         Adds a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_ to a semantic model.
@@ -1229,12 +1297,19 @@ class TOMWrapper:
         ----------
         perspective_name : str
             Name of the perspective.
+
+        Returns
+        -------
+        TOM.Object
+            The perspective which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
         persp = TOM.Perspective()
         persp.Name = perspective_name
         self.model.Perspectives.Add(persp)
+
+        return persp
 
     def add_m_partition(
         self,
@@ -1261,6 +1336,11 @@ class TOMWrapper:
             `Valid mode values <https://learn.microsoft.com/en-us/dotnet/api/microsoft.analysisservices.tabular.modetype?view=analysisservices-dotnet>`_
         description : str, default=None
             A description for the partition.
+
+        Returns
+        -------
+        TOM.Object
+            The partition which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -1286,6 +1366,8 @@ class TOMWrapper:
 
         self.model.Tables[table_name].Partitions.Add(p)
 
+        return p
+
     def add_entity_partition(
         self,
         table_name: str,
@@ -1310,6 +1392,11 @@ class TOMWrapper:
             A description for the partition.
         schema_name : str, default=None
             The schema name.
+
+        Returns
+        -------
+        TOM.Object
+            The partition which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1337,6 +1424,8 @@ class TOMWrapper:
         self.model.Tables[table_name].SourceLineageTag = (
             f"[{schema_name}].[{entity_name}]"
         )
+
+        return p
 
     def set_alternate_of(
         self,
@@ -2969,6 +3058,11 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+
+        Returns
+        -------
+        TOM.Object
+            The table which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -2986,6 +3080,7 @@ class TOMWrapper:
             t.SourceLineageTag = source_lineage_tag
         t.Hidden = hidden
         self.model.Tables.Add(t)
+        return t
 
     def add_calculated_table(
         self,
@@ -3016,6 +3111,11 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+
+        Returns
+        -------
+        TOM.Object
+            The table which was created.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -3043,6 +3143,8 @@ class TOMWrapper:
         t.Partitions.Add(par)
         self.model.Tables.Add(t)
 
+        return t
+
     def add_field_parameter(
         self,
         table_name: str,
@@ -3069,6 +3171,11 @@ class TOMWrapper:
              Defaults to None which adds all fields to the same level (i.e. no hierarchy).
 
             For details see `here <https://www.youtube.com/watch?v=5G_xSJy5muo>`_.
+
+        Returns
+        -------
+        TOM.Object
+            The table which was created.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -3165,7 +3272,7 @@ class TOMWrapper:
         calc_table_expr = "{\n" + ",\n".join(rows) + "\n}"
 
         # Build calc table and columns
-        self.add_calculated_table(name=table_name, expression=calc_table_expr)
+        t = self.add_calculated_table(name=table_name, expression=calc_table_expr)
 
         col2 = f"{table_name} Fields"
         col3 = f"{table_name} Order"
@@ -3220,11 +3327,16 @@ class TOMWrapper:
 
         self._tables_added.append(table_name)
 
+        return t
+
     def remove_vertipaq_annotations(self):
         """
         Removes the annotations set using the set_vertipaq_annotations function.
         """
 
+        for a in self.model.Model.Annotations:
+            if a.Name.startswith("Vertipaq_"):
+                self.remove_annotation(object=self.model.Model, name=a.Name)
         for t in self.model.Tables:
             for a in t.Annotations:
                 if a.Name.startswith("Vertipaq_"):
@@ -3243,7 +3355,7 @@ class TOMWrapper:
                         self.remove_annotation(object=p, name=a.Name)
         for r in self.model.Relationships:
             for a in r.Annotations:
-                if a.Name.startswith("Veripaq_"):
+                if a.Name.startswith("Vertipaq_"):
                     self.remove_annotation(object=r, name=a.Name)
 
     def set_vertipaq_annotations(self):
@@ -4260,7 +4372,12 @@ class TOMWrapper:
         dcd.Expression = expression
         p.DataCoverageDefinition = dcd
 
-    def set_encoding_hint(self, table_name: str, column_name: str, value: str):
+    def set_encoding_hint(
+        self,
+        table_name: str,
+        column_name: str,
+        value: Literal["Default", "Hash", "Value"],
+    ):
         """
         Sets the `encoding hint <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.encodinghinttype?view=analysisservices-dotnet>`_ for a column.
 
@@ -4270,7 +4387,7 @@ class TOMWrapper:
             Name of the table.
         column_name : str
             Name of the column.
-        value : str
+        value : typing.Literal["Default", "Hash", "Value"]
             Encoding hint value.
             `Encoding hint valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.encodinghinttype?view=analysisservices-dotnet>`_
         """
@@ -4289,7 +4406,14 @@ class TOMWrapper:
             System.Enum.Parse(TOM.EncodingHintType, value)
         )
 
-    def set_data_type(self, table_name: str, column_name: str, value: str):
+    def set_data_type(
+        self,
+        table_name: str,
+        column_name: str,
+        value: Literal[
+            "String", "Int64", "Decimal", "Double", "DateTime", "Boolean", "Binary"
+        ],
+    ):
         """
         Sets the `data type <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_ for a column.
 
@@ -4299,7 +4423,7 @@ class TOMWrapper:
             Name of the table.
         column_name : str
             Name of the column.
-        value : str
+        value : typing.Literal["String", "Int64", "Decimal", "Double", "DateTime", "Boolean", "Binary"]
             The data type.
             `Data type valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_
         """
@@ -6033,6 +6157,7 @@ class TOMWrapper:
 
         Returns
         -------
+
         typing.List[dict]
             A list of dictionaries, each containing details about a Direct Lake source used in the semantic model.
             Example:
@@ -6442,6 +6567,274 @@ class TOMWrapper:
             _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
+    
+    def _can_add_direct_lake_tables(
+        self, source, source_type, source_workspace
+    ) -> bool:
+        """
+        Only supporting adding Direct Lake tables to a model if all current tables are in Direct Lake mode and none of the Direct Lake sources use a SQL endpoint.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if any(p.Mode != TOM.ModeType.DirectLake for p in self.all_partitions()):
+            return False
+        sources = self.get_direct_lake_sources()
+        if any(s.get("usesSqlEndpoint") for s in sources) and any(
+            x is not None for x in (source, source_type, source_workspace)
+        ):
+            return False
+
+        return True
+
+    def add_direct_lake_tables(
+        self,
+        tables: dict,
+        source: Optional[str | UUID] = None,
+        source_type: Optional[str] = None,
+        source_workspace: Optional[str | UUID] = None,
+        use_sql_endpoint: bool = False,
+    ):
+        """
+        Adds table(s) (in Direct Lake mode) to the semantic model. The semantic model must only use Direct Lake mode and the sources must be viable for Direct Lake.
+
+        If the tables source from the same single source which already exists in the model, set source, source_type and source_workspace to None (or do not specify them at all).
+
+        Parameters
+        ----------
+        tables : dict
+            The table or tables to be added to the model. Can be a single table name, a dictionary with table details, or a list of table names or dictionaries.
+
+            Example 1 (single table):
+                tables = {
+                    "Geography": "dbo.DimGeography"
+                }
+            Example 2 (single table, no schema):
+                tables = {
+                    "Geography": "DimGeography"
+                }
+            Example 3 (multiple tables):
+                tables = {
+                    "Geography": "dbo.DimGeography",
+                    "Sales": "dbo.FactSales",
+                    "Customer": "dbo.DimCustomer",
+                }
+        source : str | uuid.UUID, default=None
+            The source name or ID. This is the name or ID of the Lakehouse or Warehouse.
+        source_type : str, default=None
+            The source type (i.e. "Lakehouse" or "Warehouse").
+        source_workspace : str | uuid.UUID, default=None
+            The workspace name or ID of the source. This is the workspace in which the Lakehouse or Warehouse exists.
+        use_sql_endpoint : bool, default=False
+            If True, uses the SQL endpoint of the artifact. If not, uses Direct Lake over OneLake.
+        """
+
+        if not self._can_add_direct_lake_tables(
+            source=source, source_type=source_type, source_workspace=source_workspace
+        ):
+            raise ValueError(
+                "Cannot add Direct Lake tables. Ensure all current tables are in Direct Lake mode and none of the Direct Lake sources use a SQL endpoint."
+            )
+
+        model_map = {}
+        for table_name, source_table_name in tables.items():
+            if any(t.Name == table_name for t in self.model.Tables):
+                print(
+                    f"A table with the name '{table_name}' already exists in the model."
+                )
+                return
+            if "." in source_table_name:
+                schema_name, source_table = source_table_name.split(".")
+            else:
+                schema_name = None
+                source_table = source_table_name
+            if table_name in model_map:
+                raise ValueError(f"Duplicate table name detected: {table_name}")
+            model_map[table_name] = {
+                "schemaName": schema_name,
+                "sourceTableName": source_table,
+                "columns": [],
+            }
+
+        # Identify the shared expression
+        sources = self.get_direct_lake_sources()
+        sources_count = len(sources)
+        supported_items = [
+            "Lakehouse",
+            "Warehouse",
+            "MirroredAzureDatabricksCatalog",
+            "SQLDatabase",
+            "MirroredDatabase",
+        ]
+        add_expression = False
+        expression_name = None
+        source_id = None
+        source_workspace_id = None
+
+        def create_expression_name(base_name: str, use_sql_endpoint: bool) -> str:
+
+            if use_sql_endpoint:
+                return "DatabaseQuery"
+
+            base_expression_name = f"DL_{base_name}"
+            expression_names = (e.Name for e in self.model.Expressions)
+
+            if not expression_names:
+                return base_expression_name
+            i = 1
+            new_expression_name = f"{base_expression_name}_{i}"
+            while new_expression_name in expression_names:
+                i += 1
+                new_expression_name = f"{base_expression_name}_{i}"
+            return new_expression_name
+
+        if sources_count == 0:  # Create initial expression
+            expr = generate_shared_expression(
+                item=source,
+                item_type=source_type,
+                workspace=source_workspace,
+                use_sql_endpoint=use_sql_endpoint,
+            )
+            expression_name = create_expression_name(
+                base_name=source_type, use_sql_endpoint=use_sql_endpoint
+            )
+            add_expression = True
+        elif source is None and source_type is None and source_workspace is None:
+            if sources_count == 1:  # Use existing source if only one exists
+                expression_name = next(s.get("expressionName") for s in sources)
+                source_id = next(s.get("itemId") for s in sources)
+                source_workspace_id = next(s.get("workspaceId") for s in sources)
+            else:
+                raise ValueError(
+                    "Multiple Direct Lake sources found. Please specify the source, source type, and source workspace to add the Direct Lake table."
+                )
+        else:  # Match or create expression
+            if source_type not in supported_items:
+                raise ValueError(
+                    f"{icons.red_dot} The following Fabric items are supported as sources: {supported_items}. You entered: {source_type}. Please ensure the source_type is one of the supported Fabric items."
+                )
+            source_workspace_id = resolve_workspace_id(source_workspace)
+            item_id = resolve_item_id(
+                item=source, type=source_type, workspace=source_workspace_id
+            )
+
+            expr = generate_shared_expression(
+                item=item_id,
+                item_type=source_type,
+                workspace=source_workspace_id,
+                use_sql_endpoint=use_sql_endpoint,
+            )
+
+            if expr in (e.Expression for e in self.model.Expressions):
+                expression_name = next(
+                    e.Name for e in self.model.Expressions if e.Expression == expr
+                )
+            elif use_sql_endpoint:
+                raise ValueError(
+                    "Cannot add a Direct Lake source based on a SQL endpoint to this semantic model as it already contains another Direct Lake source."
+                )
+            else:
+                expression_name = create_expression_name(
+                    base_name=source_type, use_sql_endpoint=use_sql_endpoint
+                )
+                add_expression = True
+
+        if not source_workspace_id:
+            source_workspace_id = resolve_workspace_id(source_workspace)
+        if not source_id:
+            source_id = resolve_item_id(
+                item=source, type=source_type, workspace=source_workspace_id
+            )
+
+        # Finish model_map
+        for table_name, items in model_map.items():
+            source_table_name = items["sourceTableName"]
+            schema_name = items["schemaName"]
+            path = create_abfss_path(
+                lakehouse_id=source_id,
+                lakehouse_workspace_id=source_workspace_id,
+                delta_table_name=source_table_name,
+                schema=schema_name,
+            )
+
+            df_columns = list_columns_from_path(path)
+            if df_columns.empty:
+                raise ValueError(
+                    f"{icons.red_dot} No columns found at the specified source table. Please ensure the 'source_table_name' is correct and that the table contains columns."
+                )
+            for _, r in df_columns.iterrows():
+                column_name = r["Column Name"]
+                data_type = r["Data Type"]
+                converted_data_type = convert_column_data_type(data_type)
+                model_map[table_name]["columns"].append(
+                    {
+                        "columnName": column_name,
+                        "dataType": converted_data_type,
+                    }
+                )
+
+        # Create expression if necessary
+        if add_expression:
+            self.add_expression(name=expression_name, expression=expr)
+
+        # Add elements to the model
+        for table_name, items in model_map.items():
+            source_table_name = items["sourceTableName"]
+            schema_name = items["schemaName"]
+            self.add_table(name=table_name)
+            self.add_entity_partition(
+                table_name=table_name,
+                entity_name=source_table_name,
+                expression=expression_name,
+                schema_name=schema_name,
+            )
+            for column in items["columns"]:
+                column_name = column["columnName"]
+                data_type = column["dataType"]
+                self.add_data_column(
+                    table_name=table_name,
+                    column_name=column_name,
+                    source_column=column_name,
+                    data_type=data_type,
+                )
+
+    def mark_primary_keys(self):
+        """
+        Identifies all primary key columns in the semantic model (columns used on the "one" side of a relationship)
+        and sets the `IsKey <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.iskey>`_
+        property to True for those columns.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        primary_keys = set()
+        for r in self.model.Relationships:
+            if r.FromCardinality == TOM.RelationshipEndCardinality.One:
+                primary_keys.add((r.FromTable.Name, r.FromColumn.Name))
+            if r.ToCardinality == TOM.RelationshipEndCardinality.One:
+                primary_keys.add((r.ToTable.Name, r.ToColumn.Name))
+
+        for table_name, column_name in sorted(primary_keys):
+            c = self.model.Tables[table_name].Columns[column_name]
+            if not c.IsKey:
+                c.IsKey = True
+
+    def hide_key_columns(self):
+        """
+        Hides all columns in the semantic model that are used in a relationship and have an
+        `Int64 <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.datatype?view=analysisservices-dotnet>`_
+        data type. This reduces clutter in the field list while preserving relationship functionality.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        key_columns = set()
+        for r in self.model.Relationships:
+            key_columns.add((r.FromTable.Name, r.FromColumn.Name))
+            key_columns.add((r.ToTable.Name, r.ToColumn.Name))
+
+        for table_name, column_name in key_columns:
+            c = self.model.Tables[table_name].Columns[column_name]
+            if c.DataType == TOM.DataType.Int64 and not c.IsHidden:
+                c.IsHidden = True
 
     def close(self):
 

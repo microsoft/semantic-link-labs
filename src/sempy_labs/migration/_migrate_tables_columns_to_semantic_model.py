@@ -61,7 +61,7 @@ def migrate_tables_columns_to_semantic_model(
             "\nLearn more here: https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse"
         )
     shEx = generate_shared_expression(
-        item_name=lakehouse,
+        item=lakehouse,
         item_type="Lakehouse",
         workspace=lakehouse_workspace,
         use_sql_endpoint=False,

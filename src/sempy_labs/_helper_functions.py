@@ -1170,7 +1170,10 @@ def resolve_workspace_name_and_id(
 
 @log
 def resolve_item_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+    item: str | UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    error_out: bool = True,
 ) -> UUID:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -1185,9 +1188,12 @@ def resolve_item_id(
                 client="fabric_sp",
             )
         except FabricHTTPException:
-            raise ValueError(
-                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
-            )
+            if error_out:
+                raise ValueError(
+                    f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+                )
+            else:
+                return None
     else:
         if type is None:
             raise ValueError(
@@ -1205,7 +1211,7 @@ def resolve_item_id(
                     item_id = v.get("id")
                     break
 
-    if item_id is None:
+    if item_id is None and error_out:
         raise ValueError(
             f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
         )
@@ -1215,7 +1221,9 @@ def resolve_item_id(
 
 @log
 def resolve_item_name_and_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+    item: str | UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, UUID]:
 
     workspace_id = resolve_workspace_id(workspace)
@@ -2274,6 +2282,8 @@ def _base_api(
         "kusto",
         "blob",
         "keyvault",
+        "databricks",
+        "snowflake",
     ]:
         raise NotImplementedError(
             f"{icons.red_dot} The '{client}' client is not supported."
@@ -2300,17 +2310,16 @@ def _base_api(
         url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
     elif client in ["azure", "graph"]:
         headers = _get_headers(auth.token_provider.get(), audience=client)
-        url = (
-            f"https://graph.microsoft.com/v1.0/{request}"
-            if client == "graph"
-            else request
-        )
-    elif client in ["kusto", "blob", "keyvault"]:
-        url = (
-            f"https://onelake.blob.fabric.microsoft.com/{request}"
-            if client == "blob"
-            else request
-        )
+        if client == "graph":
+            url = f"https://graph.microsoft.com/v1.0/{request}"
+        elif client == "azure":
+            url = request
+    elif client == "kusto":
+        url = request
+    elif client == "blob":
+        url = f"https://onelake.blob.fabric.microsoft.com/{request}"
+    elif client in ["databricks", "snowflake"]:
+        url = request
     elif client == "internal":
         headers = get_pbi_token_headers()
         prefix = _get_url_prefix()
@@ -2978,3 +2987,61 @@ def to_delta_table_name(name: str, max_length: int = 128) -> str:
     name = name[:max_length]
 
     return name
+
+
+@log
+def list_columns_from_path(path: str) -> pd.DataFrame:
+
+    columns = {
+        "Column Name": "str",
+        "Data Type": "str",
+    }
+    df = _create_dataframe(columns=columns)
+
+    rows = []
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        try:
+            dt = DeltaTable(path)
+            table_schema = dt.schema()
+
+            for field in table_schema.fields:
+                col_name = field.name
+                match = re.search(r'"(.*?)"', str(field.type))
+                if not match:
+                    raise ValueError(
+                        f"{icons.red_dot} Could not find data type for column {col_name}."
+                    )
+                data_type = match.group(1)
+                rows.append(
+                    {
+                        "Column Name": col_name,
+                        "Data Type": data_type,
+                    }
+                )
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{path}' table is not a valid delta table."
+            )
+    else:
+        try:
+            delta_table = _get_delta_table(path=path)
+            table_df = delta_table.toDF()
+
+            for col_name, data_type in table_df.dtypes:
+                rows.append(
+                    {
+                        "Column Name": col_name,
+                        "Data Type": data_type,
+                    }
+                )
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{path}' table is not a valid delta table."
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
