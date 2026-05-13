@@ -21,10 +21,76 @@ class Parser:
         "/": 20,
     }
 
+    # Bare-identifier DAX enum constants. These are arguments to specific
+    # functions (e.g. DATESINPERIOD's interval, RANKX's order/ties) and must
+    # not be treated as table references. Matched case-insensitively.
+    KEYWORDS = {
+        # Date intervals (DATESINPERIOD, DATEADD, PARALLELPERIOD, ...)
+        "DAY",
+        "WEEK",
+        "MONTH",
+        "QUARTER",
+        "YEAR",
+        # Sort order (RANKX, TOPN, ORDERBY, ...)
+        "ASC",
+        "DESC",
+        # Rank ties (RANKX)
+        "SKIP",
+        "DENSE",
+        "LAST",
+        "FIRST",
+        # Boolean / blank literals
+        "TRUE",
+        "FALSE",
+        "BLANK",
+        # Crossfilter direction (CROSSFILTER)
+        "BOTH",
+        "ONEWAY",
+        "ONEWAY_LEFTFILTERSRIGHT",
+        "ONEWAY_RIGHTFILTERSLEFT",
+        "NONE",
+        # PATH ordering (TREATAS / PATH-related)
+        "FIRST",
+        "LAST",
+        # Match modes (LOOKUPVALUE-related)
+        "ABSOLUTE",
+        "RELATIVE",
+        "INTEGER",
+        "STRING",
+        "DOUBLE",
+        "BOOLEAN",
+        "DATETIME",
+        "VARIANT",
+        "TEXT",
+        "ALPHABETICAL",
+        "DEFINE",
+        "ORDER",
+        "BY",
+        "EVALUATE",
+        "EVALUATEANDLOG",
+        "OFFSET",
+        "VAR",
+        "RETURN",
+        "PARTITIONBY",
+        "RANK",
+        "ROWNUMBER",
+        "INDEX",
+        "OFFSET",
+        "WINDOW",
+        "ORDERBY",
+    }
+
     def __init__(self, text):
 
         self.tokens = list(tokenize(text))
         self.index = 0
+        # Stack of sets of variable names currently in scope. Used to
+        # distinguish references to VAR-declared names from table refs.
+        self.scopes = []
+        # Names of virtual columns introduced via ADDCOLUMNS / SELECTCOLUMNS
+        # anywhere in the input. Bracketed references to these names are
+        # emitted as VirtualColumn instead of Measure.
+        self.virtual_columns = set()
 
     @property
     def current(self):
@@ -32,6 +98,9 @@ class Parser:
 
     def advance(self):
         self.index += 1
+
+    def _is_variable(self, name):
+        return any(name in scope for scope in self.scopes)
 
     def parse(self):
         return self.statement()
@@ -42,53 +111,62 @@ class Parser:
         if self.current.token_type == TokenType.VAR:
 
             variables = []
+            self.scopes.append(set())
 
-            while self.current.token_type == TokenType.VAR:
+            try:
+                while self.current.token_type == TokenType.VAR:
 
-                self.advance()
+                    self.advance()
 
-                if self.current.token_type != TokenType.IDENTIFIER:
+                    if self.current.token_type != TokenType.IDENTIFIER:
+                        raise SyntaxError(
+                            f"Expected variable name after VAR, got: {self.current}"
+                        )
+
+                    name = self.current.text
+                    self.advance()
+
+                    if not (
+                        self.current.token_type == TokenType.OPERATOR
+                        and self.current.text == "="
+                    ):
+                        raise SyntaxError(
+                            f"Expected '=' after VAR name, got: {self.current}"
+                        )
+                    self.advance()
+
+                    value = self.statement()
+
+                    # Make the new variable visible to subsequent VARs and to
+                    # the RETURN expression. (DAX allows later VARs to
+                    # reference earlier ones in the same block.)
+                    self.scopes[-1].add(name)
+
+                    variables.append(
+                        Var(
+                            args={
+                                "this": name,
+                                "expression": value,
+                            }
+                        )
+                    )
+
+                if self.current.token_type != TokenType.RETURN:
                     raise SyntaxError(
-                        f"Expected variable name after VAR, got: {self.current}"
-                    )
-
-                name = self.current.text
-                self.advance()
-
-                if not (
-                    self.current.token_type == TokenType.OPERATOR
-                    and self.current.text == "="
-                ):
-                    raise SyntaxError(
-                        f"Expected '=' after VAR name, got: {self.current}"
+                        f"Expected RETURN after VAR block, got: {self.current}"
                     )
                 self.advance()
 
-                value = self.statement()
+                ret_expr = self.expression()
 
-                variables.append(
-                    Var(
-                        args={
-                            "this": name,
-                            "expression": value,
-                        }
-                    )
+                return Return(
+                    args={
+                        "variables": variables,
+                        "expression": ret_expr,
+                    }
                 )
-
-            if self.current.token_type != TokenType.RETURN:
-                raise SyntaxError(
-                    f"Expected RETURN after VAR block, got: {self.current}"
-                )
-            self.advance()
-
-            ret_expr = self.expression()
-
-            return Return(
-                args={
-                    "variables": variables,
-                    "expression": ret_expr,
-                }
-            )
+            finally:
+                self.scopes.pop()
 
         return self.expression()
 
@@ -172,6 +250,23 @@ class Parser:
 
                 self.advance()
 
+                # Record virtual column names introduced by ADDCOLUMNS /
+                # SELECTCOLUMNS so later bracketed references resolve to
+                # VirtualColumn rather than Measure. Both have the shape:
+                #   FN ( <table>, <name>, <expression> [, <name>, <expression>]... )
+                if name.upper() in ("ADDCOLUMNS", "SELECTCOLUMNS"):
+                    for i in range(1, len(args), 2):
+                        arg = args[i]
+                        if isinstance(arg, Literal):
+                            value = arg.args.get("this")
+                            if (
+                                isinstance(value, str)
+                                and len(value) >= 2
+                                and value.startswith('"')
+                                and value.endswith('"')
+                            ):
+                                self.virtual_columns.add(value[1:-1])
+
                 return Function(
                     args={
                         "this": name,
@@ -179,7 +274,16 @@ class Parser:
                     }
                 )
 
-            return Literal(args={"this": name})
+            # Bare identifier (not a function call): a reference to a VAR
+            # in scope, a known DAX enum keyword, or otherwise a table
+            # reference.
+            if self._is_variable(name):
+                return VariableReference(args={"this": name})
+
+            if name.upper() in self.KEYWORDS:
+                return Keyword(args={"this": name})
+
+            return Table(args={"this": name})
 
         elif token.token_type == TokenType.TABLE_COLUMN:
 
@@ -217,6 +321,9 @@ class Parser:
             name = token.text[1:-1]
 
             self.advance()
+
+            if name in self.virtual_columns:
+                return VirtualColumn(args={"this": name})
 
             return Measure(
                 args={

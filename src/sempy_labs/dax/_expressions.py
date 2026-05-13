@@ -105,5 +105,22 @@ class Var(Expression):
     pass
 
 
+class VariableReference(Expression):
+    pass
+
+
+class Keyword(Expression):
+    """A bare-identifier DAX enum constant (e.g. DAY, DESC, DENSE, ASC)."""
+
+    pass
+
+
+class VirtualColumn(Expression):
+    """A bracketed reference to a column introduced by ADDCOLUMNS /
+    SELECTCOLUMNS (rather than an existing model measure)."""
+
+    pass
+
+
 class Return(Expression):
     pass

@@ -11,7 +11,8 @@ class Token:
 
 
 TOKEN_REGEX = [
-    (TokenType.TABLE_COLUMN, r"'[^']+'\[[^\]]+\]"),
+    # Table[Column] reference: table may be quoted ('Sales') or unquoted (Sales)
+    (TokenType.TABLE_COLUMN, r"(?:'[^']+'|[A-Za-z_][A-Za-z0-9_]*)\[[^\]]+\]"),
     # NEW
     (TokenType.QUOTED_IDENTIFIER, r"'[^']+'"),
     (TokenType.COLUMN, r"\[[^\]]+\]"),

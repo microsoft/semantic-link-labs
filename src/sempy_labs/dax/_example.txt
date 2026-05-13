@@ -1,95 +1,64 @@
-VAR __LastVisibleDate =
+VAR MaxDate =
     MAX ( 'Date'[Date] )
 
-VAR __RollingWindow =
+VAR RollingWindow =
     DATESINPERIOD (
         'Date'[Date],
-        __LastVisibleDate,
+        MaxDate,
         -90,
         DAY
     )
 
-VAR __CustomerRevenue =
+VAR CustomerSalesTable =
     ADDCOLUMNS (
         SUMMARIZE (
-            ALLSELECTED ( 'Customer'[CustomerKey] ),
-            'Customer'[CustomerKey]
+            FILTER (
+                ALL ( Sales ),
+                Sales[OrderDate] IN RollingWindow
+            ),
+            Customer[CustomerKey]
         ),
-        "@Revenue",
+        "RollingSales",
             CALCULATE (
                 SUMX (
-                    'Sales',
-                    'Sales'[ExtendedAmount]
-                        - 'Sales'[DiscountAmount]
-                ),
-                __RollingWindow
+                    Sales,
+                    Sales[ExtendedAmount] - Sales[DiscountAmount]
+                )
+            ),
+        "OrderCount",
+            CALCULATE (
+                DISTINCTCOUNT ( Sales[OrderNumber] )
             )
     )
 
-VAR __RankedCustomers =
+VAR FilteredCustomers =
+    FILTER (
+        CustomerSalesTable,
+        [RollingSales] > 5000
+            && [OrderCount] >= 3
+    )
+
+VAR RankedCustomers =
     ADDCOLUMNS (
-        __CustomerRevenue,
-        "@Rank",
+        FilteredCustomers,
+        "SalesRank",
             RANKX (
-                __CustomerRevenue,
-                [@Revenue],
+                FilteredCustomers,
+                [RollingSales],
                 ,
                 DESC,
                 DENSE
             )
     )
 
-VAR __TopCustomers =
+VAR Top10Customers =
     FILTER (
-        __RankedCustomers,
-        [@Rank] <= 10
-    )
-
-VAR __TopRevenue =
-    SUMX (
-        __TopCustomers,
-        [@Revenue]
-    )
-
-VAR __TotalRevenue =
-    CALCULATE (
-        SUMX (
-            'Sales',
-            'Sales'[ExtendedAmount]
-                - 'Sales'[DiscountAmount]
-        ),
-        __RollingWindow,
-        REMOVEFILTERS ( 'Customer' )
-    )
-
-VAR __WeightedGrowthFactor =
-    AVERAGEX (
-        VALUES ( 'Product'[Category] ),
-        VAR __CurrentRevenue =
-            CALCULATE (
-                SUM ( 'Sales'[ExtendedAmount] ),
-                __RollingWindow
-            )
-        VAR __PriorRevenue =
-            CALCULATE (
-                SUM ( 'Sales'[ExtendedAmount] ),
-                DATESINPERIOD (
-                    'Date'[Date],
-                    DATEADD ( __LastVisibleDate, -90, DAY ),
-                    -90,
-                    DAY
-                )
-            )
-        RETURN
-            DIVIDE (
-                __CurrentRevenue - __PriorRevenue,
-                __PriorRevenue
-            )
+        RankedCustomers,
+        [SalesRank] <= 10
     )
 
 RETURN
-    DIVIDE (
-        __TopRevenue,
-        __TotalRevenue
-    )
-        * ( 1 + __WeightedGrowthFactor )
+SUMX (
+    Top10Customers,
+    [RollingSales]
+)
