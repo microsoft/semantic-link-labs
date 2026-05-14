@@ -13,13 +13,13 @@ from ._tokens import TokenType
 # backgrounds (loosely based on Apple's "vivid" system colors, lightened
 # slightly so they don't burn on a light background).
 _COLORS = {
-    "function": "#5E9EFF",       # soft blue   - functions & keywords
+    "function": "#5E9EFF",  # soft blue   - functions & keywords
     "keyword": "#5E9EFF",
-    "variable": "#5AC8B8",       # soft teal   - VAR-defined names
-    "number": "#FF9F45",          # soft orange - numeric literals
+    "variable": "#5AC8B8",  # soft teal   - VAR-defined names
+    "number": "#FF9F45",  # soft orange - numeric literals
     "virtual_column": "#FF7A8A",  # soft pink   - ADDCOLUMNS/SELECTCOLUMNS cols
-    "string": "#9BB87A",          # muted green - string literals (default)
-    "operator": "#A6A6A6",        # neutral gray
+    "string": "#9BB87A",  # muted green - string literals (default)
+    "operator": "#A6A6A6",  # neutral gray
     "punctuation": "#A6A6A6",
     "default": "inherit",
 }
@@ -106,7 +106,7 @@ def _render_html(dax_expression: str) -> str:
         # Emit any whitespace / unmatched chars between tokens verbatim so
         # the original formatting (indentation, line breaks) is preserved.
         if token.position > cursor:
-            parts.append(_html.escape(dax_expression[cursor:token.position]))
+            parts.append(_html.escape(dax_expression[cursor : token.position]))
 
         text = _html.escape(token.text)
         color = _COLORS.get(kind or "default", "inherit")

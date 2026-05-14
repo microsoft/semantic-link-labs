@@ -310,9 +310,7 @@ class TOMWrapper:
 
         # (table_name, column_name) -> DataType
         column_data_types = {
-            (t.Name, c.Name): c.DataType
-            for t in self.model.Tables
-            for c in t.Columns
+            (t.Name, c.Name): c.DataType for t in self.model.Tables for c in t.Columns
         }
 
         columns = {

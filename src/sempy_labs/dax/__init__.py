@@ -6,6 +6,6 @@ from ._format import (
 )
 
 __all__ = [
-    "parse_dax", 
+    "parse_dax",
     "format_dax",
 ]
