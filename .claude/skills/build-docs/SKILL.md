@@ -267,7 +267,7 @@ napoleon_numpy_docstring = True
 # Mock imports for packages not available during build
 autodoc_mock_imports = [
     'delta', 'synapse', 'jwt', 'semantic-link-sempy',
-    'pyspark', 'anywidget'
+    'pyspark', 'anywidget', 'sqlglot'
 ]
 ```
 

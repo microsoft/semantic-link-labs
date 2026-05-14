@@ -1,4 +1,3 @@
-import re
 from typing import Optional, Set, Tuple
 import sqlglot
 from sqlglot import expressions as exp

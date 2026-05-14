@@ -1,4 +1,3 @@
-from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from uuid import UUID
 from sempy._utils._log import log
@@ -1133,6 +1132,7 @@ def perspective_editor(
         ) from e
 
     from IPython.display import display
+    from sempy_labs.tom import connect_semantic_model
 
     # -----------------------------
     # LOAD MODEL METADATA
