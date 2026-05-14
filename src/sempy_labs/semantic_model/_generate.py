@@ -118,9 +118,11 @@ def generate_direct_lake_semantic_model(
         use_sql_endpoint=use_sql_endpoint,
     )
 
-    if inherit_descriptions and source_type != 'Lakehouse':
+    if inherit_descriptions and source_type != "Lakehouse":
         inherit_descriptions = False
-        print(f"{icons.info} The 'inherit_descriptions' parameter is only relevant if the 'source_type' is a Lakehouse. This setting will be ignored.")
+        print(
+            f"{icons.info} The 'inherit_descriptions' parameter is only relevant if the 'source_type' is a Lakehouse. This setting will be ignored."
+        )
 
     # Populate model map with table and column information
     model_map = {}
