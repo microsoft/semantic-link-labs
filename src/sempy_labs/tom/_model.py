@@ -6774,6 +6774,14 @@ class TOMWrapper:
                 )
 
     def sync_descriptions(self, overwrite: bool = False):
+        """
+        Sets table/column descriptions in the semantic model based on the descriptions set on the tables/columns in the source Lakehouse tables. This function is only supported for Direct Lake models using lakehouse source(s).
+
+        Parameters
+        ----------
+        overwrite : bool, default=False
+            If True, overwrites the existing descriptions in the semantic model. If False, skips the tables/columns which already have descriptions.
+        """
         from sempy_labs._helper_functions import (
             extract_descriptions_from_table_path,
             create_abfss_path,
@@ -6782,8 +6790,10 @@ class TOMWrapper:
 
         sources = self.get_direct_lake_sources()
         if sources is None:
+            print(f"{icons.info} No Direct Lake sources found.")
             return
         if not any(s for s in sources if s.get("itemType") == "Lakehouse"):
+            print(f"{icons.info} No Direct Lake sources found which use a Lakehouse.")
             return
 
         for t in self.model.Tables:
@@ -6804,7 +6814,9 @@ class TOMWrapper:
                 )
                 descriptions = extract_descriptions_from_table_path(path)
                 if t.Description is None or overwrite:
-                    t.Description = descriptions.get("tableDescription")
+                    desc = descriptions.get("tableDescription")
+                    if desc:
+                        t.Description = desc
                 for c in t.Columns:
                     if c.Type != TOM.ColumnType.RowNumber:
                         if c.Description is None or overwrite:
@@ -6816,7 +6828,8 @@ class TOMWrapper:
                                 ),
                                 None,
                             )
-                            c.Description = desc
+                            if desc:
+                                c.Description = desc
 
     def close(self):
 
