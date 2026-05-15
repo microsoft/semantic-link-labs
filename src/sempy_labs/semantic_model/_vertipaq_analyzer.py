@@ -47,11 +47,14 @@ def get_run_id(lakehouse, schema, workspace, save_table_name):
     if tables.empty:
         run_id = 1
     else:
-        run_id = _get_column_aggregate(
-            table_name=save_table_name,
-            lakehouse=lakehouse,
-            workspace=workspace,
-            schema_name=schema,
+        run_id = (
+            _get_column_aggregate(
+                table_name=save_table_name,
+                lakehouse=lakehouse,
+                workspace=workspace,
+                schema_name=schema,
+            )
+            + 1
         )
 
     return run_id
