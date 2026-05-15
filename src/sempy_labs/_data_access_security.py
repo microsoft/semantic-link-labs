@@ -71,7 +71,6 @@ def list_data_access_roles(
                 "Permissions": "list",
                 "Row Level Security": "string",
                 "Column Level Security": "list",
-                "Column Permission": "list",
             }
         )
     elif view == "MicrosoftEntraMembers":
@@ -129,19 +128,76 @@ def list_data_access_roles(
 
                     cls = rules.get("constraints", {}).get("columns", [])
                     rls = rules.get("constraints", {}).get("rows", [])
+
+                    def _build_cls_dict(entries):
+                        # Build a dict keyed by tablePath whose value contains
+                        # both the columnNames and the columnAction so column
+                        # level security permissions are kept together.
+                        result = {
+                            c.get("tablePath"): {
+                                "columns": c.get("columnNames", []),
+                                "permission": c.get("columnAction", []),
+                            }
+                            for c in entries
+                            if c.get("tablePath")
+                        }
+                        return result or None
+
+                    def _build_rls_dict(entries):
+                        # Build a dict keyed by tablePath whose value is the
+                        # row level security filter expression.
+                        result = {
+                            r.get("tablePath"): r.get("value")
+                            for r in entries
+                            if r.get("tablePath")
+                        }
+                        return result or None
+
+                    if paths == ["*"]:
+                        # The rule applies to all tables/files. Aggregate any
+                        # column/row level security constraints into dicts
+                        # keyed by tablePath so the wildcard scope is preserved
+                        # on a single row.
+                        column_level_security = _build_cls_dict(cls)
+                        row_level_security = _build_rls_dict(rls)
+                        rows.append(
+                            {
+                                "Role Name": name,
+                                "Role Id": role_id,
+                                "Etag": etag,
+                                "Kind": kind,
+                                "Effect": effect,
+                                "File Path": "*",
+                                "Permissions": permission,
+                                "Row Level Security": row_level_security,
+                                "Column Level Security": column_level_security,
+                            }
+                        )
+                        continue
+
                     for path in paths:
-                        row_level_security = next(
-                            (r.get("value") for r in rls if r.get("tablePath") == path),
-                            None,
-                        )
-                        column_level_security, column_action = next(
-                            (
-                                (r.get("columnNames", []), r.get("columnAction", []))
-                                for r in cls
-                                if r.get("tablePath") == path
-                            ),
-                            (None, None),
-                        )
+                        # Match constraints that apply to this path exactly or
+                        # to any table/file nested under this path (e.g. path
+                        # "/Tables/dbo" covers "/Tables/dbo/Customer").
+                        prefix = path.rstrip("/") + "/"
+                        matching_cls = [
+                            c for c in cls
+                            if c.get("tablePath") == path
+                            or (c.get("tablePath") or "").startswith(prefix)
+                        ]
+                        matching_rls = [
+                            r for r in rls
+                            if r.get("tablePath") == path
+                            or (r.get("tablePath") or "").startswith(prefix)
+                        ]
+
+                        # If any constraint targets a nested table (not the
+                        # exact path), consolidate into dicts keyed by
+                        # tablePath so multiple tables can be represented on a
+                        # single row.
+                        column_level_security = _build_cls_dict(matching_cls)
+                        row_level_security = _build_rls_dict(matching_rls)
+
                         rows.append(
                             {
                                 "Role Name": name,
@@ -153,7 +209,6 @@ def list_data_access_roles(
                                 "Permissions": permission,
                                 "Row Level Security": row_level_security,
                                 "Column Level Security": column_level_security,
-                                "Column Permission": column_action,
                             }
                         )
             elif view == "MicrosoftEntraMembers":
