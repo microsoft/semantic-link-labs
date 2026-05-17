@@ -288,7 +288,7 @@ class Parser:
         "BITOR",
         "BITRSHIFT",
         "BITXOR",
-        "COALESE",
+        "COALESCE",
         "IF",
         "IF.EAGER",
         "IFERROR",
