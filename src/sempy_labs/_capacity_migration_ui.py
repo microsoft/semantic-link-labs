@@ -1257,7 +1257,7 @@ def capacity_migration(
         dark_mode=bool(dark_mode),
     )
 
-    def _run_with_auth(auth, fn):
+    def _run_with_service_principal(auth, fn):
         if auth and all(
             auth.get(k)
             for k in (
@@ -1310,7 +1310,7 @@ def capacity_migration(
                     }
                     return
 
-                def _do():
+                def _migrate_single():
                     migrate_capacities(
                         azure_subscription_id=sub_id,
                         resource_group=rg,
@@ -1318,7 +1318,7 @@ def capacity_migration(
                         p_sku_only=False,
                     )
 
-                _run_with_auth(auth, _do)
+                _run_with_service_principal(auth, _migrate_single)
                 _refresh()
                 widget.status = {
                     "message": f"Migration completed for '{source}'.",
@@ -1360,14 +1360,14 @@ def capacity_migration(
                     }
                     return
 
-                def _do():
+                def _reassign_workspaces():
                     assign_workspaces_to_capacity(
                         source_capacity=source,
                         target_capacity=target,
                         workspace=None,
                     )
 
-                _run_with_auth(auth, _do)
+                _run_with_service_principal(auth, _reassign_workspaces)
                 _refresh()
                 widget.status = {
                     "message": (
@@ -1386,7 +1386,7 @@ def capacity_migration(
                     }
                     return
 
-                def _do():
+                def _migrate_multiple():
                     migrate_capacities(
                         azure_subscription_id=sub_id,
                         resource_group=rg,
@@ -1394,7 +1394,7 @@ def capacity_migration(
                         p_sku_only=bool(data.get("p_sku_only", True)),
                     )
 
-                _run_with_auth(auth, _do)
+                _run_with_service_principal(auth, _migrate_multiple)
                 _refresh()
                 widget.status = {
                     "message": f"Migration completed for {len(capacities)} capacities.",
@@ -1404,7 +1404,7 @@ def capacity_migration(
 
             if action == "migrate_all":
 
-                def _do():
+                def _migrate_all():
                     migrate_capacities(
                         azure_subscription_id=sub_id,
                         resource_group=rg,
@@ -1412,7 +1412,7 @@ def capacity_migration(
                         p_sku_only=bool(data.get("p_sku_only", True)),
                     )
 
-                _run_with_auth(auth, _do)
+                _run_with_service_principal(auth, _migrate_all)
                 _refresh()
                 widget.status = {
                     "message": "Migration completed for all P/A SKU capacities.",
