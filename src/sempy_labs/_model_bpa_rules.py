@@ -3,6 +3,9 @@ import pandas as pd
 import re
 from typing import Optional
 from sempy._utils._log import log
+from sempy_labs.dax._analysis import (
+    find_non_numeric_aggregations,
+)
 
 
 @log
@@ -439,6 +442,16 @@ def model_bpa_rules(
                 ),
                 "Avoid using the IFERROR function as it may cause performance degradation. If you are concerned about a divide-by-zero error, use the DIVIDE function as it naturally resolves such errors as blank (or you can customize what should be shown in case of such an error).",
                 "https://www.elegantbi.com/post/top10bestpractices",
+            ),
+            (
+                "DAX Expressions",
+                "Measure",
+                "Warning",
+                "Avoid aggregating non-numeric columns",
+                lambda obj, tom: any(
+                    find_non_numeric_aggregations(obj.Expression, tom)
+                ),
+                "Numeric aggregation functions (SUM, SUMX, AVERAGE, AVERAGEX, MIN, MINX, MAX, MAXX, PRODUCT, PRODUCTX) should be applied to numeric columns (Int64, Decimal, Double). Aggregating a non-numeric column will either fail at query time or force an implicit conversion, both of which usually indicate a modeling mistake.",
             ),
             (
                 "DAX Expressions",

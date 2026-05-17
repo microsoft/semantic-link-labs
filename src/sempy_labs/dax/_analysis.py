@@ -79,3 +79,87 @@ def find_numeric_aggregation_columns(
 
         for col in columns:
             yield fn_name, col.args["table"], col.args["this"]
+
+
+def uses_function(expression: str, function_name: str) -> bool:
+    """
+    Returns True if the DAX expression contains a call to ``function_name``
+    (case-insensitive). Built on the DAX parser so it ignores occurrences
+    inside string literals or comments that a regex would falsely match.
+
+    Returns False if the expression is empty or cannot be parsed.
+    """
+
+    if not expression:
+        return False
+
+    try:
+        tree = parse_dax(expression)
+    except SyntaxError:
+        return False
+
+    target = function_name.upper()
+
+    for fn in tree.find_all(Function):
+        if fn.args.get("this", "").upper() == target:
+            return True
+
+    return False
+
+
+def find_non_numeric_aggregations(
+    expression: str, tom
+) -> Iterator[Tuple[str, str, str, str]]:
+    """
+    Yield every column reference inside a numeric-aggregation function
+    (SUM, SUMX, AVERAGE, AVERAGEX, MIN, MINX, MAX, MAXX, PRODUCT, PRODUCTX)
+    whose corresponding TOM column is **not** numeric (Int64/Decimal/Double).
+
+    Parameters
+    ----------
+    expression : str
+        The DAX expression to analyze.
+    tom : TOMWrapper
+        Used to resolve table/column data types. Columns that cannot be
+        resolved against the model are silently skipped.
+
+    Yields
+    ------
+    (function_name, table_name, column_name, data_type)
+        One tuple per offending reference. ``data_type`` is the string
+        form of the TOM ``DataType`` enum.
+
+    Notes
+    -----
+    Designed to be called inline from a BPA rule lambda::
+
+        lambda obj, tom: any(
+            find_non_numeric_aggregations(obj.Expression, tom)
+        )
+    """
+
+    import Microsoft.AnalysisServices.Tabular as TOM
+
+    numeric_types = {
+        TOM.DataType.Int64,
+        TOM.DataType.Decimal,
+        TOM.DataType.Double,
+    }
+
+    tables = tom.model.Tables
+
+    for fn_name, table_name, column_name in find_numeric_aggregation_columns(
+        expression
+    ):
+        table = next((t for t in tables if t.Name == table_name), None)
+        if table is None:
+            continue
+        column = next(
+            (c for c in table.Columns if c.Name == column_name), None
+        )
+        if column is None:
+            continue
+        if column.DataType in numeric_types:
+            continue
+
+        yield fn_name, table_name, column_name, str(column.DataType)
