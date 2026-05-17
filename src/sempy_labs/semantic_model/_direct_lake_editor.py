@@ -1326,17 +1326,26 @@ def direct_lake_editor(
     initial_ws_name, initial_ws_id = resolve_workspace_name_and_id(workspace)
     initial_ws_id = str(initial_ws_id)
 
+    def _pick_columns(df, preferred_id, preferred_name):
+        """Resolve id/name columns on a DataFrame, falling back safely."""
+        cols = list(df.columns)
+        if not cols:
+            return None, None
+        id_col = next((c for c in preferred_id if c in cols), cols[0])
+        name_col = next((c for c in preferred_name if c in cols), cols[-1])
+        return id_col, name_col
+
     def _list_workspaces_payload():
         try:
             dfW = fabric.list_workspaces()
         except Exception:
             return [{"id": initial_ws_id, "name": initial_ws_name}]
-        rows = []
-        # Standardize on "Id"/"Name" columns; gracefully fall back.
-        id_col = "Id" if "Id" in dfW.columns else dfW.columns[0]
-        name_col = "Name" if "Name" in dfW.columns else dfW.columns[-1]
-        for _, r in dfW.iterrows():
-            rows.append({"id": str(r[id_col]), "name": str(r[name_col])})
+        id_col, name_col = _pick_columns(dfW, ["Id"], ["Name"])
+        if id_col is None or name_col is None:
+            return [{"id": initial_ws_id, "name": initial_ws_name}]
+        rows = [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfW.iterrows()
+        ]
         rows.sort(key=lambda x: x["name"].lower())
         return rows
 
@@ -1345,15 +1354,14 @@ def direct_lake_editor(
             dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
         except Exception:
             return []
-        rows = []
-        id_col = "Dataset Id" if "Dataset Id" in dfD.columns else "Dataset ID"
-        name_col = "Dataset Name"
-        if id_col not in dfD.columns:
-            id_col = dfD.columns[0]
-        if name_col not in dfD.columns:
-            name_col = dfD.columns[-1]
-        for _, r in dfD.iterrows():
-            rows.append({"id": str(r[id_col]), "name": str(r[name_col])})
+        id_col, name_col = _pick_columns(
+            dfD, ["Dataset Id", "Dataset ID"], ["Dataset Name"]
+        )
+        if id_col is None or name_col is None:
+            return []
+        rows = [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfD.iterrows()
+        ]
         rows.sort(key=lambda x: x["name"].lower())
         return rows
 
@@ -1371,15 +1379,12 @@ def direct_lake_editor(
             dfI = fabric.list_items(workspace=workspace_id, type=item_type)
         except Exception:
             return []
-        rows = []
-        id_col = "Id" if "Id" in dfI.columns else dfI.columns[0]
-        name_col = (
-            "Display Name"
-            if "Display Name" in dfI.columns
-            else ("Name" if "Name" in dfI.columns else dfI.columns[-1])
-        )
-        for _, r in dfI.iterrows():
-            rows.append({"id": str(r[id_col]), "name": str(r[name_col])})
+        id_col, name_col = _pick_columns(dfI, ["Id"], ["Display Name", "Name"])
+        if id_col is None or name_col is None:
+            return []
+        rows = [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfI.iterrows()
+        ]
         rows.sort(key=lambda x: x["name"].lower())
         return rows
 
