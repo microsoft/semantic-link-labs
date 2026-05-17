@@ -31,33 +31,33 @@ MASTER_REGEX = re.compile(
 )
 
 
-def tokenize(sql):
+def tokenize(text):
 
     position = 0
 
-    while position < len(sql):
+    while position < len(text):
 
-        if sql[position].isspace():
+        if text[position].isspace():
             position += 1
             continue
 
-        match = MASTER_REGEX.match(sql, position)
+        match = MASTER_REGEX.match(text, position)
 
         if not match:
-            raise SyntaxError(f"Unexpected character: {sql[position]}")
+            raise SyntaxError(f"Unexpected character: {text[position]}")
 
         group = match.lastgroup
         token_type = TokenType[group]
-        text = match.group()
+        token_text = match.group()
 
         if token_type == TokenType.IDENTIFIER:
-            upper = text.upper()
+            upper = token_text.upper()
             if upper == "VAR":
                 token_type = TokenType.VAR
             elif upper == "RETURN":
                 token_type = TokenType.RETURN
 
-        yield Token(token_type, text, position)
+        yield Token(token_type, token_text, position)
 
         position = match.end()
 

@@ -318,7 +318,7 @@ class Parser:
         "CONFIDENCE.T",
         "EXPON.DIST",
         "GEOMEAN",
-        "MEOMEANX",
+        "GEOMEANX",
         "LINEST",
         "LINESTX",
         "MEDIAN",
@@ -401,7 +401,7 @@ class Parser:
         "UNICODE",
         "UPPER",
         "VALUE",
-        # TIME IMTELLIGENCE
+        # TIME INTELLIGENCE
         "CLOSINGBALANCEWEEK",
         "CLOSINGBALANCEMONTH",
         "CLOSINGBALANCEQUARTER",
@@ -445,8 +445,6 @@ class Parser:
         # DAX STATEMENTS
         "FUNCTION",
         "MEASURE",
-        "ORDER BY",
-        "START AT",
     }
 
     def __init__(self, text):
