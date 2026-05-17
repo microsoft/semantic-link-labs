@@ -171,7 +171,7 @@ def list_data_access_roles(
                     all_tables = list(set(cls_tables + rls_tables))
 
                     secured_columns = []
-                    column_security = None
+                    column_security = []
                     row_security = None
 
                     for path in all_tables:
@@ -194,9 +194,9 @@ def list_data_access_roles(
                                 "Kind": kind,
                                 "Effect": effect,
                                 "File Path": path,
+                                "Row Level Security": row_security,
                                 "Column Level Security": secured_columns,
                                 "Column Permissions": column_security,
-                                "Row Level Security": row_security,
                             }
                         )
 
