@@ -40,7 +40,7 @@ def resolve_user_id(user: str | UUID) -> UUID:
 
 
 @log
-def resolve_user_name_and_id(user: str | UUID) -> Tuple(str, str, UUID):
+def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, UUID]:
     """
     Resolves the user name, user principal name and ID from the user principal name or ID.
 
