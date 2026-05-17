@@ -1739,6 +1739,9 @@ def direct_lake_editor(
                         for _, row in dfC.iterrows():
                             col_name = row["Column Name"]
                             dtype = convert_column_data_type(row["Data Type"])
+                            # Binary columns are not supported in Direct Lake
+                            # semantic models; mirror generate_direct_lake_semantic_model
+                            # behavior and skip them silently.
                             if dtype == "Binary":
                                 continue
                             tom.add_data_column(
