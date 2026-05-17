@@ -2043,9 +2043,9 @@ def semantic_model_diff(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     format : str, default="TMSL"
         The comparison format. Valid options are ``"TMSL"`` (compare the
-        ``model.bim`` files structurally, object-by-object) or ``"TMDL"``
-        (compare the collection of TMDL files file-by-file with
-        line-level highlighting).
+        ``model.bim`` files structurally, object-by-object), ``"BIM"`` (an
+        alias for ``"TMSL"``) or ``"TMDL"`` (compare the collection of
+        TMDL files file-by-file with line-level highlighting).
     dark_mode : bool, default=False
         If True, renders the editor with a dark color theme. If False,
         renders with a light color theme.
@@ -2276,7 +2276,10 @@ def semantic_model_diff(
 
         except Exception as e:
             widget.busy = False
-            widget.status = {"message": f"Error: {e}", "kind": "error"}
+            widget.status = {
+                "message": f"Error: {type(e).__name__}: {e}",
+                "kind": "error",
+            }
 
     widget.observe(_on_run, names=["run"])
 
