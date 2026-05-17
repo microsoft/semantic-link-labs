@@ -1,6 +1,153 @@
 from typing import Optional
 from uuid import UUID
+import difflib
 from sempy._utils._log import log
+
+
+def _split_lines(s: str) -> list:
+    """Split a string on line boundaries, preserving blank lines and dropping the
+    trailing newline (matching :py:meth:`str.splitlines`)."""
+    return (s or "").splitlines()
+
+
+def _join_lines(lines: list) -> str:
+    """Join a list of lines back into text, appending a trailing newline if the
+    list is non-empty (matches typical text-file conventions)."""
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n"
+
+
+def _compute_file_hunks(src_text: str, tgt_text: str) -> dict:
+    """Compute hunk-level differences between two text blobs.
+
+    Returns a dict with the per-hunk opcodes (``equal``, ``replace``, ``delete``,
+    ``insert``) plus aggregate ``additions`` / ``deletions`` counts.
+    """
+    a = _split_lines(src_text)
+    b = _split_lines(tgt_text)
+    sm = difflib.SequenceMatcher(a=a, b=b, autojunk=False)
+    hunks = []
+    additions = 0
+    deletions = 0
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        src_lines = a[i1:i2]
+        tgt_lines = b[j1:j2]
+        if tag != "equal":
+            deletions += len(src_lines)
+            additions += len(tgt_lines)
+        hunks.append({
+            "type": tag,  # "equal" | "replace" | "delete" | "insert"
+            "source_start": i1,
+            "target_start": j1,
+            "source_lines": src_lines,
+            "target_lines": tgt_lines,
+        })
+    return {
+        "hunks": hunks,
+        "additions": additions,
+        "deletions": deletions,
+        "source_lines": a,
+        "target_lines": b,
+    }
+
+
+def _compute_diff(source_def: dict, target_def: dict, fmt: str) -> dict:
+    """Compute a file-level diff between two semantic-model definitions.
+
+    Each side is expected to have the shape
+    ``{"files": [{"path": str, "content": str}, ...]}``. Returns a dict with a
+    ``files`` list — one entry per unique path — annotated with a ``status``
+    of ``added`` / ``removed`` / ``modified`` / ``unchanged``.
+    """
+    src_map = {f["path"]: f["content"] for f in source_def.get("files", [])}
+    tgt_map = {f["path"]: f["content"] for f in target_def.get("files", [])}
+    paths = sorted(set(src_map.keys()) | set(tgt_map.keys()))
+    files = []
+    for p in paths:
+        if p in src_map and p in tgt_map:
+            if src_map[p] == tgt_map[p]:
+                files.append({
+                    "path": p,
+                    "status": "unchanged",
+                    "hunks": [],
+                    "additions": 0,
+                    "deletions": 0,
+                    "source_lines": _split_lines(src_map[p]),
+                    "target_lines": _split_lines(tgt_map[p]),
+                })
+            else:
+                h = _compute_file_hunks(src_map[p], tgt_map[p])
+                files.append({
+                    "path": p,
+                    "status": "modified",
+                    "hunks": h["hunks"],
+                    "additions": h["additions"],
+                    "deletions": h["deletions"],
+                    "source_lines": h["source_lines"],
+                    "target_lines": h["target_lines"],
+                })
+        elif p in src_map:
+            files.append({
+                "path": p,
+                "status": "removed",  # present in source, missing in target
+                "hunks": [],
+                "additions": 0,
+                "deletions": len(_split_lines(src_map[p])),
+                "source_lines": _split_lines(src_map[p]),
+                "target_lines": [],
+            })
+        else:
+            files.append({
+                "path": p,
+                "status": "added",  # present in target, missing in source
+                "hunks": [],
+                "additions": len(_split_lines(tgt_map[p])),
+                "deletions": 0,
+                "source_lines": [],
+                "target_lines": _split_lines(tgt_map[p]),
+            })
+    # Stable order: changed files first, unchanged last.
+    order = {"modified": 0, "added": 1, "removed": 2, "unchanged": 3}
+    files.sort(key=lambda f: (order.get(f["status"], 4), f["path"].lower()))
+    return {"files": files, "format": fmt}
+
+
+def _apply_hunks_to_lines(
+    file_diff: dict,
+    selected_hunk_indices: set,
+    direction: str,
+) -> list:
+    """Build the resulting line list for a modified file given a hunk selection.
+
+    ``direction == "target"``: start from target lines and pull the selected
+    hunks back from source — i.e. revert pieces of the target so that they
+    match the source.
+
+    ``direction == "source"``: start from source lines and pull the selected
+    hunks forward from target — i.e. apply pieces of the target onto the
+    source.
+    """
+    out = []
+    for idx, h in enumerate(file_diff.get("hunks", [])):
+        tag = h["type"]
+        if tag == "equal":
+            # equal hunks are identical in both sides — keep them as-is.
+            out.extend(h["source_lines"])
+            continue
+        picked = idx in selected_hunk_indices
+        if direction == "target":
+            # Default is keep target; if picked, take source instead.
+            if picked:
+                out.extend(h["source_lines"])
+            else:
+                out.extend(h["target_lines"])
+        else:  # direction == "source"
+            if picked:
+                out.extend(h["target_lines"])
+            else:
+                out.extend(h["source_lines"])
+    return out
 
 
 _WIDGET_CSS = """
@@ -1449,7 +1596,6 @@ def semantic_model_diff_editor(
         ) from e
 
     import json
-    import difflib
     from IPython.display import display
     import sempy.fabric as fabric
 
@@ -1558,133 +1704,6 @@ def semantic_model_diff_editor(
                     "content": _decode_b64(p.get("payload") or ""),
                 })
             return {"files": files, "parts": parts}
-
-    def _split_lines(s: str) -> list:
-        # splitlines() drops the trailing newline but preserves blank lines.
-        return (s or "").splitlines()
-
-    def _compute_file_hunks(src_text: str, tgt_text: str) -> dict:
-        a = _split_lines(src_text)
-        b = _split_lines(tgt_text)
-        sm = difflib.SequenceMatcher(a=a, b=b, autojunk=False)
-        hunks = []
-        additions = 0
-        deletions = 0
-        for tag, i1, i2, j1, j2 in sm.get_opcodes():
-            src_lines = a[i1:i2]
-            tgt_lines = b[j1:j2]
-            if tag != "equal":
-                deletions += len(src_lines)
-                additions += len(tgt_lines)
-            hunks.append({
-                "type": tag,  # "equal" | "replace" | "delete" | "insert"
-                "source_start": i1,
-                "target_start": j1,
-                "source_lines": src_lines,
-                "target_lines": tgt_lines,
-            })
-        return {
-            "hunks": hunks,
-            "additions": additions,
-            "deletions": deletions,
-            "source_lines": a,
-            "target_lines": b,
-        }
-
-    def _compute_diff(source_def: dict, target_def: dict, fmt: str) -> dict:
-        src_map = {f["path"]: f["content"] for f in source_def.get("files", [])}
-        tgt_map = {f["path"]: f["content"] for f in target_def.get("files", [])}
-        paths = sorted(set(src_map.keys()) | set(tgt_map.keys()))
-        files = []
-        for p in paths:
-            if p in src_map and p in tgt_map:
-                if src_map[p] == tgt_map[p]:
-                    files.append({
-                        "path": p,
-                        "status": "unchanged",
-                        "hunks": [],
-                        "additions": 0,
-                        "deletions": 0,
-                        "source_lines": _split_lines(src_map[p]),
-                        "target_lines": _split_lines(tgt_map[p]),
-                    })
-                else:
-                    h = _compute_file_hunks(src_map[p], tgt_map[p])
-                    files.append({
-                        "path": p,
-                        "status": "modified",
-                        "hunks": h["hunks"],
-                        "additions": h["additions"],
-                        "deletions": h["deletions"],
-                        "source_lines": h["source_lines"],
-                        "target_lines": h["target_lines"],
-                    })
-            elif p in src_map:
-                files.append({
-                    "path": p,
-                    "status": "removed",  # present in source, missing in target
-                    "hunks": [],
-                    "additions": 0,
-                    "deletions": len(_split_lines(src_map[p])),
-                    "source_lines": _split_lines(src_map[p]),
-                    "target_lines": [],
-                })
-            else:
-                files.append({
-                    "path": p,
-                    "status": "added",  # present in target, missing in source
-                    "hunks": [],
-                    "additions": len(_split_lines(tgt_map[p])),
-                    "deletions": 0,
-                    "source_lines": [],
-                    "target_lines": _split_lines(tgt_map[p]),
-                })
-        # Stable order: changed files first, unchanged last.
-        order = {"modified": 0, "added": 1, "removed": 2, "unchanged": 3}
-        files.sort(key=lambda f: (order.get(f["status"], 4), f["path"].lower()))
-        return {"files": files, "format": fmt}
-
-    def _apply_hunks_to_lines(
-        file_diff: dict,
-        selected_hunk_indices: set,
-        direction: str,
-    ) -> list:
-        """
-        Build the resulting line list for a modified file.
-
-        direction == "target": start from target lines and pull the selected
-            hunks back from source — i.e. revert pieces of the target so that
-            they match the source.
-        direction == "source": start from source lines and pull the selected
-            hunks forward from target — i.e. apply pieces of the target onto
-            the source.
-        """
-        out = []
-        for idx, h in enumerate(file_diff.get("hunks", [])):
-            tag = h["type"]
-            if tag == "equal":
-                # equal hunks are identical in both sides — keep them as-is.
-                out.extend(h["source_lines"])
-                continue
-            picked = idx in selected_hunk_indices
-            if direction == "target":
-                # Default is keep target; if picked, take source instead.
-                if picked:
-                    out.extend(h["source_lines"])
-                else:
-                    out.extend(h["target_lines"])
-            else:  # direction == "source"
-                if picked:
-                    out.extend(h["target_lines"])
-                else:
-                    out.extend(h["source_lines"])
-        return out
-
-    def _join_lines(lines: list) -> str:
-        # Preserve trailing newline if not empty (matches typical text files).
-        if not lines:
-            return ""
-        return "\n".join(lines) + "\n"
 
     # -----------------------------
     # INITIAL STATE
