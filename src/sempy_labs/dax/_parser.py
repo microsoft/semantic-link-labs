@@ -447,7 +447,7 @@ class Parser:
         "MEASURE",
     }
 
-    def __init__(self, text):
+    def __init__(self, text, tom=None):
 
         self.tokens = list(tokenize(text))
         self.index = 0
@@ -458,6 +458,19 @@ class Parser:
         # anywhere in the input. Bracketed references to these names are
         # emitted as VirtualColumn instead of Measure.
         self.virtual_columns = set()
+        # Optional TOM model. When supplied, the parser uses it to
+        # disambiguate bare bracketed references (`[Name]`) between
+        # measures and columns. Without a model every `[Name]` defaults
+        # to a Measure node (backward-compatible behavior).
+        self._measure_names = set()
+        self._column_names = set()
+        if tom is not None:
+            model = getattr(tom, "model", tom)
+            for t in model.Tables:
+                for m in t.Measures:
+                    self._measure_names.add(m.Name)
+                for c in t.Columns:
+                    self._column_names.add(c.Name)
 
     @property
     def current(self):
@@ -664,6 +677,19 @@ class Parser:
 
             column = column[:-1]
 
+            # When a TOM model is supplied, a `Table[Name]` token where
+            # `Name` resolves to a measure (not a column) is a
+            # fully-qualified measure reference. Emit a Measure node with
+            # the table preserved so downstream analyses can flag it.
+            if self._measure_names and column in self._measure_names:
+                if column not in self._column_names:
+                    return Measure(
+                        args={
+                            "table": table,
+                            "this": column,
+                        }
+                    )
+
             return Column(
                 args={
                     "table": table,
@@ -691,6 +717,17 @@ class Parser:
 
             if name in self.virtual_columns:
                 return VirtualColumn(args={"this": name})
+
+            # When a TOM model is available, disambiguate bare bracketed
+            # references: prefer measure resolution, then fall back to an
+            # unqualified column reference (Column with table=None) if a
+            # column of that name exists in the model. Without a model we
+            # keep the legacy default of emitting a Measure node.
+            if self._measure_names or self._column_names:
+                if name in self._measure_names:
+                    return Measure(args={"this": name})
+                if name in self._column_names:
+                    return Column(args={"table": None, "this": name})
 
             return Measure(
                 args={
@@ -733,5 +770,19 @@ class Parser:
         raise SyntaxError(f"Unexpected token: {token}")
 
 
-def parse_dax(text: str):
-    return Parser(text).parse()
+def parse_dax(text: str, tom=None):
+    """Parse a DAX expression and return its AST.
+
+    Parameters
+    ----------
+    text : str
+        The DAX expression.
+    tom : TOMWrapper | Microsoft.AnalysisServices.Tabular.Model, optional
+        When supplied, the parser uses the model to disambiguate bare
+        bracketed references. A ``[Name]`` reference resolves to a
+        ``Measure`` node if a measure with that name exists, otherwise to
+        a ``Column`` node with ``table=None`` (an unqualified column) if a
+        column with that name exists, otherwise it falls back to
+        ``Measure`` (the default when no model is provided).
+    """
+    return Parser(text, tom=tom).parse()

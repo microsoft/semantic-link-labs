@@ -4,7 +4,9 @@ import re
 from typing import Optional
 from sempy._utils._log import log
 from sempy_labs.dax._analysis import (
+    find_fully_qualified_measures,
     find_non_numeric_aggregations,
+    find_unqualified_columns,
     uses_function,
 )
 
@@ -582,7 +584,7 @@ def model_bpa_rules(
                 "Error",
                 "Column references should be fully qualified",
                 lambda obj, tom: any(
-                    tom.unqualified_columns(object=obj, dependencies=dependencies)
+                    find_unqualified_columns(tom._get_expression(obj), tom)
                 ),
                 "Using fully qualified column references makes it easier to distinguish between column and measure references, and also helps avoid certain errors. When referencing a column in DAX, first specify the table name, then specify the column name in square brackets.",
                 "https://www.elegantbi.com/post/top10bestpractices",
@@ -598,7 +600,7 @@ def model_bpa_rules(
                 "Error",
                 "Measure references should be unqualified",
                 lambda obj, tom: any(
-                    tom.fully_qualified_measures(object=obj, dependencies=dependencies)
+                    find_fully_qualified_measures(tom._get_expression(obj), tom)
                 ),
                 "Using unqualified measure references makes it easier to distinguish between column and measure references, and also helps avoid certain errors. When referencing a measure using DAX, do not specify the table name. Use only the measure name in square brackets.",
                 "https://www.elegantbi.com/post/top10bestpractices",

@@ -6,7 +6,7 @@ connection, which makes them straightforward to unit-test.
 
 from typing import Iterator, List, Tuple, Union
 
-from ._expressions import Column, Function
+from ._expressions import Column, Function, Measure
 from ._parser import parse_dax
 
 
@@ -181,3 +181,96 @@ def find_non_numeric_aggregations(
             continue
 
         yield fn_name, table_name, column_name, str(column.DataType)
+
+
+def find_unqualified_columns(expression: str, tom) -> Iterator[str]:
+    """
+    Yield the name of every unqualified column reference in a DAX
+    expression — i.e. a bracketed reference like ``[Amount]`` whose name
+    matches a column in the supplied TOM model (and not a measure).
+
+    Disambiguation requires the model schema, which is why ``tom`` is
+    required: a bare ``[Foo]`` could be a measure reference or an
+    unqualified column reference depending on what exists in the model.
+
+    Parameters
+    ----------
+    expression : str
+        The DAX expression to analyze.
+    tom : TOMWrapper
+        The TOM wrapper for the semantic model.
+
+    Yields
+    ------
+    str
+        The column name of each unqualified column reference found.
+        Yields nothing if the expression is empty or cannot be parsed.
+
+    Notes
+    -----
+    Designed to be called inline from a BPA rule lambda::
+
+        lambda obj, tom: any(
+            find_unqualified_columns(obj.Expression, tom)
+        )
+    """
+
+    if not expression:
+        return
+
+    try:
+        tree = parse_dax(expression, tom=tom)
+    except SyntaxError:
+        return
+
+    for col in tree.find_all(Column):
+        if col.args.get("table") is None:
+            yield col.args["this"]
+
+
+def find_fully_qualified_measures(
+    expression: str, tom
+) -> Iterator[Tuple[str, str]]:
+    """
+    Yield every fully-qualified measure reference in a DAX expression —
+    i.e. a bracketed reference like ``'Table'[MeasureName]`` whose
+    bracketed name matches a measure in the supplied TOM model.
+
+    Best practice is to reference measures by their unqualified name
+    (``[MeasureName]``) and to reserve the ``Table[Name]`` syntax for
+    columns. Disambiguation requires the model schema, which is why
+    ``tom`` is required.
+
+    Parameters
+    ----------
+    expression : str
+        The DAX expression to analyze.
+    tom : TOMWrapper
+        The TOM wrapper for the semantic model.
+
+    Yields
+    ------
+    (table_name, measure_name)
+        One tuple per fully-qualified measure reference found. Yields
+        nothing if the expression is empty or cannot be parsed.
+
+    Notes
+    -----
+    Designed to be called inline from a BPA rule lambda::
+
+        lambda obj, tom: any(
+            find_fully_qualified_measures(obj.Expression, tom)
+        )
+    """
+
+    if not expression:
+        return
+
+    try:
+        tree = parse_dax(expression, tom=tom)
+    except SyntaxError:
+        return
+
+    for m in tree.find_all(Measure):
+        if m.args.get("table") is not None:
+            yield m.args["table"], m.args["this"]
