@@ -6777,6 +6777,8 @@ class TOMWrapper:
         """
         Sets table/column descriptions in the semantic model based on the descriptions set on the tables/columns in the source Lakehouse tables. This function is only supported for Direct Lake models using lakehouse source(s).
 
+        It is recommended to run this function in a pure Python notebook.
+
         Parameters
         ----------
         overwrite : bool, default=False
@@ -6813,23 +6815,21 @@ class TOMWrapper:
                     schema=p.Source.SchemaName,
                 )
                 descriptions = extract_descriptions_from_table_path(path)
-                if t.Description is None or overwrite:
-                    desc = descriptions.get("tableDescription")
-                    if desc:
-                        t.Description = desc
+                table_description = descriptions.get("tableDescription")
+                if len(t.Description) == 0 or overwrite:
+                    t.Description = table_description
                 for c in t.Columns:
                     if c.Type != TOM.ColumnType.RowNumber:
-                        if c.Description is None or overwrite:
+                        if len(c.Description) == 0 or overwrite:
                             desc = next(
                                 (
-                                    col
+                                    col.get("description")
                                     for col in descriptions.get("columns", [])
-                                    if col.get("columnName") == c.Name
+                                    if col.get("columnName") == c.SourceColumn
                                 ),
                                 None,
                             )
-                            if desc:
-                                c.Description = desc
+                            c.Description = desc
 
     def close(self):
 

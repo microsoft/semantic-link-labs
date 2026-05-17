@@ -18,7 +18,7 @@ def list_mini_models(
     workspace: Optional[str | UUID] = None,
     show_filters: bool = False,
 ) -> pd.DataFrame:
-    
+
     from sempy_labs.tom import connect_semantic_model
 
     with connect_semantic_model(
