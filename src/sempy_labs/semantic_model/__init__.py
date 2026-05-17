@@ -9,6 +9,9 @@ from ._caching import (
 from ._perspective_editor import (
     perspective_editor,
 )
+from ._direct_lake_editor import (
+    direct_lake_editor,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -16,4 +19,5 @@ __all__ = [
     "make_discoverable",
     "enable_query_caching",
     "perspective_editor",
+    "direct_lake_editor",
 ]
