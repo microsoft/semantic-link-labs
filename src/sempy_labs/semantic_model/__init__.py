@@ -9,6 +9,9 @@ from ._caching import (
 from ._perspective_editor import (
     perspective_editor,
 )
+from ._semantic_model_diff import (
+    semantic_model_diff,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -16,4 +19,5 @@ __all__ = [
     "make_discoverable",
     "enable_query_caching",
     "perspective_editor",
+    "semantic_model_diff",
 ]
