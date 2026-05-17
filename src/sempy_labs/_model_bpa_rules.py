@@ -5,6 +5,7 @@ from typing import Optional
 from sempy._utils._log import log
 from sempy_labs.dax._analysis import (
     find_non_numeric_aggregations,
+    uses_function,
 )
 
 
@@ -437,9 +438,7 @@ def model_bpa_rules(
                 "Measure",
                 "Warning",
                 "Avoid using the IFERROR function",
-                lambda obj, tom: re.search(
-                    r"iferror\s*\(", obj.Expression, flags=re.IGNORECASE
-                ),
+                lambda obj, tom: uses_function(obj.Expression, "IFERROR"),
                 "Avoid using the IFERROR function as it may cause performance degradation. If you are concerned about a divide-by-zero error, use the DIVIDE function as it naturally resolves such errors as blank (or you can customize what should be shown in case of such an error).",
                 "https://www.elegantbi.com/post/top10bestpractices",
             ),

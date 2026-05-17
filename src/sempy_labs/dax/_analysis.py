@@ -4,7 +4,7 @@ These helpers operate purely on the parsed AST and do not require a TOM
 connection, which makes them straightforward to unit-test.
 """
 
-from typing import Iterator, Tuple
+from typing import Iterator, List, Tuple, Union
 
 from ._expressions import Column, Function
 from ._parser import parse_dax
@@ -81,13 +81,28 @@ def find_numeric_aggregation_columns(
             yield fn_name, col.args["table"], col.args["this"]
 
 
-def uses_function(expression: str, function_name: str) -> bool:
+def uses_function(
+    expression: str, function_name: Union[str, List[str]]
+) -> bool:
     """
-    Returns True if the DAX expression contains a call to ``function_name``
-    (case-insensitive). Built on the DAX parser so it ignores occurrences
-    inside string literals or comments that a regex would falsely match.
+    Returns True if the DAX expression contains a call to any of the given
+    function(s) (case-insensitive). Built on the DAX parser so it ignores
+    occurrences inside string literals or comments that a regex would
+    falsely match.
 
-    Returns False if the expression is empty or cannot be parsed.
+    Parameters
+    ----------
+    expression : str
+        The DAX expression to analyze.
+    function_name : str | list[str]
+        A single DAX function name (e.g. ``"IFERROR"``) or a list of names
+        (e.g. ``["IFERROR", "ERROR"]``). Matching is case-insensitive.
+
+    Returns
+    -------
+    bool
+        True if any of the named functions is called in ``expression``.
+        False if the expression is empty or cannot be parsed.
     """
 
     if not expression:
@@ -98,10 +113,13 @@ def uses_function(expression: str, function_name: str) -> bool:
     except SyntaxError:
         return False
 
-    target = function_name.upper()
+    if isinstance(function_name, str):
+        targets = {function_name.upper()}
+    else:
+        targets = {name.upper() for name in function_name}
 
     for fn in tree.find_all(Function):
-        if fn.args.get("this", "").upper() == target:
+        if fn.args.get("this", "").upper() in targets:
             return True
 
     return False
