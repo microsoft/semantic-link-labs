@@ -1356,7 +1356,6 @@ function render({ model, el }) {
             const swapped = JSON.parse(JSON.stringify(d));
             (swapped.files || []).forEach((f) => {
                 const ssrc = f.source_lines; f.source_lines = f.target_lines; f.target_lines = ssrc;
-                const sst = f.source_start;
                 // status flip
                 if (f.status === "added") f.status = "removed";
                 else if (f.status === "removed") f.status = "added";
