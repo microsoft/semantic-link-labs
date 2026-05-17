@@ -1,0 +1,933 @@
+#
+msgid ""
+msgstr ""
+"Language: fa-IR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "از انواع داده ممیز شناور استفاده نکنید"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "از استفاده از ستون های محاسبه شده خودداری کنید"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "بررسی اینکه آیا روابط دو طرفه و چند به چند معتبر هستند یا خیر"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "بررسی کنید که آیا امنیت سطح ردیف پویا (RLS) ضروری است یا خیر"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"از استفاده از روابط چند به چند در جداول مورد استفاده برای امنیت سطح ردیف "
+"پویا خودداری کنید."
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "روابط چند به چند باید یک جهته باشد"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx را روی false در ستون های غیر ویژگی تنظیم کنید"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ویژگی \"Data Coverage Definition\" را در پارتیشن DirectQuery یک جدول ترکیبی "
+"تنظیم کنید"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"حالت دوگانه فقط در صورتی برای جداول ابعاد مرتبط است که از DirectQuery برای "
+"جدول واقعیت مربوطه استفاده شود"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"هنگام استفاده از DirectQuery در جداول فکت، جداول ابعاد را به جای وارد کردن "
+"روی حالت دوگانه تنظیم کنید"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "به حداقل رساندن تبدیلات Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "به جای معماری دانه برف، یک طرحواره ستاره ای را در نظر بگیرید"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "خودداری از استفاده از نماها هنگام استفاده از حالت Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "از افزودن 0 به یک اندازه گیری خودداری کنید"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "کاهش استفاده از جداول محاسبه شده"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"کاهش استفاده از ستون های محاسبه شده که از تابع RELATED استفاده می کنند"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "از روابط بیش از حد دو طرفه یا چند به چند خودداری کنید"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "حذف جدول تاریخ خودکار"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "جداول تاریخ/تقویم باید به عنوان جدول تاریخ علامت گذاری شوند"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "جداول بزرگ باید پارتیشن بندی شوند"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "منطق امنیت سطح ردیف (RLS) را محدود کنید"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "مدل باید دارای جدول تاریخ باشد"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "موارد محاسبه باید یک عبارت داشته باشند"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "ستون های رابطه باید از یک نوع داده باشند"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "ستون های داده باید دارای ستون منبع باشند"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx را روی true در ستون های ضروری تنظیم کنید"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "از تابع USERELATIONSHIP و RLS در برابر یک جدول خودداری کنید"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "از استفاده از تابع IFERROR خودداری کنید"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "استفاده از تابع TREATAS به جای INTERSECT برای روابط مجازی"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "تابع EVALUATEANDLOG نباید در مدل های تولیدی استفاده شود"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "اقدامات نباید ارجاع مستقیم به سایر اقدامات باشد"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "هیچ دو معیاری نباید تعریف یکسانی داشته باشند"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "از جمع یا تفریق مقادیر ثابت به نتایج تقسیمات خودداری کنید"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "از استفاده از نحو \"1-(x/y)\" خودداری کنید"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "مقادیر اندازه گیری را بر اساس ستون ها فیلتر کنید، نه جداول"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "فیلتر کردن مقادیر ستون با نحو مناسب"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "استفاده از تابع DIVIDE برای تقسیم"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "مراجع ستون باید کاملا واجد شرایط باشند"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "ارجاعات اندازه گیری باید فاقد صلاحیت باشند"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "روابط غیرفعال که هرگز فعال نمی شوند"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "ستون های غیر ضروری را حذف کنید"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "اقدامات غیرضروری را حذف کنید"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "اطمینان حاصل کنید که جداول دارای روابط هستند"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "گروه های محاسباتی بدون آیتم های محاسباتی"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "اشیاء قابل مشاهده بدون توضیحات"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "رشته فرمت را برای ستون های \"تاریخ\" ارائه دهید"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "ستون های عددی را خلاصه نکنید"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "رشته فرمت را برای اندازه گیری ها ارائه دهید"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "افزودن دسته داده برای ستون ها"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "درصدها باید با هزاران جداکننده و 1 اعشار قالب بندی شوند"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "اعداد کامل باید با هزاران جداکننده و بدون اعشار قالب بندی شوند"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "پنهان کردن کلیدهای خارجی"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "علامت گذاری کلیدهای اصلی"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "ماه (به عنوان رشته) باید مرتب شود"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "ستون های رابطه باید از نوع داده های عدد صحیح باشند"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "رشته فرمت را برای ستون های \"Month\" ارائه دهید"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "قالب بندی ستون های پرچم به عنوان رشته های مقدار بله/خیر"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "آبجکت ها نباید با فاصله شروع یا پایان شوند"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "حرف اول اشیاء باید با حروف بزرگ نوشته شود"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "نام اشیاء نباید حاوی کاراکترهای خاصی باشد"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "عملکرد"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "عملکرد"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "عملکرد"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "عملکرد"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "عملکرد"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "عملکرد"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "عملکرد"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "عملکرد"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "عملکرد"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "عملکرد"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "عملکرد"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "عملکرد"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "عملکرد"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "عملکرد"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "عملکرد"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "عملکرد"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "عملکرد"
+
+# category
+msgid "Remove auto-date table"
+msgstr "عملکرد"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "عملکرد"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "عملکرد"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "عملکرد"
+
+# category
+msgid "Model should have a date table"
+msgstr "عملکرد"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "پیشگیری از خطا"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "پیشگیری از خطا"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "پیشگیری از خطا"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "پیشگیری از خطا"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "پیشگیری از خطا"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "عبارات DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "عبارات DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "عبارات DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "عبارات DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "عبارات DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "عبارات DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "عبارات DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "عبارات DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "عبارات DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "عبارات DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "عبارات DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "عبارات DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "عبارات DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "نگهداری"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "نگهداری"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "نگهداری"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "نگهداری"
+
+# category
+msgid "Visible objects with no description"
+msgstr "نگهداری"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "شکلبندی"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "شکلبندی"
+
+# category
+msgid "Provide format string for measures"
+msgstr "شکلبندی"
+
+# category
+msgid "Add data category for columns"
+msgstr "شکلبندی"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "شکلبندی"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "شکلبندی"
+
+# category
+msgid "Hide foreign keys"
+msgstr "شکلبندی"
+
+# category
+msgid "Mark primary keys"
+msgstr "شکلبندی"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "شکلبندی"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "شکلبندی"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "شکلبندی"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "شکلبندی"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "شکلبندی"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "شکلبندی"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "قراردادهای نامگذاری"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"از نوع داده ممیز شناور \"دوگانه\" باید اجتناب شود، زیرا می تواند منجر به "
+"خطاهای غیرقابل پیش بینی گرد و کاهش عملکرد در سناریوهای خاص شود. در صورت لزوم"
+" از \"Int64\" یا \"Decimal\" استفاده کنید (اما توجه داشته باشید که \"اعشار\""
+" به 4 رقم بعد از علامت اعشار محدود می شود)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"ستون های محاسبه شده به خوبی ستون های داده فشرده نمی شوند، بنابراین حافظه "
+"بیشتری را اشغال می کنند. آنها همچنین زمان پردازش را هم برای جدول و هم برای "
+"پردازش فرآیند کاهش می دهند. منطق ستون محاسبه شده را به انبار داده خود "
+"بارگذاری کنید و این ستون های محاسبه شده را به ستون های داده تبدیل کنید."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"استفاده از امنیت سطح ردیف پویا (RLS) می تواند سربار حافظه و عملکرد را اضافه "
+"کند. لطفا در مورد مزایا/معایب استفاده از آن تحقیق کنید."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"استفاده از روابط چند به چند در جداول که از امنیت سطح ردیف پویا استفاده می "
+"کنند، می تواند باعث کاهش جدی عملکرد پرس و جو شود. مشکلات عملکرد این الگو "
+"هنگام ایجاد چندین رابطه چند به چند در برابر جدولی که حاوی امنیت سطح ردیف "
+"است، ترکیب می شود. در عوض، از یکی از الگوهای نشان داده شده در مقاله زیر "
+"استفاده کنید که در آن یک جدول تک بعدی چند به یک را به یک جدول امنیتی مرتبط "
+"می کند."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"برای سرعت بخشیدن به زمان پردازش و حفظ حافظه پس از پردازش، سلسله مراتب ویژگی "
+"ها نباید برای ستون هایی ساخته شوند که هرگز برای برش توسط کلاینت های MDX "
+"استفاده نمی شوند. به عبارت دیگر، تمام ستون های مخفی که به عنوان یک ستون مرتب"
+" سازی بر اساس ستون استفاده نمی شوند یا در سلسله مراتب کاربر به آنها ارجاع "
+"داده نمی شود، باید ویژگی IsAvailableInMdx خود را روی false تنظیم کنند. ویژگی"
+" IsAvailableInMdx برای مدل های Direct Lake مرتبط نیست."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"تنظیم ویژگی \"Data Coverage Definition\" ممکن است منجر به عملکرد بهتر شود "
+"زیرا موتور می داند چه زمانی فقط می تواند بخش واردات جدول را پرس و جو کند و "
+"چه زمانی باید بخش DirectQuery جدول را پرس و جو کند."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"از حالت دوگانه فقط برای جداول/پارتیشن های ابعاد استفاده کنید که جدول واقعیت "
+"مربوطه در DirectQuery است. استفاده از حالت دوگانه در شرایط دیگر (یعنی بقیه "
+"مدل در حالت Import است) ممکن است منجر به مشکلات عملکردی شود، به خصوص اگر "
+"تعداد اندازه ها در مدل زیاد باشد."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"هنگام استفاده از DirectQuery، جداول ابعاد باید روی حالت دوگانه تنظیم شوند تا"
+" عملکرد پرس و جو بهبود یابد."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"به حداقل رساندن تبدیلات Power Query به منظور بهبود عملکرد پردازش مدل. بهترین"
+" روش این است که در صورت امکان این تبدیلات را در انبار داده بارگذاری کنید. "
+"همچنین، لطفا بررسی کنید که آیا تاشو پرس و جو در مدل شما اتفاق می افتد یا "
+"خیر. لطفا برای اطلاعات بیشتر در مورد تاشو پرس و جو به مقاله زیر مراجعه کنید."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"به طور کلی، طرحواره ستاره معماری بهینه برای مدل های جدولی است. در این صورت، "
+"موارد معتبری برای استفاده از رویکرد دانه برف وجود دارد. لطفا مدل خود را "
+"بررسی کنید و به معماری طرحواره ستاره بروید."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"در حالت Direct Lake، نماها همیشه به DirectQuery باز می گردند. بنابراین، برای"
+" به دست آوردن بهترین عملکرد، از میزهای دریاچه هاوس به جای نماها استفاده "
+"کنید."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"افزودن 0 به یک معیار به منظور اینکه مقدار خالی نشان ندهد، ممکن است بر عملکرد"
+" تأثیر منفی بگذارد."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"منطق جدول محاسبه شده را به انبار داده خود منتقل کنید. اگر چندین مدل در "
+"پلتفرم خود داشته باشید، اتکا به جداول محاسبه شده منجر به بدهی فنی و "
+"ناهماهنگی های احتمالی می شود."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"ستون های محاسبه شده به خوبی ستون های داده فشرده نمی شوند و ممکن است باعث "
+"زمان پردازش طولانی تر شوند. به این ترتیب، در صورت امکان باید از ستون های "
+"محاسبه شده اجتناب شود. یکی از سناریوهایی که ممکن است اجتناب از آنها آسان تر "
+"باشد این است که از تابع RELATED استفاده کنند."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"استفاده از روابط b-di و چند به چند را محدود کنید. این قانون در صورتی مدل را "
+"علامت گذاری می کند که بیش از 30 درصد از روابط دو طرفه یا چند به چند باشند."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"از استفاده از جداول تاریخ خودکار خودداری کنید. مطمئن شوید که جدول تاریخ "
+"خودکار را در تنظیمات Power BI Desktop خاموش کنید. با این کار باعث صرفه جویی "
+"در منابع حافظه می شود."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"این قانون به دنبال جداولی است که حاوی کلمات \"تاریخ\" یا \"تقویم\" هستند "
+"زیرا احتمالا باید به عنوان جدول تاریخ علامت گذاری شوند."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"جداول بزرگ باید به منظور بهینه سازی پردازش پارتیشن بندی شوند. این برای مدل "
+"های معنایی در حالت Direct Lake مرتبط نیست زیرا آنها فقط می توانند یک پارتیشن"
+" در هر جدول داشته باشند."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"سعی کنید DAX مورد استفاده برای امنیت سطح ردیف را ساده کنید. استفاده از توابع"
+" در این قانون احتمالا می تواند در سیستم های بالادستی (انبار داده) بارگذاری "
+"شود."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"به طور کلی، مدل ها به طور کلی باید جدول تاریخ داشته باشند. مدل هایی که جدول "
+"تاریخ ندارند معمولا از ویژگی هایی مانند هوش زمانی استفاده نمی کنند یا ممکن "
+"است معماری ساختار مناسبی نداشته باشند."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"موارد محاسبه باید یک عبارت داشته باشند. بدون عبارت، آنها هیچ ارزشی را نشان "
+"نمی دهند."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"ستون های مورد استفاده در یک رابطه باید از یک نوع داده باشند. در حالت ایده "
+"آل، آنها از نوع داده های عدد صحیح خواهند بود (به قانون مربوطه مراجعه کنید "
+"\"[قالب بندی] ستون های رابطه باید از نوع داده های عدد صحیح باشند\"). داشتن "
+"ستون هایی در یک رابطه که از انواع داده های مختلف هستند ممکن است منجر به "
+"مشکلات مختلفی شود."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"ستون های داده باید دارای ستون منبع باشند. یک ستون داده بدون ستون منبع هنگام "
+"پردازش مدل باعث خطا می شود."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"به منظور جلوگیری از خطا، اطمینان حاصل کنید که اگر ستونی برای مرتب سازی ستون "
+"دیگری استفاده می شود، در سلسله مراتب استفاده می شود، در تغییرات استفاده می "
+"شود، یا توسط ستون دیگری مرتب شده است، سلسله مراتب ویژگی ها فعال هستند. ویژگی"
+" IsAvailableInMdx برای مدل های Direct Lake مرتبط نیست."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"تابع USERELATIONSHIP ممکن است در برابر جدولی که از امنیت سطح ردیف (RLS) نیز "
+"استفاده می کند، استفاده نشود. این باعث ایجاد خطا در هنگام استفاده از اندازه "
+"گیری خاص در یک بصری می شود. این قانون جدولی را که در تابع USERELATIONSHIP یک"
+" اندازه گیری و همچنین RLS استفاده می شود، برجسته می کند."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"از استفاده از تابع IFERROR خودداری کنید زیرا ممکن است باعث کاهش عملکرد شود. "
+"اگر نگران خطای تقسیم بر صفر هستید، از تابع DIVIDE استفاده کنید زیرا به طور "
+"طبیعی خطاهایی مانند خالی را برطرف می کند (یا می توانید آنچه را که باید در "
+"صورت بروز چنین خطایی نشان داده شود سفارشی کنید)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"تابع TREATAS کارآمدتر است و عملکرد بهتری نسبت به تابع INTERSECT در هنگام "
+"استفاده در روابط ویروسی ارائه می دهد."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"تابع EVALUATEANDLOG فقط در محیط های توسعه/آزمایش استفاده می شود و نباید در "
+"مدل های تولیدی استفاده شود."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"این قانون اقداماتی را مشخص می کند که صرفا اشاره ای به معیار دیگری هستند. به "
+"عنوان مثال، مدلی را با دو اندازه در نظر بگیرید: [MeasureA] و [MeasureB]. این"
+" قانون برای MeasureB فعال می شود اگر DAX MeasureB MeasureB باشد:=[MeasureA]."
+" چنین اقدامات تکراری باید حذف شوند."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"برای کاهش افزونگی باید از دو معیار با نام های مختلف و تعریف شده با عبارت DAX"
+" یکسان اجتناب شود."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "افزودن یک مقدار ثابت ممکن است منجر به کاهش عملکرد شود."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"به جای استفاده از نحو \"1-(x/y)\" یا \"1+(x/y)\" برای دستیابی به محاسبه "
+"درصد، از توابع اصلی DAX (همانطور که در زیر نشان داده شده است) استفاده کنید. "
+"استفاده از نحو بهبود یافته به طور کلی عملکرد را بهبود می بخشد. \"1+/-...\" "
+"نحو همیشه یک مقدار را برمی گرداند در حالی که راه حل بدون '1+/-...' ندارد "
+"(زیرا مقدار ممکن است \"خالی\" باشد). بنابراین \"1+/-...\" نحو ممکن است ردیف "
+"ها/ستون های بیشتری را برگرداند که ممکن است منجر به سرعت پرس و جو کندتر شود."
+"    بیایید با یک مثال روشن کنیم: از این امر اجتناب کنید: 1 - SUM "
+"('Sales'[CostAmount]) / SUM('Sales'[SalesAmount]) بهتر: DIVIDE ( SUM "
+"('Sales'[SalesAmount]) - SUM ('Sales'[CostAmount])، SUM "
+"('Sales'[SalesAmount]) بهترین: VAR x = SUM ('Sales'[SalesAmount]) RETURN "
+"DIVIDE ( x - SUM ('Sales'[CostAmount]), x)"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"به جای استفاده از این الگو FILTER('Table',[Measure]>Value) برای پارامترهای فیلتر یک تابع CALCULATE یا CALCULATETABLE، از یکی از گزینه های زیر (در صورت امکان) استفاده کنید. فیلتر کردن روی یک ستون خاص، جدول کوچکتری را برای پردازش موتور ایجاد می کند و در نتیجه عملکرد سریع تری را امکان پذیر می کند. استفاده از تابع VALUES یا تابع ALL به نتیجه اندازه گیری مورد نظر بستگی دارد.\n"
+"گزینه 1: FILTER(VALUES('Table'[Column]),[Measure] > Value)\n"
+"گزینه 2: FILTER(ALL('Table'[Column]),[Measure] > Value)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"به جای استفاده از این الگو FILTER('Table','Table'[Column]=\"Value\") برای پارامترهای فیلتر یک تابع CALCULATE یا CALCULATETABLE، از یکی از گزینه های زیر استفاده کنید. در مورد استفاده از عملکرد KEEPFILTERS ، به لینک مرجع دوم در زیر مراجعه کنید.\n"
+"گزینه 1: KEEPFILTERS('جدول'[ستون]=\"مقدار\")\n"
+"گزینه 2: 'جدول'[ستون]=\"مقدار\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"به جای استفاده از \"/\" از تابع DIVIDE استفاده کنید. تابع DIVIDE موارد تقسیم"
+" بر صفر را حل می کند. به این ترتیب، توصیه می شود برای جلوگیری از خطا از آن "
+"استفاده کنید."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"استفاده از ارجاعات ستون کاملا واجد شرایط تمایز بین ارجاعات ستون و اندازه "
+"گیری را آسان تر می کند و همچنین به جلوگیری از برخی خطاها کمک می کند. هنگام "
+"ارجاع به یک ستون در DAX، ابتدا نام جدول را مشخص کنید، سپس نام ستون را در "
+"پرانتز مشخص کنید."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"استفاده از ارجاعات اندازه گیری فاقد صلاحیت تمایز بین ارجاعات ستونی و اندازه "
+"گیری را آسان تر می کند و همچنین به جلوگیری از خطاهای خاص کمک می کند. هنگام "
+"ارجاع به یک معیار با استفاده از DAX، نام جدول را مشخص نکنید. فقط از نام "
+"اندازه گیری در پرانتز استفاده کنید."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"روابط غیرفعال با استفاده از تابع USERELATIONSHIP فعال می شوند. اگر یک رابطه "
+"غیرفعال به هیچ وجه از طریق این تابع ارجاع داده نشود، از این رابطه استفاده "
+"نخواهد شد. باید مشخص شود که آیا رابطه ضروری نیست یا رابطه از طریق این روش "
+"فعال می شود."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"ستون های پنهانی که توسط هیچ عبارت، روابط، سطوح سلسله مراتب یا مرتب سازی بر "
+"اساس ویژگی های DAX ارجاع داده نمی شوند، باید حذف شوند."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"معیارهای پنهانی که توسط هیچ عبارت DAX ارجاع داده نمی شوند باید برای قابلیت "
+"نگهداری حذف شوند."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"این قانون جداولی را برجسته می کند که به هیچ جدول دیگری در مدل با یک رابطه "
+"متصل نیستند."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"گروه های محاسباتی هیچ عملکردی ندارند مگر اینکه موارد محاسباتی داشته باشند."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"توضیحات را به اشیاء اضافه کنید. این توضیحات در شناور در لیست فیلدها در Power"
+" BI Desktop نشان داده می شود. علاوه بر این، می توانید از این توضیحات برای "
+"ایجاد یک فرهنگ لغت داده خودکار استفاده کنید."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"ستون هایی از نوع \"DateTime\" که \"Month\" در نام خود دارند باید به صورت "
+"\"mm/dd/yyyy\" قالب بندی شوند."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"ستون های عددی (عدد صحیح، اعشاری، دوتایی) باید ویژگی SummarizeBy خود را روی "
+"\"None\" تنظیم کنند تا از جمع تصادفی در Power BI جلوگیری شود (به جای آن "
+"اندازه گیری ایجاد کنید)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "معیارهای قابل مشاهده باید ویژگی رشته قالب خود را اختصاص دهند."
+
+# description
+msgid "Add data category for columns"
+msgstr "ویژگی Data Category را برای ستون های مناسب اضافه کنید."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"برای تجربه کاربری بهتر، معیارهای percengage باید با علامت \"٪\" قالب بندی "
+"شوند."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "برای تجربه کاربری بهتر، اعداد کامل باید با کاما قالب بندی شوند."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"کلیدهای خارجی همیشه باید پنهان باشند زیرا کاربران نهایی نباید از آنها "
+"استفاده کنند."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"ویژگی 'Key' را برای ستون های کلید اصلی در ویژگی های ستون روی 'True' تنظیم "
+"کنید."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"این قانون ستون های ماه را که رشته هستند و مرتب نشده اند برجسته می کند. اگر "
+"مرتب نشوند، بر اساس حروف الفبا مرتب می شوند (یعنی آوریل، آگوست...). مطمئن "
+"شوید که چنین ستون هایی را طوری مرتب کنید که به درستی مرتب شوند (ژانویه، "
+"فوریه، مارس...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"این بهترین روش برای ستون های رابطه است که از نوع داده های عدد صحیح باشند. "
+"این نه تنها در مورد انبار داده بلکه در مورد مدل سازی داده ها نیز صدق می کند."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"ستون های نوع \"DateTime\" که \"Month\" در نام خود دارند باید به صورت \"MMMM "
+"yyyy\" قالب بندی شوند."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"پرچم ها باید به درستی به صورت بله/خیر قالب بندی شوند زیرا خواندن آن آسان تر "
+"از استفاده از مقادیر صحیح 0/1 است."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"اشیاء نباید با فاصله شروع یا پایان یابند. این معمولا به طور تصادفی اتفاق می "
+"افتد و یافتن آن دشوار است."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"حرف اول نام اشیاء باید با حروف بزرگ نوشته شود تا کیفیت حرفه ای حفظ شود."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "نام اشیاء نباید شامل زبانه، شکستن خط و غیره باشد."

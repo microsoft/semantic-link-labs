@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "BPAReport"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "a201f2cd-fd25-465f-bfbc-33b151e38b31"
+  }
+}

@@ -1,0 +1,946 @@
+#
+msgid ""
+msgstr ""
+"Language: id-ID\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Jangan gunakan tipe data floating point"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Hindari menggunakan kolom terhitung"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Periksa apakah hubungan dua arah dan banyak-ke-banyak valid"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Periksa apakah keamanan tingkat baris dinamis (RLS) diperlukan"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Hindari menggunakan hubungan banyak-ke-banyak pada tabel yang digunakan "
+"untuk keamanan tingkat baris dinamis"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Hubungan banyak-ke-banyak harus satu arah"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Atur IsAvailableInMdx ke false pada kolom non-atribut"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Atur properti 'Definisi Cakupan Data' pada partisi DirectQuery tabel hibrid"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Mode ganda hanya relevan untuk tabel dimensi jika DirectQuery digunakan "
+"untuk tabel fakta yang sesuai"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Mengatur tabel dimensi ke mode ganda, bukan impor saat menggunakan "
+"DirectQuery pada tabel fakta"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Minimalkan transformasi Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Pertimbangkan skema bintang alih-alih arsitektur kepingan salju"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Hindari menggunakan tampilan saat menggunakan mode Direct Lake"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Hindari menambahkan 0 ke ukuran"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Mengurangi penggunaan tabel terhitung"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Mengurangi penggunaan kolom terhitung yang menggunakan fungsi RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Hindari hubungan dua arah atau banyak-ke-banyak yang berlebihan"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Menghapus tabel tanggal otomatis"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Tabel tanggal/kalender harus ditandai sebagai tabel tanggal"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Tabel besar harus dipartisi"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Batasi logika keamanan tingkat baris (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Model harus memiliki tabel tanggal"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Item perhitungan harus memiliki ekspresi"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Kolom relasi harus memiliki tipe data yang sama"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Kolom data harus memiliki kolom sumber"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Atur IsAvailableInMdx ke true pada kolom yang diperlukan"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Hindari fungsi USERELATIONSHIP dan RLS terhadap tabel yang sama"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Hindari menggunakan fungsi IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Gunakan fungsi TREATAS alih-alih INTERSECT untuk hubungan virtual"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Fungsi EVALUATEANDLOG tidak boleh digunakan dalam model produksi"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Tindakan tidak boleh menjadi referensi langsung dari tindakan lain"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Tidak ada dua ukuran yang harus memiliki definisi yang sama"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Hindari penambahan atau pengurangan nilai konstanta untuk hasil pembagian"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Hindari menggunakan sintaks '1-(x/y)'"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Memfilter nilai pengukuran berdasarkan kolom, bukan tabel"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Filter nilai kolom dengan sintaks yang tepat"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Gunakan fungsi DIVIDE untuk pembagian"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Referensi kolom harus sepenuhnya memenuhi syarat"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Referensi ukuran harus tidak memenuhi syarat"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Hubungan tidak aktif yang tidak pernah diaktifkan"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Menghapus kolom yang tidak perlu"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Hapus tindakan yang tidak perlu"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Pastikan tabel memiliki hubungan"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Grup perhitungan tanpa item perhitungan"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Objek yang terlihat tanpa deskripsi"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Menyediakan string format untuk kolom 'Tanggal'"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Jangan meringkas kolom numerik"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Menyediakan string format untuk pengukuran"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Menambahkan kategori data untuk kolom"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Persentase harus diformat dengan pemilah ribuan dan 1 desimal"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Bilangan bulat harus diformat dengan pemilah ribuan dan tanpa desimal"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Sembunyikan kunci asing"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Tandai kunci utama"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Bulan (sebagai string) harus diurutkan"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Kolom relasi harus bertipe data bilangan bulat"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Menyediakan string format untuk kolom \"Bulan\""
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Memformat kolom bendera sebagai string nilai Ya/Tidak"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Objek tidak boleh dimulai atau diakhiri dengan spasi"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Huruf pertama objek harus dikapitalisasi"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Nama objek tidak boleh mengandung karakter khusus"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Performa"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Performa"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Performa"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Performa"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Performa"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Performa"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Performa"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Performa"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Performa"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Performa"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Performa"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Performa"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Performa"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Performa"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Performa"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Performa"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Performa"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Performa"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Performa"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Performa"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Performa"
+
+# category
+msgid "Model should have a date table"
+msgstr "Performa"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Pencegahan Kesalahan"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Pencegahan Kesalahan"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Pencegahan Kesalahan"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Pencegahan Kesalahan"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Pencegahan Kesalahan"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Ekspresi DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Ekspresi DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Pemeliharaan"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Pemeliharaan"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Pemeliharaan"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Pemeliharaan"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Pemeliharaan"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Format"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Format"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Format"
+
+# category
+msgid "Add data category for columns"
+msgstr "Format"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Format"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Format"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Format"
+
+# category
+msgid "Mark primary keys"
+msgstr "Format"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Format"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Format"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Format"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Format"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Format"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Format"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Konvensi Penamaan"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Jenis data floating point \"Double\" harus dihindari, karena dapat "
+"mengakibatkan kesalahan pembulatan yang tidak dapat diprediksi dan penurunan"
+" performa dalam skenario tertentu. Gunakan \"Int64\" atau \"Decimal\" jika "
+"sesuai (tetapi perhatikan bahwa \"Decimal\" dibatasi hingga 4 digit setelah "
+"tanda desimal)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Kolom terhitung tidak mengompresi serta kolom data sehingga memakan lebih "
+"banyak memori. Mereka juga memperlambat waktu pemrosesan untuk tabel serta "
+"proses recalc. Turunkan logika kolom terhitung ke gudang data Anda dan ubah "
+"kolom terhitung ini menjadi kolom data."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Penggunaan keamanan tingkat baris dinamis (RLS) dapat menambah overhead "
+"memori dan performa. Silakan teliti pro / kontra menggunakannya."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Menggunakan hubungan banyak-ke-banyak pada tabel yang menggunakan keamanan "
+"tingkat baris dinamis dapat menyebabkan penurunan performa kueri yang "
+"serius. Masalah performa pola ini bertambah ketika membuat beberapa hubungan"
+" banyak-ke-banyak terhadap tabel yang berisi keamanan tingkat baris. Sebagai"
+" gantinya, gunakan salah satu pola yang ditunjukkan dalam artikel di bawah "
+"ini di mana tabel dimensi tunggal menghubungkan banyak-ke-satu dengan tabel "
+"keamanan."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Untuk mempercepat waktu pemrosesan dan menghemat memori setelah pemrosesan, "
+"hierarki atribut tidak boleh dibuat untuk kolom yang tidak pernah digunakan "
+"untuk mengiris oleh klien MDX. Dengan kata lain, semua kolom tersembunyi "
+"yang tidak digunakan sebagai Urutkan Berdasarkan Kolom atau direferensikan "
+"dalam hierarki pengguna harus memiliki properti IsAvailableInMdx yang diatur"
+" ke false. Properti IsAvailableInMdx tidak relevan untuk model Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Mengatur properti 'Definisi Cakupan Data' dapat menghasilkan performa yang "
+"lebih baik karena mesin tahu kapan hanya dapat mengkueri bagian impor tabel "
+"dan kapan perlu mengkueri bagian DirectQuery tabel."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Hanya gunakan mode Ganda untuk tabel/partisi dimensi di mana tabel fakta "
+"yang sesuai berada di DirectQuery. Menggunakan mode Dual dalam keadaan lain "
+"(yaitu model lainnya dalam mode Impor) dapat menyebabkan masalah kinerja "
+"terutama jika jumlah pengukuran dalam model tinggi."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Saat menggunakan DirectQuery, tabel dimensi harus diatur ke mode ganda untuk"
+" meningkatkan performa kueri."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Minimalkan transformasi Power Query untuk meningkatkan performa pemrosesan "
+"model. Ini adalah praktik terbaik untuk membongkar transformasi ini ke "
+"gudang data jika memungkinkan. Juga, periksa apakah pelipatan kueri terjadi "
+"dalam model Anda. Silakan merujuk artikel di bawah ini untuk informasi lebih"
+" lanjut tentang pelipatan kueri."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Secara umum, skema bintang adalah arsitektur optimal untuk model tabel. "
+"Karena itu, ada kasus yang valid untuk menggunakan pendekatan kepingan "
+"salju. Silakan periksa model Anda dan pertimbangkan untuk pindah ke "
+"arsitektur skema bintang."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Dalam mode Direct Lake, tampilan akan selalu kembali ke DirectQuery. Jadi, "
+"untuk mendapatkan kinerja terbaik, gunakan tabel lakehouse daripada "
+"tampilan."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Menambahkan 0 ke ukuran agar tidak menunjukkan nilai kosong dapat berdampak "
+"negatif pada kinerja."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Memigrasikan logika tabel terhitung ke gudang data Anda. Ketergantungan pada"
+" tabel yang dihitung akan menyebabkan utang teknis dan potensi "
+"ketidaksejajaran jika Anda memiliki beberapa model di platform Anda."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Kolom terhitung tidak dikompresi sebaik kolom data dan dapat menyebabkan "
+"waktu pemrosesan yang lebih lama. Dengan demikian, kolom terhitung harus "
+"dihindari jika memungkinkan. Salah satu skenario di mana mereka mungkin "
+"lebih mudah dihindari adalah jika mereka menggunakan fungsi RELATED."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Batasi penggunaan b-di dan hubungan banyak-ke-banyak. Aturan ini menandai "
+"model jika lebih dari 30% hubungan adalah bi-di atau banyak-ke-banyak."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Hindari menggunakan tabel tanggal otomatis. Pastikan untuk menonaktifkan "
+"tabel tanggal otomatis dalam pengaturan di Power BI Desktop. Ini akan "
+"menghemat sumber daya memori."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Aturan ini mencari tabel yang berisi kata 'tanggal' atau 'kalender' karena "
+"kemungkinan besar harus ditandai sebagai tabel tanggal."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Tabel besar harus dipartisi untuk mengoptimalkan pemrosesan. Ini tidak "
+"relevan untuk model semantik dalam mode Direct Lake karena mereka hanya "
+"dapat memiliki satu partisi per tabel."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Cobalah untuk menyederhanakan DAX yang digunakan untuk keamanan tingkat "
+"baris. Penggunaan fungsi dalam aturan ini kemungkinan dapat dilepas ke "
+"sistem hulu (gudang data)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Secara umum, model umumnya harus memiliki tabel tanggal. Model yang tidak "
+"memiliki tabel tanggal umumnya tidak memanfaatkan fitur seperti kecerdasan "
+"waktu atau mungkin tidak memiliki arsitektur yang terstruktur dengan benar."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"Item perhitungan harus memiliki ekspresi. Tanpa ekspresi, mereka tidak akan "
+"menunjukkan nilai apa pun."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Kolom yang digunakan dalam relasi harus memiliki tipe data yang sama. "
+"Idealnya, mereka akan memiliki tipe data bilangan bulat (lihat aturan "
+"terkait '[Pemformatan] Kolom relasi harus bertipe data bilangan bulat'). "
+"Memiliki kolom dalam hubungan yang memiliki tipe data yang berbeda dapat "
+"menyebabkan berbagai masalah."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Kolom data harus memiliki kolom sumber. Kolom data tanpa kolom sumber akan "
+"menyebabkan kesalahan saat memproses model."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Untuk menghindari kesalahan, pastikan bahwa hierarki atribut diaktifkan jika"
+" kolom digunakan untuk mengurutkan kolom lain, digunakan dalam hierarki, "
+"digunakan dalam variasi, atau diurutkan menurut kolom lain. Properti "
+"IsAvailableInMdx tidak relevan untuk model Direct Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Fungsi USERELATIONSHIP tidak boleh digunakan terhadap tabel yang juga "
+"memanfaatkan keamanan tingkat baris (RLS). Ini akan menghasilkan kesalahan "
+"saat menggunakan pengukuran tertentu dalam visual. Aturan ini akan menyoroti"
+" tabel yang digunakan dalam fungsi USERELATIONSHIP pengukuran serta RLS."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Hindari menggunakan fungsi IFERROR karena dapat menyebabkan penurunan "
+"kinerja. Jika Anda khawatir tentang kesalahan pembagian dengan nol, gunakan "
+"fungsi DIVIDE karena secara alami menyelesaikan kesalahan seperti kosong "
+"(atau Anda dapat menyesuaikan apa yang harus ditampilkan jika terjadi "
+"kesalahan seperti itu)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Fungsi TREATAS lebih efisien dan memberikan kinerja yang lebih baik daripada"
+" fungsi INTERSECT bila digunakan dalam hubungan virutal."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Fungsi EVALUATEANDLOG dimaksudkan untuk digunakan hanya di lingkungan "
+"pengembangan/pengujian dan tidak boleh digunakan dalam model produksi."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Aturan ini mengidentifikasi ukuran yang hanya merupakan referensi ke ukuran "
+"lain. Sebagai contoh, pertimbangkan model dengan dua ukuran: [MeasureA] dan "
+"[MeasureB]. Aturan ini akan dipicu untuk MeasureB jika DAX MeasureB adalah "
+"MeasureB:=[MeasureA]. Tindakan duplikasi seperti itu harus dihilangkan."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Dua tindakan dengan nama yang berbeda dan ditentukan oleh ekspresi DAX yang "
+"sama harus dihindari untuk mengurangi redundansi."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Menambahkan nilai konstan dapat menyebabkan penurunan kinerja."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Alih-alih menggunakan sintaks '1-(x/y)' atau '1+(x/y)' untuk mencapai "
+"perhitungan persentase, gunakan fungsi DAX dasar (seperti yang ditunjukkan "
+"di bawah ini). Menggunakan sintaks yang ditingkatkan umumnya akan "
+"meningkatkan kinerja. '1+/-...' Sintaks selalu mengembalikan nilai sedangkan"
+" solusi tanpa '1+/-...' tidak (karena nilainya mungkin 'kosong'). Oleh "
+"karena itu '1+/-...' Sintaks dapat mengembalikan lebih banyak baris/kolom "
+"yang dapat mengakibatkan kecepatan kueri lebih lambat.    Mari kita "
+"klarifikasi dengan contoh: Hindari ini: 1 - SUM ( 'Sales'[CostAmount] ) / "
+"SUM( 'Sales'[SalesAmount] ) Lebih Baik: DIVIDE ( SUM ( 'Sales'[SalesAmount] "
+") - SUM ( 'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) ) Terbaik: VAR"
+" x = SUM ( 'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUM ( "
+"'Sales'[CostAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Alih-alih menggunakan pola ini FILTER('Table',[Measure]>Value) untuk parameter filter fungsi CALCULATE atau CALCULATETABLE, gunakan salah satu opsi di bawah ini (jika memungkinkan). Penyaringan pada kolom tertentu akan menghasilkan tabel yang lebih kecil untuk diproses mesin, sehingga memungkinkan kinerja yang lebih cepat. Menggunakan fungsi VALUES atau fungsi ALL tergantung pada hasil pengukuran yang diinginkan.\n"
+"Opsi 1: FILTER(VALUES('Tabel'[Kolom]),[Ukuran] > Nilai)\n"
+"Opsi 2: FILTER(ALL('Tabel'[Kolom]),[Ukur] Nilai >)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Alih-alih menggunakan pola ini FILTER('Table','Table'[Column]=\"Value\") untuk parameter filter fungsi CALCULATE atau CALCULATETABLE, gunakan salah satu opsi di bawah ini. Sejauh apakah akan menggunakan fungsi KEEPFILTERS, lihat tautan referensi kedua di bawah ini.\n"
+"Opsi 1: KEEPFILTERS('Tabel'[Kolom]=\"Nilai\")\n"
+"Opsi 2: 'Tabel'[Kolom]=\"Nilai\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Gunakan fungsi DIVIDE alih-alih menggunakan \"/\". Fungsi DIVIDE "
+"menyelesaikan kasus pembagian dengan nol. Karena itu, disarankan untuk "
+"digunakan untuk menghindari kesalahan."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Menggunakan referensi kolom yang sepenuhnya memenuhi syarat memudahkan untuk"
+" membedakan antara referensi kolom dan ukur, dan juga membantu menghindari "
+"kesalahan tertentu. Saat mereferensikan kolom di DAX, pertama-tama tentukan "
+"nama tabel, lalu tentukan nama kolom dalam tanda kurung siku."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Menggunakan referensi pengukuran yang tidak memenuhi syarat memudahkan untuk"
+" membedakan antara referensi kolom dan ukuran, dan juga membantu menghindari"
+" kesalahan tertentu. Saat mereferensikan pengukuran menggunakan DAX, jangan "
+"tentukan nama tabel. Gunakan hanya nama ukuran dalam tanda kurung siku."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Hubungan yang tidak aktif diaktifkan menggunakan fungsi USERELATIONSHIP. "
+"Jika hubungan yang tidak aktif tidak direferensikan dalam pengukuran apa pun"
+" melalui fungsi ini, hubungan tidak akan digunakan. Harus ditentukan apakah "
+"hubungan tersebut tidak diperlukan atau mengaktifkan hubungan melalui metode"
+" ini."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Kolom tersembunyi yang tidak direferensikan oleh ekspresi DAX, hubungan, "
+"tingkat hierarki, atau Urutkan Berdasarkan properti harus dihapus."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Pengukuran tersembunyi yang tidak direferensikan oleh ekspresi DAX apa pun "
+"harus dihapus untuk pemeliharaan."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Aturan ini menyoroti tabel yang tidak tersambung ke tabel lain dalam model "
+"dengan hubungan."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"Grup perhitungan tidak memiliki fungsi kecuali mereka memiliki item "
+"perhitungan."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Tambahkan deskripsi ke objek. Deskripsi ini ditampilkan saat mengarahkan "
+"kursor ke dalam Daftar Bidang di Power BI Desktop. Selain itu, Anda dapat "
+"memanfaatkan deskripsi ini untuk membuat kamus data otomatis."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Kolom jenis \"DateTime\" yang memiliki \"Bulan\" dalam namanya harus "
+"diformat sebagai \"mm/dd/yyyy\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Kolom numerik (bilangan bulat, desimal, ganda) harus memiliki properti "
+"SummarizeBy yang diatur ke \"Tidak Ada\" untuk menghindari penjumlahan yang "
+"tidak disengaja di Power BI (buat pengukuran sebagai gantinya)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Ukuran yang terlihat harus memiliki properti string formatnya yang "
+"ditetapkan."
+
+# description
+msgid "Add data category for columns"
+msgstr "Tambahkan properti Kategori Data untuk kolom yang sesuai."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Untuk pengalaman pengguna yang lebih baik, pengukuran percengage harus "
+"diformat dengan tanda '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Untuk pengalaman pengguna yang lebih baik, bilangan bulat harus diformat "
+"dengan koma."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Kunci asing harus selalu disembunyikan karena tidak boleh digunakan oleh "
+"pengguna akhir."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Atur properti 'Kunci' ke 'True' untuk kolom kunci utama dalam properti "
+"kolom."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Aturan ini menyoroti kolom bulan yang merupakan string dan tidak diurutkan. "
+"Jika tidak diurutkan, mereka akan mengurutkan menurut abjad (yaitu April, "
+"Agustus...). Pastikan untuk mengurutkan kolom tersebut sehingga diurutkan "
+"dengan benar (Januari, Februari, Maret...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Ini adalah praktik terbaik untuk kolom hubungan menjadi tipe data bilangan "
+"bulat. Ini tidak hanya berlaku untuk pergudangan data tetapi juga pemodelan "
+"data."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Kolom jenis \"DateTime\" yang memiliki \"Bulan\" dalam namanya harus "
+"diformat sebagai \"MMMM yyyy\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Bendera harus diformat dengan benar sebagai Ya/Tidak karena ini lebih mudah "
+"dibaca daripada menggunakan nilai bilangan bulat 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Objek tidak boleh dimulai atau diakhiri dengan spasi. Ini biasanya terjadi "
+"secara tidak sengaja dan sulit ditemukan."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Huruf pertama dari nama objek harus dikapitalisasi untuk menjaga kualitas "
+"profesional."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Nama objek tidak boleh menyertakan tab, jeda baris, dll."

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.1.0/schema.json",
+  "name": "66e60dfb526437cd78d1",
+  "position": {
+    "x": 10,
+    "y": 0,
+    "z": 0,
+    "height": 578.75,
+    "width": 1270,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "BPAResults"
+                    }
+                  },
+                  "Property": "Category"
+                }
+              },
+              "queryRef": "BPAResults.Category",
+              "nativeQueryRef": "Category"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "BPAResults"
+                    }
+                  },
+                  "Property": "Severity"
+                }
+              },
+              "queryRef": "BPAResults.Severity",
+              "nativeQueryRef": "Severity"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "BPAResults"
+                    }
+                  },
+                  "Property": "Rule Name"
+                }
+              },
+              "queryRef": "BPAResults.Rule Name",
+              "nativeQueryRef": "Rule Name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "BPAResults"
+                    }
+                  },
+                  "Property": "Description"
+                }
+              },
+              "queryRef": "BPAResults.Description",
+              "nativeQueryRef": "Description"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "BPAResults"
+                    }
+                  },
+                  "Property": "URL"
+                }
+              },
+              "queryRef": "BPAResults.URL",
+              "nativeQueryRef": "URL"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "452.5D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "BPAResults.Rule Name"
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

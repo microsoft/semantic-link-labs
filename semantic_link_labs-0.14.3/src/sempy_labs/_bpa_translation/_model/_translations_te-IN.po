@@ -1,0 +1,947 @@
+#
+msgid ""
+msgstr ""
+"Language: te-IN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "ఫ్లోటింగ్ పాయింట్ డేటా రకాలను ఉపయోగించవద్దు."
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "లెక్కించిన కాలమ్ లను ఉపయోగించడం మానుకోండి"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"ద్వి-దిశ మరియు అనేక-టు-అనేక సంబంధాలు చెల్లుబాటు అవుతాయో లేదో తనిఖీ చేయండి"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "డైనమిక్ రో లెవల్ సెక్యూరిటీ (RLS) అవసరమా అని చెక్ చేయండి"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"డైనమిక్ వరుస స్థాయి భద్రత కొరకు ఉపయోగించే టేబుల్ లపై అనేక-టు-అనేక సంబంధాలను "
+"ఉపయోగించడం మానుకోండి."
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "అనేక బంధాలు సింగిల్ డైరెక్షన్ గా ఉండాలి."
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"నాన్-ఆట్రిబ్యూట్ కాలమ్ లపై తప్పుగా లభ్యం అయ్యే Is లభ్యతInMdx సెట్ చేయండి"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"హైబ్రిడ్ టేబుల్ యొక్క డైరెక్ట్ క్వెరీ విభజనపై 'డేటా కవరేజ్ డెఫినిషన్' "
+"ప్రాపర్టీని సెట్ చేయండి"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"సంబంధిత ఫ్యాక్ట్ టేబుల్ కొరకు డైరెక్ట్ క్వెరీని ఉపయోగించినట్లయితే డైమెన్షన్ "
+"టేబుల్ లకు మాత్రమే డ్యూయల్ మోడ్ సముచితంగా ఉంటుంది."
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"ఫ్యాక్ట్ టేబుల్స్ పై డైరెక్ట్ క్వెరీని ఉపయోగిస్తున్నప్పుడు ఇంపోర్ట్ కు "
+"బదులుగా డైమెన్షన్స్ టేబుల్ లను డ్యూయల్ మోడ్ కు సెట్ చేయండి"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "కనిష్ట పవర్ Query పరివర్తనలు"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "స్నోఫ్లేక్ ఆర్కిటెక్చర్ కు బదులుగా నక్షత్ర-స్కీమాను పరిగణించండి"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "డైరెక్ట్ లేక్ మోడ్ ఉపయోగిస్తున్నప్పుడు వ్యూలను ఉపయోగించవద్దు"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "కొలతకు 0 జోడించడం మానుకోండి"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "లెక్కించిన పట్టికల వాడకాన్ని తగ్గించండి."
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "సంబంధిత విధిని ఉపయోగించే లెక్కించబడిన కాలమ్ ల వాడకాన్ని తగ్గించండి."
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "మితిమీరిన ద్వి-దిశ లేదా అనేక-టు-అనేక సంబంధాలను నివారించండి"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "ఆటో-డేట్ టేబుల్ తొలగించు"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "తేదీ/క్యాలెండర్ పట్టికలను తేదీ పట్టికగా మార్క్ చేయాలి."
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "పెద్ద టేబుళ్లను విభజించాలి"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "వరుస స్థాయి భద్రత (RLS) లాజిక్ ని పరిమితం చేయండి"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "మోడల్ కు తేదీ పట్టిక ఉండాలి"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "లెక్కింపు ఐటమ్ లకు తప్పనిసరిగా వ్యక్తీకరణ ఉండాలి"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "రిలేషన్ షిప్ కాలమ్ లు ఒకే డేటా టైప్ లో ఉండాలి."
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "డేటా కాలమ్ లకు సోర్స్ కాలమ్ ఉండాలి"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"అవసరమైన కాలమ్ లపై లభ్యం అయ్యే Is లభ్యతInMdxను నిజం చేయడానికి సెట్ చేయండి"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"ఒకే టేబుల్ కు వ్యతిరేకంగా యూజర్ రిలేషన్ షిప్ ఫంక్షన్ మరియు RLSను "
+"పరిహరించండి."
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR ఫంక్షన్ ని ఉపయోగించడం పరిహరించండి."
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"వర్చువల్ రిలేషన్ షిప్ ల కొరకు ఇంటర్ సెక్ట్ కు బదులుగా ట్రీట్ ఆస్ ఫంక్షన్ ని "
+"ఉపయోగించండి."
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "ప్రొడక్షన్ మోడల్స్ లో మదింపు మరియు లాగ్ ఫంక్షన్ ఉపయోగించరాదు."
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "చర్యలు ఇతర చర్యలకు ప్రత్యక్ష సూచనలు కాకూడదు."
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "ఏ రెండు చర్యలకు ఒకే నిర్వచనం ఉండకూడదు."
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "విభజనల ఫలితాలకు స్థిర విలువలను జోడించడం లేదా తీసివేయడం పరిహరించండి"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' వాక్యనిర్మాణాన్ని ఉపయోగించవద్దు."
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "ఫిల్టర్ విలువలను కాలమ్ ల ద్వారా లెక్కించండి, పట్టికలు కాదు"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "సరైన వాక్యనిర్మాణంతో కాలమ్ విలువలను ఫిల్టర్ చేయండి"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "విభజన కొరకు డివైడ్ విధిని ఉపయోగించండి"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "కాలమ్ రిఫరెన్స్ లు పూర్తిగా అర్హత కలిగి ఉండాలి"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "కొలత రిఫరెన్స్ లు అనర్హంగా ఉండాలి"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "ఎప్పటికీ యాక్టివేట్ చేయబడని నిష్క్రియాత్మక సంబంధాలు"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "అనవసరమైన కాలమ్ లను తొలగించండి"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "అనవసర చర్యలను తొలగించండి"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "పట్టికలకు సంబంధాలు ఉండేలా చూసుకోండి."
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "లెక్కింపు అంశాలు లేని గణన సమూహాలు"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "వివరణ లేని వస్తువులు"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "'తేదీ' కాలమ్ ల కొరకు ఫార్మాట్ స్ట్రింగ్ అందించండి"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "సంఖ్యా కాలమ్ లను సంక్షిప్తీకరించవద్దు."
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "చర్యల కొరకు ఫార్మాట్ స్ట్రింగ్ అందించండి"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "కాలమ్ ల కొరకు డేటా కేటగిరీని జోడించు"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "శాతాలను వేల సెపరేటర్లు మరియు 1 దశాంశాలతో ఫార్మాట్ చేయాలి."
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "మొత్తం సంఖ్యలను వేల సెపరేటర్లతో ఫార్మాట్ చేయాలి మరియు దశాంశాలు లేవు."
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "విదేశీ కీలను దాచండి"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "ప్రాథమిక కీలను మార్క్ చేయండి"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "నెలను (తీగగా) క్రమబద్ధీకరించాలి."
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "రిలేషన్ షిప్ కాలమ్ లు పూర్తి సంఖ్యల డేటా రకానికి చెందినవిగా ఉండాలి."
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"నెల\" కాలమ్ ల కొరకు ఫార్మాట్ స్ట్రింగ్ అందించండి"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ఫ్లాగ్ కాలమ్ లను అవును/కాదు వాల్యూ స్ట్రింగ్ లుగా ఫార్మాట్ చేయండి"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "ఆబ్జెక్ట్ లు స్పేస్ తో ప్రారంభం కాకూడదు లేదా ముగియరాదు."
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "వస్తువుల యొక్క మొదటి అక్షరాన్ని క్యాపిటల్ చేయాలి"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "ఆబ్జెక్ట్ పేర్లలో ప్రత్యేక అక్షరాలు ఉండరాదు."
+
+# category
+msgid "Do not use floating point data types"
+msgstr "పనితీరు"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "పనితీరు"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "పనితీరు"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "పనితీరు"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "పనితీరు"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "పనితీరు"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "పనితీరు"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "పనితీరు"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "పనితీరు"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "పనితీరు"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "పనితీరు"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "పనితీరు"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "పనితీరు"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "పనితీరు"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "పనితీరు"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "పనితీరు"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "పనితీరు"
+
+# category
+msgid "Remove auto-date table"
+msgstr "పనితీరు"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "పనితీరు"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "పనితీరు"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "పనితీరు"
+
+# category
+msgid "Model should have a date table"
+msgstr "పనితీరు"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "దోష నివారణ"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "దోష నివారణ"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "దోష నివారణ"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "దోష నివారణ"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "దోష నివారణ"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "సంరక్షణ"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "సంరక్షణ"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "సంరక్షణ"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "సంరక్షణ"
+
+# category
+msgid "Visible objects with no description"
+msgstr "సంరక్షణ"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formatting"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formatting"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formatting"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formatting"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formatting"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formatting"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formatting"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formatting"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formatting"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formatting"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formatting"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatting"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formatting"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formatting"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "నామకరణ సమావేశాలు[మార్చు]"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"\"డబుల్\" ఫ్లోటింగ్ పాయింట్ డేటా రకాన్ని నివారించాలి, ఎందుకంటే ఇది అనూహ్య "
+"రౌండ్ ఆఫ్ దోషాలు మరియు కొన్ని సందర్భాల్లో పనితీరు తగ్గడానికి దారితీస్తుంది. "
+"తగిన చోట \"ఇంట్ 64\" లేదా \"దశాంశ\" ఉపయోగించండి (అయితే దశాంశ చిహ్నం తరువాత "
+"\"దశాంశ\" 4 అంకెలకు పరిమితం చేయబడిందని గమనించండి)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"లెక్కించబడిన కాలమ్ లు డేటా కాలమ్ ల మాదిరిగా కుదించబడవు, కాబట్టి అవి ఎక్కువ "
+"మెమరీని తీసుకుంటాయి. అవి టేబుల్ మరియు ప్రాసెస్ రీకాల్ రెండింటికీ ప్రాసెసింగ్"
+" సమయాలను కూడా నెమ్మదిస్తాయి. లెక్కించిన కాలమ్ లాజిక్ ను మీ డేటా గోదాముకు ఆఫ్"
+" లోడ్ చేయండి మరియు ఈ లెక్కించిన కాలమ్ లను డేటా కాలమ్ లుగా మార్చండి."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"డైనమిక్ రో లెవల్ సెక్యూరిటీ (ఆర్ఎల్ఎస్) ఉపయోగించడం వల్ల మెమరీ మరియు "
+"పనితీరును జోడించవచ్చు. దయచేసి దీనిని ఉపయోగించడం వల్ల కలిగే లాభనష్టాలను "
+"పరిశోధించండి."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"డైనమిక్ వరుస స్థాయి భద్రతను ఉపయోగించే పట్టికలపై అనేక-టు-అనేక సంబంధాలను "
+"ఉపయోగించడం తీవ్రమైన క్వైరీ పనితీరు క్షీణతకు కారణమవుతుంది. వరుస స్థాయి "
+"భద్రతను కలిగి ఉన్న పట్టికకు వ్యతిరేకంగా బహుళ-అనేక సంబంధాలను స్నోఫ్లేక్ "
+"చేసినప్పుడు ఈ నమూనా యొక్క పనితీరు సమస్యలు పెరుగుతాయి. బదులుగా, దిగువ "
+"వ్యాసంలో చూపించిన నమూనాలలో ఒకదాన్ని ఉపయోగించండి, ఇక్కడ ఒకే కొలత పట్టిక "
+"భద్రతా పట్టికకు అనేక-ఒకటికి సంబంధించినది."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"ప్రాసెసింగ్ సమయాన్ని వేగవంతం చేయడానికి మరియు ప్రాసెసింగ్ తర్వాత మెమరీని "
+"సంరక్షించడానికి, MDX క్లయింట్ ల ద్వారా స్లైసింగ్ కొరకు ఎన్నడూ ఉపయోగించబడని "
+"కాలమ్ ల కొరకు ఆట్రిబ్యూట్ శ్రేణిని నిర్మించరాదు. మరో మాటలో చెప్పాలంటే, "
+"సార్ట్ బై కాలమ్ గా ఉపయోగించబడని లేదా వినియోగదారు శ్రేణిలో సూచించబడని అన్ని "
+"దాచిన కాలమ్ లు వాటి IS లభ్యతInMdx ప్రాపర్టీని తప్పుగా సెట్ చేయాలి. డైరెక్ట్ "
+"లేక్ మోడళ్లకు Is లభ్యతInMdx ప్రాపర్టీ వర్తించదు."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"'డేటా కవరేజ్ డెఫినిషన్' ప్రాపర్టీని సెట్ చేయడం మెరుగైన పనితీరుకు "
+"దారితీయవచ్చు ఎందుకంటే టేబుల్ యొక్క దిగుమతి-భాగాన్ని మాత్రమే ఎప్పుడు "
+"ప్రశ్నించగలదో మరియు టేబుల్ యొక్క డైరెక్ట్ క్వెరీ భాగాన్ని ఎప్పుడు "
+"ప్రశ్నించాల్సి ఉంటుందో ఇంజిన్ కు తెలుసు."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"డైమెన్షన్ టేబుల్ లు/పార్టిషన్ ల కొరకు డ్యూయల్ మోడ్ ని మాత్రమే ఉపయోగించండి, "
+"ఇక్కడ సంబంధిత ఫ్యాక్ట్ టేబుల్ డైరెక్ట్ క్వెరీలో ఉంది. ఇతర పరిస్థితులలో "
+"డ్యూయల్ మోడ్ ఉపయోగించడం (అనగా మిగిలిన మోడల్ ఇంపోర్ట్ మోడ్ లో ఉంది) పనితీరు "
+"సమస్యలకు దారితీయవచ్చు, ప్రత్యేకించి మోడల్ లో కొలతల సంఖ్య ఎక్కువగా ఉంటే."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"డైరెక్ట్ క్వెరీని ఉపయోగిస్తున్నప్పుడు, క్వైరీ పనితీరును మెరుగుపరచడం కొరకు "
+"డైమెన్షన్ టేబుల్ లను డ్యూయల్ మోడ్ కు సెట్ చేయాలి."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"మోడల్ ప్రాసెసింగ్ పనితీరును మెరుగుపరచడం కొరకు పవర్ క్వైరీ పరివర్తనలను "
+"కనిష్టం చేయండి. వీలైతే ఈ పరివర్తనలను డేటా గోదాముకు ఆఫ్ లోడ్ చేయడం ఉత్తమ "
+"పద్ధతి. అలాగే, మీ మోడల్ లో క్వైరీ ఫోల్డింగ్ జరుగుతోందో లేదో దయచేసి తనిఖీ "
+"చేయండి. క్వైరీ ఫోల్డింగ్ గురించి మరింత సమాచారం కోసం దయచేసి క్రింది "
+"వ్యాసాన్ని చూడండి."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"సాధారణంగా చెప్పాలంటే, నక్షత్ర-స్కీమా అనేది పట్టిక నమూనాలకు అనువైన నిర్మాణం. "
+"అలాంటప్పుడు, స్నోఫ్లేక్ విధానాన్ని ఉపయోగించడానికి సరైన సందర్భాలు ఉన్నాయి. "
+"దయచేసి మీ నమూనాను తనిఖీ చేయండి మరియు స్టార్-స్కీమా ఆర్కిటెక్చర్ కు "
+"వెళ్లడాన్ని పరిగణించండి."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"డైరెక్ట్ లేక్ మోడ్ లో, వీక్షణలు ఎల్లప్పుడూ డైరెక్ట్ క్వెరీకి తిరిగి వస్తాయి."
+" అందువలన, ఉత్తమ పనితీరును పొందడానికి వీక్షణలకు బదులుగా లేక్ హౌస్ పట్టికలను "
+"ఉపయోగించండి."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"ఖాళీ విలువను చూపించకుండా ఉండటానికి ఒక కొలతకు 0 జోడించడం పనితీరును "
+"ప్రతికూలంగా ప్రభావితం చేస్తుంది."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"లెక్కించిన టేబుల్ లాజిక్ ను మీ డేటా గోదాముకు మైగ్రేట్ చేయండి. మీ "
+"ప్లాట్ఫామ్లో బహుళ నమూనాలు ఉంటే లెక్కించిన పట్టికలపై ఆధారపడటం సాంకేతిక రుణం "
+"మరియు సంభావ్య పొరపాట్లకు దారితీస్తుంది."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"లెక్కించిన కాలమ్ లు డేటా కాలమ్ లను కుదించవు మరియు ఎక్కువ ప్రాసెసింగ్ సమయాలకు"
+" కారణం కావచ్చు. అందుకని, వీలైతే లెక్కించిన కాలమ్ లను నివారించాలి. వారు "
+"సంబంధిత విధిని ఉపయోగిస్తే వాటిని నివారించడం సులభం కావచ్చు."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"బి-డి మరియు అనేక-టు-అనేక సంబంధాల వాడకాన్ని పరిమితం చేయండి. ఈ నియమం 30% కంటే "
+"ఎక్కువ సంబంధాలు బై-డి లేదా అనేక-టు-చాలా ఉంటే నమూనాను సూచిస్తుంది."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"ఆటో-డేట్ టేబుల్స్ ఉపయోగించడం మానుకోండి. పవర్ BI డెస్క్ టాప్ లోని సెట్టింగ్ "
+"ల్లో ఆటో-డేట్ టేబుల్ ని ఆఫ్ చేయాలని నిర్ధారించుకోండి. దీనివల్ల మెమరీ వనరులు "
+"ఆదా అవుతాయి."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"ఈ నియమం 'తేదీ' లేదా 'క్యాలెండర్' అనే పదాలను కలిగి ఉన్న పట్టికల కోసం "
+"చూస్తుంది, ఎందుకంటే వాటిని తేదీ పట్టికగా మార్క్ చేయాలి."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"ప్రాసెసింగ్ ను ఆప్టిమైజ్ చేయడం కొరకు పెద్ద టేబుల్ లను విభజించాలి. డైరెక్ట్ "
+"లేక్ మోడ్ లో సెమాంటిక్ మోడల్స్ కు ఇది వర్తించదు ఎందుకంటే అవి టేబుల్ కు ఒక "
+"విభజనను మాత్రమే కలిగి ఉంటాయి."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"వరుస స్థాయి భద్రత కొరకు ఉపయోగించే DAXను సరళీకరించడానికి ప్రయత్నించండి. ఈ "
+"నియమంలోని విధుల వినియోగాన్ని అప్స్ట్రీమ్ సిస్టమ్స్ (డేటా వేర్హౌస్)కు ఆఫ్ "
+"లోడ్ చేయవచ్చు."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"సాధారణంగా, మోడల్స్ సాధారణంగా తేదీ పట్టికను కలిగి ఉండాలి. తేదీ పట్టిక లేని "
+"నమూనాలు సాధారణంగా టైమ్ ఇంటెలిజెన్స్ వంటి లక్షణాలను సద్వినియోగం చేసుకోవు లేదా"
+" సరైన నిర్మాణాత్మక నిర్మాణాన్ని కలిగి ఉండకపోవచ్చు."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"లెక్కింపు అంశాలకు తప్పనిసరిగా వ్యక్తీకరణ ఉండాలి. భావ వ్యక్తీకరణ లేకుండా, "
+"వారు ఎటువంటి విలువలను చూపించరు."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"రిలేషన్ షిప్ లో ఉపయోగించే కాలమ్స్ ఒకే డేటా టైప్ లో ఉండాలి. ఆదర్శవంతంగా, అవి "
+"పూర్తి సంఖ్యా డేటా రకానికి చెందినవి (సంబంధిత నియమం చూడండి '[ఫార్మాటింగ్] "
+"రిలేషన్ షిప్ కాలమ్ లు పూర్తి సంఖ్య డేటా రకానికి చెందినవిగా ఉండాలి'). విభిన్న"
+" డేటా రకాలు కలిగిన సంబంధంలో కాలమ్ లను కలిగి ఉండటం వివిధ సమస్యలకు "
+"దారితీయవచ్చు."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"డేటా కాలమ్ లకు సోర్స్ కాలమ్ ఉండాలి. సోర్స్ కాలమ్ లేని డేటా కాలమ్ మోడల్ ని "
+"ప్రాసెస్ చేసేటప్పుడు దోషానికి కారణమవుతుంది."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"దోషాలను నివారించడానికి, ఒక కాలమ్ ను మరొక కాలమ్ ను క్రమబద్ధీకరించడానికి "
+"ఉపయోగించినట్లయితే, ఒక శ్రేణిలో ఉపయోగించినట్లయితే, వైవిధ్యాలలో "
+"ఉపయోగించినట్లయితే లేదా మరొక కాలమ్ ద్వారా క్రమబద్ధీకరించబడినట్లయితే, "
+"ఆట్రిబ్యూట్ శ్రేణులు ఎనేబుల్ చేయబడ్డాయని ధృవీకరించుకోండి. డైరెక్ట్ లేక్ "
+"మోడళ్లకు Is లభ్యతInMdx ప్రాపర్టీ వర్తించదు."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"వరుస-స్థాయి భద్రత (ఆర్ఎల్ఎస్) ను కూడా ప్రభావితం చేసే టేబుల్కు వ్యతిరేకంగా "
+"యు.ఎస్.రిలేషన్ ఫంక్షన్ ఉపయోగించబడకపోవచ్చు. విజువల్ లో నిర్దిష్ట కొలతను "
+"ఉపయోగించేటప్పుడు ఇది దోషాన్ని సృష్టిస్తుంది. ఈ నియమం ఒక కొలత యొక్క యూజ్ "
+"రిలేషన్ షిప్ ఫంక్షన్ మరియు RLSలో ఉపయోగించే టేబుల్ ను హైలైట్ చేస్తుంది."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"IFEROR ఫంక్షన్ ని ఉపయోగించడం మానుకోండి, ఎందుకంటే ఇది పనితీరు క్షీణతకు కారణం "
+"కావచ్చు. డివైడ్-బై-జీరో దోషం గురించి మీరు ఆందోళన చెందుతున్నట్లయితే, డివైడ్ "
+"ఫంక్షన్ ఉపయోగించండి, ఎందుకంటే ఇది సహజంగా అటువంటి దోషాలను ఖాళీగా "
+"పరిష్కరిస్తుంది (లేదా అటువంటి దోషం ఉన్నట్లయితే మీరు ఏమి చూపించాలో మీరు "
+"అనుకూలీకరించవచ్చు)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"ట్రీట్ఎఎస్ ఫంక్షన్ మరింత సమర్థవంతంగా ఉంటుంది మరియు విరుటల్ సంబంధాలలో "
+"ఉపయోగించినప్పుడు ఇంటర్సెక్ట్ ఫంక్షన్ కంటే మెరుగైన పనితీరును అందిస్తుంది."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"మదింపు మరియు లాగ్ ఫంక్షన్ అభివృద్ధి/పరీక్ష వాతావరణంలో మాత్రమే "
+"ఉపయోగించబడుతుంది మరియు ఉత్పత్తి నమూనాలలో ఉపయోగించరాదు."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"ఈ నియమం కేవలం మరొక కొలతను సూచించే చర్యలను గుర్తిస్తుంది. ఉదాహరణకు, రెండు "
+"కొలతలతో కూడిన ఒక నమూనాను పరిగణించండి: [మెజర్ ఎ] మరియు [మెజర్ బి]. ఒకవేళ "
+"మెజర్ బి యొక్క DAX అనేది మెజర్ B:=[మెజర్A] అయితే మెజర్ B కొరకు ఈ నియమం "
+"ప్రేరేపించబడుతుంది. ఇలాంటి ద్వంద్వ చర్యలను తొలగించాలి."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"పునరుద్ధరణను తగ్గించడానికి వేర్వేరు పేర్లతో మరియు ఒకే DAX వ్యక్తీకరణ ద్వారా "
+"నిర్వచించబడిన రెండు కొలతలను నివారించాలి."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "స్థిరమైన విలువను జోడించడం పనితీరు క్షీణతకు దారితీయవచ్చు."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"శాతం లెక్కింపును సాధించడానికి '1-(x/y)' లేదా '1+(x/y)' వాక్యనిర్మాణాన్ని "
+"ఉపయోగించడానికి బదులుగా, ప్రాథమిక DAX విధులను ఉపయోగించండి (క్రింద చూపించిన "
+"విధంగా). మెరుగైన వాక్యనిర్మాణాన్ని ఉపయోగించడం సాధారణంగా పనితీరును "
+"మెరుగుపరుస్తుంది. '1+/-...' వాక్యనిర్మాణం ఎల్లప్పుడూ ఒక విలువను ఇస్తుంది, "
+"అయితే ద్రావణం '1+/-...' లేకుండా ఉంటుంది. చేయదు (ఎందుకంటే విలువ 'ఖాళీ'గా "
+"ఉండవచ్చు). అందువల్ల '1+/-...' సింటాక్స్ ఎక్కువ వరుసలు/కాలమ్ లను తిరిగి "
+"ఇవ్వవచ్చు, దీని ఫలితంగా క్వైరీ వేగం మందగించవచ్చు.    ఒక ఉదాహరణతో స్పష్టం "
+"చేద్దాం: 1 - మొత్తం ('సేల్స్'[కాస్ట్ అమౌంట్] / మొత్తం ('సేల్స్'[సేల్స్ "
+"అమౌంట్] ) బెటర్: డివైడ్ ('సేల్స్'[సేల్స్ అమౌంట్] - మొత్తం ('సేల్స్'[సేల్స్ "
+"అమౌంట్] ) - మొత్తం ('సేల్స్'[సేల్స్ అమౌంట్] ) ఉత్తమం: VAR x = మొత్తం "
+"('సేల్స్'[సేల్స్ అమౌంట్] ) రిటర్న్ డివైడ్ (x - సమ్ ('సేల్స్'[కాస్ట్ అమౌంట్]"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"లెక్కింపు లేదా లెక్కింపు ఫంక్షన్ యొక్క ఫిల్టర్ పరామితుల కొరకు ఈ నమూనా ఫిల్టర్ ('టేబుల్', [కొలత]>వాల్యూ) ఉపయోగించడానికి బదులుగా, దిగువ ఆప్షన్ ల్లో ఒకదాన్ని ఉపయోగించండి (వీలైతే). ఒక నిర్దిష్ట కాలమ్ పై ఫిల్టర్ చేయడం వల్ల ఇంజిన్ ప్రాసెస్ చేయడానికి ఒక చిన్న టేబుల్ ఏర్పడుతుంది, తద్వారా వేగవంతమైన పనితీరుకు వీలు కలుగుతుంది. వాల్యూస్ ఫంక్షన్ లేదా ఆల్ ఫంక్షన్ ఉపయోగించడం అనేది కోరుకున్న కొలత ఫలితంపై ఆధారపడి ఉంటుంది.\n"
+"ఆప్షన్ 1: ఫిల్టర్ (విలువలు('టేబుల్'[కాలమ్]), [కొలత] > విలువ)\n"
+"ఆప్షన్ 2: ఫిల్టర్ (ఆల్('టేబుల్'[కాలమ్]), [కొలత] > విలువ)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"లెక్కింపు లేదా లెక్కించదగిన ఫంక్షన్ యొక్క ఫిల్టర్ పరామీటర్ ల కొరకు ఈ నమూనా ఫిల్టర్ ('టేబుల్', 'టేబుల్'[కాలమ్]=\"విలువ\") ఉపయోగించడానికి బదులుగా, దిగువ ఆప్షన్ ల్లో ఒకదాన్ని ఉపయోగించండి. KEEPFILTERS ఫంక్షన్ ఉపయోగించాలా వద్దా అనే విషయానికి వస్తే, దిగువ రెండవ రిఫరెన్స్ లింక్ చూడండి.\n"
+"ఆప్షన్ 1: కీప్ ఫిల్టర్స్ ('టేబుల్'[కాలమ్]=\"వాల్యూ\")\n"
+"ఆప్షన్ 2: 'టేబుల్'[కాలమ్]=\"విలువ\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"\"/\" ఉపయోగించడానికి బదులుగా డివైడ్ ఫంక్షన్ ఉపయోగించండి. డివైడ్ ఫంక్షన్ "
+"డివైడ్ బై జీరో కేసులను పరిష్కరిస్తుంది. అందుకని, తప్పులను నివారించడానికి "
+"ఉపయోగించాలని సిఫార్సు చేయబడింది."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"పూర్తి అర్హత కలిగిన కాలమ్ రిఫరెన్స్ లను ఉపయోగించడం వల్ల కాలమ్ మరియు కొలత "
+"రిఫరెన్స్ ల మధ్య తేడాను గుర్తించడం సులభం అవుతుంది మరియు కొన్ని దోషాలను "
+"నివారించడంలో కూడా సహాయపడుతుంది. DAXలో కాలమ్ ని సూచించేటప్పుడు, ముందుగా "
+"టేబుల్ పేరును పేర్కొనండి, ఆపై కాలమ్ పేరును చతురస్రాకార బ్రాకెట్ ల్లో "
+"పేర్కొనండి."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"అర్హత లేని కొలత రిఫరెన్స్ లను ఉపయోగించడం వల్ల కాలమ్ మరియు కొలత రిఫరెన్స్ ల "
+"మధ్య తేడాను గుర్తించడం సులభం అవుతుంది మరియు కొన్ని దోషాలను నివారించడంలో కూడా"
+" సహాయపడుతుంది. DAX ఉపయోగించి ఒక కొలతను సూచించేటప్పుడు, టేబుల్ పేరును "
+"పేర్కొనవద్దు. చతురస్రాకార బ్రాకెట్లలో కొలత పేరును మాత్రమే ఉపయోగించండి."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"ఇన్ యాక్టివ్ రిలేషన్ షిప్ లు యుఎస్ రిలేషన్ షిప్ ఫంక్షన్ ఉపయోగించి యాక్టివేట్"
+" చేయబడతాయి. ఈ ఫంక్షన్ ద్వారా నిష్క్రియాత్మక సంబంధాన్ని ఏ చర్యలోనైనా "
+"సూచించకపోతే, సంబంధం ఉపయోగించబడదు. సంబంధం అవసరం లేదా ఈ పద్ధతి ద్వారా "
+"సంబంధాన్ని సక్రియం చేయాలా అని నిర్ణయించాలి."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"ఏదైనా DAX వ్యక్తీకరణలు, సంబంధాలు, శ్రేణి స్థాయిలు లేదా సార్ట్ బై-ప్రాపర్టీల "
+"ద్వారా సూచించబడని రహస్య కాలమ్ లను తొలగించాలి."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"నిర్వహణ కొరకు ఏదైనా DAX వ్యక్తీకరణల ద్వారా సూచించబడని రహస్య చర్యలను "
+"తొలగించాలి."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"ఈ నియమం ఒక సంబంధంతో మోడల్ లోని మరే ఇతర టేబుల్ కు అనుసంధానించబడని పట్టికలను "
+"హైలైట్ చేస్తుంది."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "లెక్కింపు అంశాలు ఉంటే తప్ప లెక్కింపు సమూహాలకు పని ఉండదు."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"ఆబ్జెక్టులకు వివరణలను జోడించండి. పవర్ BI డెస్క్ టాప్ లోని ఫీల్డ్ లిస్ట్ లో ఈ"
+" వివరణలు చూపబడతాయి. అదనంగా, మీరు స్వయంచాలక డేటా నిఘంటువును సృష్టించడానికి ఈ "
+"వివరణలను ఉపయోగించవచ్చు."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"వారి పేర్లలో \"నెల\" ఉన్న \"డేట్ టైమ్\" రకం కాలమ్ లను \"mm/dd/yyyyy\" గా "
+"ఫార్మాట్ చేయాలి."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"న్యూమరిక్ కాలమ్ లు (సంపూర్ణ సంఖ్య, దశాంశ, డబుల్) పవర్ BIలో యాక్సిడెంటల్ "
+"సమ్మేళనాన్ని నివారించడం కొరకు వాటి సంక్షిప్త లక్షణాన్ని \"ఏదీ కాదు\" అని "
+"సెట్ చేయాలి (బదులుగా కొలతలను సృష్టించండి)."
+
+# description
+msgid "Provide format string for measures"
+msgstr "కనిపించే కొలతలకు వాటి ఫార్మాట్ స్ట్రింగ్ ప్రాపర్టీ కేటాయించాలి."
+
+# description
+msgid "Add data category for columns"
+msgstr "తగిన కాలమ్ ల కొరకు డేటా కేటగిరీ ప్రాపర్టీని జోడించండి."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"మెరుగైన వినియోగదారు అనుభవం కొరకు, పర్సెంగేజ్ కొలతలను '%' గుర్తుతో ఫార్మాట్ "
+"చేయాలి."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"మెరుగైన వినియోగదారు అనుభవం కోసం, మొత్తం సంఖ్యలను కమాస్ తో ఫార్మాట్ చేయాలి."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"విదేశీ కీలను ఎల్లప్పుడూ దాచాలి ఎందుకంటే వాటిని తుది వినియోగదారులు "
+"ఉపయోగించకూడదు."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"కాలమ్ ప్రాపర్టీస్ లోని ప్రైమరీ కీ కాలమ్ ల కొరకు 'కీ' ప్రాపర్టీని 'ట్రూ'కు "
+"సెట్ చేయండి."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"ఈ నియమం స్ట్రింగ్ లు మరియు క్రమబద్ధీకరించబడని నెల కాలమ్ లను హైలైట్ "
+"చేస్తుంది. ఒకవేళ క్రమబద్ధీకరించకుండా వదిలేస్తే, అవి అక్షరక్రమంలో (అనగా "
+"ఏప్రిల్, ఆగస్టు...) క్రమబద్ధీకరిస్తాయి. అటువంటి కాలమ్ లను సరిగ్గా "
+"క్రమబద్ధీకరించేలా చూసుకోండి (జనవరి, ఫిబ్రవరి, మార్చి...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"రిలేషన్ షిప్ కాలమ్ లు పూర్తి సంఖ్యా డేటా రకానికి చెందినవిగా ఉండటం ఉత్తమ "
+"పద్ధతి. ఇది కేవలం డేటా వేర్ హౌసింగ్ కు మాత్రమే కాకుండా డేటా మోడలింగ్ కు కూడా"
+" వర్తిస్తుంది."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"వారి పేర్లలో \"నెల\" ఉన్న \"డేట్ టైమ్\" రకం కాలమ్ లను \"MMMM yyyyyy\" గా "
+"ఫార్మాట్ చేయాలి."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"జెండాలను అవును/కాదు అని సరిగ్గా ఫార్మాట్ చేయాలి ఎందుకంటే ఇది 0/1 సంపూర్ణ "
+"విలువలను ఉపయోగించడం కంటే చదవడం సులభం."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"వస్తువులు ఒక స్థలంతో ప్రారంభించకూడదు లేదా ముగియకూడదు. ఇది సాధారణంగా "
+"ప్రమాదవశాత్తు జరుగుతుంది మరియు కనుగొనడం కష్టం."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"ప్రొఫెషనల్ క్వాలిటీని మెయింటైన్ చేయడం కొరకు ఆబ్జెక్ట్ పేర్ల యొక్క మొదటి "
+"అక్షరాన్ని క్యాపిటల్ చేయాలి."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "ఆబ్జెక్ట్ పేర్లలో ట్యాబ్ లు, లైన్ బ్రేక్ లు మొదలైనవి ఉండకూడదు."

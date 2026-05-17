@@ -1,0 +1,963 @@
+#
+msgid ""
+msgstr ""
+"Language: hu-HU\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Ne használjon lebegőpontos adattípusokat"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Kerülje a számított oszlopok használatát"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Ellenőrizze, hogy érvényesek-e a kétirányú és a több-a-többhöz kapcsolatok"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Ellenőrizze, hogy szükség van-e dinamikus sorszintű biztonságra (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Kerülje a több-a-többhöz kapcsolatok használatát a dinamikus sorszintű "
+"biztonsághoz használt táblákon"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "A több-a-többhöz kapcsolatoknak egyirányúnak kell lenniük"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Állítsa az IsAvailableInMdx értékét false értékre a nem attribútum "
+"oszlopokon"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Állítsa be az \"Adatlefedettség definíciója\" tulajdonságot egy hibrid tábla"
+" DirectQuery-partícióján"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"A kettős mód csak akkor releváns dimenziótáblák esetén, ha a megfelelő "
+"ténytáblához DirectQueryt használ"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Dimenziótáblák beállítása kettős módba importálás helyett, ha a DirectQueryt"
+" ténytáblákon használja"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Power Query-átalakítások minimalizálása"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Fontolja meg a csillagsémát a hópehely architektúra helyett"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Kerülje a nézetek használatát a Direct Lake mód használatakor"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Ne adjon hozzá 0-t egy mértékhez"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "A számított táblák használatának csökkentése"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"A RELATED függvényt használó számított oszlopok használatának csökkentése"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Kerülje a túlzott kétirányú vagy több-a-többhöz kapcsolatokat"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Automatikus dátumtáblázat eltávolítása"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "A dátum-/naptártáblázatokat dátumtáblázatként kell megjelölni"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "A nagy táblákat particionálni kell"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Sorszintű biztonsági (RLS) logika korlátozása"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "A modellnek dátumtáblával kell rendelkeznie"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "A számítási elemeknek kifejezéssel kell rendelkezniük"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "A kapcsolati oszlopoknak azonos adattípusúaknak kell lenniük"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Az adatoszlopoknak forrásoszloppal kell rendelkezniük"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Állítsa az IsAvailableInMdx értékét true értékre a szükséges oszlopokon"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Kerülje a USERELATIONSHIP függvényt és az RLS-t ugyanazon a táblán"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Kerülje a HAHIBA függvény használatát"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Használja a TREATAS függvényt az INTERSECT helyett virtuális kapcsolatokhoz"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Az EVALUATEANDLOG függvény nem használható éles modellekben"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Az intézkedések nem lehetnek más intézkedésekre való közvetlen hivatkozások"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Nincs két olyan intézkedés, amelynek ugyanaz a meghatározása"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Kerülje az állandó értékek összeadását vagy kivonását az osztások "
+"eredményeiből"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Kerülje az \"1-(x/y)\" szintaxis használatát"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "A mértékértékek szűrése oszlopok, nem táblázatok szerint"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Oszlopértékek szűrése megfelelő szintaxissal"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Az osztás függvény használata osztáshoz"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Az oszlophivatkozásoknak teljes mértékben minősítettnek kell lenniük"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Az intézkedéshivatkozásoknak minősítés nélkülieknek kell lenniük"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Inaktív kapcsolatok, amelyek soha nincsenek aktiválva"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Távolítsa el a felesleges oszlopokat"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Távolítsa el a felesleges intézkedéseket"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Győződjön meg arról, hogy a táblák rendelkeznek kapcsolatokkal"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Számítási elemek nélküli számítási csoportok"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Látható objektumok leírás nélkül"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Adja meg a \"Dátum\" oszlopok formázási karakterláncát"
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Numerikus oszlopok összegzésének mellőzése"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Formázási karakterlánc megadása mértékekhez"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Adatkategória hozzáadása oszlopokhoz"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"A százalékértékeket ezreselválasztóval és 1 tizedesjellel kell formázni"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Az egész számokat ezreselválasztójellel kell formázni, tizedesjegyek nélkül"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Idegen kulcsok elrejtése"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Elsődleges kulcsok megjelölése"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "A hónapot (karakterláncként) rendezni kell"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "A kapcsolati oszlopoknak egész szám adattípusúnak kell lenniük"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Adja meg a \"Hónap\" oszlopok formázási karakterláncát"
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Jelölőoszlopok formázása Igen/Nem érték-karakterláncként"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Az objektumok nem kezdődhetnek vagy végződhetnek szóközzel"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "Az objektumok első betűjét nagybetűvel kell írni"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Az objektumnevek nem tartalmazhatnak speciális karaktereket"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Teljesítmény"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Teljesítmény"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Teljesítmény"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Teljesítmény"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Teljesítmény"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Teljesítmény"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Teljesítmény"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Teljesítmény"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Teljesítmény"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Teljesítmény"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Teljesítmény"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Teljesítmény"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Teljesítmény"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Teljesítmény"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Teljesítmény"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Teljesítmény"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Teljesítmény"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Teljesítmény"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Teljesítmény"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Teljesítmény"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Teljesítmény"
+
+# category
+msgid "Model should have a date table"
+msgstr "Teljesítmény"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Hibamegelőzés"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Hibamegelőzés"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Hibamegelőzés"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Hibamegelőzés"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Hibamegelőzés"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "DAX-kifejezések"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "DAX-kifejezések"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Fenntartás"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Fenntartás"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Fenntartás"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Fenntartás"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Fenntartás"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formázás"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formázás"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formázás"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formázás"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formázás"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formázás"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formázás"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formázás"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formázás"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formázás"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formázás"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formázás"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formázás"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formázás"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Elnevezési konvenciók"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"A \"Dupla\" lebegőpontos adattípust kerülni kell, mivel bizonyos esetekben "
+"kiszámíthatatlan kerekítési hibákat és teljesítménycsökkenést eredményezhet."
+" Szükség esetén használja az \"Int64\" vagy a \"Decimális\" kifejezést (de "
+"vegye figyelembe, hogy a \"Decimális\" legfeljebb 4 számjegyből állhat a "
+"tizedesjel után)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"A számított oszlopok nem tömörítődnek olyan jól, mint az adatoszlopok, így "
+"több memóriát foglalnak el. Emellett lelassítják a feldolgozási időt mind a "
+"táblázat, mind a folyamat újraszámolása esetében. Szervezze ki a számított "
+"oszlopok logikáját az adattárházba, és alakítsa át ezeket a számított "
+"oszlopokat adatoszlopokká."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"A dinamikus sorszintű biztonság (RLS) használata memória- és "
+"teljesítménytöbbletet okozhat. Kérjük, vizsgálja meg a használat előnyeit / "
+"hátrányait."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"A több-a-többhöz kapcsolatok dinamikus sorszintű biztonságot használó "
+"táblákon való használata komoly lekérdezési teljesítménycsökkenést okozhat. "
+"Ennek a mintának a teljesítményproblémái akkor merülnek fel, ha több több-a-"
+"többhöz kapcsolatot hópelyhesít egy sorszintű biztonságot tartalmazó táblán."
+" Ehelyett használja az alábbi cikkben látható minták egyikét, ahol az "
+"egydimenziós tábla több az egyhez kapcsolódik egy biztonsági táblához."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"A feldolgozási idő felgyorsítása és a feldolgozás utáni memóriamegtakarítás "
+"érdekében nem szabad attribútumhierarchiákat létrehozni olyan oszlopokhoz, "
+"amelyeket az MDX-ügyfelek soha nem használnak szeleteléshez. Más szóval "
+"minden olyan rejtett oszlop esetében, amely nem Rendezési szempont "
+"oszlopként van használatban, vagy amelyre nem hivatkozik a felhasználói "
+"hierarchiák, az IsAvailableInMdx tulajdonságának false (hamis) értékét kell "
+"állítania. Az IsAvailableInMdx tulajdonság nem releváns a Direct Lake "
+"modellek esetében."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Az \"Adatlefedettség-definíció\" tulajdonság beállítása jobb teljesítményt "
+"eredményezhet, mivel a motor tudja, mikor tudja csak lekérdezni a tábla "
+"importálási részét, és mikor kell lekérdeznie a tábla DirectQuery részét."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Csak olyan dimenziótáblákhoz/partíciókhoz használja a Kettős módot, "
+"amelyeknél a megfelelő ténytábla a DirectQueryben található. A kettős mód "
+"használata más körülmények között (azaz a modell többi része Importálás "
+"módban van) teljesítményproblémákhoz vezethet, különösen akkor, ha a "
+"modellben nagy a mértékek száma."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"A DirectQuery használatakor a dimenziótáblákat kettős módra kell állítani a "
+"lekérdezési teljesítmény javítása érdekében."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Minimalizálja Power Query átalakításokat a modell feldolgozási "
+"teljesítményének javítása érdekében. Ajánlott ezeket az átalakításokat "
+"kiszervezni az adattárházba, ha lehetséges. Ellenőrizze azt is, hogy a "
+"lekérdezésátadás megtörténik-e a modellen belül. A lekérdezésátadással "
+"kapcsolatos további információkért tekintse meg az alábbi cikket."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Általánosságban elmondható, hogy a csillagséma a táblázatos modellek "
+"optimális architektúrája. Mivel ez a helyzet, vannak érvényes esetek a "
+"hópehely megközelítés alkalmazására. Kérjük, ellenőrizze a modellt, és "
+"fontolja meg a csillagséma architektúrára való áttérést."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Direct Lake módban a nézetek mindig visszaesnek a DirectQueryre. Így a "
+"legjobb teljesítmény elérése érdekében a nézetek helyett tóházi asztalokat "
+"használjon."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Ha 0-t ad hozzá egy mértékhez, hogy ne jelenjen meg üres érték, az negatív "
+"hatással lehet a teljesítményre."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Számított tábla logikájának áttelepítése az adattárházba. A számított "
+"táblákra való támaszkodás technikai adóssághoz és esetleges eltérésekhez "
+"vezet, ha több modell van a platformon."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"A számított oszlopok nem tömörítődnek olyan jól, mint az adatoszlopok, és "
+"hosszabb feldolgozási időt okozhatnak. Ezért lehetőség szerint kerülni kell "
+"a számított oszlopokat. Az egyik forgatókönyv, ahol könnyebben elkerülhetők,"
+" ha a RELATED függvényt használják."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"A b-di és a több-a-többhöz kapcsolatok használatának korlátozása. Ez a "
+"szabály megjelöli a modellt, ha a kapcsolatok több mint 30%-a bi-di vagy "
+"több-a-sokhoz típusú."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Kerülje az automatikus dátumtáblázatok használatát. Ne felejtse el "
+"kikapcsolni az automatikus dátumtáblázatot a Power BI Desktop "
+"beállításaiban. Ez memória-erőforrásokat takarít meg."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Ez a szabály olyan táblázatokat keres, amelyek tartalmazzák a \"dátum\" vagy"
+" a \"naptár\" szavakat, mivel valószínűleg dátumtáblázatként kell megjelölni"
+" őket."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"A feldolgozás optimalizálása érdekében a nagy táblákat particionálni kell. "
+"Ez nem releváns a Direct Lake módban lévő szemantikai modellek esetében, "
+"mivel táblánként csak egy partícióval rendelkezhetnek."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Próbálja meg egyszerűsíteni a sorszintű biztonsághoz használt DAX-ot. Az "
+"ebben a szabályban szereplő függvények használata valószínűleg kiszervezhető"
+" a felsőbb rétegbeli rendszerekbe (adattárház)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Általánosságban elmondható, hogy a modelleknek általában dátumtáblázattal "
+"kell rendelkezniük. A dátumtáblával nem rendelkező modellek általában nem "
+"használják ki az olyan funkciókat, mint az időintelligencia, vagy nem "
+"rendelkeznek megfelelően strukturált architektúrával."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr ""
+"A számítási elemeknek kifejezéssel kell rendelkezniük. Kifejezés nélkül nem "
+"mutatnak értékeket."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"A kapcsolatban használt oszlopoknak azonos adattípusúaknak kell lenniük. "
+"Ideális esetben egész szám adattípusúak lesznek (lásd a kapcsolódó szabályt:"
+" \"[Formázás] A kapcsolati oszlopoknak egész szám adattípusúnak kell "
+"lenniük\"). A kapcsolaton belüli különböző adattípusú oszlopok különböző "
+"problémákhoz vezethetnek."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Az adatoszlopoknak rendelkezniük kell forrásoszloppal. A forrásoszlop "
+"nélküli adatoszlop hibát okoz a modell feldolgozásakor."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"A hibák elkerülése érdekében győződjön meg arról, hogy az "
+"attribútumhierarchiák engedélyezve vannak, ha egy oszlopot egy másik oszlop "
+"rendezésére használnak, hierarchiában használják, változatokban használják, "
+"vagy egy másik oszlop szerint rendezik. Az IsAvailableInMdx tulajdonság nem "
+"releváns a Direct Lake modellek esetében."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"A USERELATIONSHIP függvény nem használható olyan táblához, amely sorszintű "
+"biztonságot (RLS) is használ. Ez hibát generál, amikor az adott mértéket "
+"vizualizációban használja. Ez a szabály kiemeli a mérték USERELATIONSHIP "
+"függvényében és az RLS-ben használt táblát."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Kerülje a HAHIBA függvény használatát, mert az teljesítménycsökkenést "
+"okozhat. Ha aggódik a nullával osztás hibája miatt, használja az OSZTÁS "
+"függvényt, mivel ez természetesen megoldja az ilyen hibákat, mint az üres "
+"(vagy testreszabhatja, hogy mi jelenjen meg ilyen hiba esetén)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"A TREATAS függvény hatékonyabb és jobb teljesítményt nyújt, mint az "
+"INTERSECT függvény, ha virális kapcsolatokban használják."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Az EVALUATEANDLOG függvény csak fejlesztési/tesztelési környezetekben "
+"használható, éles modellekben nem."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Ez a szabály olyan intézkedéseket határoz meg, amelyek egyszerűen egy másik "
+"intézkedésre hivatkoznak. Vegyünk például egy modellt két mértékkel: "
+"[MeasureA] és [MeasureB]. Ez a szabály akkor aktiválódik a MeasureB "
+"esetében, ha a MeasureB DAX-ja MeasureB:=[MeasureA] volt. Az ilyen "
+"párhuzamos intézkedéseket meg kell szüntetni."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"A redundancia csökkentése érdekében kerülni kell két különböző nevű és "
+"ugyanazzal a DAX-kifejezéssel definiált mértéket."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Állandó érték hozzáadása teljesítménycsökkenéshez vezethet."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Az \"1-(x/y)\" vagy az \"1+(x/y)\" szintaxis használata helyett használja az"
+" alapvető DAX-függvényeket (lásd alább). A továbbfejlesztett szintaxis "
+"használata általában javítja a teljesítményt. Az \"1+/-...\" A szintaxis "
+"mindig értéket ad vissza, míg a megoldás az \"1+/-...\" nélkül nem (mivel az"
+" érték \"üres\" lehet). Ezért az \"1+/-...\" A szintaxis több sort/oszlopot "
+"adhat vissza, ami lassabb lekérdezési sebességet eredményezhet.    "
+"Tisztázzuk egy példával: Kerülje ezt: 1 - SUM ( 'Értékesítés'[KöltségÖsszeg]"
+" ) / SZUM( 'Értékesítés'[ÉrtékesítésAmount] ) Jobb: OSZTÁS ( SUM ( "
+"'Értékesítés'[ÉrtékesítésAmount] ) - SZUM ( 'Értékesítés'[KöltségÖsszeg] ), "
+"SZUM ( 'Értékesítés'[ÉrtékesítésAmount] ) ) Legjobb: VAR x = SUM ( "
+"'Értékesítés'[ÉrtékesítésiÖsszeg] ) VISSZATÉRÉSI OSZTÁS ( x - SUM ( "
+"'Értékesítés'[KöltségAmount] ), x )"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Ahelyett, hogy ezt a mintát használná FILTER('Table',[Measure]>Value) egy CALCULATE vagy CALCULATETABLE függvény szűrőparamétereihez, használja az alábbi lehetőségek egyikét (ha lehetséges). Egy adott oszlop szűrése kisebb táblázatot eredményez a motor számára, ami gyorsabb teljesítményt tesz lehetővé. Az ÉRTÉKEK vagy az ÖSSZES függvény használata a kívánt mérési eredménytől függ.\n"
+"1. lehetőség: FILTER(VALUES('Table'[Column]),[Measure] > Value)\n"
+"2. lehetőség: FILTER(ALL('Table'[Column]),[Measure] > Value)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Ahelyett, hogy ezt a mintát használná FILTER('Table','Table'[Column]=\"Value\") egy CALCULATE vagy CALCULATETABLE függvény szűrőparamétereihez, használja az alábbi lehetőségek egyikét. A KEEPFILTERS függvény használatáról lásd az alábbi második referencia linket.\n"
+"1. lehetőség: KEEPFILTERS('Table'[Column]=\"Value\")\n"
+"2. lehetőség: 'Table'[Column]=\"Value\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Használja a DIVIDE függvényt a \"/\" helyett. Az OSZTÁS függvény feloldja a "
+"nullával osztás eseteit. Mint ilyen, ajánlott használni a hibák elkerülése "
+"érdekében."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"A teljesen minősített oszlophivatkozások használata megkönnyíti az oszlop- "
+"és mértékhivatkozások megkülönböztetését, és segít elkerülni bizonyos "
+"hibákat. Amikor oszlopra hivatkozik a DAX-ban, először adja meg a tábla "
+"nevét, majd szögletes zárójelben adja meg az oszlop nevét."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"A nem minősített mértékhivatkozások használata megkönnyíti az oszlop- és "
+"mértékhivatkozások megkülönböztetését, és segít elkerülni bizonyos hibákat. "
+"Amikor DAX használatával hivatkozik egy mértékre, ne adja meg a tábla nevét."
+" Csak a mérték nevét használja szögletes zárójelben."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Az inaktív kapcsolatok a USERELATIONSHIP függvénnyel aktiválhatók. Ha egy "
+"inaktív kapcsolatra semmilyen mértékben nem hivatkozik ez a függvény, akkor "
+"a kapcsolat nem lesz használva. Meg kell határozni, hogy a kapcsolat nem "
+"szükséges-e, vagy ezzel a módszerrel kell aktiválni a kapcsolatot."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Azokat a rejtett oszlopokat, amelyekre egyetlen DAX-kifejezés, kapcsolat, "
+"hierarchiaszint vagy rendezési szempont sem hivatkozik, el kell távolítani."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"A DAX-kifejezések által nem hivatkozott rejtett mértékeket a "
+"karbantarthatóság érdekében el kell távolítani."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Ez a szabály kiemeli azokat a táblákat, amelyek nem kapcsolódnak a modell "
+"más táblájához kapcsolattal."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr ""
+"A számítási csoportoknak csak akkor van funkciójuk, ha számítási elemekkel "
+"rendelkeznek."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Leírások hozzáadása objektumokhoz. Ezek a leírások a Power BI Desktop "
+"mezőlistáján belül jelennek meg. Ezenkívül ezeket a leírásokat "
+"felhasználhatja egy automatizált adatszótár létrehozásához."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"A \"DateTime\" típusú oszlopokat, amelyek nevében szerepel a \"Month\", "
+"\"hh/nn/éééé\" formátummal kell formázni."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"A numerikus oszlopok (egész szám, tizedesjegy, dupla) SummarizeBy "
+"tulajdonságának \"Nincs\" értékre kell állítania, hogy elkerülje a véletlen "
+"összegzést a Power BI-ban (helyette mértékeket hozzon létre)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"A látható mértékekhez hozzá kell rendelni a formázási karakterlánc "
+"tulajdonságát."
+
+# description
+msgid "Add data category for columns"
+msgstr "Adja hozzá az Adatkategória tulajdonságot a megfelelő oszlopokhoz."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"A jobb felhasználói élmény érdekében a percengage mértékeket \"%\" jellel "
+"kell formázni."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"A jobb felhasználói élmény érdekében az egész számokat vesszővel kell "
+"formázni."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Az idegen kulcsokat mindig rejtve kell tartani, mivel a végfelhasználók nem "
+"használhatják őket."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Állítsa a \"Kulcs\" tulajdonságot \"Igaz\" értékre az oszloptulajdonságokon "
+"belüli elsődleges kulcs oszlopaihoz."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Ez a szabály kiemeli azokat a hónaposzlopokat, amelyek sztringek, és "
+"nincsenek rendezve. Ha nem rendezik, akkor ábécé sorrendben rendezik (pl. "
+"április, augusztus...). Ügyeljen arra, hogy az ilyen oszlopokat úgy "
+"rendezze, hogy megfelelően legyenek rendezve (január, február, március...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Ajánlott eljárás, hogy a kapcsolatoszlopok egész szám adattípusúak legyenek."
+" Ez nem csak az adattárházakra, hanem az adatmodellezésre is vonatkozik."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"A \"DateTime\" típusú oszlopokat, amelyek nevében szerepel a \"Month\", "
+"\"HHH éééé\" formátumúként kell formázni."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"A jelzőket megfelelően kell formázni Igen/Nem formátumban, mivel ez "
+"könnyebben olvasható, mint a 0/1 egész értékek használata."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Az objektumok nem kezdődhetnek vagy végződhetnek szóközzel. Ez általában "
+"véletlenül történik, és nehéz megtalálni."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"Az objektumnevek első betűjét nagybetűvel kell írni a szakmai minőség "
+"fenntartása érdekében."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Az objektumnevek nem tartalmazhatnak tabulátorokat, sortöréseket stb."
