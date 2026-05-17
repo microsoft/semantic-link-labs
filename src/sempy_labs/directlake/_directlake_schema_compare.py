@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
 from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 import sempy_labs._icons as icons
 from sempy_labs.directlake._sources import get_direct_lake_sources
-from sempy_labs.tom import connect_semantic_model
 
 
 @log
@@ -31,6 +30,7 @@ def direct_lake_schema_compare(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)

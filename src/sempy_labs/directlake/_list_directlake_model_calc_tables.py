@@ -1,7 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._list_functions import list_tables
-from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -33,6 +32,7 @@ def list_direct_lake_model_calc_tables(
     pandas.DataFrame
         A pandas dataframe showing the calculated tables which were migrated to Direct Lake and whose DAX expressions are stored as model annotations.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)

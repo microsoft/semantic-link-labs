@@ -3,7 +3,6 @@ from typing import List, Optional, Union
 import json
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._sources import get_direct_lake_sources
 from sempy_labs._helper_functions import (
@@ -40,6 +39,7 @@ def update_direct_lake_partition_entity(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -160,7 +160,7 @@ def add_table_to_direct_lake_semantic_model(
         A list of column names to add to the table. If None, all columns from the
         lakehouse table will be added.
     """
-
+    from sempy_labs.tom import connect_semantic_model
     from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
