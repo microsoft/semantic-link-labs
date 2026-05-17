@@ -16,7 +16,10 @@ def list_data_access_roles(
     item: str | UUID,
     type: str,
     workspace: Optional[str | UUID] = None,
-    view: Literal["Rules", "MicrosoftEntraMembers", "FabricItemMembers"] = "Rules",
+    view: Literal[
+        "Roles", "Security", "MicrosoftEntraMembers", "FabricItemMembers"
+    ] = "Roles",
+    resolve_users: bool = False,
 ) -> pd.DataFrame:
     """
     Returns a list of OneLake roles.
@@ -35,22 +38,32 @@ def list_data_access_roles(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    view : typing.Literal["Rules", "MicrosoftEntraMembers", "FabricItemMembers"], default="Rules"
-        The view returned by the API. "Rules" returns the data access rules for each role, "MicrosoftEntraMembers" returns the Microsoft Entra members for each role, and "FabricItemMembers" returns the Fabric item members for each role.
+    view : typing.Literal["Roles", "Security", "MicrosoftEntraMembers", "FabricItemMembers"], default="Roles"
+        The view returned by the API. "Roles" returns the tables/files covered by each role, "Security" returns the column/row level security, "MicrosoftEntraMembers" returns the Microsoft Entra members for each role, and "FabricItemMembers" returns the Fabric item members for each role.
+    resolve_users : bool, default=False
+        If True, resovles the 'Object Id' of a user to their Display Name and User Principal Name. This requires using a SPN connection as it authenticates to MS Graph. This is only valid for the 'MicrosoftEntraMembers' view.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of OneLake roles.
     """
+    from sempy_labs.graph._users import resolve_user_name_and_id
 
-    supported_views = ["Rules", "MicrosoftEntraMembers", "FabricItemMembers"]
+    supported_views = [
+        "Roles",
+        "Security",
+        "MicrosoftEntraMembers",
+        "FabricItemMembers",
+    ]
     if "entra" in view.lower():
         view = "MicrosoftEntraMembers"
     elif "fabric" in view.lower():
         view = "FabricItemMembers"
-    elif "rules" in view.lower():
-        view = "Rules"
+    elif "roles" in view.lower():
+        view = "Roles"
+    elif "security" in view.lower():
+        view = "Security"
     if view not in supported_views:
         raise ValueError(
             f"{icons.red_dot} Only the following views are supported: {supported_views}. You entered '{view}'."
@@ -63,14 +76,12 @@ def list_data_access_roles(
         "Kind": "string",
     }
 
-    if view == "Rules":
+    if view == "Roles":
         columns.update(
             {
                 "Effect": "string",
                 "File Path": "string",
                 "Permissions": "list",
-                "Row Level Security": "string",
-                "Column Level Security": "list",
             }
         )
     elif view == "MicrosoftEntraMembers":
@@ -78,6 +89,16 @@ def list_data_access_roles(
             {
                 "Tenant Id": "string",
                 "Object Id": "string",
+            }
+        )
+    elif view == "Security":
+        columns.update(
+            {
+                "Effect": "str",
+                "File Path": "str",
+                "Row Level Security": "str",
+                "Column Level Security": "list",
+                "Column Permissions": "list",
             }
         )
     else:
@@ -105,7 +126,7 @@ def list_data_access_roles(
             role_id = role.get("id")
             etag = role.get("etag")
             kind = role.get("kind")
-            if view == "Rules":
+            if view == "Roles":
                 for rules in role.get("decisionRules", []):
                     effect = rules.get("effect")
                     permissions = rules.get("permission", [])
@@ -126,78 +147,7 @@ def list_data_access_roles(
                         [],
                     )
 
-                    cls = rules.get("constraints", {}).get("columns", [])
-                    rls = rules.get("constraints", {}).get("rows", [])
-
-                    def _build_cls_dict(entries):
-                        # Build a dict keyed by tablePath whose value contains
-                        # both the columnNames and the columnAction so column
-                        # level security permissions are kept together.
-                        result = {
-                            c.get("tablePath"): {
-                                "columns": c.get("columnNames", []),
-                                "permission": c.get("columnAction", []),
-                            }
-                            for c in entries
-                            if c.get("tablePath")
-                        }
-                        return result or None
-
-                    def _build_rls_dict(entries):
-                        # Build a dict keyed by tablePath whose value is the
-                        # row level security filter expression.
-                        result = {
-                            r.get("tablePath"): r.get("value")
-                            for r in entries
-                            if r.get("tablePath")
-                        }
-                        return result or None
-
-                    if paths == ["*"]:
-                        # The rule applies to all tables/files. Aggregate any
-                        # column/row level security constraints into dicts
-                        # keyed by tablePath so the wildcard scope is preserved
-                        # on a single row.
-                        column_level_security = _build_cls_dict(cls)
-                        row_level_security = _build_rls_dict(rls)
-                        rows.append(
-                            {
-                                "Role Name": name,
-                                "Role Id": role_id,
-                                "Etag": etag,
-                                "Kind": kind,
-                                "Effect": effect,
-                                "File Path": "*",
-                                "Permissions": permission,
-                                "Row Level Security": row_level_security,
-                                "Column Level Security": column_level_security,
-                            }
-                        )
-                        continue
-
                     for path in paths:
-                        # Match constraints that apply to this path exactly or
-                        # to any table/file nested under this path (e.g. path
-                        # "/Tables/dbo" covers "/Tables/dbo/Customer").
-                        prefix = path.rstrip("/") + "/"
-                        matching_cls = [
-                            c for c in cls
-                            if c.get("tablePath") == path
-                            or (c.get("tablePath") or "").startswith(prefix)
-                        ]
-                        matching_rls = [
-                            r for r in rls
-                            if r.get("tablePath") == path
-                            or (r.get("tablePath") or "").startswith(prefix)
-                        ]
-
-                        # If any constraint targets a nested table (not the
-                        # exact path), consolidate into dicts keyed by
-                        # tablePath so multiple tables can be represented on a
-                        # single row.
-                        column_level_security = _build_cls_dict(matching_cls)
-                        row_level_security = _build_rls_dict(matching_rls)
-
                         rows.append(
                             {
                                 "Role Name": name,
@@ -207,23 +157,72 @@ def list_data_access_roles(
                                 "Effect": effect,
                                 "File Path": path,
                                 "Permissions": permission,
-                                "Row Level Security": row_level_security,
-                                "Column Level Security": column_level_security,
                             }
                         )
+            elif view == "Security":
+                for rules in role.get("decisionRules", []):
+                    effect = rules.get("effect")
+                    constraints = rules.get("constraints", {})
+                    cls = constraints.get("columns", [])
+                    cls_tables = [col.get("tablePath") for col in cls]
+                    rls = constraints.get("rows", [])
+                    rls_tables = [row.get("tablePath") for row in rls]
+
+                    all_tables = list(set(cls_tables + rls_tables))
+
+                    secured_columns = []
+                    column_security = None
+                    row_security = None
+
+                    for path in all_tables:
+                        col_sec = next(
+                            (col for col in cls if col.get("tablePath") == path), None
+                        )
+                        if col_sec:
+                            secured_columns = col_sec.get("columnNames", [])
+                            column_security = col_sec.get("columnAction", [])
+                        row_sec = next(
+                            (row for row in rls if row.get("tablePath") == path), None
+                        )
+                        if row_sec:
+                            row_security = row_sec.get("value", [])
+                        rows.append(
+                            {
+                                "Role Name": name,
+                                "Role Id": role_id,
+                                "Etag": etag,
+                                "Kind": kind,
+                                "Effect": effect,
+                                "File Path": path,
+                                "Column Level Security": secured_columns,
+                                "Column Permissions": column_security,
+                                "Row Level Security": row_security,
+                            }
+                        )
+
             elif view == "MicrosoftEntraMembers":
                 members = role.get("members", {}).get("microsoftEntraMembers", [])
                 for member in members:
-                    rows.append(
-                        {
-                            "Role Name": name,
-                            "Role Id": role_id,
-                            "Etag": etag,
-                            "Kind": kind,
-                            "Tenant Id": member.get("tenantId"),
-                            "Object Id": member.get("objectId"),
-                        }
-                    )
+                    object_id = member.get("objectId")
+                    row = {
+                        "Role Name": name,
+                        "Role Id": role_id,
+                        "Etag": etag,
+                        "Kind": kind,
+                        "Tenant Id": member.get("tenantId"),
+                        "Object Id": object_id,
+                    }
+
+                    if resolve_users:
+                        display_name, upn, _ = resolve_user_name_and_id(object_id)
+                        row.update(
+                            {
+                                "User Name": display_name,
+                                "User Principal Name": upn,
+                            }
+                        )
+
+                    rows.append(row)
             else:
                 members = role.get("members", {}).get("fabricItemMembers", [])
                 for member in members:
@@ -238,6 +237,6 @@ def list_data_access_roles(
                         }
                     )
     if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        df = pd.DataFrame(rows)
 
     return df
