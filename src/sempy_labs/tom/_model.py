@@ -6809,8 +6809,8 @@ class TOMWrapper:
                 path = create_abfss_path(
                     lakehouse_id=source_item_id,
                     lakehouse_workspace_id=source_workspace_id,
-                    delta_table_name=p.EntityName,
-                    schema_name=p.SchemaName,
+                    delta_table_name=p.Source.EntityName,
+                    schema=p.Source.SchemaName,
                 )
                 descriptions = extract_descriptions_from_table_path(path)
                 if t.Description is None or overwrite:

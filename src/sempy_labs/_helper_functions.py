@@ -76,6 +76,8 @@ def create_abfss_path(
         if schema is not None:
             path += f"/{schema}/{delta_table_name}"
         else:
+            if '.' in delta_table_name:
+                delta_table_name = delta_table_name.replace('.', '/')
             path += f"/{delta_table_name}"
 
     return path
