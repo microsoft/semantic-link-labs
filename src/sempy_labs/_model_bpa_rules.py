@@ -445,7 +445,7 @@ def model_bpa_rules(
             (
                 "DAX Expressions",
                 "Measure",
-                "Warning",
+                "Error",
                 "Avoid aggregating non-numeric columns",
                 lambda obj, tom: any(
                     find_non_numeric_aggregations(obj.Expression, tom)
@@ -457,9 +457,7 @@ def model_bpa_rules(
                 "Measure",
                 "Warning",
                 "Use the TREATAS function instead of INTERSECT for virtual relationships",
-                lambda obj, tom: re.search(
-                    r"intersect\s*\(", obj.Expression, flags=re.IGNORECASE
-                ),
+                lambda obj, tom: uses_function(obj.Expression, "INTERSECT"),
                 "The TREATAS function is more efficient and provides better performance than the INTERSECT function when used in virutal relationships.",
                 "https://www.sqlbi.com/articles/propagate-filters-using-treatas-in-dax",
             ),
@@ -468,11 +466,7 @@ def model_bpa_rules(
                 "Measure",
                 "Warning",
                 "The EVALUATEANDLOG function should not be used in production models",
-                lambda obj, tom: re.search(
-                    r"evaluateandlog\s*\(",
-                    obj.Expression,
-                    flags=re.IGNORECASE,
-                ),
+                lambda obj, tom: uses_function(obj.Expression, "EVALUATEANDLOG"),
                 "The EVALUATEANDLOG function is meant to be used only in development/test environments and should not be used in production models.",
                 "https://pbidax.wordpress.com/2022/08/16/introduce-the-dax-evaluateandlog-function",
             ),
