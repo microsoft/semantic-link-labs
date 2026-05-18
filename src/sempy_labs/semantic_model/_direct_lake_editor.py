@@ -218,8 +218,21 @@ _WIDGET_CSS = """
 
 .slls-dle-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr) lets columns shrink so long option labels in
+       child <select> elements don't blow out the modal width. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 12px;
+}
+.slls-dle-grid > .slls-dle-field {
+    min-width: 0;
+}
+.slls-dle-grid .slls-dle-select,
+.slls-dle-grid .slls-dle-input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 .slls-dle-field {
     display: flex;
@@ -306,6 +319,7 @@ _WIDGET_CSS = """
 
 .slls-dle-status {
     margin-top: 14px;
+    margin-bottom: 6px;
     padding: 10px 14px;
     border-radius: var(--slls-radius-sm);
     font-size: 13.5px;
@@ -315,6 +329,48 @@ _WIDGET_CSS = """
 .slls-dle-status.success { background: var(--slls-success-soft); color: var(--slls-success); }
 .slls-dle-status.error { background: var(--slls-danger-soft); color: var(--slls-danger); }
 .slls-dle-status.info { background: var(--slls-accent-soft); color: var(--slls-accent); }
+
+/* Orange "pending change" indicator for items modified since the last save. */
+.slls-dle-pending-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--slls-orange);
+    display: inline-block;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(255, 149, 0, 0.18);
+}
+.slls-dle-savebar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    border-radius: var(--slls-radius-sm);
+    background: rgba(255, 149, 0, 0.10);
+    border: 1px solid rgba(255, 149, 0, 0.45);
+    color: var(--slls-text);
+}
+.slls-dle-savebar.show { display: flex; }
+.slls-dle-savebar-label {
+    font-size: 13.5px;
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.slls-dle-item-name .slls-dle-pending-dot { margin-right: 4px; }
+.slls-dle-item.pending {
+    background: rgba(255, 149, 0, 0.06);
+}
+
+/* Buffer above the manage toolbar so the Refresh button does not crowd
+   any preceding cell output / status banner. */
+.slls-dle-manage-top {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--slls-border);
+}
 @keyframes slls-dle-fade-in {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
@@ -421,7 +477,8 @@ function render({ model, el }) {
 
     const PLUS_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3.25v9.5M3.25 8h9.5"/></svg>`;
     const BACK_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg>`;
-    const REFRESH_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.46-3.54M13 3v3h-3"/></svg>`;
+    // Apple-style circular arrow refresh icon (SF Symbols `arrow.clockwise`).
+    const REFRESH_SVG = `<svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 2a6 6 0 0 1 5.196 3H11.5a.5.5 0 0 0 0 1h2.9A.6.6 0 0 0 15 5.4V2.5a.5.5 0 0 0-1 0v1.55A7 7 0 1 0 15 8a.5.5 0 0 0-1 0A6 6 0 1 1 8 2z"/></svg>`;
     const SUN_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.3 3.3l1.05 1.05M11.65 11.65l1.05 1.05M3.3 12.7l1.05-1.05M11.65 4.35l1.05-1.05"/></svg>`;
     const MOON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>`;
 
@@ -785,7 +842,7 @@ function render({ model, el }) {
     root.appendChild(manageScreen);
 
     const manageToolbar = document.createElement("div");
-    manageToolbar.className = "slls-dle-toolbar";
+    manageToolbar.className = "slls-dle-toolbar slls-dle-manage-top";
     manageToolbar.style.marginBottom = "8px";
     manageScreen.appendChild(manageToolbar);
 
@@ -797,6 +854,97 @@ function render({ model, el }) {
         runAction("refresh_model", {});
     });
     manageToolbar.appendChild(refreshModelBtn);
+
+    // ----------- Pending changes / save bar -----------
+    // Modal "Save" buttons enqueue changes here instead of writing to the
+    // model immediately. Changes are only persisted when the user clicks
+    // the global Save button below.
+    const pendingState = { changes: [], counter: 0 };
+    const saveBar = document.createElement("div");
+    saveBar.className = "slls-dle-savebar";
+    manageScreen.appendChild(saveBar);
+
+    function pendingId() { return `__p_${++pendingState.counter}`; }
+    function enqueuePendingChange(change) {
+        pendingState.changes.push(change);
+        renderSources();
+        renderTables();
+        renderSaveBar();
+    }
+    function discardPendingChanges() {
+        if (pendingState.changes.length === 0) return;
+        pendingState.changes = [];
+        renderSources();
+        renderTables();
+        renderSaveBar();
+        setStatus("Pending changes discarded.", "info");
+    }
+    function applyPendingChanges() {
+        if (pendingState.changes.length === 0) return;
+        const changes = pendingState.changes.slice();
+        // Clear immediately so the UI reflects the in-flight save; if the
+        // backend errors, the user will see an error status and can redo.
+        pendingState.changes = [];
+        renderSources();
+        renderTables();
+        renderSaveBar();
+        runAction("apply_pending_changes", { changes });
+    }
+    function pendingForSource(expressionName) {
+        return pendingState.changes.some(c =>
+            (c.kind === "update_source" && c.key === expressionName) ||
+            (c.kind === "add_tables" && c.payload && c.payload.expression_name === expressionName)
+        );
+    }
+    function pendingForTable(tableName) {
+        return pendingState.changes.some(
+            c => c.kind === "reassign_table" && c.key === tableName
+        );
+    }
+    function pendingAddedSources() {
+        return pendingState.changes.filter(c => c.kind === "add_source");
+    }
+    function pendingAddedTables() {
+        const out = [];
+        for (const c of pendingState.changes) {
+            if (c.kind === "add_tables") {
+                const tables = (c.payload && c.payload.tables) || [];
+                for (const spec of tables) {
+                    out.push({ spec, expressionName: c.payload.expression_name });
+                }
+            }
+        }
+        return out;
+    }
+    function renderSaveBar() {
+        saveBar.innerHTML = "";
+        const n = pendingState.changes.length;
+        if (n === 0) {
+            saveBar.classList.remove("show");
+            return;
+        }
+        saveBar.classList.add("show");
+        const label = document.createElement("div");
+        label.className = "slls-dle-savebar-label";
+        const dot = document.createElement("span");
+        dot.className = "slls-dle-pending-dot";
+        dot.setAttribute("aria-hidden", "true");
+        label.appendChild(dot);
+        const txt = document.createElement("span");
+        txt.textContent = `${n} pending change${n === 1 ? "" : "s"}`;
+        label.appendChild(txt);
+        saveBar.appendChild(label);
+        const discardBtn = document.createElement("button");
+        discardBtn.className = "slls-dle-btn";
+        discardBtn.textContent = "Discard";
+        discardBtn.addEventListener("click", discardPendingChanges);
+        saveBar.appendChild(discardBtn);
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "slls-dle-btn slls-dle-btn-primary";
+        saveBtn.textContent = "Save changes";
+        saveBtn.addEventListener("click", applyPendingChanges);
+        saveBar.appendChild(saveBtn);
+    }
 
     // Sources section
     const sourcesSection = document.createElement("div");
@@ -832,9 +980,11 @@ function render({ model, el }) {
 
     function renderSources() {
         const sources = model.get("sources") || [];
-        sourcesHeading.innerHTML = `Sources <span class="slls-dle-count">(${sources.length})</span>`;
+        const added = pendingAddedSources();
+        const totalCount = sources.length + added.length;
+        sourcesHeading.innerHTML = `Sources <span class="slls-dle-count">(${totalCount})</span>`;
         sourcesList.innerHTML = "";
-        if (sources.length === 0) {
+        if (totalCount === 0) {
             const e = document.createElement("div");
             e.className = "slls-dle-empty";
             e.textContent = "No Direct Lake sources found.";
@@ -844,11 +994,16 @@ function render({ model, el }) {
         for (const s of sources) {
             const row = document.createElement("div");
             row.className = "slls-dle-item";
+            const dirty = pendingForSource(s.expressionName);
+            if (dirty) row.classList.add("pending");
             const main = document.createElement("div");
             main.className = "slls-dle-item-main";
             const nm = document.createElement("div");
             nm.className = "slls-dle-item-name";
-            nm.innerHTML = `${escapeHtml(s.itemName || "(unknown)")} <span class="slls-dle-pill">${escapeHtml(s.itemType || "")}</span>`;
+            const dotHtml = dirty
+                ? `<span class="slls-dle-pending-dot" aria-label="Unsaved changes" title="Unsaved changes"></span>`
+                : "";
+            nm.innerHTML = `${dotHtml}${escapeHtml(s.itemName || "(unknown)")} <span class="slls-dle-pill">${escapeHtml(s.itemType || "")}</span>`;
             main.appendChild(nm);
             const meta = document.createElement("div");
             meta.className = "slls-dle-item-meta";
@@ -867,16 +1022,40 @@ function render({ model, el }) {
             row.appendChild(actions);
             sourcesList.appendChild(row);
         }
+        // Pending added sources (not yet persisted): show with orange dot
+        // and a "pending" pill, but no Edit action (the source doesn't exist
+        // server-side yet).
+        for (const c of added) {
+            const p = c.payload || {};
+            const row = document.createElement("div");
+            row.className = "slls-dle-item pending";
+            const main = document.createElement("div");
+            main.className = "slls-dle-item-main";
+            const nm = document.createElement("div");
+            nm.className = "slls-dle-item-name";
+            nm.innerHTML =
+                `<span class="slls-dle-pending-dot" aria-label="Unsaved" title="Unsaved"></span>` +
+                `${escapeHtml(p.source_name || "(new source)")} <span class="slls-dle-pill">${escapeHtml(p.source_type || "")}</span>`;
+            main.appendChild(nm);
+            const meta = document.createElement("div");
+            meta.className = "slls-dle-item-meta";
+            meta.textContent = `Pending — will be added on save`;
+            main.appendChild(meta);
+            row.appendChild(main);
+            sourcesList.appendChild(row);
+        }
     }
 
     function renderTables() {
         const tables = model.get("tables") || [];
         const sources = model.get("sources") || [];
+        const addedTables = pendingAddedTables();
         const exprToSource = {};
         for (const s of sources) exprToSource[s.expressionName] = s;
-        tablesHeading.innerHTML = `Tables <span class="slls-dle-count">(${tables.length})</span>`;
+        const totalCount = tables.length + addedTables.length;
+        tablesHeading.innerHTML = `Tables <span class="slls-dle-count">(${totalCount})</span>`;
         tablesList.innerHTML = "";
-        if (tables.length === 0) {
+        if (totalCount === 0) {
             const e = document.createElement("div");
             e.className = "slls-dle-empty";
             e.textContent = "No tables in this model.";
@@ -886,11 +1065,16 @@ function render({ model, el }) {
         for (const t of tables) {
             const row = document.createElement("div");
             row.className = "slls-dle-item";
+            const dirty = pendingForTable(t.name);
+            if (dirty) row.classList.add("pending");
             const main = document.createElement("div");
             main.className = "slls-dle-item-main";
             const nm = document.createElement("div");
             nm.className = "slls-dle-item-name";
-            nm.textContent = t.name;
+            const dotHtml = dirty
+                ? `<span class="slls-dle-pending-dot" aria-label="Unsaved changes" title="Unsaved changes"></span>`
+                : "";
+            nm.innerHTML = `${dotHtml}${escapeHtml(t.name)}`;
             main.appendChild(nm);
             const meta = document.createElement("div");
             meta.className = "slls-dle-item-meta";
@@ -914,10 +1098,29 @@ function render({ model, el }) {
             row.appendChild(actions);
             tablesList.appendChild(row);
         }
+        // Pending added tables (not yet persisted)
+        for (const at of addedTables) {
+            const row = document.createElement("div");
+            row.className = "slls-dle-item pending";
+            const main = document.createElement("div");
+            main.className = "slls-dle-item-main";
+            const nm = document.createElement("div");
+            nm.className = "slls-dle-item-name";
+            nm.innerHTML =
+                `<span class="slls-dle-pending-dot" aria-label="Unsaved" title="Unsaved"></span>` +
+                escapeHtml(at.spec || "(new table)");
+            main.appendChild(nm);
+            const meta = document.createElement("div");
+            meta.className = "slls-dle-item-meta";
+            meta.textContent = `Pending — will be added from '${at.expressionName || ""}' on save`;
+            main.appendChild(meta);
+            row.appendChild(main);
+            tablesList.appendChild(row);
+        }
     }
 
-    model.on("change:sources", () => { renderSources(); renderTables(); });
-    model.on("change:tables", renderTables);
+    model.on("change:sources", () => { renderSources(); renderTables(); renderSaveBar(); });
+    model.on("change:tables", () => { renderTables(); renderSaveBar(); });
 
     // ----------- Modal infrastructure -----------
     const overlay = document.createElement("div");
@@ -1032,20 +1235,33 @@ function render({ model, el }) {
         footer.appendChild(cancel);
         const save = document.createElement("button");
         save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = existing ? "Save" : "Add";
+        save.textContent = existing ? "Stage changes" : "Stage source";
         save.addEventListener("click", () => {
             if (!itemSel.value) { setStatus("Please pick a source item.", "error"); return; }
+            const opt = itemSel.options[itemSel.selectedIndex];
+            const itemName = (opt && opt.textContent) || itemSel.value;
             const payload = {
                 source_type: typeSel.value,
                 source_workspace_id: wsSel.value,
                 source_id: itemSel.value,
+                source_name: itemName,
                 use_sql_endpoint: sqlToggle._input.checked,
             };
             if (existing) {
                 payload.expression_name = existing.expressionName;
-                runAction("update_source", payload);
+                enqueuePendingChange({
+                    id: pendingId(),
+                    kind: "update_source",
+                    key: existing.expressionName,
+                    payload,
+                });
             } else {
-                runAction("add_source", payload);
+                enqueuePendingChange({
+                    id: pendingId(),
+                    kind: "add_source",
+                    key: pendingId(),
+                    payload,
+                });
             }
             closeModal();
         });
@@ -1069,7 +1285,7 @@ function render({ model, el }) {
         for (const s of sources) {
             const o = document.createElement("option");
             o.value = s.expressionName;
-            o.textContent = `${s.expressionName} — ${s.itemName} (${s.itemType})`;
+            o.textContent = s.expressionName;
             if (s.expressionName === table.expressionName) o.selected = true;
             exprSel.appendChild(o);
         }
@@ -1098,15 +1314,20 @@ function render({ model, el }) {
         footer.appendChild(cancel);
         const save = document.createElement("button");
         save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = "Save";
+        save.textContent = "Stage changes";
         save.addEventListener("click", () => {
             const entity = (entityInput.value || "").trim();
             if (!entity) { setStatus("Entity name is required.", "error"); return; }
-            runAction("reassign_table", {
-                table_name: table.name,
-                expression_name: exprSel.value,
-                entity_name: entity,
-                schema: (schemaInput.value || "").trim(),
+            enqueuePendingChange({
+                id: pendingId(),
+                kind: "reassign_table",
+                key: table.name,
+                payload: {
+                    table_name: table.name,
+                    expression_name: exprSel.value,
+                    entity_name: entity,
+                    schema: (schemaInput.value || "").trim(),
+                },
             });
             closeModal();
         });
@@ -1146,7 +1367,7 @@ function render({ model, el }) {
         for (const s of sources) {
             const o = document.createElement("option");
             o.value = s.expressionName;
-            o.textContent = `${s.expressionName} — ${s.itemName} (${s.itemType})`;
+            o.textContent = s.expressionName;
             exprSel.appendChild(o);
         }
         grid.appendChild(makeField("Source (expression)", exprSel));
@@ -1173,14 +1394,19 @@ function render({ model, el }) {
         footer.appendChild(cancel);
         const save = document.createElement("button");
         save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = "Add";
+        save.textContent = "Stage tables";
         save.addEventListener("click", () => {
             const names = (manualInput.value || "")
                 .split(",").map(s => s.trim()).filter(Boolean);
             if (names.length === 0) { setStatus("Please enter at least one table.", "error"); return; }
-            runAction("add_tables", {
-                expression_name: exprSel.value,
-                tables: names,
+            enqueuePendingChange({
+                id: pendingId(),
+                kind: "add_tables",
+                key: pendingId(),
+                payload: {
+                    expression_name: exprSel.value,
+                    tables: names,
+                },
             });
             closeModal();
         });
@@ -1232,6 +1458,7 @@ function render({ model, el }) {
     renderDatasets();
     renderSources();
     renderTables();
+    renderSaveBar();
     renderScreen();
 }
 export default { render };
@@ -1609,191 +1836,184 @@ def direct_lake_editor(
                     "kind": "success",
                 }
 
-            elif action == "add_source":
+            elif action == "apply_pending_changes":
                 ds_id = widget.dataset_id
                 ws_id = widget.workspace_id
-                src_type = data.get("source_type")
-                src_ws_id = data.get("source_workspace_id")
-                src_id = data.get("source_id")
-                use_sql = bool(data.get("use_sql_endpoint"))
-                src_name, src_id_resolved = resolve_item_name_and_id(
-                    item=src_id, type=src_type, workspace=src_ws_id
-                )
-                expr_text = generate_shared_expression(
-                    item=src_id_resolved,
-                    item_type=src_type,
-                    workspace=src_ws_id,
-                    use_sql_endpoint=use_sql,
-                )
-                with connect_semantic_model(
-                    dataset=ds_id, workspace=ws_id, readonly=False
-                ) as tom:
-                    base = "DatabaseQuery" if use_sql else f"DL_{src_type}"
-                    expr_name = _unique_expression_name(tom, base)
-                    tom.add_expression(name=expr_name, expression=expr_text)
-                    tom.model.SaveChanges()
-                _load_model_state(ds_id, ws_id)
-                widget.status = {
-                    "message": f"Added source '{src_name}' as expression '{expr_name}'.",
-                    "kind": "success",
-                }
-
-            elif action == "update_source":
-                ds_id = widget.dataset_id
-                ws_id = widget.workspace_id
-                expr_name = data.get("expression_name")
-                src_type = data.get("source_type")
-                src_ws_id = data.get("source_workspace_id")
-                src_id = data.get("source_id")
-                use_sql = bool(data.get("use_sql_endpoint"))
-                src_name, src_id_resolved = resolve_item_name_and_id(
-                    item=src_id, type=src_type, workspace=src_ws_id
-                )
-                expr_text = generate_shared_expression(
-                    item=src_id_resolved,
-                    item_type=src_type,
-                    workspace=src_ws_id,
-                    use_sql_endpoint=use_sql,
-                )
-                with connect_semantic_model(
-                    dataset=ds_id, workspace=ws_id, readonly=False
-                ) as tom:
-                    if not tom.model.Expressions.Find(expr_name):
-                        raise ValueError(
-                            f"Expression '{expr_name}' not found in model."
-                        )
-                    tom.model.Expressions[expr_name].Expression = expr_text
-                    tom.model.SaveChanges()
-                _load_model_state(ds_id, ws_id)
-                widget.status = {
-                    "message": f"Updated source for expression '{expr_name}' to '{src_name}'.",
-                    "kind": "success",
-                }
-
-            elif action == "reassign_table":
-                ds_id = widget.dataset_id
-                ws_id = widget.workspace_id
-                table_name = data.get("table_name")
-                expr_name = data.get("expression_name")
-                entity_name = data.get("entity_name")
-                schema = data.get("schema") or None
-                with connect_semantic_model(
-                    dataset=ds_id, workspace=ws_id, readonly=False
-                ) as tom:
-                    if not any(t.Name == table_name for t in tom.model.Tables):
-                        raise ValueError(f"Table '{table_name}' not found in model.")
-                    if not tom.model.Expressions.Find(expr_name):
-                        raise ValueError(
-                            f"Expression '{expr_name}' not found in model."
-                        )
-                    tbl = tom.model.Tables[table_name]
-                    if tbl.Partitions.Count == 0:
-                        raise ValueError(
-                            f"Table '{table_name}' has no partitions to reassign."
-                        )
-                    part = next(iter(tbl.Partitions))
-                    part.Source.EntityName = entity_name
-                    part.Source.ExpressionSource = tom.model.Expressions[expr_name]
-                    if schema:
-                        part.Source.SchemaName = schema
-                        tbl.SourceLineageTag = f"[{schema}].[{entity_name}]"
-                    else:
-                        # Clear any existing schema so it doesn't persist
-                        # while the lineage tag falls back to [dbo]; mirrors
-                        # tom.add_entity_partition behavior when no schema
-                        # is supplied.
-                        part.Source.SchemaName = ""
-                        tbl.SourceLineageTag = f"[dbo].[{entity_name}]"
-                    tom.model.SaveChanges()
-                _load_model_state(ds_id, ws_id)
-                widget.status = {
-                    "message": (
-                        f"Reassigned '{table_name}' to expression '{expr_name}'."
-                    ),
-                    "kind": "success",
-                }
-
-            elif action == "add_tables":
-                ds_id = widget.dataset_id
-                ws_id = widget.workspace_id
-                expr_name = data.get("expression_name")
-                table_specs = data.get("tables") or []
-                if not expr_name or not table_specs:
+                if not ds_id:
                     widget.status = {
-                        "message": "Source and tables are required.",
+                        "message": "No model selected.",
                         "kind": "error",
                     }
                     return
-                # Look up source details from cached sources.
-                src_info = next(
-                    (s for s in widget.sources if s.get("expressionName") == expr_name),
-                    None,
-                )
-                if src_info is None:
-                    raise ValueError(f"Source for '{expr_name}' could not be resolved.")
-                src_id = src_info.get("itemId")
-                src_ws_id = src_info.get("workspaceId")
-                # Resolve the source workspace ID once outside the loop;
-                # resolve_workspace_id can perform network/validation calls.
-                src_ws_id_resolved = resolve_workspace_id(src_ws_id)
-                added_names = []
+                changes = data.get("changes") or []
+                if not changes:
+                    return
+                summary = []
                 with connect_semantic_model(
                     dataset=ds_id, workspace=ws_id, readonly=False
                 ) as tom:
                     existing_names = {t.Name for t in tom.model.Tables}
-                    for spec in table_specs:
-                        spec = spec.strip()
-                        if "." in spec:
-                            schema_name, entity_name = spec.split(".", 1)
+                    for change in changes:
+                        kind = change.get("kind")
+                        p = change.get("payload") or {}
+                        if kind == "add_source":
+                            src_type = p.get("source_type")
+                            src_ws_id = p.get("source_workspace_id")
+                            src_id = p.get("source_id")
+                            use_sql = bool(p.get("use_sql_endpoint"))
+                            src_name, src_id_resolved = resolve_item_name_and_id(
+                                item=src_id, type=src_type, workspace=src_ws_id
+                            )
+                            expr_text = generate_shared_expression(
+                                item=src_id_resolved,
+                                item_type=src_type,
+                                workspace=src_ws_id,
+                                use_sql_endpoint=use_sql,
+                            )
+                            base = "DatabaseQuery" if use_sql else f"DL_{src_type}"
+                            expr_name = _unique_expression_name(tom, base)
+                            tom.add_expression(name=expr_name, expression=expr_text)
+                            summary.append(f"added source '{src_name}'")
+                        elif kind == "update_source":
+                            expr_name = p.get("expression_name")
+                            src_type = p.get("source_type")
+                            src_ws_id = p.get("source_workspace_id")
+                            src_id = p.get("source_id")
+                            use_sql = bool(p.get("use_sql_endpoint"))
+                            src_name, src_id_resolved = resolve_item_name_and_id(
+                                item=src_id, type=src_type, workspace=src_ws_id
+                            )
+                            expr_text = generate_shared_expression(
+                                item=src_id_resolved,
+                                item_type=src_type,
+                                workspace=src_ws_id,
+                                use_sql_endpoint=use_sql,
+                            )
+                            if not tom.model.Expressions.Find(expr_name):
+                                raise ValueError(
+                                    f"Expression '{expr_name}' not found in model."
+                                )
+                            tom.model.Expressions[expr_name].Expression = expr_text
+                            summary.append(f"updated source '{expr_name}'")
+                        elif kind == "reassign_table":
+                            table_name = p.get("table_name")
+                            expr_name = p.get("expression_name")
+                            entity_name = p.get("entity_name")
+                            schema = p.get("schema") or None
+                            if not any(t.Name == table_name for t in tom.model.Tables):
+                                raise ValueError(
+                                    f"Table '{table_name}' not found in model."
+                                )
+                            if not tom.model.Expressions.Find(expr_name):
+                                raise ValueError(
+                                    f"Expression '{expr_name}' not found in model."
+                                )
+                            tbl = tom.model.Tables[table_name]
+                            if tbl.Partitions.Count == 0:
+                                raise ValueError(
+                                    f"Table '{table_name}' has no partitions "
+                                    f"to reassign."
+                                )
+                            part = next(iter(tbl.Partitions))
+                            part.Source.EntityName = entity_name
+                            part.Source.ExpressionSource = tom.model.Expressions[
+                                expr_name
+                            ]
+                            if schema:
+                                part.Source.SchemaName = schema
+                                tbl.SourceLineageTag = f"[{schema}].[{entity_name}]"
+                            else:
+                                # Clear any existing schema so it doesn't
+                                # persist while the lineage tag falls back
+                                # to [dbo]; mirrors tom.add_entity_partition
+                                # behavior when no schema is supplied.
+                                part.Source.SchemaName = ""
+                                tbl.SourceLineageTag = f"[dbo].[{entity_name}]"
+                            summary.append(f"reassigned '{table_name}'")
+                        elif kind == "add_tables":
+                            expr_name = p.get("expression_name")
+                            table_specs = p.get("tables") or []
+                            if not expr_name or not table_specs:
+                                raise ValueError(
+                                    "Source and tables are required to add tables."
+                                )
+                            src_info = next(
+                                (
+                                    s
+                                    for s in widget.sources
+                                    if s.get("expressionName") == expr_name
+                                ),
+                                None,
+                            )
+                            if src_info is None:
+                                raise ValueError(
+                                    f"Source for '{expr_name}' could not be resolved."
+                                )
+                            src_id = src_info.get("itemId")
+                            src_ws_id = src_info.get("workspaceId")
+                            # Resolve the source workspace ID once outside the
+                            # loop; resolve_workspace_id can perform
+                            # network/validation calls.
+                            src_ws_id_resolved = resolve_workspace_id(src_ws_id)
+                            for spec in table_specs:
+                                spec = spec.strip()
+                                if "." in spec:
+                                    schema_name, entity_name = spec.split(".", 1)
+                                else:
+                                    schema_name = None
+                                    entity_name = spec
+                                table_display = entity_name
+                                if table_display in existing_names:
+                                    raise ValueError(
+                                        f"Table '{table_display}' already "
+                                        f"exists in the model."
+                                    )
+                                path = create_abfss_path(
+                                    lakehouse_id=src_id,
+                                    lakehouse_workspace_id=src_ws_id_resolved,
+                                    delta_table_name=entity_name,
+                                    schema=schema_name,
+                                )
+                                dfC = list_columns_from_path(path=path)
+                                if dfC.empty:
+                                    raise ValueError(
+                                        f"Source table '{spec}' has no "
+                                        f"columns or does not exist."
+                                    )
+                                tom.add_table(name=table_display)
+                                tom.add_entity_partition(
+                                    table_name=table_display,
+                                    entity_name=entity_name,
+                                    expression=expr_name,
+                                    schema_name=schema_name,
+                                )
+                                for _, row in dfC.iterrows():
+                                    col_name = row["Column Name"]
+                                    dtype = convert_column_data_type(row["Data Type"])
+                                    # Binary columns are not supported in
+                                    # Direct Lake semantic models; mirror
+                                    # generate_direct_lake_semantic_model
+                                    # behavior and skip them silently.
+                                    if dtype == "Binary":
+                                        continue
+                                    tom.add_data_column(
+                                        table_name=table_display,
+                                        column_name=col_name,
+                                        data_type=dtype,
+                                        source_column=col_name,
+                                    )
+                                existing_names.add(table_display)
+                                summary.append(f"added table '{table_display}'")
                         else:
-                            schema_name = None
-                            entity_name = spec
-                        table_display = entity_name
-                        if table_display in existing_names:
-                            raise ValueError(
-                                f"Table '{table_display}' already exists in the model."
-                            )
-                        # Discover columns from delta path for Fabric-native sources.
-                        path = create_abfss_path(
-                            lakehouse_id=src_id,
-                            lakehouse_workspace_id=src_ws_id_resolved,
-                            delta_table_name=entity_name,
-                            schema=schema_name,
-                        )
-                        dfC = list_columns_from_path(path=path)
-                        if dfC.empty:
-                            raise ValueError(
-                                f"Source table '{spec}' has no columns or does not exist."
-                            )
-                        tom.add_table(name=table_display)
-                        tom.add_entity_partition(
-                            table_name=table_display,
-                            entity_name=entity_name,
-                            expression=expr_name,
-                            schema_name=schema_name,
-                        )
-                        for _, row in dfC.iterrows():
-                            col_name = row["Column Name"]
-                            dtype = convert_column_data_type(row["Data Type"])
-                            # Binary columns are not supported in Direct Lake
-                            # semantic models; mirror generate_direct_lake_semantic_model
-                            # behavior and skip them silently.
-                            if dtype == "Binary":
-                                continue
-                            tom.add_data_column(
-                                table_name=table_display,
-                                column_name=col_name,
-                                data_type=dtype,
-                                source_column=col_name,
-                            )
-                        existing_names.add(table_display)
-                        added_names.append(table_display)
+                            raise ValueError(f"Unknown pending change kind: {kind!r}")
                     tom.model.SaveChanges()
                 _load_model_state(ds_id, ws_id)
                 widget.status = {
                     "message": (
-                        f"Added {len(added_names)} table(s): "
-                        f"{', '.join(added_names)}."
+                        f"Saved {len(changes)} change(s) to the model: "
+                        f"{', '.join(summary)}."
+                        if summary
+                        else f"Saved {len(changes)} change(s) to the model."
                     ),
                     "kind": "success",
                 }
