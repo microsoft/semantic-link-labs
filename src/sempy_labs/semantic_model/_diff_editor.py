@@ -1535,10 +1535,10 @@ export default { render };
 
 @log
 def semantic_model_diff_editor(
-    source_workspace: Optional[str | UUID] = None,
     source_dataset: Optional[str | UUID] = None,
-    target_workspace: Optional[str | UUID] = None,
+    source_workspace: Optional[str | UUID] = None,
     target_dataset: Optional[str | UUID] = None,
+    target_workspace: Optional[str | UUID] = None,
     format: str = "TMDL",
     dark_mode: bool = False,
 ):
@@ -1563,17 +1563,17 @@ def semantic_model_diff_editor(
 
     Parameters
     ----------
-    source_workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID for the source semantic model.
-        If None, the user can choose it from the UI.
     source_dataset : str | uuid.UUID, default=None
         Name or ID of the source semantic model.
         If None, the user can choose it from the UI.
-    target_workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID for the target semantic model.
+    source_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID for the source semantic model.
         If None, the user can choose it from the UI.
     target_dataset : str | uuid.UUID, default=None
         Name or ID of the target semantic model.
+        If None, the user can choose it from the UI.
+    target_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID for the target semantic model.
         If None, the user can choose it from the UI.
     format : str, default="TMDL"
         The format used to compare the two semantic models. Valid options are
@@ -1582,7 +1582,7 @@ def semantic_model_diff_editor(
         ``model.bim`` file.
     dark_mode : bool, default=False
         If True, renders the editor with a dark colour theme. If False, renders
-        with a light colour theme.
+        with a light color theme.
     """
 
     try:
