@@ -1687,6 +1687,10 @@ def direct_lake_editor(
                             f"Expression '{expr_name}' not found in model."
                         )
                     tbl = tom.model.Tables[table_name]
+                    if tbl.Partitions.Count == 0:
+                        raise ValueError(
+                            f"Table '{table_name}' has no partitions to reassign."
+                        )
                     part = next(iter(tbl.Partitions))
                     part.Source.EntityName = entity_name
                     part.Source.ExpressionSource = tom.model.Expressions[expr_name]
@@ -1694,6 +1698,11 @@ def direct_lake_editor(
                         part.Source.SchemaName = schema
                         tbl.SourceLineageTag = f"[{schema}].[{entity_name}]"
                     else:
+                        # Clear any existing schema so it doesn't persist
+                        # while the lineage tag falls back to [dbo]; mirrors
+                        # tom.add_entity_partition behavior when no schema
+                        # is supplied.
+                        part.Source.SchemaName = ""
                         tbl.SourceLineageTag = f"[dbo].[{entity_name}]"
                     tom.model.SaveChanges()
                 _load_model_state(ds_id, ws_id)
