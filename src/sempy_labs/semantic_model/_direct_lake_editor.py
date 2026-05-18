@@ -226,6 +226,9 @@ _WIDGET_CSS = """
 .slls-dle-grid > .slls-dle-field {
     min-width: 0;
 }
+.slls-dle-grid > .slls-dle-field-wide {
+    grid-column: 1 / -1;
+}
 .slls-dle-grid .slls-dle-select,
 .slls-dle-grid .slls-dle-input {
     width: 100%;
@@ -233,6 +236,7 @@ _WIDGET_CSS = """
     min-width: 0;
     text-overflow: ellipsis;
     overflow: hidden;
+    white-space: nowrap;
 }
 .slls-dle-field {
     display: flex;
@@ -416,6 +420,65 @@ _WIDGET_CSS = """
     justify-content: flex-end;
     gap: 8px;
     margin-top: 18px;
+}
+.slls-dle-modal-wide {
+    max-width: 820px;
+}
+.slls-dle-columns-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-top: 4px;
+}
+.slls-dle-column-row {
+    border: 1px solid var(--slls-border);
+    border-radius: var(--slls-radius-sm);
+    background: var(--slls-surface-2);
+    padding: 10px 12px;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+.slls-dle-column-row.pending {
+    border-color: var(--slls-orange);
+    background: rgba(255, 149, 0, 0.06);
+}
+.slls-dle-column-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.slls-dle-column-name {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--slls-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.slls-dle-column-type {
+    font-size: 11.5px;
+    color: var(--slls-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.slls-dle-column-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+}
+.slls-dle-column-fields > .slls-dle-field { min-width: 0; }
+.slls-dle-column-fields .slls-dle-select,
+.slls-dle-column-fields .slls-dle-input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .slls-dle-tablerows {
@@ -671,14 +734,52 @@ function render({ model, el }) {
     createGrid.className = "slls-dle-grid";
     createSection.appendChild(createGrid);
 
-    function makeField(labelText, inputEl) {
+    function makeField(labelText, inputEl, opts) {
         const wrap = document.createElement("div");
         wrap.className = "slls-dle-field";
+        if (opts && opts.wide) {
+            wrap.classList.add("slls-dle-field-wide");
+        }
         const lab = document.createElement("label");
         lab.textContent = labelText;
         wrap.appendChild(lab);
         wrap.appendChild(inputEl);
         return wrap;
+    }
+    // Toggles the orange pending dot inside a field's <label> based on
+    // whether the current value differs from the baseline value.
+    function setFieldDirty(fieldWrap, dirty) {
+        if (!fieldWrap) return;
+        const lab = fieldWrap.querySelector("label");
+        if (!lab) return;
+        let dot = lab.querySelector(".slls-dle-pending-dot");
+        if (dirty && !dot) {
+            dot = document.createElement("span");
+            dot.className = "slls-dle-pending-dot";
+            dot.setAttribute("aria-label", "Unsaved changes");
+            dot.title = "Unsaved changes";
+            dot.style.marginRight = "4px";
+            lab.prepend(dot);
+        } else if (!dirty && dot) {
+            dot.remove();
+        }
+    }
+    // Toggles the orange pending dot inside a makeToggle() label's text span.
+    function setToggleDirty(toggleWrap, dirty) {
+        if (!toggleWrap) return;
+        const txt = toggleWrap.querySelector("span");
+        if (!txt) return;
+        let dot = txt.querySelector(".slls-dle-pending-dot");
+        if (dirty && !dot) {
+            dot = document.createElement("span");
+            dot.className = "slls-dle-pending-dot";
+            dot.setAttribute("aria-label", "Unsaved changes");
+            dot.title = "Unsaved changes";
+            dot.style.marginRight = "4px";
+            txt.prepend(dot);
+        } else if (!dirty && dot) {
+            dot.remove();
+        }
     }
 
     const newNameInput = document.createElement("input");
@@ -701,7 +802,7 @@ function render({ model, el }) {
 
     const newSrcWsSelect = document.createElement("select");
     newSrcWsSelect.className = "slls-dle-select";
-    createGrid.appendChild(makeField("Source workspace", newSrcWsSelect));
+    createGrid.appendChild(makeField("Source workspace", newSrcWsSelect, { wide: true }));
 
     const newSrcItemSelect = document.createElement("select");
     newSrcItemSelect.className = "slls-dle-select";
@@ -898,8 +999,52 @@ function render({ model, el }) {
     }
     function pendingForTable(tableName) {
         return pendingState.changes.some(
-            c => c.kind === "reassign_table" && c.key === tableName
+            c => (c.kind === "reassign_table" && c.key === tableName) ||
+                 (c.kind === "edit_columns" && c.key === tableName)
         );
+    }
+    // Returns the most recently staged update_source payload for the given
+    // expression name (or null). Used to re-hydrate the Edit Source modal
+    // with the staged values instead of the saved values.
+    function latestPendingUpdateForSource(expressionName) {
+        let payload = null;
+        for (const c of pendingState.changes) {
+            if (c.kind === "update_source" && c.key === expressionName) {
+                payload = c.payload || null;
+            }
+        }
+        return payload;
+    }
+    // Returns the most recently staged reassign_table payload for the given
+    // table name (or null).
+    function latestPendingReassignForTable(tableName) {
+        let payload = null;
+        for (const c of pendingState.changes) {
+            if (c.kind === "reassign_table" && c.key === tableName) {
+                payload = c.payload || null;
+            }
+        }
+        return payload;
+    }
+    // Merges all staged edit_columns payloads for the given table into a
+    // single { columnName -> { source_column?, data_type?, data_category? } }
+    // map. Returns {} when there are no staged column edits.
+    function mergedPendingColumnEditsForTable(tableName) {
+        const merged = {};
+        for (const c of pendingState.changes) {
+            if (c.kind === "edit_columns" && c.key === tableName) {
+                const cols = (c.payload && c.payload.columns) || [];
+                for (const col of cols) {
+                    if (!col || !col.name) continue;
+                    const cur = merged[col.name] || {};
+                    if ("source_column" in col) cur.source_column = col.source_column;
+                    if ("data_type" in col) cur.data_type = col.data_type;
+                    if ("data_category" in col) cur.data_category = col.data_category;
+                    merged[col.name] = cur;
+                }
+            }
+        }
+        return merged;
     }
     function pendingAddedSources() {
         return pendingState.changes.filter(c => c.kind === "add_source");
@@ -909,12 +1054,61 @@ function render({ model, el }) {
         for (const c of pendingState.changes) {
             if (c.kind === "add_tables") {
                 const tables = (c.payload && c.payload.tables) || [];
-                for (const spec of tables) {
-                    out.push({ spec, expressionName: c.payload.expression_name });
+                for (const entry of tables) {
+                    // Each entry may be a plain "schema.table" string (legacy)
+                    // or a { spec, name } object when the user supplied an
+                    // explicit display name.
+                    const isObj = entry && typeof entry === "object";
+                    const spec = isObj ? (entry.spec || "") : String(entry || "");
+                    const name = isObj ? (entry.name || "") : "";
+                    out.push({
+                        spec,
+                        name,
+                        expressionName: c.payload.expression_name,
+                        changeId: c.id,
+                    });
                 }
             }
         }
         return out;
+    }
+    // Removes all pending changes for which `predicate(change)` returns true.
+    // Used to back per-row "Revert" buttons.
+    function revertChangesMatching(predicate, message) {
+        const before = pendingState.changes.length;
+        pendingState.changes = pendingState.changes.filter(c => !predicate(c));
+        if (pendingState.changes.length === before) return;
+        renderSources();
+        renderTables();
+        renderSaveBar();
+        setStatus(message || "Reverted staged change.", "info");
+    }
+    // Removes a single table spec from an add_tables change (by change id),
+    // dropping the change entirely when its last spec is removed.
+    function revertAddedTableSpec(changeId, spec) {
+        const next = [];
+        for (const c of pendingState.changes) {
+            if (c.kind === "add_tables" && c.id === changeId) {
+                const tables = ((c.payload && c.payload.tables) || []).filter(entry => {
+                    const isObj = entry && typeof entry === "object";
+                    const s = isObj ? (entry.spec || "") : String(entry || "");
+                    return s !== spec;
+                });
+                if (tables.length > 0) {
+                    next.push({
+                        ...c,
+                        payload: { ...c.payload, tables },
+                    });
+                }
+            } else {
+                next.push(c);
+            }
+        }
+        pendingState.changes = next;
+        renderSources();
+        renderTables();
+        renderSaveBar();
+        setStatus("Reverted staged change.", "info");
     }
     function renderSaveBar() {
         saveBar.innerHTML = "";
@@ -981,6 +1175,9 @@ function render({ model, el }) {
     function renderSources() {
         const sources = model.get("sources") || [];
         const added = pendingAddedSources();
+        const workspaces = model.get("workspaces") || [];
+        const wsNameById = {};
+        for (const w of workspaces) wsNameById[w.id] = w.name;
         const totalCount = sources.length + added.length;
         sourcesHeading.innerHTML = `Sources <span class="slls-dle-count">(${totalCount})</span>`;
         sourcesList.innerHTML = "";
@@ -996,6 +1193,18 @@ function render({ model, el }) {
             row.className = "slls-dle-item";
             const dirty = pendingForSource(s.expressionName);
             if (dirty) row.classList.add("pending");
+            // Merge the latest staged update_source payload (if any) over the
+            // saved values so the main screen reflects pending edits.
+            const staged = latestPendingUpdateForSource(s.expressionName) || {};
+            const effItemName = staged.source_name || s.itemName;
+            const effItemType = staged.source_type || s.itemType;
+            const effWsId = staged.source_workspace_id || s.workspaceId;
+            const effWsName = staged.source_workspace_id
+                ? (wsNameById[effWsId] || s.workspaceName || "")
+                : (s.workspaceName || "");
+            const effUsesSql = staged.use_sql_endpoint != null
+                ? !!staged.use_sql_endpoint
+                : !!s.usesSqlEndpoint;
             const main = document.createElement("div");
             main.className = "slls-dle-item-main";
             const nm = document.createElement("div");
@@ -1003,13 +1212,13 @@ function render({ model, el }) {
             const dotHtml = dirty
                 ? `<span class="slls-dle-pending-dot" aria-label="Unsaved changes" title="Unsaved changes"></span>`
                 : "";
-            nm.innerHTML = `${dotHtml}${escapeHtml(s.itemName || "(unknown)")} <span class="slls-dle-pill">${escapeHtml(s.itemType || "")}</span>`;
+            nm.innerHTML = `${dotHtml}${escapeHtml(effItemName || "(unknown)")} <span class="slls-dle-pill">${escapeHtml(effItemType || "")}</span>`;
             main.appendChild(nm);
             const meta = document.createElement("div");
             meta.className = "slls-dle-item-meta";
-            const sqlBit = s.usesSqlEndpoint ? " · SQL endpoint" : "";
+            const sqlBit = effUsesSql ? " · SQL endpoint" : "";
             const tableCount = s.tableCount != null ? ` · ${s.tableCount} table${s.tableCount === 1 ? "" : "s"}` : "";
-            meta.textContent = `${s.workspaceName || ""} · expression: ${s.expressionName || ""}${sqlBit}${tableCount}`;
+            meta.textContent = `${effWsName} · expression: ${s.expressionName || ""}${sqlBit}${tableCount}`;
             main.appendChild(meta);
             row.appendChild(main);
             const actions = document.createElement("div");
@@ -1019,12 +1228,25 @@ function render({ model, el }) {
             editBtn.textContent = "Edit";
             editBtn.addEventListener("click", () => openSourceModal(s));
             actions.appendChild(editBtn);
+            if (dirty) {
+                const revertBtn = document.createElement("button");
+                revertBtn.className = "slls-dle-btn slls-dle-btn-danger";
+                revertBtn.textContent = "Revert";
+                revertBtn.title = "Discard staged edits for this source";
+                revertBtn.addEventListener("click", () => {
+                    revertChangesMatching(
+                        c => c.kind === "update_source" && c.key === s.expressionName,
+                        `Reverted staged edits for '${s.itemName || s.expressionName}'.`,
+                    );
+                });
+                actions.appendChild(revertBtn);
+            }
             row.appendChild(actions);
             sourcesList.appendChild(row);
         }
         // Pending added sources (not yet persisted): show with orange dot
-        // and a "pending" pill, but no Edit action (the source doesn't exist
-        // server-side yet).
+        // and a "pending" pill, plus a Revert action that removes the
+        // staged add_source change entirely.
         for (const c of added) {
             const p = c.payload || {};
             const row = document.createElement("div");
@@ -1042,16 +1264,27 @@ function render({ model, el }) {
             meta.textContent = `Pending — will be added on save`;
             main.appendChild(meta);
             row.appendChild(main);
+            const actions = document.createElement("div");
+            actions.className = "slls-dle-item-actions";
+            const revertBtn = document.createElement("button");
+            revertBtn.className = "slls-dle-btn slls-dle-btn-danger";
+            revertBtn.textContent = "Revert";
+            revertBtn.title = "Remove this staged source";
+            revertBtn.addEventListener("click", () => {
+                revertChangesMatching(
+                    ch => ch.id === c.id,
+                    `Reverted staged source '${p.source_name || ""}'.`,
+                );
+            });
+            actions.appendChild(revertBtn);
+            row.appendChild(actions);
             sourcesList.appendChild(row);
         }
     }
 
     function renderTables() {
         const tables = model.get("tables") || [];
-        const sources = model.get("sources") || [];
         const addedTables = pendingAddedTables();
-        const exprToSource = {};
-        for (const s of sources) exprToSource[s.expressionName] = s;
         const totalCount = tables.length + addedTables.length;
         tablesHeading.innerHTML = `Tables <span class="slls-dle-count">(${totalCount})</span>`;
         tablesList.innerHTML = "";
@@ -1067,6 +1300,14 @@ function render({ model, el }) {
             row.className = "slls-dle-item";
             const dirty = pendingForTable(t.name);
             if (dirty) row.classList.add("pending");
+            // Merge the latest staged reassign payload (if any) over the
+            // saved values so the main screen reflects pending edits.
+            const staged = latestPendingReassignForTable(t.name) || {};
+            const effExpression = staged.expression_name || t.expressionName || "";
+            const effSchema = staged.schema != null
+                ? (staged.schema || "")
+                : (t.schemaName || "");
+            const effEntity = staged.entity_name || t.entityName || "";
             const main = document.createElement("div");
             main.className = "slls-dle-item-main";
             const nm = document.createElement("div");
@@ -1078,18 +1319,20 @@ function render({ model, el }) {
             main.appendChild(nm);
             const meta = document.createElement("div");
             meta.className = "slls-dle-item-meta";
-            const src = exprToSource[t.expressionName];
-            const sourceLabel = src
-                ? `${src.itemName} (${src.itemType})`
-                : (t.expressionName || "(no expression)");
-            const entity = t.schemaName
-                ? `${t.schemaName}.${t.entityName || ""}`
-                : (t.entityName || "");
+            const sourceLabel = effExpression || "(no expression)";
+            const entity = effSchema
+                ? `${effSchema}.${effEntity}`
+                : effEntity;
             meta.textContent = `Entity: ${entity || "(unknown)"} · Source: ${sourceLabel}`;
             main.appendChild(meta);
             row.appendChild(main);
             const actions = document.createElement("div");
             actions.className = "slls-dle-item-actions";
+            const colsBtn = document.createElement("button");
+            colsBtn.className = "slls-dle-btn";
+            colsBtn.textContent = "Columns";
+            colsBtn.addEventListener("click", () => openColumnsModal(t));
+            actions.appendChild(colsBtn);
             const reassignBtn = document.createElement("button");
             reassignBtn.className = "slls-dle-btn";
             reassignBtn.textContent = "Reassign";
@@ -1106,15 +1349,36 @@ function render({ model, el }) {
             main.className = "slls-dle-item-main";
             const nm = document.createElement("div");
             nm.className = "slls-dle-item-name";
+            // Derive the display name: the user-supplied name takes priority,
+            // otherwise fall back to the entity (the part after the schema in
+            // "schema.entity") or the full spec.
+            const specStr = at.spec || "";
+            const fallbackEntity = specStr.includes(".")
+                ? specStr.split(".").slice(1).join(".")
+                : specStr;
+            const displayName = (at.name || fallbackEntity || "(new table)");
             nm.innerHTML =
                 `<span class="slls-dle-pending-dot" aria-label="Unsaved" title="Unsaved"></span>` +
-                escapeHtml(at.spec || "(new table)");
+                escapeHtml(displayName);
             main.appendChild(nm);
             const meta = document.createElement("div");
             meta.className = "slls-dle-item-meta";
-            meta.textContent = `Pending — will be added from '${at.expressionName || ""}' on save`;
+            const entityBit = specStr ? `Entity: ${specStr} · ` : "";
+            meta.textContent =
+                `${entityBit}Pending — will be added from '${at.expressionName || ""}' on save`;
             main.appendChild(meta);
             row.appendChild(main);
+            const actions = document.createElement("div");
+            actions.className = "slls-dle-item-actions";
+            const revertBtn = document.createElement("button");
+            revertBtn.className = "slls-dle-btn slls-dle-btn-danger";
+            revertBtn.textContent = "Revert";
+            revertBtn.title = "Remove this staged table";
+            revertBtn.addEventListener("click", () => {
+                revertAddedTableSpec(at.changeId, at.spec);
+            });
+            actions.appendChild(revertBtn);
+            row.appendChild(actions);
             tablesList.appendChild(row);
         }
     }
@@ -1163,6 +1427,23 @@ function render({ model, el }) {
         h.textContent = existing ? `Edit source: ${existing.itemName}` : "Add a new source";
         modal.appendChild(h);
 
+        // Baseline = saved server values; staged = latest pending update_source
+        // payload (if any). Initial form values come from staged ?? baseline so
+        // reopening the modal reflects any in-flight staged changes.
+        const baseline = existing ? {
+            itemType: existing.itemType || "",
+            workspaceId: existing.workspaceId || "",
+            itemId: existing.itemId || "",
+            usesSqlEndpoint: !!existing.usesSqlEndpoint,
+        } : null;
+        const staged = existing ? latestPendingUpdateForSource(existing.expressionName) : null;
+        const initial = baseline ? {
+            itemType: staged ? (staged.source_type || baseline.itemType) : baseline.itemType,
+            workspaceId: staged ? (staged.source_workspace_id || baseline.workspaceId) : baseline.workspaceId,
+            itemId: staged ? (staged.source_id || baseline.itemId) : baseline.itemId,
+            usesSqlEndpoint: staged ? !!staged.use_sql_endpoint : baseline.usesSqlEndpoint,
+        } : null;
+
         const grid = document.createElement("div");
         grid.className = "slls-dle-grid";
         modal.appendChild(grid);
@@ -1171,27 +1452,38 @@ function render({ model, el }) {
         typeSel.className = "slls-dle-select";
         for (const t of (model.get("source_types") || [])) {
             const o = document.createElement("option"); o.value = t; o.textContent = t;
-            if (existing && existing.itemType === t) o.selected = true;
+            if (initial && initial.itemType === t) o.selected = true;
             typeSel.appendChild(o);
         }
-        grid.appendChild(makeField("Source type", typeSel));
+        const typeField = makeField("Source type", typeSel);
+        grid.appendChild(typeField);
 
         const wsSel = document.createElement("select");
         wsSel.className = "slls-dle-select";
         for (const ws of (model.get("workspaces") || [])) {
             const o = document.createElement("option"); o.value = ws.id; o.textContent = ws.name;
-            if (existing && existing.workspaceId === ws.id) o.selected = true;
+            if (initial && initial.workspaceId === ws.id) o.selected = true;
             wsSel.appendChild(o);
         }
         if (!existing) wsSel.value = model.get("workspace_id") || wsSel.value;
-        grid.appendChild(makeField("Source workspace", wsSel));
+        const wsField = makeField("Source workspace", wsSel, { wide: true });
+        grid.appendChild(wsField);
 
         const itemSel = document.createElement("select");
         itemSel.className = "slls-dle-select";
-        grid.appendChild(makeField("Source item", itemSel));
+        const itemField = makeField("Source item", itemSel);
+        grid.appendChild(itemField);
 
-        const sqlToggle = makeToggle("Use SQL endpoint", existing ? !!existing.usesSqlEndpoint : false);
+        const sqlToggle = makeToggle("Use SQL endpoint", initial ? initial.usesSqlEndpoint : false);
         modal.appendChild(sqlToggle);
+
+        function refreshDots() {
+            if (!baseline) return;
+            setFieldDirty(typeField, typeSel.value !== baseline.itemType);
+            setFieldDirty(wsField, wsSel.value !== baseline.workspaceId);
+            setFieldDirty(itemField, !!itemSel.value && itemSel.value !== baseline.itemId);
+            setToggleDirty(sqlToggle, !!sqlToggle._input.checked !== baseline.usesSqlEndpoint);
+        }
 
         function refreshItems() {
             const map = model.get("source_items") || {};
@@ -1208,23 +1500,38 @@ function render({ model, el }) {
                         source_type: typeSel.value,
                     });
                 }
+                refreshDots();
                 return;
             }
+            // Prefer the staged/initial itemId if it's valid for the current
+            // (workspace, type) pair; otherwise fall back to the first option.
+            const desiredItemId = initial ? initial.itemId : "";
+            let matched = false;
             for (const it of items) {
                 const o = document.createElement("option");
                 o.value = it.id; o.textContent = it.name;
-                if (existing && existing.itemId === it.id) o.selected = true;
+                if (desiredItemId && desiredItemId === it.id) {
+                    o.selected = true;
+                    matched = true;
+                }
                 itemSel.appendChild(o);
             }
+            if (!matched && itemSel.options.length > 0) {
+                itemSel.selectedIndex = 0;
+            }
+            refreshDots();
         }
         typeSel.addEventListener("change", refreshItems);
         wsSel.addEventListener("change", refreshItems);
+        itemSel.addEventListener("change", refreshDots);
+        sqlToggle._input.addEventListener("change", refreshDots);
         const itemsListener = () => refreshItems();
         model.on("change:source_items", itemsListener);
         registerModalCleanup(() => {
             try { model.off("change:source_items", itemsListener); } catch(_) {}
         });
         refreshItems();
+        refreshDots();
 
         const footer = document.createElement("div");
         footer.className = "slls-dle-modal-footer";
@@ -1275,6 +1582,20 @@ function render({ model, el }) {
         h.textContent = `Reassign table: ${table.name}`;
         modal.appendChild(h);
 
+        // Baseline = saved values; staged = latest pending reassign_table
+        // payload. Initial form values come from staged ?? baseline.
+        const baseline = {
+            expressionName: table.expressionName || "",
+            schema: table.schemaName || "",
+            entityName: table.entityName || "",
+        };
+        const staged = latestPendingReassignForTable(table.name);
+        const initial = {
+            expressionName: staged ? (staged.expression_name || baseline.expressionName) : baseline.expressionName,
+            schema: staged ? (staged.schema != null ? staged.schema : baseline.schema) : baseline.schema,
+            entityName: staged ? (staged.entity_name || baseline.entityName) : baseline.entityName,
+        };
+
         const sources = model.get("sources") || [];
         const grid = document.createElement("div");
         grid.className = "slls-dle-grid";
@@ -1286,24 +1607,37 @@ function render({ model, el }) {
             const o = document.createElement("option");
             o.value = s.expressionName;
             o.textContent = s.expressionName;
-            if (s.expressionName === table.expressionName) o.selected = true;
+            if (s.expressionName === initial.expressionName) o.selected = true;
             exprSel.appendChild(o);
         }
-        grid.appendChild(makeField("Source (expression)", exprSel));
+        const exprField = makeField("Source (expression)", exprSel);
+        grid.appendChild(exprField);
 
         const schemaInput = document.createElement("input");
         schemaInput.type = "text";
         schemaInput.className = "slls-dle-input";
-        schemaInput.value = table.schemaName || "";
+        schemaInput.value = initial.schema;
         schemaInput.placeholder = "dbo";
-        grid.appendChild(makeField("Schema (optional)", schemaInput));
+        const schemaField = makeField("Schema (optional)", schemaInput);
+        grid.appendChild(schemaField);
 
         const entityInput = document.createElement("input");
         entityInput.type = "text";
         entityInput.className = "slls-dle-input";
-        entityInput.value = table.entityName || "";
+        entityInput.value = initial.entityName;
         entityInput.placeholder = "source_table";
-        grid.appendChild(makeField("Entity (source table) name", entityInput));
+        const entityField = makeField("Entity (source table) name", entityInput);
+        grid.appendChild(entityField);
+
+        function refreshDots() {
+            setFieldDirty(exprField, exprSel.value !== baseline.expressionName);
+            setFieldDirty(schemaField, (schemaInput.value || "") !== baseline.schema);
+            setFieldDirty(entityField, (entityInput.value || "") !== baseline.entityName);
+        }
+        exprSel.addEventListener("change", refreshDots);
+        schemaInput.addEventListener("input", refreshDots);
+        entityInput.addEventListener("input", refreshDots);
+        refreshDots();
 
         const footer = document.createElement("div");
         footer.className = "slls-dle-modal-footer";
@@ -1312,6 +1646,23 @@ function render({ model, el }) {
         cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
         cancel.addEventListener("click", closeModal);
         footer.appendChild(cancel);
+        // Show Revert if there are staged reassign changes for this table.
+        if (pendingState.changes.some(
+            c => c.kind === "reassign_table" && c.key === table.name,
+        )) {
+            const revert = document.createElement("button");
+            revert.className = "slls-dle-btn slls-dle-btn-danger";
+            revert.textContent = "Revert";
+            revert.title = "Discard staged reassign for this table";
+            revert.addEventListener("click", () => {
+                revertChangesMatching(
+                    c => c.kind === "reassign_table" && c.key === table.name,
+                    `Reverted staged reassign for '${table.name}'.`,
+                );
+                closeModal();
+            });
+            footer.appendChild(revert);
+        }
         const save = document.createElement("button");
         save.className = "slls-dle-btn slls-dle-btn-primary";
         save.textContent = "Stage changes";
@@ -1328,6 +1679,222 @@ function render({ model, el }) {
                     entity_name: entity,
                     schema: (schemaInput.value || "").trim(),
                 },
+            });
+            closeModal();
+        });
+        footer.appendChild(save);
+        openModal();
+    }
+
+    // Power BI data types supported by this editor. Binary and Variant are
+    // intentionally excluded.
+    const COLUMN_DATA_TYPES = [
+        "Int64",
+        "Double",
+        "Decimal",
+        "String",
+        "Boolean",
+        "DateTime",
+    ];
+
+    function openColumnsModal(table) {
+        modal.innerHTML = "";
+        modal.classList.add("slls-dle-modal-wide");
+        registerModalCleanup(() => modal.classList.remove("slls-dle-modal-wide"));
+
+        const h = document.createElement("h2");
+        h.textContent = `Edit columns: ${table.name}`;
+        modal.appendChild(h);
+
+        const baseCols = (table.columns || []).map(c => ({
+            name: c.name,
+            sourceColumn: c.sourceColumn || "",
+            dataType: c.dataType || "",
+            dataCategory: c.dataCategory || "",
+            columnType: c.columnType || "",
+        }));
+        const stagedMap = mergedPendingColumnEditsForTable(table.name);
+
+        if (baseCols.length === 0) {
+            const p = document.createElement("div");
+            p.className = "slls-dle-empty";
+            p.textContent = "This table has no editable columns.";
+            modal.appendChild(p);
+            const footer = document.createElement("div");
+            footer.className = "slls-dle-modal-footer";
+            modal.appendChild(footer);
+            const close = document.createElement("button");
+            close.className = "slls-dle-btn"; close.textContent = "Close";
+            close.addEventListener("click", closeModal);
+            footer.appendChild(close);
+            openModal();
+            return;
+        }
+
+        const list = document.createElement("div");
+        list.className = "slls-dle-columns-list";
+        modal.appendChild(list);
+
+        // Track the latest values per column so we can compute diffs on save.
+        const state = {};
+        for (const bc of baseCols) {
+            const st = stagedMap[bc.name] || {};
+            state[bc.name] = {
+                sourceColumn: "source_column" in st ? (st.source_column || "") : bc.sourceColumn,
+                dataType: "data_type" in st ? (st.data_type || "") : bc.dataType,
+                dataCategory: "data_category" in st ? (st.data_category || "") : bc.dataCategory,
+            };
+        }
+
+        for (const bc of baseCols) {
+            const row = document.createElement("div");
+            row.className = "slls-dle-column-row";
+            const head = document.createElement("div");
+            head.className = "slls-dle-column-head";
+            const nm = document.createElement("div");
+            nm.className = "slls-dle-column-name";
+            nm.textContent = bc.name;
+            head.appendChild(nm);
+            const ty = document.createElement("div");
+            ty.className = "slls-dle-column-type";
+            ty.textContent = bc.columnType || "";
+            head.appendChild(ty);
+            row.appendChild(head);
+
+            const fields = document.createElement("div");
+            fields.className = "slls-dle-column-fields";
+            row.appendChild(fields);
+
+            const srcInput = document.createElement("input");
+            srcInput.type = "text";
+            srcInput.className = "slls-dle-input";
+            srcInput.value = state[bc.name].sourceColumn;
+            srcInput.placeholder = bc.name;
+            // Source column is only meaningful for data columns.
+            if (bc.columnType && bc.columnType !== "Data") {
+                srcInput.disabled = true;
+                srcInput.placeholder = "(not applicable)";
+            }
+            const srcField = makeField("Source column", srcInput);
+            fields.appendChild(srcField);
+
+            const typeSel = document.createElement("select");
+            typeSel.className = "slls-dle-select";
+            const options = COLUMN_DATA_TYPES.slice();
+            // Keep any pre-existing data type (e.g. "Binary" on legacy data)
+            // as an option so the user does not lose information.
+            if (bc.dataType && !options.includes(bc.dataType)) {
+                options.unshift(bc.dataType);
+            }
+            for (const dt of options) {
+                const o = document.createElement("option");
+                o.value = dt; o.textContent = dt;
+                if (state[bc.name].dataType === dt) o.selected = true;
+                typeSel.appendChild(o);
+            }
+            const typeField = makeField("Data type", typeSel);
+            fields.appendChild(typeField);
+
+            const catInput = document.createElement("input");
+            catInput.type = "text";
+            catInput.className = "slls-dle-input";
+            catInput.value = state[bc.name].dataCategory;
+            catInput.placeholder = "(none)";
+            const catField = makeField("Data category", catInput);
+            fields.appendChild(catField);
+
+            function refreshDots() {
+                setFieldDirty(
+                    srcField,
+                    !srcInput.disabled && srcInput.value !== bc.sourceColumn,
+                );
+                setFieldDirty(typeField, typeSel.value !== bc.dataType);
+                setFieldDirty(
+                    catField,
+                    (catInput.value || "") !== bc.dataCategory,
+                );
+                const rowDirty =
+                    (!srcInput.disabled && srcInput.value !== bc.sourceColumn) ||
+                    typeSel.value !== bc.dataType ||
+                    (catInput.value || "") !== bc.dataCategory;
+                row.classList.toggle("pending", rowDirty);
+            }
+            srcInput.addEventListener("input", () => {
+                state[bc.name].sourceColumn = srcInput.value;
+                refreshDots();
+            });
+            typeSel.addEventListener("change", () => {
+                state[bc.name].dataType = typeSel.value;
+                refreshDots();
+            });
+            catInput.addEventListener("input", () => {
+                state[bc.name].dataCategory = catInput.value;
+                refreshDots();
+            });
+            refreshDots();
+
+            list.appendChild(row);
+        }
+
+        const footer = document.createElement("div");
+        footer.className = "slls-dle-modal-footer";
+        modal.appendChild(footer);
+        const cancel = document.createElement("button");
+        cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
+        cancel.addEventListener("click", closeModal);
+        footer.appendChild(cancel);
+        // Show Revert if there are staged column edits for this table.
+        if (pendingState.changes.some(
+            c => c.kind === "edit_columns" && c.key === table.name,
+        )) {
+            const revert = document.createElement("button");
+            revert.className = "slls-dle-btn slls-dle-btn-danger";
+            revert.textContent = "Revert";
+            revert.title = "Discard staged column edits for this table";
+            revert.addEventListener("click", () => {
+                revertChangesMatching(
+                    c => c.kind === "edit_columns" && c.key === table.name,
+                    `Reverted staged column edits for '${table.name}'.`,
+                );
+                closeModal();
+            });
+            footer.appendChild(revert);
+        }
+        const save = document.createElement("button");
+        save.className = "slls-dle-btn slls-dle-btn-primary";
+        save.textContent = "Stage changes";
+        save.addEventListener("click", () => {
+            // Collect only the columns that diverge from baseline; for each
+            // such column include only the properties that actually changed.
+            const changed = [];
+            for (const bc of baseCols) {
+                const cur = state[bc.name];
+                const entry = { name: bc.name };
+                let dirty = false;
+                if (bc.columnType === "Data" && cur.sourceColumn !== bc.sourceColumn) {
+                    entry.source_column = cur.sourceColumn;
+                    dirty = true;
+                }
+                if (cur.dataType !== bc.dataType) {
+                    entry.data_type = cur.dataType;
+                    dirty = true;
+                }
+                if (cur.dataCategory !== bc.dataCategory) {
+                    entry.data_category = cur.dataCategory;
+                    dirty = true;
+                }
+                if (dirty) changed.push(entry);
+            }
+            if (changed.length === 0) {
+                setStatus("No column changes to stage.", "info");
+                closeModal();
+                return;
+            }
+            enqueuePendingChange({
+                id: pendingId(),
+                kind: "edit_columns",
+                key: table.name,
+                payload: { table_name: table.name, columns: changed },
             });
             closeModal();
         });
@@ -1378,11 +1945,20 @@ function render({ model, el }) {
         manualInput.placeholder = "dbo.sales, dbo.geography";
         grid.appendChild(makeField("Tables to add (comma-separated)", manualInput));
 
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.className = "slls-dle-input";
+        nameInput.placeholder = "(defaults to source table name)";
+        grid.appendChild(
+            makeField("Table name (optional)", nameInput, { wide: true })
+        );
+
         const hint = document.createElement("div");
         hint.className = "slls-dle-item-meta";
         hint.style.marginTop = "6px";
         hint.textContent =
-            "Use schema.table (e.g. dbo.sales). All columns from each source table will be added.";
+            "Use schema.table (e.g. dbo.sales). All columns from each source table will be added. " +
+            "The optional table name only applies when adding a single source table.";
         modal.appendChild(hint);
 
         const footer = document.createElement("div");
@@ -1399,13 +1975,28 @@ function render({ model, el }) {
             const names = (manualInput.value || "")
                 .split(",").map(s => s.trim()).filter(Boolean);
             if (names.length === 0) { setStatus("Please enter at least one table.", "error"); return; }
+            const customName = (nameInput.value || "").trim();
+            if (customName && names.length > 1) {
+                setStatus(
+                    "Table name only applies when adding a single source table.",
+                    "error",
+                );
+                return;
+            }
+            // Encode entries as { spec, name } objects so the backend can
+            // honor the optional display name. The Python side accepts both
+            // strings (legacy) and { spec, name } dicts.
+            const tablesPayload = names.map((spec, idx) => ({
+                spec,
+                name: idx === 0 ? customName : "",
+            }));
             enqueuePendingChange({
                 id: pendingId(),
                 kind: "add_tables",
                 key: pendingId(),
                 payload: {
                     expression_name: exprSel.value,
-                    tables: names,
+                    tables: tablesPayload,
                 },
             });
             closeModal();
@@ -1467,6 +2058,8 @@ export default { render };
 
 def _build_tables_payload(tom):
     """Return a list of dicts describing Direct Lake tables and their partitions."""
+    import Microsoft.AnalysisServices.Tabular as TOM
+
     tables = []
     for t in tom.model.Tables:
         for p in t.Partitions:
@@ -1480,12 +2073,28 @@ def _build_tables_payload(tom):
             expression_name = getattr(expr_src, "Name", None) if expr_src else None
             if entity_name is None and expression_name is None:
                 continue
+            columns = []
+            for c in t.Columns:
+                # Skip the auto-generated RowNumber column; it is not
+                # user-editable.
+                if c.Type == TOM.ColumnType.RowNumber:
+                    continue
+                columns.append(
+                    {
+                        "name": c.Name,
+                        "sourceColumn": getattr(c, "SourceColumn", "") or "",
+                        "dataType": str(c.DataType),
+                        "dataCategory": getattr(c, "DataCategory", "") or "",
+                        "columnType": str(c.Type),
+                    }
+                )
             tables.append(
                 {
                     "name": t.Name,
                     "expressionName": expression_name or "",
                     "entityName": entity_name or "",
                     "schemaName": schema_name or "",
+                    "columns": columns,
                 }
             )
             break  # one partition per Direct Lake table
@@ -1783,10 +2392,7 @@ def direct_lake_editor(
                 widget.tables = tables_payload
                 widget.sources = sources_payload
                 widget.screen = "manage"
-                widget.status = {
-                    "message": f"Opened '{ds_name}'.",
-                    "kind": "success",
-                }
+                widget.status = {"message": "", "kind": "info"}
 
             elif action == "create_model":
                 name = (data.get("dataset_name") or "").strip()
@@ -1956,13 +2562,24 @@ def direct_lake_editor(
                             # network/validation calls.
                             src_ws_id_resolved = resolve_workspace_id(src_ws_id)
                             for spec in table_specs:
-                                spec = spec.strip()
-                                if "." in spec:
-                                    schema_name, entity_name = spec.split(".", 1)
+                                # Accept both legacy string specs ("schema.table")
+                                # and dict specs ({"spec": ..., "name": ...})
+                                # so the optional user-supplied display name
+                                # can override the entity name.
+                                if isinstance(spec, dict):
+                                    raw_spec = (spec.get("spec") or "").strip()
+                                    custom_name = (spec.get("name") or "").strip() or None
+                                else:
+                                    raw_spec = str(spec).strip()
+                                    custom_name = None
+                                if not raw_spec:
+                                    continue
+                                if "." in raw_spec:
+                                    schema_name, entity_name = raw_spec.split(".", 1)
                                 else:
                                     schema_name = None
-                                    entity_name = spec
-                                table_display = entity_name
+                                    entity_name = raw_spec
+                                table_display = custom_name or entity_name
                                 if table_display in existing_names:
                                     raise ValueError(
                                         f"Table '{table_display}' already "
@@ -1977,7 +2594,7 @@ def direct_lake_editor(
                                 dfC = list_columns_from_path(path=path)
                                 if dfC.empty:
                                     raise ValueError(
-                                        f"Source table '{spec}' has no "
+                                        f"Source table '{raw_spec}' has no "
                                         f"columns or does not exist."
                                     )
                                 tom.add_table(name=table_display)
@@ -2004,6 +2621,38 @@ def direct_lake_editor(
                                     )
                                 existing_names.add(table_display)
                                 summary.append(f"added table '{table_display}'")
+                        elif kind == "edit_columns":
+                            table_name = p.get("table_name")
+                            cols = p.get("columns") or []
+                            if not table_name:
+                                raise ValueError(
+                                    "Table is required to edit columns."
+                                )
+                            if not cols:
+                                continue
+                            for col in cols:
+                                col_name = col.get("name")
+                                if not col_name:
+                                    continue
+                                kwargs = {}
+                                # Only pass keys that were explicitly staged
+                                # so update_column leaves untouched
+                                # properties alone.
+                                if "source_column" in col:
+                                    kwargs["source_column"] = col["source_column"]
+                                if "data_type" in col:
+                                    kwargs["data_type"] = col["data_type"]
+                                if "data_category" in col:
+                                    kwargs["data_category"] = col["data_category"]
+                                tom.update_column(
+                                    table_name=table_name,
+                                    column_name=col_name,
+                                    **kwargs,
+                                )
+                            summary.append(
+                                f"updated {len(cols)} column(s) in "
+                                f"'{table_name}'"
+                            )
                         else:
                             raise ValueError(f"Unknown pending change kind: {kind!r}")
                     tom.model.SaveChanges()
