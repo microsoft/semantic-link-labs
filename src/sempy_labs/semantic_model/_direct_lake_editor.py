@@ -1339,10 +1339,10 @@ def direct_lake_editor(
         try:
             dfW = fabric.list_workspaces()
         except Exception:
-            return [{"id": initial_ws_id, "name": initial_ws_name}]
+            return [{"id": initial_ws_id, "name": str(initial_ws_name or "")}]
         id_col, name_col = _pick_columns(dfW, ["Id"], ["Name"])
         if id_col is None or name_col is None:
-            return [{"id": initial_ws_id, "name": initial_ws_name}]
+            return [{"id": initial_ws_id, "name": str(initial_ws_name or "")}]
         rows = [
             {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfW.iterrows()
         ]
