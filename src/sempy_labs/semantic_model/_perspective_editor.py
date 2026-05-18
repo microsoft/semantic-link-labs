@@ -1121,6 +1121,7 @@ def perspective_editor(
         If True, renders the editor with a dark color theme. If False, renders
         with a light color theme.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     try:
         import anywidget

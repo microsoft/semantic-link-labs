@@ -13,7 +13,6 @@ from sempy_labs._a_lib_info import (
     lib_version,
     init_dotnet,
 )
-from sempy_labs.tom import connect_semantic_model
 import sempy_labs._icons as icons
 
 
@@ -172,6 +171,7 @@ def add_remove_update_package_to_semantic_model(
     workspace: Optional[str | UUID] = None,
     method: Literal["add", "remove", "update"] = "add",
 ):
+    from sempy_labs.tom import connect_semantic_model
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_item_name_and_id(

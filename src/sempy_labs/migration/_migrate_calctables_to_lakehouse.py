@@ -10,7 +10,6 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
 )
-from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -52,6 +51,7 @@ def migrate_calc_tables_to_lakehouse(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     if dataset == new_dataset:
         raise ValueError(
@@ -261,6 +261,7 @@ def migrate_field_parameters(
     """
 
     from sempy_labs import format_dax_object_name
+    from sempy_labs.tom import connect_semantic_model
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM

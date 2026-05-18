@@ -6,7 +6,6 @@ from sempy_labs._helper_functions import (
     retry,
     format_dax_object_name,
 )
-from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -42,6 +41,7 @@ def migrate_model_objects_to_semantic_model(
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
+    from sempy_labs.tom import connect_semantic_model
 
     if dataset == new_dataset:
         raise ValueError(

@@ -7,7 +7,6 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     _update_dataframe_datatypes,
 )
-from sempy_labs.tom import connect_semantic_model
 from sempy._utils._log import log
 import ast
 import sempy_labs._icons as icons
@@ -19,6 +18,8 @@ def list_mini_models(
     workspace: Optional[str | UUID] = None,
     show_filters: bool = False,
 ) -> pd.DataFrame:
+
+    from sempy_labs.tom import connect_semantic_model
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -32,6 +33,7 @@ def _get_master_model(
     workspace: Optional[str | UUID] = None,
     show_filters: bool = False,
 ) -> pd.DataFrame:
+    from sempy_labs.tom import connect_semantic_model
 
     workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(

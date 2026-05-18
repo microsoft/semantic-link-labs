@@ -76,6 +76,8 @@ def create_abfss_path(
         if schema is not None:
             path += f"/{schema}/{delta_table_name}"
         else:
+            if "." in delta_table_name:
+                delta_table_name = delta_table_name.replace(".", "/")
             path += f"/{delta_table_name}"
 
     return path
@@ -3045,3 +3047,78 @@ def list_columns_from_path(path: str) -> pd.DataFrame:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
+
+
+def extract_descriptions_from_table_path(
+    path: str,
+) -> dict:
+    """
+    Extracts table and column comments from a Delta Lake table.
+
+    Parameters
+    ----------
+    path : str
+        The abfss path of the table.
+    """
+
+    def _normalize_comment(x):
+        if x is None:
+            return None
+        if isinstance(x, str) and x.strip() == "":
+            return None
+        return x
+
+    full_table = path.split("/Tables/")
+    schema = None
+    if "/" in full_table:
+        schema = full_table.split("/")[0]
+        table = full_table.split("/")[1]
+    else:
+        table = full_table
+
+    result = {"table": table, "schema": schema, "tableDescription": None, "columns": []}
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        dt = DeltaTable(path)
+
+        result["tableDescription"] = dt.metadata().description
+
+        for c in dt.schema().fields:
+            result["columns"].append(
+                {"columnName": c.name, "description": c.metadata.get("comment")}
+            )
+
+    else:
+        spark = _create_spark_session()
+        rows = spark.sql(f"DESCRIBE EXTENDED delta.`{path}`").collect()
+
+        for r in rows:
+            col = r["col_name"]
+            dtype = r["data_type"]
+
+            # ✅ Table comment
+            if col and col.lower() == "comment":
+                result["tableDescription"] = _normalize_comment(dtype)
+
+            # ❌ skip metadata rows
+            elif col is None or col.startswith("#") or col.strip() == "":
+                continue
+
+            # ❌ skip partition header
+            elif "Partition" in col:
+                continue
+
+            # ✅ actual column row
+            else:
+                result["columns"].append(
+                    {
+                        "columnName": col,
+                        "description": _normalize_comment(
+                            r["comment"]
+                        ),  # this is where column comment appears (if set)
+                    }
+                )
+
+    return result

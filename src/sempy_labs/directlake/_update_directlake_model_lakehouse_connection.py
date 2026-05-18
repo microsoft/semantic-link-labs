@@ -6,7 +6,6 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
-from sempy_labs.tom import connect_semantic_model
 from typing import Optional, List, Literal
 import sempy_labs._icons as icons
 from uuid import UUID
@@ -86,6 +85,8 @@ def update_direct_lake_model_connection(
         If None, all tables will be updated (if there is only one expression).
         If multiple tables are specified, they must be provided as a list.
     """
+    from sempy_labs.tom import connect_semantic_model
+
     if use_sql_endpoint:
         icons.sll_tags.append("UpdateDLConnection_SQL")
     else:

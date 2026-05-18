@@ -37,6 +37,7 @@ def generate_direct_lake_semantic_model(
     use_sql_endpoint: bool = False,
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
+    inherit_descriptions: bool = False,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on tables in Fabric.
@@ -67,9 +68,12 @@ def generate_direct_lake_semantic_model(
         The Fabric workspace name or ID in which the semantic model will reside.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    refresh: bool, default=True
+    refresh : bool, default=True
         If True, refreshes the newly created semantic model after it is created.
+    inherit_descriptions : bool, default=False
+        If True, sets table/column descriptions based on the comments/descriptions in the source table. Only available for lakehouse sources.
     """
+    from sempy_labs._helper_functions import extract_descriptions_from_table_path
 
     # Convert to dictionary
     if isinstance(tables, str):
@@ -114,6 +118,12 @@ def generate_direct_lake_semantic_model(
         use_sql_endpoint=use_sql_endpoint,
     )
 
+    if inherit_descriptions and source_type != "Lakehouse":
+        inherit_descriptions = False
+        print(
+            f"{icons.info} The 'inherit_descriptions' parameter is only relevant if the 'source_type' is a Lakehouse. This setting will be ignored."
+        )
+
     # Populate model map with table and column information
     model_map = {}
     for table_name, table_source_name in tables.items():
@@ -138,10 +148,16 @@ def generate_direct_lake_semantic_model(
                 f"{icons.red_dot} The table '{table_source_name}' does not exist in the source or has no columns."
             )
 
+        if inherit_descriptions:
+            desc_dict = extract_descriptions_from_table_path(path)
+
         # Initialize table entry
         model_map[table_name] = {
             "schema": schema_name,
             "entityName": entity_name,
+            "description": (
+                desc_dict.get("tableDescription") if inherit_descriptions else None
+            ),
             "columns": [],
         }
 
@@ -150,6 +166,16 @@ def generate_direct_lake_semantic_model(
             column_name = row["Column Name"]
             data_type = row["Data Type"]
             converted_data_type = convert_column_data_type(data_type)
+            description = None
+            if inherit_descriptions:
+                description = next(
+                    (
+                        c.get("description")
+                        for c in desc_dict.get("columns", [])
+                        if c.get("columnName") == column_name
+                    ),
+                    None,
+                )
             if converted_data_type is None:
                 raise ValueError(
                     f"{icons.red_dot} The data type '{data_type}' of column '{column_name}' in table '{table_source_name}' is not supported."
@@ -160,7 +186,11 @@ def generate_direct_lake_semantic_model(
                 )
                 continue
             model_map[table_name]["columns"].append(
-                {"columnName": column_name, "dataType": converted_data_type}
+                {
+                    "columnName": column_name,
+                    "dataType": converted_data_type,
+                    "description": description,
+                }
             )
     if not model_map:
         raise ValueError(
@@ -207,7 +237,7 @@ def generate_direct_lake_semantic_model(
         for table_name, table_info in model_map.items():
             schema_name = table_info["schema"]
             entity_name = table_info["entityName"]
-            tom.add_table(name=table_name)
+            tom.add_table(name=table_name, description=description)
             tom.add_entity_partition(
                 table_name=table_name,
                 entity_name=entity_name,
@@ -222,6 +252,7 @@ def generate_direct_lake_semantic_model(
                     column_name=column_name,
                     data_type=data_type,
                     source_column=column_name,
+                    description=description,
                 )
 
     if refresh:

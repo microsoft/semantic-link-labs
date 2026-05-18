@@ -16,7 +16,6 @@ from sempy_labs._helper_functions import (
     _create_spark_session,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
@@ -73,6 +72,7 @@ def run_model_bpa(
     """
 
     import polib
+    from sempy_labs.tom import connect_semantic_model
 
     if "extend" in kwargs:
         print(

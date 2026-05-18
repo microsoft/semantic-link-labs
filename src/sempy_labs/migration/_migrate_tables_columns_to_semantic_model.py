@@ -3,7 +3,6 @@ import pandas as pd
 from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 from sempy_labs._helper_functions import retry
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -44,6 +43,7 @@ def migrate_tables_columns_to_semantic_model(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     if dataset == new_dataset:
         raise ValueError(

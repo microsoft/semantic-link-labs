@@ -5,7 +5,6 @@ from uuid import UUID
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_workspace_name_and_id,
@@ -45,6 +44,7 @@ def direct_lake_schema_sync(
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
+    from sempy_labs.tom import connect_semantic_model
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)

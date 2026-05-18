@@ -3,7 +3,6 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
-    _get_fabric_context_setting,
 )
 from typing import Optional
 import sempy_labs._icons as icons

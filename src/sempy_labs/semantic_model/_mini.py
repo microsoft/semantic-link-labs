@@ -4,7 +4,6 @@ from uuid import UUID, uuid4
 from typing import Optional
 from IPython.display import display, HTML
 from sempy._utils._log import log
-from sempy_labs.tom import connect_semantic_model
 
 
 @log
@@ -22,6 +21,7 @@ def mini_model_manager(dataset: str | UUID, workspace: Optional[str | UUID] = No
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         model_name = html_module.escape(str(tom._dataset_name))

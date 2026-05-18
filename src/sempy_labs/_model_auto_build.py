@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 from typing import Optional
@@ -35,6 +34,7 @@ def model_auto_build(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     workspace = fabric.resolve_workspace_name(workspace)
 
