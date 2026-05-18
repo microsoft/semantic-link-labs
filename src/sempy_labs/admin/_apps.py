@@ -43,6 +43,8 @@ def list_apps(
         "Description": "string",
         "Published By": "string",
         "Last Update": "datetime_coerce",
+        "Workspace Id": "str",
+        "Users": "list",
     }
 
     df = _create_dataframe(columns=columns)
@@ -67,6 +69,8 @@ def list_apps(
                 "Description": v.get("description"),
                 "Published By": v.get("publishedBy"),
                 "Last Update": v.get("lastUpdate"),
+                "Workspace Id": v.get('workspaceId'),
+                "Users": v.get('users', []),
             }
         )
 
