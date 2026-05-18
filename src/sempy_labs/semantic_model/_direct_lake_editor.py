@@ -1517,8 +1517,8 @@ def _unique_expression_name(tom, base):
 
 @log
 def direct_lake_editor(
-    workspace: Optional[str | UUID] = None,
     dataset: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
     dark_mode: bool = False,
 ):
     """
@@ -1532,14 +1532,14 @@ def direct_lake_editor(
 
     Parameters
     ----------
+    dataset : str | uuid.UUID, default=None
+        Optional name or ID of a Direct Lake semantic model to open immediately.
+        If None, the editor opens on the model-selection screen.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID where datasets are listed and where new
         models are created by default. Defaults to None which resolves to the
         workspace of the attached lakehouse or, if no lakehouse is attached,
         the workspace of the notebook.
-    dataset : str | uuid.UUID, default=None
-        Optional name or ID of a Direct Lake semantic model to open immediately.
-        If None, the editor opens on the model-selection screen.
     dark_mode : bool, default=False
         If True, renders the editor with a dark color theme. If False, renders
         with a light color theme.
