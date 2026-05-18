@@ -3,7 +3,7 @@ import os
 import base64
 from uuid import UUID
 import sempy_labs._icons as icons
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Tuple
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
@@ -37,6 +37,35 @@ def resolve_user_id(user: str | UUID) -> UUID:
     else:
         result = _base_api(request=f"users/{user}", client="graph").json()
         return result.get("id")
+
+
+@log
+def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, UUID]:
+    """
+    Resolves the user name, user principal name and ID from the user principal name or ID.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    user : str | uuid.UUID
+        The user ID or user principal name.
+
+    Returns
+    -------
+    typing.Tuple(str, str, uuid.UUID)
+        The user's name, user principal name and ID.
+    """
+
+    if _is_valid_uuid(user):
+        return user
+    else:
+        result = _base_api(request=f"users/{user}", client="graph").json()
+
+        name = result.get("displayName")
+        id = result.get("id")
+        upn = result.get("userPrincipalName")
+        return (name, upn, id)
 
 
 @log
