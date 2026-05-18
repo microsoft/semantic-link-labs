@@ -44,6 +44,7 @@ _WIDGET_CSS = """
     box-shadow: var(--slls-shadow);
     padding: 24px;
     box-sizing: border-box;
+    position: relative;
 }
 @media (prefers-color-scheme: dark) {
     .slls-dle.slls-dle-auto {
@@ -327,13 +328,15 @@ _WIDGET_CSS = """
 
 .slls-dle-overlay {
     display: none;
-    position: fixed;
+    position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 9999;
-    align-items: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 50;
+    align-items: flex-start;
     justify-content: center;
-    padding: 16px;
+    padding: 24px 16px;
+    border-radius: var(--slls-radius);
+    overflow-y: auto;
 }
 .slls-dle-overlay.show { display: flex; }
 .slls-dle-modal {
@@ -344,9 +347,8 @@ _WIDGET_CSS = """
     box-shadow: 0 30px 80px rgba(0,0,0,0.35);
     width: 100%;
     max-width: 560px;
-    max-height: 90vh;
-    overflow-y: auto;
     padding: 22px;
+    margin: auto;
 }
 .slls-dle-modal h2 {
     margin: 0 0 14px 0;
@@ -920,13 +922,37 @@ function render({ model, el }) {
     // ----------- Modal infrastructure -----------
     const overlay = document.createElement("div");
     overlay.className = "slls-dle-overlay";
-    el.appendChild(overlay);
+    root.appendChild(overlay);
     const modal = document.createElement("div");
     modal.className = "slls-dle-modal";
     overlay.appendChild(modal);
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
-    function openModal() { overlay.classList.add("show"); }
-    function closeModal() { overlay.classList.remove("show"); modal.innerHTML = ""; }
+    // Track listeners registered while a modal is open so we can fully
+    // detach them no matter how the modal is dismissed (cancel, save,
+    // overlay click, or Escape key).
+    let modalCleanups = [];
+    function registerModalCleanup(fn) { modalCleanups.push(fn); }
+    function runModalCleanups() {
+        while (modalCleanups.length) {
+            const fn = modalCleanups.pop();
+            try { fn(); } catch (_) { /* ignore */ }
+        }
+    }
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeModal();
+    });
+    function openModal() {
+        overlay.classList.add("show");
+    }
+    function closeModal() {
+        runModalCleanups();
+        overlay.classList.remove("show");
+        modal.innerHTML = "";
+    }
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && overlay.classList.contains("show")) {
+            closeModal();
+        }
+    });
 
     function openSourceModal(existing) {
         modal.innerHTML = "";
@@ -992,6 +1018,9 @@ function render({ model, el }) {
         wsSel.addEventListener("change", refreshItems);
         const itemsListener = () => refreshItems();
         model.on("change:source_items", itemsListener);
+        registerModalCleanup(() => {
+            try { model.off("change:source_items", itemsListener); } catch(_) {}
+        });
         refreshItems();
 
         const footer = document.createElement("div");
@@ -999,10 +1028,7 @@ function render({ model, el }) {
         modal.appendChild(footer);
         const cancel = document.createElement("button");
         cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
-        cancel.addEventListener("click", () => {
-            try { model.off("change:source_items", itemsListener); } catch(_) {}
-            closeModal();
-        });
+        cancel.addEventListener("click", closeModal);
         footer.appendChild(cancel);
         const save = document.createElement("button");
         save.className = "slls-dle-btn slls-dle-btn-primary";
@@ -1015,7 +1041,6 @@ function render({ model, el }) {
                 source_id: itemSel.value,
                 use_sql_endpoint: sqlToggle._input.checked,
             };
-            try { model.off("change:source_items", itemsListener); } catch(_) {}
             if (existing) {
                 payload.expression_name = existing.expressionName;
                 runAction("update_source", payload);
@@ -1699,7 +1724,9 @@ def direct_lake_editor(
                     raise ValueError(f"Source for '{expr_name}' could not be resolved.")
                 src_id = src_info.get("itemId")
                 src_ws_id = src_info.get("workspaceId")
-                src_type = src_info.get("itemType")
+                # Resolve the source workspace ID once outside the loop;
+                # resolve_workspace_id can perform network/validation calls.
+                src_ws_id_resolved = resolve_workspace_id(src_ws_id)
                 added_names = []
                 with connect_semantic_model(
                     dataset=ds_id, workspace=ws_id, readonly=False
@@ -1720,7 +1747,7 @@ def direct_lake_editor(
                         # Discover columns from delta path for Fabric-native sources.
                         path = create_abfss_path(
                             lakehouse_id=src_id,
-                            lakehouse_workspace_id=resolve_workspace_id(src_ws_id),
+                            lakehouse_workspace_id=src_ws_id_resolved,
                             delta_table_name=entity_name,
                             schema=schema_name,
                         )
