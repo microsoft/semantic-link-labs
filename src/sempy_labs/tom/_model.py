@@ -289,6 +289,77 @@ class TOMWrapper:
             for m in t.Measures:
                 yield m
 
+    def find_non_numeric_aggregations(self) -> pd.DataFrame:
+        """
+        Identifies measures whose DAX expression aggregates a non-numeric
+        column via a numeric aggregation function (SUM, SUMX, AVERAGE,
+        AVERAGEX, MIN, MINX, MAX, MAXX, PRODUCT, PRODUCTX).
+
+        A column is considered numeric when its TOM DataType is one of
+        Int64, Decimal or Double.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per offending column reference with the columns:
+            Measure, Table, Function, Column Table, Column, Data Type.
+            Returns an empty dataframe (with the same schema) if nothing
+            is found.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs.dax._analysis import find_numeric_aggregation_columns
+
+        numeric_types = {
+            TOM.DataType.Int64,
+            TOM.DataType.Decimal,
+            TOM.DataType.Double,
+        }
+
+        # (table_name, column_name) -> DataType
+        column_data_types = {
+            (t.Name, c.Name): c.DataType for t in self.model.Tables for c in t.Columns
+        }
+
+        columns = {
+            "Measure": "string",
+            "Table": "string",
+            "Function": "string",
+            "Column Table": "string",
+            "Column": "string",
+            "Data Type": "string",
+        }
+
+        rows = []
+
+        for m in self.all_measures():
+
+            for fn_name, table_name, column_name in find_numeric_aggregation_columns(
+                m.Expression
+            ):
+
+                data_type = column_data_types.get((table_name, column_name))
+
+                # Skip unresolved (e.g. virtual columns, typos) and numeric
+                # columns - we only want non-numeric model columns.
+                if data_type is None or data_type in numeric_types:
+                    continue
+
+                rows.append(
+                    {
+                        "Measure": m.Name,
+                        "Table": m.Parent.Name,
+                        "Function": fn_name,
+                        "Column Table": table_name,
+                        "Column": column_name,
+                        "Data Type": str(data_type),
+                    }
+                )
+
+        if rows:
+            return pd.DataFrame(rows, columns=list(columns.keys()))
+
+        return _create_dataframe(columns=columns)
+
     def all_partitions(self):
         """
         Outputs a list of all partitions in the semantic model.

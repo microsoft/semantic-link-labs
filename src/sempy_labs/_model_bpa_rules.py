@@ -3,6 +3,12 @@ import pandas as pd
 import re
 from typing import Optional
 from sempy._utils._log import log
+from sempy_labs.dax._analysis import (
+    find_fully_qualified_measures,
+    find_non_numeric_aggregations,
+    find_unqualified_columns,
+    uses_function,
+)
 
 
 @log
@@ -434,20 +440,26 @@ def model_bpa_rules(
                 "Measure",
                 "Warning",
                 "Avoid using the IFERROR function",
-                lambda obj, tom: re.search(
-                    r"iferror\s*\(", obj.Expression, flags=re.IGNORECASE
-                ),
+                lambda obj, tom: uses_function(obj.Expression, "IFERROR"),
                 "Avoid using the IFERROR function as it may cause performance degradation. If you are concerned about a divide-by-zero error, use the DIVIDE function as it naturally resolves such errors as blank (or you can customize what should be shown in case of such an error).",
                 "https://www.elegantbi.com/post/top10bestpractices",
             ),
             (
                 "DAX Expressions",
                 "Measure",
+                "Error",
+                "Avoid aggregating non-numeric columns",
+                lambda obj, tom: any(
+                    find_non_numeric_aggregations(obj.Expression, tom)
+                ),
+                "Numeric aggregation functions (SUM, SUMX, AVERAGE, AVERAGEX, MIN, MINX, MAX, MAXX, PRODUCT, PRODUCTX) should be applied to numeric columns (Int64, Decimal, Double). Aggregating a non-numeric column will either fail at query time or force an implicit conversion, both of which usually indicate a modeling mistake.",
+            ),
+            (
+                "DAX Expressions",
+                "Measure",
                 "Warning",
                 "Use the TREATAS function instead of INTERSECT for virtual relationships",
-                lambda obj, tom: re.search(
-                    r"intersect\s*\(", obj.Expression, flags=re.IGNORECASE
-                ),
+                lambda obj, tom: uses_function(obj.Expression, "INTERSECT"),
                 "The TREATAS function is more efficient and provides better performance than the INTERSECT function when used in virutal relationships.",
                 "https://www.sqlbi.com/articles/propagate-filters-using-treatas-in-dax",
             ),
@@ -456,11 +468,7 @@ def model_bpa_rules(
                 "Measure",
                 "Warning",
                 "The EVALUATEANDLOG function should not be used in production models",
-                lambda obj, tom: re.search(
-                    r"evaluateandlog\s*\(",
-                    obj.Expression,
-                    flags=re.IGNORECASE,
-                ),
+                lambda obj, tom: uses_function(obj.Expression, "EVALUATEANDLOG"),
                 "The EVALUATEANDLOG function is meant to be used only in development/test environments and should not be used in production models.",
                 "https://pbidax.wordpress.com/2022/08/16/introduce-the-dax-evaluateandlog-function",
             ),
@@ -576,7 +584,7 @@ def model_bpa_rules(
                 "Error",
                 "Column references should be fully qualified",
                 lambda obj, tom: any(
-                    tom.unqualified_columns(object=obj, dependencies=dependencies)
+                    find_unqualified_columns(tom._get_expression(obj), tom)
                 ),
                 "Using fully qualified column references makes it easier to distinguish between column and measure references, and also helps avoid certain errors. When referencing a column in DAX, first specify the table name, then specify the column name in square brackets.",
                 "https://www.elegantbi.com/post/top10bestpractices",
@@ -592,7 +600,7 @@ def model_bpa_rules(
                 "Error",
                 "Measure references should be unqualified",
                 lambda obj, tom: any(
-                    tom.fully_qualified_measures(object=obj, dependencies=dependencies)
+                    find_fully_qualified_measures(tom._get_expression(obj), tom)
                 ),
                 "Using unqualified measure references makes it easier to distinguish between column and measure references, and also helps avoid certain errors. When referencing a measure using DAX, do not specify the table name. Use only the measure name in square brackets.",
                 "https://www.elegantbi.com/post/top10bestpractices",

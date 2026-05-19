@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset='utf-8'><title>format_dax preview</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;}h2{font-weight:500;}</style></head><body><h2 style='color:#f5f5f7;background:#1c1c1e;padding:8px;'>Dark background</h2><div style='background:#1c1c1e;padding:8px;border-radius:8px'><pre style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;line-height:1.5;padding:12px 14px;border-radius:8px;background:transparent;color:inherit;white-space:pre;overflow-x:auto;"><span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">MaxDate</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">MAX</span> <span style="color:#A6A6A6">(</span> &#x27;Date&#x27;[Date] <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">RollingWindow</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">DATESINPERIOD</span> <span style="color:#A6A6A6">(</span>
+        &#x27;Date&#x27;[Date]<span style="color:#A6A6A6">,</span>
+        <span style="color:#5AC8B8">MaxDate</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#A6A6A6">-</span><span style="color:#FF9F45">90</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#5E9EFF">DAY</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">CustomerSalesTable</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">ADDCOLUMNS</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5E9EFF">SUMMARIZE</span> <span style="color:#A6A6A6">(</span>
+            <span style="color:#5E9EFF">FILTER</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5E9EFF">ALL</span> <span style="color:#A6A6A6">(</span> Sales <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+                Sales[OrderDate] <span style="color:#5E9EFF">IN</span> <span style="color:#5AC8B8">RollingWindow</span>
+            <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+            Customer[CustomerKey]
+        <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#9BB87A">&quot;RollingSales&quot;</span><span style="color:#A6A6A6">,</span>
+            <span style="color:#5E9EFF">CALCULATE</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5E9EFF">SUMX</span> <span style="color:#A6A6A6">(</span>
+                    Sales<span style="color:#A6A6A6">,</span>
+                    Sales[ExtendedAmount] <span style="color:#A6A6A6">-</span> Sales[DiscountAmount]
+                <span style="color:#A6A6A6">)</span>
+            <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#9BB87A">&quot;OrderCount&quot;</span><span style="color:#A6A6A6">,</span>
+            <span style="color:#5E9EFF">CALCULATE</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5E9EFF">DISTINCTCOUNT</span> <span style="color:#A6A6A6">(</span> Sales[OrderNumber] <span style="color:#A6A6A6">)</span>
+            <span style="color:#A6A6A6">)</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">FilteredCustomers</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">FILTER</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5AC8B8">CustomerSalesTable</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#FF7A8A">[RollingSales]</span> <span style="color:#A6A6A6">&gt;</span> <span style="color:#FF9F45">5000</span>
+            <span style="color:#A6A6A6">&amp;&amp;</span> <span style="color:#FF7A8A">[OrderCount]</span> <span style="color:#A6A6A6">&gt;=</span> <span style="color:#FF9F45">3</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">RankedCustomers</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">ADDCOLUMNS</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5AC8B8">FilteredCustomers</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#9BB87A">&quot;SalesRank&quot;</span><span style="color:#A6A6A6">,</span>
+            <span style="color:#5E9EFF">RANKX</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5AC8B8">FilteredCustomers</span><span style="color:#A6A6A6">,</span>
+                <span style="color:#FF7A8A">[RollingSales]</span><span style="color:#A6A6A6">,</span>
+                <span style="color:#A6A6A6">,</span>
+                <span style="color:#5E9EFF">DESC</span><span style="color:#A6A6A6">,</span>
+                <span style="color:#5E9EFF">DENSE</span>
+            <span style="color:#A6A6A6">)</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">Top10Customers</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">FILTER</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5AC8B8">RankedCustomers</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#FF7A8A">[SalesRank]</span> <span style="color:#A6A6A6">&lt;=</span> <span style="color:#FF9F45">10</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">RETURN</span>
+<span style="color:#5E9EFF">SUMX</span> <span style="color:#A6A6A6">(</span>
+    <span style="color:#5AC8B8">Top10Customers</span><span style="color:#A6A6A6">,</span>
+    <span style="color:#FF7A8A">[RollingSales]</span>
+<span style="color:#A6A6A6">)</span></pre></div><h2 style='color:#1d1d1f;background:#fff;padding:8px;'>Light background</h2><div style='background:#ffffff;color:#1d1d1f;padding:8px;border-radius:8px'><pre style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;line-height:1.5;padding:12px 14px;border-radius:8px;background:transparent;color:inherit;white-space:pre;overflow-x:auto;"><span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">MaxDate</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">MAX</span> <span style="color:#A6A6A6">(</span> &#x27;Date&#x27;[Date] <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">RollingWindow</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">DATESINPERIOD</span> <span style="color:#A6A6A6">(</span>
+        &#x27;Date&#x27;[Date]<span style="color:#A6A6A6">,</span>
+        <span style="color:#5AC8B8">MaxDate</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#A6A6A6">-</span><span style="color:#FF9F45">90</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#5E9EFF">DAY</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">CustomerSalesTable</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">ADDCOLUMNS</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5E9EFF">SUMMARIZE</span> <span style="color:#A6A6A6">(</span>
+            <span style="color:#5E9EFF">FILTER</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5E9EFF">ALL</span> <span style="color:#A6A6A6">(</span> Sales <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+                Sales[OrderDate] <span style="color:#5E9EFF">IN</span> <span style="color:#5AC8B8">RollingWindow</span>
+            <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+            Customer[CustomerKey]
+        <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#9BB87A">&quot;RollingSales&quot;</span><span style="color:#A6A6A6">,</span>
+            <span style="color:#5E9EFF">CALCULATE</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5E9EFF">SUMX</span> <span style="color:#A6A6A6">(</span>
+                    Sales<span style="color:#A6A6A6">,</span>
+                    Sales[ExtendedAmount] <span style="color:#A6A6A6">-</span> Sales[DiscountAmount]
+                <span style="color:#A6A6A6">)</span>
+            <span style="color:#A6A6A6">)</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#9BB87A">&quot;OrderCount&quot;</span><span style="color:#A6A6A6">,</span>
+            <span style="color:#5E9EFF">CALCULATE</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5E9EFF">DISTINCTCOUNT</span> <span style="color:#A6A6A6">(</span> Sales[OrderNumber] <span style="color:#A6A6A6">)</span>
+            <span style="color:#A6A6A6">)</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">FilteredCustomers</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">FILTER</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5AC8B8">CustomerSalesTable</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#FF7A8A">[RollingSales]</span> <span style="color:#A6A6A6">&gt;</span> <span style="color:#FF9F45">5000</span>
+            <span style="color:#A6A6A6">&amp;&amp;</span> <span style="color:#FF7A8A">[OrderCount]</span> <span style="color:#A6A6A6">&gt;=</span> <span style="color:#FF9F45">3</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">RankedCustomers</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">ADDCOLUMNS</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5AC8B8">FilteredCustomers</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#9BB87A">&quot;SalesRank&quot;</span><span style="color:#A6A6A6">,</span>
+            <span style="color:#5E9EFF">RANKX</span> <span style="color:#A6A6A6">(</span>
+                <span style="color:#5AC8B8">FilteredCustomers</span><span style="color:#A6A6A6">,</span>
+                <span style="color:#FF7A8A">[RollingSales]</span><span style="color:#A6A6A6">,</span>
+                <span style="color:#A6A6A6">,</span>
+                <span style="color:#5E9EFF">DESC</span><span style="color:#A6A6A6">,</span>
+                <span style="color:#5E9EFF">DENSE</span>
+            <span style="color:#A6A6A6">)</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">VAR</span> <span style="color:#5AC8B8">Top10Customers</span> <span style="color:#A6A6A6">=</span>
+    <span style="color:#5E9EFF">FILTER</span> <span style="color:#A6A6A6">(</span>
+        <span style="color:#5AC8B8">RankedCustomers</span><span style="color:#A6A6A6">,</span>
+        <span style="color:#FF7A8A">[SalesRank]</span> <span style="color:#A6A6A6">&lt;=</span> <span style="color:#FF9F45">10</span>
+    <span style="color:#A6A6A6">)</span>
+
+<span style="color:#5E9EFF">RETURN</span>
+<span style="color:#5E9EFF">SUMX</span> <span style="color:#A6A6A6">(</span>
+    <span style="color:#5AC8B8">Top10Customers</span><span style="color:#A6A6A6">,</span>
+    <span style="color:#FF7A8A">[RollingSales]</span>
+<span style="color:#A6A6A6">)</span></pre></div></body></html>
