@@ -69,8 +69,8 @@ def list_apps(
                 "Description": v.get("description"),
                 "Published By": v.get("publishedBy"),
                 "Last Update": v.get("lastUpdate"),
-                "Workspace Id": v.get('workspaceId'),
-                "Users": v.get('users', []),
+                "Workspace Id": v.get("workspaceId"),
+                "Users": v.get("users", []),
             }
         )
 
