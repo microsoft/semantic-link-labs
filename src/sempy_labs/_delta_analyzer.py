@@ -32,6 +32,14 @@ from sempy_labs.lakehouse._helper import (
     is_v_ordered,
 )
 import sempy_labs._icons as icons
+from sempy_labs._ui_components import (
+    ICONS as _UI_ICONS,
+    LIGHT_THEME_VARS as _UI_LIGHT_VARS,
+    DARK_THEME_VARS as _UI_DARK_VARS,
+    scoped_header_css as _ui_scoped_header_css,
+    render_header_html as _ui_render_header_html,
+    theme_toggle_script as _ui_theme_toggle_script,
+)
 from tqdm.auto import tqdm
 
 
@@ -65,6 +73,7 @@ def delta_analyzer(
     skip_cardinality: bool = True,
     schema: Optional[str] = None,
     visualize: bool = True,
+    dark_mode: bool = False,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
@@ -102,6 +111,8 @@ def delta_analyzer(
         The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
     visualize : bool, default=True
         If True, renders an HTML-styled interactive UI for viewing the Delta Analyzer results.
+    dark_mode : bool, default=False
+        If True, renders the visualization with a dark color palette. Has no effect when ``visualize`` is False.
 
     Returns
     -------
@@ -430,7 +441,10 @@ def delta_analyzer(
 
     if visualize:
         _display_delta_analyzer_ui(
-            dataframes=dataframes, table_name=table_name, schema=schema
+            dataframes=dataframes,
+            table_name=table_name,
+            schema=schema,
+            dark_mode=dark_mode,
         )
 
     return dataframes
@@ -440,10 +454,13 @@ def _display_delta_analyzer_ui(
     dataframes: Dict[str, pd.DataFrame],
     table_name: str,
     schema: Optional[str] = None,
+    dark_mode: bool = False,
 ) -> None:
     """Renders an interactive HTML dashboard for delta analyzer results."""
 
     uid = uuid.uuid4().hex[:8]
+    root_selector = f".da-{uid}-root"
+    theme_btn_id = f"da-theme-{uid}"
 
     _skip_cols = {
         "Workspace Name",
@@ -578,19 +595,15 @@ def _display_delta_analyzer_ui(
     tabs_html = ""
     panels_html = ""
     tab_row_counts = {}
+
+    def _tab_icon(svg: str) -> str:
+        return svg.replace("<svg ", f'<svg class="da-{uid}-tab-icon" ', 1)
+
     tab_icons = {
-        "Parquet Files": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><line x1="6" y1="5" x2="10" y2="5"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg>'.format(
-            uid=uid
-        ),
-        "Row Groups": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/></svg>'.format(
-            uid=uid
-        ),
-        "Column Chunks": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="6" x2="6" y2="14"/></svg>'.format(
-            uid=uid
-        ),
-        "Columns": '<svg class="da-{uid}-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="14" x2="4" y2="5"/><line x1="8" y1="14" x2="8" y2="2"/><line x1="12" y1="14" x2="12" y2="8"/><line x1="2" y1="14" x2="14" y2="14"/></svg>'.format(
-            uid=uid
-        ),
+        "Parquet Files": _tab_icon(_UI_ICONS["partition"]),
+        "Row Groups": _tab_icon(_UI_ICONS["table"]),
+        "Column Chunks": _tab_icon(_UI_ICONS["column_chunk"]),
+        "Columns": _tab_icon(_UI_ICONS["column"]),
     }
     for i, key in enumerate(tab_keys):
         active_cls = " da-{uid}-tab-active".format(uid=uid) if i == 0 else ""
@@ -666,46 +679,71 @@ def _display_delta_analyzer_ui(
             </div>
         </div>"""
 
+    # ── Shared header (title + table · workspace · lakehouse subtitle + theme btn) ──
+    subtitle_workspace = ""
+    if meta_workspace and meta_lakehouse:
+        subtitle_workspace = f"{meta_workspace} · {meta_lakehouse}"
+    elif meta_workspace:
+        subtitle_workspace = meta_workspace
+    elif meta_lakehouse:
+        subtitle_workspace = meta_lakehouse
+
+    header_table_name = f"{schema}.{table_name}" if schema else table_name
+    header_html = _ui_render_header_html(
+        title="Delta Analyzer",
+        dataset_name=header_table_name,
+        workspace_name=subtitle_workspace or None,
+        theme_btn_id=theme_btn_id,
+        dark_mode=dark_mode,
+    )
+    ui_header_css_scoped = _ui_scoped_header_css(root_selector)
+
     full_html = f"""
     <style>
+        {ui_header_css_scoped}
         .da-{uid}-root {{
+            {_UI_LIGHT_VARS}
+            --da-accent: var(--ui-accent);
+            --da-accent-hover: var(--ui-accent-hover);
+            --da-accent-soft: var(--ui-accent-soft);
+            --da-bg: var(--ui-bg);
+            --da-bg-secondary: var(--ui-bg-secondary);
+            --da-bg-tertiary: var(--ui-bg-tertiary);
+            --da-border: var(--ui-border);
+            --da-border-strong: var(--ui-border-strong);
+            --da-text: var(--ui-text);
+            --da-text-secondary: var(--ui-text-secondary);
+            --da-text-tertiary: var(--ui-text-tertiary);
+            --da-shadow-sm: var(--ui-shadow-sm);
+            --da-shadow-md: var(--ui-shadow-md);
+            --da-shadow-lg: var(--ui-shadow-lg);
+            --da-radius: 12px;
+            --da-radius-sm: 8px;
+            --da-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
                          'Helvetica Neue', Arial, sans-serif;
-            color: #1d1d1f;
+            color: var(--da-text);
             max-width: 1200px;
             margin: 24px auto;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }}
+        .da-{uid}-root.da-dark {{
+            {_UI_DARK_VARS}
+        }}
+        .da-{uid}-root *, .da-{uid}-root *::before, .da-{uid}-root *::after {{
+            box-sizing: border-box;
         }}
         .da-{uid}-container {{
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+            background: var(--da-bg);
+            border-radius: var(--da-radius);
+            box-shadow: var(--da-shadow-lg);
             overflow: hidden;
-            border: 1px solid rgba(0,0,0,0.06);
+            border: 1px solid var(--da-border);
         }}
         .da-{uid}-header {{
-            padding: 20px 24px 0 24px;
-            margin-bottom: 16px;
-        }}
-        .da-{uid}-title {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            margin: 0 0 4px 0;
-        }}
-        .da-{uid}-logo {{
-            width: 30px;
-            height: 30px;
-            flex-shrink: 0;
-        }}
-        .da-{uid}-subtitle {{
-            font-size: 15px;
-            color: #86868b;
-            font-weight: 400;
-            margin: 0;
+            padding: 22px 24px 18px 24px;
+            background: var(--da-bg);
         }}
         /* Summary cards */
         .da-{uid}-cards {{
@@ -717,14 +755,14 @@ def _display_delta_analyzer_ui(
         .da-{uid}-card {{
             flex: 1 1 110px;
             min-width: 110px;
-            background: #ffffff;
-            border: 1px solid #e8e8ed;
-            border-radius: 12px;
+            background: var(--da-bg-secondary);
+            border: 1px solid var(--da-border);
+            border-radius: var(--da-radius);
             padding: 14px 16px;
-            transition: box-shadow 0.25s ease, transform 0.2s ease;
+            transition: box-shadow var(--da-transition), transform var(--da-transition);
         }}
         .da-{uid}-card:hover {{
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            box-shadow: var(--da-shadow-md);
             transform: translateY(-2px);
         }}
         .da-{uid}-card-label {{
@@ -732,25 +770,26 @@ def _display_delta_analyzer_ui(
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #86868b;
+            color: var(--da-text-tertiary);
             margin-bottom: 4px;
         }}
         .da-{uid}-card-value {{
             font-size: 20px;
             font-weight: 600;
             letter-spacing: -0.3px;
-            color: #1d1d1f;
+            color: var(--da-text);
         }}
         /* Tabs */
         .da-{uid}-tabs {{
             display: flex;
             gap: 2px;
             padding: 0 24px;
-            border-bottom: 1px solid #e8e8ed;
+            border-bottom: 1px solid var(--da-border);
             margin-bottom: 0;
             overflow-x: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
+            background: var(--da-bg);
         }}
         .da-{uid}-tabs::-webkit-scrollbar {{
             display: none;
@@ -761,10 +800,10 @@ def _display_delta_analyzer_ui(
             padding: 10px 20px;
             font-size: 14px;
             font-weight: 500;
-            color: #86868b;
+            color: var(--da-text-secondary);
             cursor: pointer;
             border-bottom: 2px solid transparent;
-            transition: color 0.2s, border-color 0.2s;
+            transition: color var(--da-transition), border-color var(--da-transition);
             font-family: inherit;
             display: inline-flex;
             align-items: center;
@@ -776,40 +815,48 @@ def _display_delta_analyzer_ui(
             flex-shrink: 0;
         }}
         .da-{uid}-tab:hover {{
-            color: #1d1d1f;
+            color: var(--da-text);
         }}
         .da-{uid}-tab-active {{
-            color: #0071e3;
+            color: var(--da-accent);
             font-weight: 600;
-            border-bottom-color: #0071e3;
+            border-bottom-color: var(--da-accent);
         }}
         /* Data table */
         .da-{uid}-table-wrap {{
             overflow-x: auto;
             overflow-y: auto;
             max-height: 520px;
+            background: var(--da-bg);
         }}
         .da-{uid}-table {{
             table-layout: fixed;
             border-collapse: collapse;
             font-size: 13px;
+            color: var(--da-text);
         }}
         .da-{uid}-table thead th {{
             position: sticky;
             top: 0;
             z-index: 1;
-            background: #f5f5f7;
+            background: var(--da-bg-secondary);
             font-weight: 600;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            color: #6e6e73;
+            color: var(--da-text-secondary);
             padding: 12px 16px;
             text-align: left;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            border-bottom: 1px solid #e8e8ed;
+            border-bottom: 1px solid var(--da-border);
+            cursor: pointer;
+            user-select: none;
+        }}
+        .da-{uid}-table thead th:hover {{
+            color: var(--da-text);
+            background: var(--da-accent-soft);
         }}
         .da-{uid}-th-text {{
             pointer-events: none;
@@ -826,25 +873,31 @@ def _display_delta_analyzer_ui(
         }}
         .da-{uid}-resize:hover,
         .da-{uid}-resize.da-{uid}-resizing {{
-            background: #0071e3;
+            background: var(--da-accent);
             opacity: 0.4;
         }}
-        .da-{uid}-table tbody td {{
+        .da-{uid}-table tbody tr {{
+            background: var(--da-bg);
+            transition: background var(--da-transition);
+        }}
+        .da-{uid}-table tbody tr td {{
             padding: 10px 16px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            border-bottom: 1px solid #f0f0f5;
-            color: #1d1d1f;
+            border-bottom: 1px solid var(--da-border);
+            color: var(--da-text);
+            background: var(--da-bg);
+        }}
+        .da-{uid}-table tbody tr:nth-child(even) td {{
+            background: var(--da-bg-tertiary);
         }}
         .da-{uid}-table tbody tr:last-child td {{
             border-bottom: none;
         }}
-        .da-{uid}-table tbody tr:hover {{
-            background: #f5f5f7;
-        }}
-        .da-{uid}-table tbody tr {{
-            transition: background 0.15s ease;
+        .da-{uid}-table tbody tr:hover td {{
+            background: var(--da-accent-soft);
+            color: var(--da-text);
         }}
         /* Search */
         .da-{uid}-toolbar {{
@@ -852,34 +905,29 @@ def _display_delta_analyzer_ui(
             align-items: center;
             justify-content: space-between;
             padding: 12px 24px;
-            background: #fbfbfd;
-            border-bottom: 1px solid rgba(0,0,0,0.06);
+            background: var(--da-bg-secondary);
+            border-bottom: 1px solid var(--da-border);
         }}
         .da-{uid}-search {{
             font-family: inherit;
             font-size: 13px;
             padding: 6px 12px;
-            border: 1px solid #d2d2d7;
-            border-radius: 8px;
+            border: 1px solid var(--da-border-strong);
+            border-radius: var(--da-radius-sm);
             outline: none;
             width: 220px;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--da-bg);
+            color: var(--da-text);
+            transition: border-color var(--da-transition), box-shadow var(--da-transition);
         }}
         .da-{uid}-search:focus {{
-            border-color: #0071e3;
-            box-shadow: 0 0 0 3px rgba(0,113,227,0.15);
+            border-color: var(--da-accent);
+            box-shadow: 0 0 0 3px var(--da-accent-soft);
         }}
         .da-{uid}-search::placeholder {{
-            color: #aeaeb2;
+            color: var(--da-text-tertiary);
         }}
         /* Sort indicator */
-        .da-{uid}-table thead th {{
-            cursor: pointer;
-            user-select: none;
-        }}
-        .da-{uid}-table thead th:hover {{
-            color: #1d1d1f;
-        }}
         .da-{uid}-sort-arrow {{
             font-size: 10px;
             margin-left: 4px;
@@ -895,8 +943,9 @@ def _display_delta_analyzer_ui(
             left: 0;
             top: 0;
             bottom: 0;
-            background: rgba(0, 113, 227, 0.08);
-            border-right: 2px solid rgba(0, 113, 227, 0.25);
+            background: var(--da-accent-soft);
+            border-right: 2px solid var(--da-accent);
+            opacity: 0.7;
             pointer-events: none;
         }}
         .da-{uid}-table tbody td.da-{uid}-bar-cell .da-{uid}-bar-value {{
@@ -915,22 +964,22 @@ def _display_delta_analyzer_ui(
             font-size: 11px;
             font-weight: 500;
             font-family: inherit;
-            color: #86868b;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.12);
+            color: var(--da-text-secondary);
+            background: var(--da-bg);
+            border: 1px solid var(--da-border-strong);
             border-radius: 6px;
             cursor: pointer;
-            transition: color 0.2s, border-color 0.2s;
+            transition: color var(--da-transition), border-color var(--da-transition);
             white-space: nowrap;
             margin-left: 12px;
         }}
         .da-{uid}-bar-toggle:hover {{
-            color: #1d1d1f;
-            border-color: #86868b;
+            color: var(--da-text);
+            border-color: var(--da-text-tertiary);
         }}
         .da-{uid}-bar-toggle.da-{uid}-bars-active {{
-            color: #0071e3;
-            border-color: #0071e3;
+            color: var(--da-accent);
+            border-color: var(--da-accent);
         }}
         .da-{uid}-bar-toggle .da-{uid}-toggle-icon {{
             width: 12px;
@@ -946,7 +995,7 @@ def _display_delta_analyzer_ui(
         .da-{uid}-row-count {{
             font-size: 12px;
             font-weight: 500;
-            color: #86868b;
+            color: var(--da-text-tertiary);
             letter-spacing: -0.01em;
         }}
         .da-{uid}-row-count span {{
@@ -956,19 +1005,16 @@ def _display_delta_analyzer_ui(
         .da-{uid}-footer {{
             padding: 10px 24px;
             font-size: 11px;
-            color: #86868b;
+            color: var(--da-text-tertiary);
             text-align: right;
-            border-top: 1px solid rgba(0,0,0,0.06);
-            background: #fbfbfd;
+            border-top: 1px solid var(--da-border);
+            background: var(--da-bg-secondary);
         }}
     </style>
 
-    <div class="da-{uid}-root">
+    <div class="da-{uid}-root{' da-dark' if dark_mode else ''}">
     <div class="da-{uid}-container">
-        <div class="da-{uid}-header">
-            <h2 class="da-{uid}-title"><svg class="da-{uid}-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="da-{uid}-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0071e3"/><stop offset="100%" stop-color="#40a9ff"/></linearGradient></defs><path d="M50 8 L92 85 Q94 89 91 92 Q89 94 85 94 L15 94 Q11 94 9 92 Q6 89 8 85 Z" fill="url(#da-{uid}-grad)"/><path d="M50 30 L72 78 L28 78 Z" fill="white" opacity="0.35"/></svg>Delta Analyzer</h2>
-            <p class="da-{uid}-subtitle">{(html_module.escape(schema) + '.') if schema else ''}{html_module.escape(table_name)}{(' &nbsp;&middot;&nbsp; ' + html_module.escape(meta_workspace)) if meta_workspace else ''}{(' &nbsp;&middot;&nbsp; ' + html_module.escape(meta_lakehouse)) if meta_lakehouse else ''}</p>
-        </div>
+        <div class="da-{uid}-header">{header_html}</div>
         <div class="da-{uid}-cards">
             {cards_html}
         </div>
@@ -1121,7 +1167,13 @@ def _display_delta_analyzer_ui(
     </script>
     """
 
-    display(HTML(full_html))
+    theme_script = _ui_theme_toggle_script(
+        btn_id=theme_btn_id,
+        root_selector=root_selector,
+        dark_class="da-dark",
+    )
+
+    display(HTML(full_html + theme_script))
 
 
 @log

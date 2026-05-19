@@ -23,6 +23,14 @@ from pathlib import Path
 from uuid import UUID
 from sempy_labs.directlake._sources import get_direct_lake_sources
 from sempy_labs.lakehouse._schemas import is_schema_enabled
+from sempy_labs._ui_components import (
+    ICONS as _UI_ICONS,
+    LIGHT_THEME_VARS as _UI_LIGHT_VARS,
+    DARK_THEME_VARS as _UI_DARK_VARS,
+    scoped_header_css as _ui_scoped_header_css,
+    render_header_html as _ui_render_header_html,
+    theme_toggle_script as _ui_theme_toggle_script,
+)
 
 
 def get_run_id(lakehouse, schema, workspace, save_table_name):
@@ -156,6 +164,7 @@ def vertipaq_analyzer(
     export_lakehouse: Optional[str | UUID] = None,
     export_workspace: Optional[str | UUID] = None,
     export_schema: Optional[str] = None,
+    dark_mode: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
@@ -183,6 +192,10 @@ def vertipaq_analyzer(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     export_schema : str, default=None
         The schema to which the vertipaq analyzer statistics tables will be exported if export is set to 'table' and the lakehouse has schemas enabled. If the lakehouse does not have schemas enabled, this parameter will be ignored.
+    dark_mode : bool, default=False
+        If True, renders the Vertipaq Analyzer visualization with a dark
+        color theme. If False, renders with a light color theme. A toggle
+        button in the header allows switching between modes at runtime.
 
     Returns
     -------
@@ -1014,7 +1027,14 @@ def vertipaq_analyzer(
             for items in config.values()
             if items.get("sortby")
         }
-        visualize_vertipaq(dfs, dataset_name, vertipaq_map, default_sort=default_sort)
+        visualize_vertipaq(
+            dfs,
+            dataset_name,
+            vertipaq_map,
+            default_sort=default_sort,
+            workspace_name=workspace_name,
+            dark_mode=dark_mode,
+        )
 
         return final_dict
 
@@ -1127,7 +1147,14 @@ def vertipaq_analyzer(
             )
 
 
-def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort=None):
+def visualize_vertipaq(
+    dataframes,
+    dataset_name,
+    vertipaq_map=None,
+    default_sort=None,
+    workspace_name=None,
+    dark_mode=False,
+):
 
     # Build tooltip lookup from vertipaq_map
     tooltip_lookup = {}
@@ -1160,24 +1187,39 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     }
 
     uid = uuid.uuid4().hex[:8]
+    root_selector = f".vpx-{uid}"
+    theme_btn_id = f"vpx-theme-{uid}"
+    # Scope the shared header CSS under the root selector so its rules win
+    # against notebook host styles (e.g. Jupyter's ``.jp-RenderedHTMLCommon
+    # button`` rules that would otherwise override the theme toggle
+    # button's shape, color, and layout). The result is interpolated as a
+    # single ``{var}`` placeholder in the f-string below, so its braces
+    # are NOT subject to f-string escaping and don't need doubling.
+    ui_header_css_scoped = _ui_scoped_header_css(root_selector)
 
     # ── CSS ──────────────────────────────────────────────────────────────
+    # Light theme is the default; the ``.vpx-dark`` modifier on the root
+    # element switches to the dark palette. Both palettes draw their
+    # tokens from the shared :mod:`sempy_labs._ui_components` module so
+    # they stay consistent across widgets.
     styles = f"""
     <style>
+    {ui_header_css_scoped}
     .vpx-{uid} {{
-        --vpx-accent: #0071e3;
-        --vpx-accent-hover: #0077ED;
-        --vpx-bg: #ffffff;
-        --vpx-bg-secondary: #f5f5f7;
-        --vpx-bg-tertiary: #fbfbfd;
-        --vpx-border: rgba(0, 0, 0, 0.06);
-        --vpx-border-strong: rgba(0, 0, 0, 0.12);
-        --vpx-text: #1d1d1f;
-        --vpx-text-secondary: #6e6e73;
-        --vpx-text-tertiary: #86868b;
-        --vpx-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
-        --vpx-shadow-md: 0 4px 14px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-        --vpx-shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+        {_UI_LIGHT_VARS}
+        --vpx-accent: var(--ui-accent);
+        --vpx-accent-hover: var(--ui-accent-hover);
+        --vpx-bg: var(--ui-bg);
+        --vpx-bg-secondary: var(--ui-bg-secondary);
+        --vpx-bg-tertiary: var(--ui-bg-tertiary);
+        --vpx-border: var(--ui-border);
+        --vpx-border-strong: var(--ui-border-strong);
+        --vpx-text: var(--ui-text);
+        --vpx-text-secondary: var(--ui-text-secondary);
+        --vpx-text-tertiary: var(--ui-text-tertiary);
+        --vpx-shadow-sm: var(--ui-shadow-sm);
+        --vpx-shadow-md: var(--ui-shadow-md);
+        --vpx-shadow-lg: var(--ui-shadow-lg);
         --vpx-radius: 12px;
         --vpx-radius-sm: 8px;
         --vpx-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1188,6 +1230,9 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
         max-width: 100%;
         margin: 0;
         padding: 0;
+    }}
+    .vpx-{uid}.vpx-dark {{
+        {_UI_DARK_VARS}
     }}
     .vpx-{uid} *, .vpx-{uid} *::before, .vpx-{uid} *::after {{
         box-sizing: border-box;
@@ -1202,16 +1247,8 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     }}
     /* ── Header ── */
     .vpx-{uid} .vpx-header {{
-        padding: 20px 24px 0 24px;
+        padding: 22px 24px 18px 24px;
         background: var(--vpx-bg);
-    }}
-    .vpx-{uid} .vpx-title {{
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        color: var(--vpx-text);
-        margin: 0 0 16px 0;
-        line-height: 1.2;
     }}
     /* ── Model Summary Cards ── */
     .vpx-{uid} .vpx-cards {{
@@ -1443,7 +1480,7 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     }}
     .vpx-{uid} thead th:hover {{
         color: var(--vpx-text);
-        background: #ececee;
+        background: var(--ui-accent-soft);
     }}
     .vpx-{uid} thead th .vpx-sort-arrow {{
         display: none;
@@ -1486,15 +1523,20 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
         display: none;
     }}
     .vpx-{uid} tbody tr {{
+        background: var(--vpx-bg);
         transition: background var(--vpx-transition);
     }}
-    .vpx-{uid} tbody tr:nth-child(even) {{
+    /* Apply zebra striping on the cells with high specificity so we
+       win against host (e.g. Jupyter) default table styles. */
+    .vpx-{uid} tbody tr td {{
+        background: var(--vpx-bg);
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} tbody tr:nth-child(even) td {{
         background: var(--vpx-bg-tertiary);
     }}
-    .vpx-{uid} tbody tr:hover {{
-        background: rgba(0, 113, 227, 0.04);
-    }}
     .vpx-{uid} tbody tr:hover td {{
+        background: var(--vpx-accent-soft);
         color: var(--vpx-text);
     }}
     .vpx-{uid} tbody td.vpx-numeric {{
@@ -1542,25 +1584,23 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     """
 
     # ── Build HTML ────────────────────────────────────────────────────────
-    search_svg = (
-        '<svg class="vpx-search-icon" viewBox="0 0 20 20" fill="currentColor">'
-        '<path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 '
-        '1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"'
-        ' clip-rule="evenodd"/></svg>'
+    search_svg = _UI_ICONS["search"].replace(
+        "<svg ", '<svg class="vpx-search-icon" ', 1
     )
 
-    header_title = (
-        f"Vertipaq Analyzer &mdash; {dataset_name}"
-        if dataset_name
-        else "Vertipaq Analyzer"
+    header_html = _ui_render_header_html(
+        title="Vertipaq Analyzer",
+        dataset_name=dataset_name,
+        workspace_name=workspace_name,
+        theme_btn_id=theme_btn_id,
+        dark_mode=dark_mode,
     )
 
     html_parts = []
-    html_parts.append(f'<div class="vpx-{uid}">')
+    root_classes = f"vpx-{uid}" + (" vpx-dark" if dark_mode else "")
+    html_parts.append(f'<div class="{root_classes}">')
     html_parts.append('<div class="vpx-container">')
-    html_parts.append(
-        f'<div class="vpx-header"><div class="vpx-title">{header_title}</div></div>'
-    )
+    html_parts.append(f'<div class="vpx-header">{header_html}</div>')
 
     # Model summary cards
     if not model_df.empty:
@@ -1588,13 +1628,17 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
             )
         html_parts.append("</div>")
 
-    # Tab icons (monochrome SVGs using currentColor for light/dark mode)
+    # Tab icons (sourced from the shared icon library so they stay in
+    # sync across widgets; ``vpx-tab-icon`` class controls sizing).
+    def _tab_icon(name: str) -> str:
+        return _UI_ICONS[name].replace("<svg ", '<svg class="vpx-tab-icon" ', 1)
+
     tab_icons = {
-        "Tables": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="6" x2="6" y2="14"/></svg>',
-        "Partitions": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="1.5" width="10" height="4" rx="1"/><rect x="3" y="6.5" width="10" height="4" rx="1"/><rect x="3" y="11.5" width="10" height="3" rx="1"/></svg>',
-        "Columns": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="14" x2="4" y2="5"/><line x1="8" y1="14" x2="8" y2="2"/><line x1="12" y1="14" x2="12" y2="8"/><line x1="2" y1="14" x2="14" y2="14"/></svg>',
-        "Relationships": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="8" r="2.5"/><circle cx="12" cy="8" r="2.5"/><line x1="6.5" y1="8" x2="9.5" y2="8"/></svg>',
-        "Hierarchies": '<svg class="vpx-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="3" r="1.8"/><circle cx="4" cy="13" r="1.8"/><circle cx="12" cy="13" r="1.8"/><line x1="6.8" y1="4.5" x2="4.8" y2="11.2"/><line x1="9.2" y1="4.5" x2="11.2" y2="11.2"/></svg>',
+        "Tables": _tab_icon("table"),
+        "Partitions": _tab_icon("partition"),
+        "Columns": _tab_icon("column"),
+        "Relationships": _tab_icon("relationship"),
+        "Hierarchies": _tab_icon("hierarchy"),
     }
 
     # Columns that should show data bars per tab
@@ -1901,7 +1945,13 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None, default_sort
     </script>
     """
 
-    display(HTML(styles + "\n".join(html_parts) + script))
+    theme_script = _ui_theme_toggle_script(
+        btn_id=theme_btn_id,
+        root_selector=root_selector,
+        dark_class="vpx-dark",
+    )
+
+    display(HTML(styles + "\n".join(html_parts) + script + theme_script))
 
 
 @log
