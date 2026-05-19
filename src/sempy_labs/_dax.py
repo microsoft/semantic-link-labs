@@ -1,11 +1,10 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
     format_dax_object_name,
-    resolve_dataset_name_and_id,
-    _base_api,
     generate_guid,
+    resolve_workspace_id,
+    resolve_item_id,
 )
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List, Tuple
@@ -48,39 +47,7 @@ def evaluate_dax_impersonation(
         A pandas dataframe holding the result of the DAX query.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
-    payload = {
-        "queries": [{"query": dax_query}],
-        "impersonatedUserName": user_name,
-    }
-
-    response = _base_api(
-        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries",
-        method="post",
-        payload=payload,
-    )
-    data = response.json()["results"][0]["tables"]
-
-    # Get all possible column names from all rows because null columns aren't returned
-    all_columns = set()
-    for item in data:
-        for row in item["rows"]:
-            all_columns.update(row.keys())
-
-    # Create rows with all columns, filling missing values with None
-    rows = []
-    for item in data:
-        for row in item["rows"]:
-            # Create a new row with all columns, defaulting to None
-            new_row = {col: row.get(col) for col in all_columns}
-            rows.append(new_row)
-
-    # Create DataFrame from the processed rows
-    df = pd.DataFrame(rows)
-
-    return df
+    return fabric.evaluate_dax(dataset=dataset, dax_query=dax_query, effective_user_name=user_name, workspace=workspace)
 
 
 @log
@@ -115,8 +82,8 @@ def get_dax_query_dependencies(
         A pandas dataframe showing the dependent columns of a given DAX query including model dependencies.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_id = resolve_workspace_id(workspace)
+    dataset_id = resolve_item_id(item=dataset, type="SemanticModel", workspace=workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
 
@@ -272,12 +239,9 @@ def get_dax_query_memory_size(
         The total size, in bytes, used by all columns that the DAX query depends on.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     df = get_dax_query_dependencies(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string=dax_string,
         put_in_memory=True,
     )
