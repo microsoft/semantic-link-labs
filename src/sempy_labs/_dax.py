@@ -47,7 +47,12 @@ def evaluate_dax_impersonation(
         A pandas dataframe holding the result of the DAX query.
     """
 
-    return fabric.evaluate_dax(dataset=dataset, dax_query=dax_query, effective_user_name=user_name, workspace=workspace)
+    return fabric.evaluate_dax(
+        dataset=dataset,
+        dax_query=dax_query,
+        effective_user_name=user_name,
+        workspace=workspace,
+    )
 
 
 @log
@@ -83,7 +88,9 @@ def get_dax_query_dependencies(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    dataset_id = resolve_item_id(item=dataset, type="SemanticModel", workspace=workspace_id)
+    dataset_id = resolve_item_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
 
     fabric.refresh_tom_cache(workspace=workspace)
 
