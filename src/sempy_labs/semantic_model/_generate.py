@@ -85,7 +85,7 @@ def generate_direct_lake_semantic_model(
             )
         tables = {t.split(".", 1)[-1]: t for t in tables}
 
-    if len(tables.keys()) != tables:
+    if len(tables.keys()) != len(tables):
         raise ValueError(
             f"{icons.red_dot} Duplicate table names are not allowed in the 'tables' parameter."
         )
