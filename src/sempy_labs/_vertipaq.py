@@ -14,6 +14,7 @@ def vertipaq_analyzer(
     export_lakehouse: Optional[str | UUID] = None,
     export_workspace: Optional[str | UUID] = None,
     export_schema: Optional[str] = None,
+    dark_mode: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
@@ -41,6 +42,10 @@ def vertipaq_analyzer(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     export_schema : str, default=None
         The schema to which the vertipaq analyzer statistics tables will be exported if export is set to 'table' and the lakehouse has schemas enabled. If the lakehouse does not have schemas enabled, this parameter will be ignored.
+    dark_mode : bool, default=False
+        If True, renders the Vertipaq Analyzer visualization with a dark
+        color theme. If False, renders with a light color theme. A toggle
+        button in the header allows switching between modes at runtime.
 
     Returns
     -------
@@ -56,6 +61,7 @@ def vertipaq_analyzer(
         export_lakehouse=export_lakehouse,
         export_workspace=export_workspace,
         export_schema=export_schema,
+        dark_mode=dark_mode,
     )
 
 
