@@ -269,6 +269,7 @@ def run_table_maintenance(
     optimize: bool = False,
     v_order: bool = False,
     z_order: Optional[Union[str, List[str]]] = None,
+    purge_deletion_vectors: bool = False,
     vacuum: bool = False,
     retention_period: Optional[str] = None,
     schema: Optional[str] = None,
@@ -291,6 +292,8 @@ def run_table_maintenance(
     z_order : str | List[str], default=None
         If specified, the `Z-Order <https://docs.delta.io/latest/optimizations-oss.html#z-ordering-multi-dimensional-clustering>`_ optimization will be applied on the table using the provided column(s).
         Accepts a single column name or a list of column names.
+    purge_deletion_vectors : bool, default=False
+        If True, physically removes data marked for deletion by `deletion vectors <https://docs.delta.io/latest/delta-deletion-vectors.html>`_ and rewrites the affected parquet files.
     vacuum : bool, default=False
         If True, the `VACUUM <https://docs.delta.io/latest/delta-utility.html#remove-files-no-longer-referenced-by-a-delta-table>`_ function will be run on the table.
     retention_period : str, default=None
@@ -316,9 +319,9 @@ def run_table_maintenance(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
-    if not optimize and not vacuum and not v_order and z_order is None:
+    if not optimize and not vacuum and not v_order and z_order is None and not purge_deletion_vectors:
         raise ValueError(
-            f"{icons.warning} At least one of 'optimize', 'v_order', 'z_order', or 'vacuum' must be specified."
+            f"{icons.warning} At least one of 'optimize', 'v_order', 'z_order', 'purge_deletion_vectors', or 'vacuum' must be specified."
         )
     if not vacuum and retention_period is not None:
         raise ValueError(
@@ -358,6 +361,8 @@ def run_table_maintenance(
                 f"{icons.red_dot} The 'z_order' parameter must be a non-empty column name or list of non-empty column names."
             )
         optimize_settings["zOrderBy"] = z_order_columns
+    if purge_deletion_vectors:
+        optimize_settings["purgeDeletionVectors"] = True
     if optimize or optimize_settings:
         payload["executionData"]["optimizeSettings"] = optimize_settings
     if vacuum:
