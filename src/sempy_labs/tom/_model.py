@@ -1548,7 +1548,7 @@ class TOMWrapper:
         ann.Name = name
         ann.Value = value
 
-        if any(a.Name == name for a in object.Annotations):
+        if object.Annotations.Contains(name):
             object.Annotations[name].Value = value
         else:
             object.Annotations.Add(ann)
@@ -3383,10 +3383,27 @@ class TOMWrapper:
             dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
 
+        # Build dict-indexed lookups so each object below resolves in O(1)
+        # instead of doing an O(N) pandas filter per object (which adds up
+        # to O(N^2) overall on large models).
+        dfT_idx = {row["Name"]: row for _, row in dfT.iterrows()}
+        dfC_idx = {
+            (row["Table Name"], row["Column Name"]): row
+            for _, row in dfC.iterrows()
+        }
+        dfP_idx = {
+            (row["Table Name"], row["Partition Name"]): row
+            for _, row in dfP.iterrows()
+        }
+        dfH_idx = {
+            (row["Table Name"], row["Hierarchy Name"]): row
+            for _, row in dfH.iterrows()
+        }
+        dfR_idx = {row["Relationship Name"]: row for _, row in dfR.iterrows()}
+
         for t in self.model.Tables:
-            dfT_filt = dfT[dfT["Name"] == t.Name]
-            if not dfT_filt.empty:
-                row = dfT_filt.iloc[0]
+            row = dfT_idx.get(t.Name)
+            if row is not None:
                 rowCount = str(row["Row Count"])
                 totalSize = str(row["Total Size"])
                 dict_size = str(row["Dictionary Size"])
@@ -3417,11 +3434,8 @@ class TOMWrapper:
                 )
                 self.set_annotation(object=t, name="Vertipaq_%DB", value=pct_db)
             for c in t.Columns:
-                dfC_filt = dfC[
-                    (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
-                ]
-                if not dfC_filt.empty:
-                    row = dfC_filt.iloc[0]
+                row = dfC_idx.get((t.Name, c.Name))
+                if row is not None:
                     totalSize = str(row["Total Size"])
                     dataSize = str(row["Data Size"])
                     dictSize = str(row["Dictionary Size"])
@@ -3455,11 +3469,8 @@ class TOMWrapper:
                         object=c, name="Vertipaq_LastAccessed", value=last_accessed
                     )
             for p in t.Partitions:
-                dfP_filt = dfP[
-                    (dfP["Table Name"] == t.Name) & (dfP["Partition Name"] == p.Name)
-                ]
-                if not dfP_filt.empty:
-                    row = dfP_filt.iloc[0]
+                row = dfP_idx.get((t.Name, p.Name))
+                if row is not None:
                     recordCount = str(row["Record Count"])
                     segmentCount = str(row["Segment Count"])
                     rpS = str(row["Records per Segment"])
@@ -3473,19 +3484,17 @@ class TOMWrapper:
                         object=p, name="Vertipaq_RecordsPerSegment", value=rpS
                     )
             for h in t.Hierarchies:
-                dfH_filt = dfH[
-                    (dfH["Table Name"] == t.Name) & (dfH["Hierarchy Name"] == h.Name)
-                ]
-                if not dfH_filt.empty:
-                    usedSize = str(dfH_filt["Used Size"].iloc[0])
+                row = dfH_idx.get((t.Name, h.Name))
+                if row is not None:
+                    usedSize = str(row["Used Size"])
                     self.set_annotation(
                         object=h, name="Vertipaq_UsedSize", value=usedSize
                     )
         for r in self.model.Relationships:
-            dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
-            if not dfR_filt.empty:
-                relSize = str(dfR_filt["Used Size"].iloc[0])
-                mult = str(dfR_filt["Multiplicity"].iloc[0])
+            row = dfR_idx.get(r.Name)
+            if row is not None:
+                relSize = str(row["Used Size"])
+                mult = str(row["Multiplicity"])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
                 self.set_annotation(object=r, name="Vertipaq_Multiplicity", value=mult)
         try:

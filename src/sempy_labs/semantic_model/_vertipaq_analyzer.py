@@ -35,6 +35,19 @@ from sempy_labs._ui_components import (
 )
 
 
+def _annotations_to_dict(obj):
+    """Read all annotations off a TOM object into a dict in one pass.
+
+    ``TOMWrapper.get_annotation_value`` performs two iterations over the
+    ``Annotations`` collection per call (an existence check followed by a
+    keyed get). When the Vertipaq Analyzer reads ~8 annotations per object
+    across thousands of objects, this becomes a measurable .NET interop
+    bottleneck. Building a Python dict once per object converts those
+    repeated lookups to O(1).
+    """
+    return {a.Name: a.Value for a in obj.Annotations}
+
+
 def get_run_id(lakehouse, schema, workspace, save_table_name):
     has_schema = is_schema_enabled(lakehouse=lakehouse, workspace=workspace)
     tables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
@@ -584,25 +597,22 @@ def vertipaq_analyzer(
                 source_table_name = p.Source.EntityName
                 source_schema_name = p.Source.SchemaName
 
+            ann = _annotations_to_dict(p)
             partitions.append(
                 {
                     "Table Name": p.Parent.Name,
                     "Partition Name": p.Name,
                     "Mode": mode,
                     "Record Count": cast_to_type(
-                        tom.get_annotation_value(object=p, name="Vertipaq_RecordCount"),
+                        ann.get("Vertipaq_RecordCount"),
                         "int",
                     ),
                     "Segment Count": cast_to_type(
-                        tom.get_annotation_value(
-                            object=p, name="Vertipaq_SegmentCount"
-                        ),
+                        ann.get("Vertipaq_SegmentCount"),
                         "int",
                     ),
                     "Records per Segment": cast_to_type(
-                        tom.get_annotation_value(
-                            object=p, name="Vertipaq_RecordsPerSegment"
-                        ),
+                        ann.get("Vertipaq_RecordsPerSegment"),
                         "decimal",
                     ),
                     "Direct Lake Type": direct_lake_type,
@@ -615,12 +625,13 @@ def vertipaq_analyzer(
             )
 
         for h in tom.all_hierarchies():
+            ann = _annotations_to_dict(h)
             hierarchies.append(
                 {
                     "Table Name": h.Parent.Name,
                     "Hierarchy Name": h.Name,
                     "Used Size": cast_to_type(
-                        tom.get_annotation_value(object=h, name="Vertipaq_UsedSize"),
+                        ann.get("Vertipaq_UsedSize"),
                         "decimal",
                     ),
                     "Levels": h.Levels.Count,
@@ -644,15 +655,14 @@ def vertipaq_analyzer(
                     workspace_id=workspace_id,
                 )
 
+            ann = _annotations_to_dict(r)
             relationships.append(
                 {
                     "From Object": from_object,
                     "To Object": to_object,
-                    "Multiplicity": tom.get_annotation_value(
-                        object=r, name="Vertipaq_Multiplicity"
-                    ),
+                    "Multiplicity": ann.get("Vertipaq_Multiplicity"),
                     "Used Size": cast_to_type(
-                        tom.get_annotation_value(object=r, name="Vertipaq_UsedSize"),
+                        ann.get("Vertipaq_UsedSize"),
                         "decimal",
                     ),
                     "Max From Cardinality": 0,  # Updated later
@@ -662,8 +672,9 @@ def vertipaq_analyzer(
             )
 
         for t in tom.model.Tables:
+            t_ann = _annotations_to_dict(t)
             table_total_size = cast_to_type(
-                tom.get_annotation_value(object=t, name="Vertipaq_TotalSize"), "decimal"
+                t_ann.get("Vertipaq_TotalSize"), "decimal"
             )
             table_type = (
                 "Calculation Group"
@@ -684,55 +695,46 @@ def vertipaq_analyzer(
                     "Table Name": t.Name,
                     "Type": table_type,
                     "Row Count": cast_to_type(
-                        tom.get_annotation_value(object=t, name="Vertipaq_RowCount"),
+                        t_ann.get("Vertipaq_RowCount"),
                         "int",
                     ),
                     "Total Size": table_total_size,
                     "Dictionary Size": cast_to_type(
-                        tom.get_annotation_value(
-                            object=t, name="Vertipaq_DictionarySize"
-                        ),
+                        t_ann.get("Vertipaq_DictionarySize"),
                         "decimal",
                     ),
                     "Data Size": cast_to_type(
-                        tom.get_annotation_value(object=t, name="Vertipaq_DataSize"),
+                        t_ann.get("Vertipaq_DataSize"),
                         "decimal",
                     ),
                     "Hierarchy Size": cast_to_type(
-                        tom.get_annotation_value(
-                            object=t, name="Vertipaq_HierarchySize"
-                        ),
+                        t_ann.get("Vertipaq_HierarchySize"),
                         "decimal",
                     ),
                     "Relationship Size": cast_to_type(
-                        tom.get_annotation_value(
-                            object=t, name="Vertipaq_RelationshipSize"
-                        ),
+                        t_ann.get("Vertipaq_RelationshipSize"),
                         "decimal",
                     ),
                     "User Hierarchy Size": cast_to_type(
-                        tom.get_annotation_value(
-                            object=t, name="Vertipaq_UserHierarchySize"
-                        ),
+                        t_ann.get("Vertipaq_UserHierarchySize"),
                         "decimal",
                     ),
                     "Partitions": t.Partitions.Count,
                     "Columns": t.Columns.Count
                     - 1,  # Subtracting 1 to exclude the RowNumber column
                     "% DB": cast_to_type(
-                        tom.get_annotation_value(object=t, name="Vertipaq_%DB"),
+                        t_ann.get("Vertipaq_%DB"),
                         "decimal",
                     ),
                 }
             )
             for c in t.Columns:
+                c_ann = _annotations_to_dict(c)
                 column_total_size = cast_to_type(
-                    tom.get_annotation_value(object=c, name="Vertipaq_TotalSize"),
+                    c_ann.get("Vertipaq_TotalSize"),
                     "decimal",
                 )
-                last_accessed = tom.get_annotation_value(
-                    object=c, name="Vertipaq_LastAccessed"
-                )
+                last_accessed = c_ann.get("Vertipaq_LastAccessed")
                 columns.append(
                     {
                         "Table Name": c.Parent.Name,
@@ -742,28 +744,20 @@ def vertipaq_analyzer(
                         ),
                         "Type": str(c.Type),
                         "Cardinality": cast_to_type(
-                            tom.get_annotation_value(
-                                object=c, name="Vertipaq_Cardinality"
-                            ),
+                            c_ann.get("Vertipaq_Cardinality"),
                             "int",
                         ),
                         "Total Size": column_total_size,
                         "Data Size": cast_to_type(
-                            tom.get_annotation_value(
-                                object=c, name="Vertipaq_DataSize"
-                            ),
+                            c_ann.get("Vertipaq_DataSize"),
                             "decimal",
                         ),
                         "Dictionary Size": cast_to_type(
-                            tom.get_annotation_value(
-                                object=c, name="Vertipaq_DictionarySize"
-                            ),
+                            c_ann.get("Vertipaq_DictionarySize"),
                             "decimal",
                         ),
                         "Hierarchy Size": cast_to_type(
-                            tom.get_annotation_value(
-                                object=c, name="Vertipaq_HierarchySize"
-                            ),
+                            c_ann.get("Vertipaq_HierarchySize"),
                             "decimal",
                         ),
                         "% Table": (
@@ -775,15 +769,11 @@ def vertipaq_analyzer(
                         "Data Type": str(c.DataType),
                         "Encoding": str(c.EncodingHint),
                         "Is Resident": cast_to_type(
-                            tom.get_annotation_value(
-                                object=c, name="Vertipaq_IsResident"
-                            ),
+                            c_ann.get("Vertipaq_IsResident"),
                             "bool",
                         ),
                         "Temperature": cast_to_type(
-                            tom.get_annotation_value(
-                                object=c, name="Vertipaq_Temperature"
-                            ),
+                            c_ann.get("Vertipaq_Temperature"),
                             "decimal",
                         ),
                         "Last Accessed": last_accessed,
@@ -860,23 +850,17 @@ def vertipaq_analyzer(
                             col["Source Column"], col["Cardinality"]
                         )
 
+        # Build an index keyed by the same ``'Table'[Column]`` string used
+        # for relationship endpoints so the lookups below are O(1) per
+        # relationship instead of an O(R*C) linear scan of every column
+        # per relationship.
+        col_card_lookup = {
+            f"'{c['Table Name']}'[{c['Column Name']}]": c["Cardinality"]
+            for c in columns
+        }
         for r in relationships:
-            r["Max From Cardinality"] = next(
-                (
-                    c["Cardinality"]
-                    for c in columns
-                    if f"'{c['Table Name']}'[{c['Column Name']}]" == r["From Object"]
-                ),
-                0,
-            )
-            r["Max To Cardinality"] = next(
-                (
-                    c["Cardinality"]
-                    for c in columns
-                    if f"'{c['Table Name']}'[{c['Column Name']}]" == r["To Object"]
-                ),
-                0,
-            )
+            r["Max From Cardinality"] = col_card_lookup.get(r["From Object"], 0)
+            r["Max To Cardinality"] = col_card_lookup.get(r["To Object"], 0)
 
         model_summary.append(
             {
