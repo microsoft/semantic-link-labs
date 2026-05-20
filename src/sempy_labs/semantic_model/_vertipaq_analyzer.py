@@ -35,19 +35,6 @@ from sempy_labs._ui_components import (
 )
 
 
-def _annotations_to_dict(obj):
-    """Read all annotations off a TOM object into a dict in one pass.
-
-    ``TOMWrapper.get_annotation_value`` performs two iterations over the
-    ``Annotations`` collection per call (an existence check followed by a
-    keyed get). When the Vertipaq Analyzer reads ~8 annotations per object
-    across thousands of objects, this becomes a measurable .NET interop
-    bottleneck. Building a Python dict once per object converts those
-    repeated lookups to O(1).
-    """
-    return {a.Name: a.Value for a in obj.Annotations}
-
-
 def get_run_id(lakehouse, schema, workspace, save_table_name):
     has_schema = is_schema_enabled(lakehouse=lakehouse, workspace=workspace)
     tables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
@@ -556,7 +543,43 @@ def vertipaq_analyzer(
             )
             return
 
-        tom.set_vertipaq_annotations()
+        # Read Vertipaq DMV stats directly instead of writing them onto the
+        # model as annotations and reading them back. The annotation
+        # round-trip costs N writes + N reads of .NET interop calls per
+        # object; we already have all the data in these DataFrames.
+        from sempy_labs._list_functions import list_tables, list_relationships
+
+        dfT = list_tables(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfC = fabric.list_columns(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfP = fabric.list_partitions(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfH = fabric.list_hierarchies(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfR = list_relationships(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+
+        empty_row: dict = {}
+        dfT_idx = {row["Name"]: row for _, row in dfT.iterrows()}
+        dfC_idx = {
+            (row["Table Name"], row["Column Name"]): row
+            for _, row in dfC.iterrows()
+        }
+        dfP_idx = {
+            (row["Table Name"], row["Partition Name"]): row
+            for _, row in dfP.iterrows()
+        }
+        dfH_idx = {
+            (row["Table Name"], row["Hierarchy Name"]): row
+            for _, row in dfH.iterrows()
+        }
+        dfR_idx = {row["Relationship Name"]: row for _, row in dfR.iterrows()}
 
         model_summary = []
         tables = []
@@ -597,22 +620,22 @@ def vertipaq_analyzer(
                 source_table_name = p.Source.EntityName
                 source_schema_name = p.Source.SchemaName
 
-            ann = _annotations_to_dict(p)
+            p_row = dfP_idx.get((p.Parent.Name, p.Name), empty_row)
             partitions.append(
                 {
                     "Table Name": p.Parent.Name,
                     "Partition Name": p.Name,
                     "Mode": mode,
                     "Record Count": cast_to_type(
-                        ann.get("Vertipaq_RecordCount"),
+                        p_row.get("Record Count"),
                         "int",
                     ),
                     "Segment Count": cast_to_type(
-                        ann.get("Vertipaq_SegmentCount"),
+                        p_row.get("Segment Count"),
                         "int",
                     ),
                     "Records per Segment": cast_to_type(
-                        ann.get("Vertipaq_RecordsPerSegment"),
+                        p_row.get("Records per Segment"),
                         "decimal",
                     ),
                     "Direct Lake Type": direct_lake_type,
@@ -625,13 +648,13 @@ def vertipaq_analyzer(
             )
 
         for h in tom.all_hierarchies():
-            ann = _annotations_to_dict(h)
+            h_row = dfH_idx.get((h.Parent.Name, h.Name), empty_row)
             hierarchies.append(
                 {
                     "Table Name": h.Parent.Name,
                     "Hierarchy Name": h.Name,
                     "Used Size": cast_to_type(
-                        ann.get("Vertipaq_UsedSize"),
+                        h_row.get("Used Size"),
                         "decimal",
                     ),
                     "Levels": h.Levels.Count,
@@ -655,14 +678,14 @@ def vertipaq_analyzer(
                     workspace_id=workspace_id,
                 )
 
-            ann = _annotations_to_dict(r)
+            r_row = dfR_idx.get(r.Name, empty_row)
             relationships.append(
                 {
                     "From Object": from_object,
                     "To Object": to_object,
-                    "Multiplicity": ann.get("Vertipaq_Multiplicity"),
+                    "Multiplicity": r_row.get("Multiplicity"),
                     "Used Size": cast_to_type(
-                        ann.get("Vertipaq_UsedSize"),
+                        r_row.get("Used Size"),
                         "decimal",
                     ),
                     "Max From Cardinality": 0,  # Updated later
@@ -672,9 +695,9 @@ def vertipaq_analyzer(
             )
 
         for t in tom.model.Tables:
-            t_ann = _annotations_to_dict(t)
+            t_row = dfT_idx.get(t.Name, empty_row)
             table_total_size = cast_to_type(
-                t_ann.get("Vertipaq_TotalSize"), "decimal"
+                t_row.get("Total Size"), "decimal"
             )
             table_type = (
                 "Calculation Group"
@@ -695,46 +718,46 @@ def vertipaq_analyzer(
                     "Table Name": t.Name,
                     "Type": table_type,
                     "Row Count": cast_to_type(
-                        t_ann.get("Vertipaq_RowCount"),
+                        t_row.get("Row Count"),
                         "int",
                     ),
                     "Total Size": table_total_size,
                     "Dictionary Size": cast_to_type(
-                        t_ann.get("Vertipaq_DictionarySize"),
+                        t_row.get("Dictionary Size"),
                         "decimal",
                     ),
                     "Data Size": cast_to_type(
-                        t_ann.get("Vertipaq_DataSize"),
+                        t_row.get("Data Size"),
                         "decimal",
                     ),
                     "Hierarchy Size": cast_to_type(
-                        t_ann.get("Vertipaq_HierarchySize"),
+                        t_row.get("Hierarchy Size"),
                         "decimal",
                     ),
                     "Relationship Size": cast_to_type(
-                        t_ann.get("Vertipaq_RelationshipSize"),
+                        t_row.get("Relationship Size"),
                         "decimal",
                     ),
                     "User Hierarchy Size": cast_to_type(
-                        t_ann.get("Vertipaq_UserHierarchySize"),
+                        t_row.get("User Hierarchy Size"),
                         "decimal",
                     ),
                     "Partitions": t.Partitions.Count,
                     "Columns": t.Columns.Count
                     - 1,  # Subtracting 1 to exclude the RowNumber column
                     "% DB": cast_to_type(
-                        t_ann.get("Vertipaq_%DB"),
+                        t_row.get("% DB"),
                         "decimal",
                     ),
                 }
             )
             for c in t.Columns:
-                c_ann = _annotations_to_dict(c)
+                c_row = dfC_idx.get((c.Parent.Name, c.Name), empty_row)
                 column_total_size = cast_to_type(
-                    c_ann.get("Vertipaq_TotalSize"),
+                    c_row.get("Total Size"),
                     "decimal",
                 )
-                last_accessed = c_ann.get("Vertipaq_LastAccessed")
+                last_accessed = c_row.get("Last Accessed")
                 columns.append(
                     {
                         "Table Name": c.Parent.Name,
@@ -744,20 +767,20 @@ def vertipaq_analyzer(
                         ),
                         "Type": str(c.Type),
                         "Cardinality": cast_to_type(
-                            c_ann.get("Vertipaq_Cardinality"),
+                            c_row.get("Column Cardinality"),
                             "int",
                         ),
                         "Total Size": column_total_size,
                         "Data Size": cast_to_type(
-                            c_ann.get("Vertipaq_DataSize"),
+                            c_row.get("Data Size"),
                             "decimal",
                         ),
                         "Dictionary Size": cast_to_type(
-                            c_ann.get("Vertipaq_DictionarySize"),
+                            c_row.get("Dictionary Size"),
                             "decimal",
                         ),
                         "Hierarchy Size": cast_to_type(
-                            c_ann.get("Vertipaq_HierarchySize"),
+                            c_row.get("Hierarchy Size"),
                             "decimal",
                         ),
                         "% Table": (
@@ -769,11 +792,11 @@ def vertipaq_analyzer(
                         "Data Type": str(c.DataType),
                         "Encoding": str(c.EncodingHint),
                         "Is Resident": cast_to_type(
-                            c_ann.get("Vertipaq_IsResident"),
+                            c_row.get("Is Resident"),
                             "bool",
                         ),
                         "Temperature": cast_to_type(
-                            c_ann.get("Vertipaq_Temperature"),
+                            c_row.get("Temperature"),
                             "decimal",
                         ),
                         "Last Accessed": last_accessed,
