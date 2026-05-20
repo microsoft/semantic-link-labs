@@ -37,7 +37,9 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_header_css as _ui_scoped_header_css,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     render_header_html as _ui_render_header_html,
+    render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
 )
 from tqdm.auto import tqdm
@@ -697,6 +699,8 @@ def _display_delta_analyzer_ui(
         dark_mode=dark_mode,
     )
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
+    ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    attribution_html = _ui_render_attribution_html()
 
     full_html = f"""
     <style>
@@ -1001,15 +1005,7 @@ def _display_delta_analyzer_ui(
         .da-{uid}-row-count span {{
             font-variant-numeric: tabular-nums;
         }}
-        /* Footer */
-        .da-{uid}-footer {{
-            padding: 10px 24px;
-            font-size: 11px;
-            color: var(--da-text-tertiary);
-            text-align: right;
-            border-top: 1px solid var(--da-border);
-            background: var(--da-bg-secondary);
-        }}
+        {ui_attribution_css_scoped}
     </style>
 
     <div class="da-{uid}-root{' da-dark' if dark_mode else ''}">
@@ -1031,8 +1027,8 @@ def _display_delta_analyzer_ui(
         <div class="da-{uid}-panels">
             {panels_html}
         </div>
-        <div class="da-{uid}-footer">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" style="color:inherit;text-decoration:underline;">Semantic Link Labs</a></div>
     </div>
+    {attribution_html}
     </div>
 
     <script>

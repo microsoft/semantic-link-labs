@@ -28,7 +28,9 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_header_css as _ui_scoped_header_css,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     render_header_html as _ui_render_header_html,
+    render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
 )
 
@@ -1196,6 +1198,7 @@ def visualize_vertipaq(
     # single ``{var}`` placeholder in the f-string below, so its braces
     # are NOT subject to f-string escaping and don't need doubling.
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
+    ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
 
     # ── CSS ──────────────────────────────────────────────────────────────
     # Light theme is the default; the ``.vpx-dark`` modifier on the root
@@ -1571,15 +1574,7 @@ def visualize_vertipaq(
         color: var(--vpx-text-tertiary);
         font-size: 14px;
     }}
-    /* ── Footer ── */
-    .vpx-{uid} .vpx-footer {{
-        padding: 10px 24px;
-        font-size: 11px;
-        color: var(--vpx-text-tertiary);
-        text-align: right;
-        border-top: 1px solid var(--vpx-border);
-        background: var(--vpx-bg-tertiary);
-    }}
+    {ui_attribution_css_scoped}
     </style>
     """
 
@@ -1808,10 +1803,17 @@ def visualize_vertipaq(
         html_parts.append("</div>")  # table-wrap
         html_parts.append("</div>")  # panel
 
-    html_parts.append(
-        f'<div class="vpx-footer">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" style="color:inherit;text-decoration:underline;">Semantic Link Labs</a> &bull; <a href="https://www.sqlbi.com/tools/vertipaq-analyzer/" target="_blank" style="color:inherit;text-decoration:underline;">Vertipaq Analyzer</a></div>'
-    )
     html_parts.append("</div>")  # container
+    html_parts.append(
+        _ui_render_attribution_html(
+            extra_links=[
+                (
+                    "Vertipaq Analyzer",
+                    "https://www.sqlbi.com/tools/vertipaq-analyzer/",
+                )
+            ]
+        )
+    )
     html_parts.append("</div>")  # root
 
     # ── JavaScript ────────────────────────────────────────────────────────

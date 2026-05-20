@@ -16,7 +16,7 @@ strings (HTML / CSS / JS) so they can be embedded in ``IPython.display.HTML``
 output, an ``anywidget`` widget, or any other surface that renders raw HTML.
 """
 
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +222,24 @@ HEADER_CSS: str = """\
 """
 
 
+def _scope_css(root_selector: str, css: str) -> str:
+    """Prefix every top-level rule in ``css`` with ``root_selector``.
+
+    Used to raise selector specificity so the widget's styles win against
+    notebook host styles.
+    """
+    import re
+
+    def _prefix(match: "re.Match[str]") -> str:
+        selectors = match.group(1)
+        scoped = ", ".join(
+            f"{root_selector} {s.strip()}" for s in selectors.split(",")
+        )
+        return f"{scoped} {{"
+
+    return re.sub(r"([^{}]+)\{", _prefix, css)
+
+
 def scoped_header_css(root_selector: str) -> str:
     """Return :data:`HEADER_CSS` with every rule prefixed by ``root_selector``.
 
@@ -242,16 +260,7 @@ def scoped_header_css(root_selector: str) -> str:
     str
         The scoped CSS as a single string.
     """
-    import re
-
-    def _prefix(match: "re.Match[str]") -> str:
-        selectors = match.group(1)
-        scoped = ", ".join(
-            f"{root_selector} {s.strip()}" for s in selectors.split(",")
-        )
-        return f"{scoped} {{"
-
-    return re.sub(r"([^{}]+)\{", _prefix, HEADER_CSS)
+    return _scope_css(root_selector, HEADER_CSS)
 
 
 def _escape_html(value: str) -> str:
@@ -373,3 +382,81 @@ def theme_toggle_script(
 }})();
 </script>
 """
+
+
+# ---------------------------------------------------------------------------
+# "Powered by Semantic Link Labs" attribution
+# ---------------------------------------------------------------------------
+ATTRIBUTION_CSS: str = """\
+.sl-attribution {
+    margin-top: 14px;
+    margin-bottom: 8px;
+    padding-right: 8px;
+    text-align: right;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ui-text-tertiary);
+}
+.sl-attribution a {
+    color: var(--ui-text-tertiary);
+    text-decoration: none;
+    transition: color 120ms ease;
+}
+.sl-attribution a:hover {
+    color: var(--ui-accent);
+    text-decoration: none;
+}
+"""
+
+
+def scoped_attribution_css(root_selector: str) -> str:
+    """Return :data:`ATTRIBUTION_CSS` with every rule prefixed by ``root_selector``.
+
+    Parameters
+    ----------
+    root_selector : str
+        A CSS selector for the widget's root container.
+
+    Returns
+    -------
+    str
+        The scoped CSS as a single string.
+    """
+    return _scope_css(root_selector, ATTRIBUTION_CSS)
+
+
+def render_attribution_html(
+    extra_links: Optional[Sequence[Tuple[str, str]]] = None,
+) -> str:
+    """Render the standard "Powered by Semantic Link Labs" attribution.
+
+    The rendered link uses the tertiary text color by default and animates
+    to the accent color on hover (see :data:`ATTRIBUTION_CSS`).
+
+    Parameters
+    ----------
+    extra_links : Sequence[tuple[str, str]], default=None
+        Optional additional ``(label, url)`` pairs to append after the
+        Semantic Link Labs link, separated by bullets (e.g.
+        ``[("Vertipaq Analyzer", "https://www.sqlbi.com/tools/vertipaq-analyzer/")]``).
+
+    Returns
+    -------
+    str
+        The attribution HTML fragment. The caller is responsible for
+        including :data:`ATTRIBUTION_CSS` (or a scoped variant) on the
+        page.
+    """
+    parts = [
+        'Powered by <a href="https://github.com/microsoft/semantic-link-labs" '
+        'target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>'
+    ]
+    if extra_links:
+        for label, url in extra_links:
+            parts.append(
+                f'<a href="{_escape_html(url)}" target="_blank" '
+                f'rel="noopener noreferrer">{_escape_html(label)}</a>'
+            )
+    body = " &bull; ".join(parts)
+    return f'<div class="sl-attribution">{body}</div>'
+
