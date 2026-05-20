@@ -319,7 +319,13 @@ def run_table_maintenance(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
-    if not optimize and not vacuum and not v_order and z_order is None and not purge_deletion_vectors:
+    if (
+        not optimize
+        and not vacuum
+        and not v_order
+        and z_order is None
+        and not purge_deletion_vectors
+    ):
         raise ValueError(
             f"{icons.warning} At least one of 'optimize', 'v_order', 'z_order', 'purge_deletion_vectors', or 'vacuum' must be specified."
         )

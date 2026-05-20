@@ -40,7 +40,7 @@ def resolve_user_id(user: str | UUID) -> UUID:
 
 
 @log
-def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, UUID]:
+def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, str, UUID]:
     """
     Resolves the user name, user principal name and ID from the user principal name or ID.
 
@@ -61,8 +61,9 @@ def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, UUID]:
 
     name = result.get("displayName")
     id = result.get("id")
+    mail = result.get("mail")
     upn = result.get("userPrincipalName")
-    return (name, upn, id)
+    return (name, mail, upn, id)
 
 
 @log

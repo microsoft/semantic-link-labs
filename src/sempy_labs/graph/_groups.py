@@ -123,7 +123,7 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _base_api(request=f"groups/{group_id}", client="graph").json()
+    v = _base_api(request=f"groups/{group_id}", client="graph").json()
 
     columns = {
         "Group Id": "string",
@@ -143,24 +143,23 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     rows = []
-    for v in result.get("value"):
-        rows.append(
-            {
-                "Group Id": v.get("id"),
-                "Group Name": v.get("displayName"),
-                "Mail": v.get("mail"),
-                "Description": v.get("description"),
-                "Classification": v.get("classification"),
-                "Mail Enabled": v.get("mailEnabled"),
-                "Security Enabled": v.get("securityEnabled"),
-                "Created Date Time": v.get("createdDateTime"),
-                "Expiration Date Time": v.get("expirationDateTime"),
-                "Deleted Date Time": v.get("deletedDateTime"),
-                "Renewed Date Time": v.get("renewedDateTime"),
-                "Visibility": v.get("visibility"),
-                "Security Identifier": v.get("securityIdentifier"),
-            }
-        )
+    rows.append(
+        {
+            "Group Id": v.get("id"),
+            "Group Name": v.get("displayName"),
+            "Mail": v.get("mail"),
+            "Description": v.get("description"),
+            "Classification": v.get("classification"),
+            "Mail Enabled": v.get("mailEnabled"),
+            "Security Enabled": v.get("securityEnabled"),
+            "Created Date Time": v.get("createdDateTime"),
+            "Expiration Date Time": v.get("expirationDateTime"),
+            "Deleted Date Time": v.get("deletedDateTime"),
+            "Renewed Date Time": v.get("renewedDateTime"),
+            "Visibility": v.get("visibility"),
+            "Security Identifier": v.get("securityIdentifier"),
+        }
+    )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))

@@ -19,7 +19,7 @@ def list_data_access_roles(
     view: Literal[
         "Roles", "Security", "MicrosoftEntraMembers", "FabricItemMembers"
     ] = "Roles",
-    resolve_users: bool = False,
+    resolve_objects: bool = False,
 ) -> pd.DataFrame:
     """
     Returns a list of OneLake roles.
@@ -40,8 +40,8 @@ def list_data_access_roles(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     view : typing.Literal["Roles", "Security", "MicrosoftEntraMembers", "FabricItemMembers"], default="Roles"
         The view returned by the API. "Roles" returns the tables/files covered by each role, "Security" returns the column/row level security, "MicrosoftEntraMembers" returns the Microsoft Entra members for each role, and "FabricItemMembers" returns the Fabric item members for each role.
-    resolve_users : bool, default=False
-        If True, resovles the 'Object Id' of a user to their Display Name and User Principal Name. This requires using a SPN connection as it authenticates to MS Graph. This is only valid for the 'MicrosoftEntraMembers' view.
+    resolve_objects : bool, default=False
+        If True, resovles the 'Object Id' of a user/group to their Display Name, Mail and User Principal Name. This requires using a SPN connection as it authenticates to MS Graph. This is only valid for the 'MicrosoftEntraMembers' view.
 
     Returns
     -------
@@ -49,6 +49,7 @@ def list_data_access_roles(
         A pandas dataframe showing a list of OneLake roles.
     """
     from sempy_labs.graph._users import resolve_user_name_and_id
+    from sempy_labs.graph._groups import _get_group
 
     supported_views = [
         "Roles",
@@ -213,11 +214,29 @@ def list_data_access_roles(
                         "Object Id": object_id,
                     }
 
-                    if resolve_users:
-                        display_name, upn, _ = resolve_user_name_and_id(object_id)
+                    if resolve_objects:
+                        display_name, mail, object_type, upn = None, None, None, None
+                        try:
+                            display_name, mail, upn, _ = resolve_user_name_and_id(
+                                object_id
+                            )
+                            object_type = "User"
+                        except Exception:
+                            try:
+                                df_g = _get_group(object_id)
+                                display_name = df_g["Group Name"].iloc[0]
+                                mail = df_g["Mail"].iloc[0]
+                                object_type = "Group"
+                            except Exception:
+                                print(
+                                    f"{icons.warning} Could not resolve the Object Id to a user or group."
+                                )
+
                         row.update(
                             {
-                                "User Name": display_name,
+                                "Object Type": object_type,
+                                "Display Name": display_name,
+                                "Email Address": mail,
                                 "User Principal Name": upn,
                             }
                         )
