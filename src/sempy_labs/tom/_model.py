@@ -994,9 +994,9 @@ class TOMWrapper:
             Name of the table.
         hierarchy_name : str
             Name of the hierarchy.
-        columns : List[str]
+        columns : typing.List[str]
             Names of the columns to use within the hierarchy.
-        levels : List[str], default=None
+        levels : typing.List[str], default=None
             Names of the levels to use within the hierarhcy (instead of the column names).
         hierarchy_description : str, default=None
             A description of the hierarchy.
@@ -1061,11 +1061,11 @@ class TOMWrapper:
         from_column: str,
         to_table: str,
         to_column: str,
-        from_cardinality: str,
-        to_cardinality: str,
-        cross_filtering_behavior: Optional[str] = None,
+        from_cardinality: Literal["Many", "One", "None"],
+        to_cardinality: Literal["Many", "One", "None"],
+        cross_filtering_behavior: Optional[Literal["Automatic", "OneDirection", "BothDirections"]] = None,
         is_active: bool = True,
-        security_filtering_behavior: Optional[str] = None,
+        security_filtering_behavior: Optional[Literal["None", "OneDirection", "BothDirections"]] = None,
         rely_on_referential_integrity: bool = False,
     ):
         """
@@ -1081,16 +1081,16 @@ class TOMWrapper:
             Name of the table on the 'to' side of the relationship.
         to_column : str
             Name of the column on the 'to' side of the relationship.
-        from_cardinality : str
+        from_cardinality : typing.Literal['Many', 'One', 'None']
             The cardinality of the 'from' side of the relationship. Options: ['Many', 'One', 'None'].
-        to_cardinality : str
+        to_cardinality : typing.Literal['Many', 'One', 'None']
                 The cardinality of the 'to' side of the relationship. Options: ['Many', 'One', 'None'].
-        cross_filtering_behavior : str, default=None
+        cross_filtering_behavior : typing.Literal['Automatic', 'OneDirection', 'BothDirections'], default=None
             Setting for the cross filtering behavior of the relationship. Options: ('Automatic', 'OneDirection', 'BothDirections').
             Defaults to None which resolves to 'Automatic'.
         is_active : bool, default=True
             Setting for whether the relationship is active or not.
-        security_filtering_behavior : str, default=None
+        security_filtering_behavior : typing.Literal['None', 'OneDirection', 'BothDirections'], default=None
             Setting for the security filtering behavior of the relationship. Options: ('None', 'OneDirection', 'BothDirections').
             Defaults to None which resolves to 'OneDirection'.
         rely_on_referential_integrity : bool, default=False
@@ -1278,7 +1278,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        if not any(c.Name == language for c in self.model.Cultures):
+        if not self.model.Cultures.Contains(language):
             cul = TOM.Culture()
             cul.Name = language
             lm = TOM.LinguisticMetadata()
@@ -1286,8 +1286,9 @@ class TOMWrapper:
             lm.Content = f'{{"Version": "1.0.0", "Language": "{language}"}}'
             cul.LinguisticMetadata = lm
             self.model.Cultures.Add(cul)
-
             return cul
+        else:
+            return self.model.Cultures[language]
 
     def add_perspective(self, perspective_name: str):
         """
@@ -1307,9 +1308,11 @@ class TOMWrapper:
 
         persp = TOM.Perspective()
         persp.Name = perspective_name
-        self.model.Perspectives.Add(persp)
-
-        return persp
+        if not self.model.Perspectives.Contains(perspective_name):
+            self.model.Perspectives.Add(persp)
+            return persp
+        else:
+            return self.model.Perspectives[perspective_name]
 
     def add_m_partition(
         self,
@@ -1500,7 +1503,7 @@ class TOMWrapper:
 
         Returns
         -------
-
+        None
         """
 
         self.model.Tables[table_name].Columns[column_name].AlternateOf = None
@@ -1569,12 +1572,11 @@ class TOMWrapper:
         str
             The annotation value.
         """
-        if any(a.Name == name for a in object.Annotations):
-            value = object.Annotations[name].Value
-        else:
-            value = None
 
-        return value
+        if object.Annotations.Contains(name):
+            return object.Annotations[name].Value
+        else:
+            return None
 
     def remove_annotation(self, object, name: str):
         """
@@ -1587,8 +1589,8 @@ class TOMWrapper:
         name : str
             Name of the annotation.
         """
-
-        object.Annotations.Remove(name)
+        if object.Annotations.Contains(name):
+            object.Annotations.Remove(name)
 
     def clear_annotations(self, object):
         """
@@ -1623,7 +1625,7 @@ class TOMWrapper:
             yield a
 
     def set_extended_property(
-        self, object, extended_property_type: str, name: str, value: str
+        self, object, extended_property_type: Literal["Json", "String"], name: str, value: str
     ):
         """
         Sets an `extended property <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ on an object within the semantic model.
@@ -1632,7 +1634,7 @@ class TOMWrapper:
         ----------
         object : TOM Object
             An object (i.e. table/column/measure) within a semantic model.
-        extended_property_type : str
+        extended_property_type : typing.Literal["Json", "String"]
             The extended property type.
             `Extended property valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedpropertytype?view=analysisservices-dotnet>`_
         name : str
@@ -1652,7 +1654,7 @@ class TOMWrapper:
         ep.Name = name
         ep.Value = value
 
-        if any(a.Name == name for a in object.Annotations):
+        if object.ExtendedProperties.Contains(name):
             object.ExtendedProperties[name].Value = value
         else:
             object.ExtendedProperties.Add(ep)
@@ -1673,12 +1675,11 @@ class TOMWrapper:
         str
             The extended property value.
         """
-        if any(a.Name == name for a in object.ExtendedProperties):
-            value = object.ExtendedProperties[name].Value
-        else:
-            value = None
 
-        return value
+        if object.ExtendedProperties.Contains(name):
+            return object.ExtendedProperties[name].Value
+        else:
+            return None
 
     def remove_extended_property(self, object, name: str):
         """
@@ -1692,7 +1693,8 @@ class TOMWrapper:
             Name of the annotation.
         """
 
-        object.ExtendedProperties.Remove(name)
+        if object.ExtendedProperties.Contains(name):
+            object.ExtendedProperties.Remove(name)
 
     def clear_extended_properties(self, object):
         """
