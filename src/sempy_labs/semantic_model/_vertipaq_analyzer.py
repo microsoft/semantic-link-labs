@@ -549,9 +549,7 @@ def vertipaq_analyzer(
         # object; we already have all the data in these DataFrames.
         from sempy_labs._list_functions import list_tables, list_relationships
 
-        dfT = list_tables(
-            dataset=dataset_id, workspace=workspace_id, extended=True
-        )
+        dfT = list_tables(dataset=dataset_id, workspace=workspace_id, extended=True)
         dfC = fabric.list_columns(
             dataset=dataset_id, workspace=workspace_id, extended=True
         )
@@ -568,16 +566,13 @@ def vertipaq_analyzer(
         empty_row: dict = {}
         dfT_idx = {row["Name"]: row for _, row in dfT.iterrows()}
         dfC_idx = {
-            (row["Table Name"], row["Column Name"]): row
-            for _, row in dfC.iterrows()
+            (row["Table Name"], row["Column Name"]): row for _, row in dfC.iterrows()
         }
         dfP_idx = {
-            (row["Table Name"], row["Partition Name"]): row
-            for _, row in dfP.iterrows()
+            (row["Table Name"], row["Partition Name"]): row for _, row in dfP.iterrows()
         }
         dfH_idx = {
-            (row["Table Name"], row["Hierarchy Name"]): row
-            for _, row in dfH.iterrows()
+            (row["Table Name"], row["Hierarchy Name"]): row for _, row in dfH.iterrows()
         }
         dfR_idx = {row["Relationship Name"]: row for _, row in dfR.iterrows()}
 
@@ -696,9 +691,7 @@ def vertipaq_analyzer(
 
         for t in tom.model.Tables:
             t_row = dfT_idx.get(t.Name, empty_row)
-            table_total_size = cast_to_type(
-                t_row.get("Total Size"), "decimal"
-            )
+            table_total_size = cast_to_type(t_row.get("Total Size"), "decimal")
             table_type = (
                 "Calculation Group"
                 if t.CalculationGroup

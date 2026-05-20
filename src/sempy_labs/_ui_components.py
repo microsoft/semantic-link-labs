@@ -81,7 +81,7 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<circle cx="8" cy="8" r="3"/>'
         '<path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5'
-        'M3.3 3.3l1.05 1.05M11.65 11.65l1.05 1.05'
+        "M3.3 3.3l1.05 1.05M11.65 11.65l1.05 1.05"
         'M3.3 12.7l1.05-1.05M11.65 4.35l1.05-1.05"/></svg>'
     ),
     "moon": (
@@ -93,7 +93,7 @@ ICONS: dict[str, str] = {
     "search": (
         '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">'
         '<path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 '
-        '0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 '
+        "0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 "
         '0 012 8z" clip-rule="evenodd"/></svg>'
     ),
     "plus": (
@@ -232,9 +232,7 @@ def _scope_css(root_selector: str, css: str) -> str:
 
     def _prefix(match: "re.Match[str]") -> str:
         selectors = match.group(1)
-        scoped = ", ".join(
-            f"{root_selector} {s.strip()}" for s in selectors.split(",")
-        )
+        scoped = ", ".join(f"{root_selector} {s.strip()}" for s in selectors.split(","))
         return f"{scoped} {{"
 
     return re.sub(r"([^{}]+)\{", _prefix, css)
@@ -459,4 +457,3 @@ def render_attribution_html(
             )
     body = " &bull; ".join(parts)
     return f'<div class="sl-attribution">{body}</div>'
-
