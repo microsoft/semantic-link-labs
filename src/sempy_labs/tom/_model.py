@@ -1063,9 +1063,13 @@ class TOMWrapper:
         to_column: str,
         from_cardinality: Literal["Many", "One", "None"],
         to_cardinality: Literal["Many", "One", "None"],
-        cross_filtering_behavior: Optional[Literal["Automatic", "OneDirection", "BothDirections"]] = None,
+        cross_filtering_behavior: Optional[
+            Literal["Automatic", "OneDirection", "BothDirections"]
+        ] = None,
         is_active: bool = True,
-        security_filtering_behavior: Optional[Literal["None", "OneDirection", "BothDirections"]] = None,
+        security_filtering_behavior: Optional[
+            Literal["None", "OneDirection", "BothDirections"]
+        ] = None,
         rely_on_referential_integrity: bool = False,
     ):
         """
@@ -1625,7 +1629,11 @@ class TOMWrapper:
             yield a
 
     def set_extended_property(
-        self, object, extended_property_type: Literal["Json", "String"], name: str, value: str
+        self,
+        object,
+        extended_property_type: Literal["Json", "String"],
+        name: str,
+        value: str,
     ):
         """
         Sets an `extended property <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ on an object within the semantic model.
@@ -3390,16 +3398,13 @@ class TOMWrapper:
         # to O(N^2) overall on large models).
         dfT_idx = {row["Name"]: row for _, row in dfT.iterrows()}
         dfC_idx = {
-            (row["Table Name"], row["Column Name"]): row
-            for _, row in dfC.iterrows()
+            (row["Table Name"], row["Column Name"]): row for _, row in dfC.iterrows()
         }
         dfP_idx = {
-            (row["Table Name"], row["Partition Name"]): row
-            for _, row in dfP.iterrows()
+            (row["Table Name"], row["Partition Name"]): row for _, row in dfP.iterrows()
         }
         dfH_idx = {
-            (row["Table Name"], row["Hierarchy Name"]): row
-            for _, row in dfH.iterrows()
+            (row["Table Name"], row["Hierarchy Name"]): row for _, row in dfH.iterrows()
         }
         dfR_idx = {row["Relationship Name"]: row for _, row in dfR.iterrows()}
 
