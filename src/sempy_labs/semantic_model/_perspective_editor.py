@@ -441,28 +441,12 @@ function render({ model, el }) {
     el.appendChild(root);
 
     const ICON_SVG = {
-        // Column: a tall rounded vertical bar — like a database column.
-        columns: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="6" y="2.5" width="4" height="11" rx="1.6"/>
-        </svg>`,
-        // Measure: a clean sigma (∑).
-        measures: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3H4l4.5 5L4 13h8"/>
-        </svg>`,
-        // Hierarchy: a parent node connecting down to two child nodes.
-        hierarchies: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="8" cy="3.25" r="1.4"/>
-            <circle cx="3.75" cy="12.75" r="1.4"/>
-            <circle cx="12.25" cy="12.75" r="1.4"/>
-            <path d="M8 4.65V8M8 8H3.75v3.35M8 8h4.25v3.35"/>
-        </svg>`,
-        // Table: a 2x2 grid with a header row.
-        tables: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2.5" y="3" width="11" height="10" rx="1.8"/>
-            <path d="M2.5 6.75h11M8 6.75v6.25"/>
-        </svg>`,
+        columns: `__SLLS_ICON_COLUMN__`,
+        measures: `__SLLS_ICON_MEASURE__`,
+        hierarchies: `__SLLS_ICON_HIERARCHY__`,
+        tables: `__SLLS_ICON_TABLE__`,
     };
-    const CARET = "<svg width='8' height='10' viewBox='0 0 8 10' fill='currentColor'><path d='M1 0l6 5-6 5V0z'/></svg>";
+    const CARET = `__SLLS_ICON_CARET__`;
 
     function getMetadata() { return model.get("metadata") || {}; }
     function getPerspectives() { return model.get("perspectives") || []; }
@@ -505,8 +489,8 @@ function render({ model, el }) {
     }
 
     // Theme toggle button (light/dark)
-    const SUN_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.3 3.3l1.05 1.05M11.65 11.65l1.05 1.05M3.3 12.7l1.05-1.05M11.65 4.35l1.05-1.05"/></svg>`;
-    const MOON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>`;
+    const SUN_SVG = `__SLLS_ICON_SUN__`;
+    const MOON_SVG = `__SLLS_ICON_MOON__`;
     const themeBtn = document.createElement("button");
     themeBtn.className = "slls-pe-btn slls-pe-btn-icon";
     themeBtn.type = "button";
@@ -529,7 +513,7 @@ function render({ model, el }) {
     header.appendChild(select);
 
     // "New perspective" button — sits next to the dropdown.
-    const PLUS_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3.25v9.5M3.25 8h9.5"/></svg>`;
+    const PLUS_SVG = `__SLLS_ICON_PLUS__`;
     const newBtn = document.createElement("button");
     newBtn.className = "slls-pe-btn slls-pe-btn-icon";
     newBtn.type = "button";
@@ -1098,6 +1082,22 @@ function render({ model, el }) {
 }
 export default { render };
 """
+
+
+# Inject SVG icons from the shared UI components module so they stay in
+# sync with other widgets (e.g. ``vertipaq_analyzer``).
+from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+
+_WIDGET_JS = (
+    _WIDGET_JS.replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])
+    .replace("__SLLS_ICON_MEASURE__", _UI_ICONS["measure"])
+    .replace("__SLLS_ICON_HIERARCHY__", _UI_ICONS["hierarchy"])
+    .replace("__SLLS_ICON_TABLE__", _UI_ICONS["table"])
+    .replace("__SLLS_ICON_CARET__", _UI_ICONS["caret_right"])
+    .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
+    .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
+    .replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])
+)
 
 
 @log
