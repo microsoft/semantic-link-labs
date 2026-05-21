@@ -40,7 +40,7 @@ def resolve_user_id(user: str | UUID) -> UUID:
 
 
 @log
-def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, UUID]:
+def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, str, UUID]:
     """
     Resolves the user name, user principal name and ID from the user principal name or ID.
 
@@ -57,15 +57,13 @@ def resolve_user_name_and_id(user: str | UUID) -> Tuple[str, str, UUID]:
         The user's name, user principal name and ID.
     """
 
-    if _is_valid_uuid(user):
-        return user
-    else:
-        result = _base_api(request=f"users/{user}", client="graph").json()
+    result = _base_api(request=f"users/{user}", client="graph").json()
 
-        name = result.get("displayName")
-        id = result.get("id")
-        upn = result.get("userPrincipalName")
-        return (name, upn, id)
+    name = result.get("displayName")
+    id = result.get("id")
+    mail = result.get("mail")
+    upn = result.get("userPrincipalName")
+    return (name, mail, upn, id)
 
 
 @log
