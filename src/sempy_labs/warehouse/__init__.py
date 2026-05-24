@@ -12,6 +12,11 @@ from ._items import (
     get_warehouse_columns,
     list_warehouses,
 )
+from ._sql_pools import (
+    get_sql_pools_configuration,
+    disable_sql_pools_configuration,
+    enable_sql_pools_configuration,
+)
 
 
 __all__ = [
@@ -25,4 +30,7 @@ __all__ = [
     "get_warehouse_tables",
     "get_warehouse_columns",
     "list_warehouses",
+    "get_sql_pools_configuration",
+    "disable_sql_pools_configuration",
+    "enable_sql_pools_configuration",
 ]
