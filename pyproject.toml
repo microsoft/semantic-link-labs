@@ -10,7 +10,7 @@ authors = [
 version="0.15.1"
 description="Semantic Link Labs for Microsoft Fabric"
 readme="README.md"
-requires-python=">=3.10,<3.13"
+requires-python=">=3.10,<3.14"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
