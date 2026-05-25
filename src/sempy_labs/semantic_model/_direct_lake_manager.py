@@ -138,6 +138,25 @@ _WIDGET_CSS = """
     border-color: var(--slls-accent);
     box-shadow: 0 0 0 3px var(--slls-accent-soft);
 }
+/* The browser-native dropdown list renders against the system surface, so
+   force explicit colors that remain legible in both light and dark modes. */
+.slls-dle-select option,
+.slls-dle-select optgroup {
+    background: #ffffff;
+    color: #1d1d1f;
+}
+@media (prefers-color-scheme: dark) {
+    .slls-dle-select option,
+    .slls-dle-select optgroup {
+        background: #2c2c2e;
+        color: #f5f5f7;
+    }
+}
+.slls-dle.slls-dle-dark .slls-dle-select option,
+.slls-dle.slls-dle-dark .slls-dle-select optgroup {
+    background: #2c2c2e;
+    color: #f5f5f7;
+}
 .slls-dle-select option {
     background-color: var(--slls-bg-solid);
     color: var(--slls-text);
@@ -1871,6 +1890,39 @@ function render({ model, el }) {
     function pendingAddedSources() {
         return pendingState.changes.filter(c => c.kind === "add_source");
     }
+    // Compute the expression name a staged add_source will receive on save.
+    // Mirrors the backend logic: base = "DatabaseQuery" if SQL endpoint is
+    // used, else `DL_<source_type>`; uniqueness suffix `_2`, `_3`, ...
+    // against existing saved sources and any prior staged add_source.
+    function previewExpressionName(payload, taken) {
+        const base = payload && payload.use_sql_endpoint
+            ? "DatabaseQuery"
+            : `DL_${(payload && payload.source_type) || "Source"}`;
+        if (!taken.has(base)) return base;
+        let i = 2;
+        while (taken.has(`${base}_${i}`)) i += 1;
+        return `${base}_${i}`;
+    }
+    // Returns the staged add_source changes, each annotated with its
+    // computed `expressionName` (the name it will receive on save).
+    function pendingAddedSourcesWithNames() {
+        const saved = model.get("sources") || [];
+        const taken = new Set(saved.map(s => s.expressionName));
+        const out = [];
+        for (const c of pendingState.changes) {
+            if (c.kind !== "add_source") continue;
+            const p = c.payload || {};
+            // Prefer the name stamped onto the payload at stage time; fall
+            // back to recomputing if missing (older staged changes).
+            let expressionName = p.expression_name;
+            if (!expressionName || taken.has(expressionName)) {
+                expressionName = previewExpressionName(p, taken);
+            }
+            taken.add(expressionName);
+            out.push({ change: c, expressionName });
+        }
+        return out;
+    }
     function pendingAddedTables() {
         const out = [];
         for (const c of pendingState.changes) {
@@ -2179,7 +2231,7 @@ function render({ model, el }) {
 
     function renderSources() {
         const sources = model.get("sources") || [];
-        const added = pendingAddedSources();
+        const added = pendingAddedSourcesWithNames();
         const workspaces = model.get("workspaces") || [];
         const wsNameById = {};
         for (const w of workspaces) wsNameById[w.id] = w.name;
@@ -2252,8 +2304,11 @@ function render({ model, el }) {
         // Pending added sources (not yet persisted): show with orange dot
         // and a "pending" pill, plus a Revert action that removes the
         // staged add_source change entirely.
-        for (const c of added) {
+        for (const entry of added) {
+            const c = entry.change;
             const p = c.payload || {};
+            const wsName = wsNameById[p.source_workspace_id] || "";
+            const sqlBit = p.use_sql_endpoint ? " · SQL endpoint" : "";
             const row = document.createElement("div");
             row.className = "slls-dle-item pending";
             const main = document.createElement("div");
@@ -2267,7 +2322,8 @@ function render({ model, el }) {
             main.appendChild(nm);
             const meta = document.createElement("div");
             meta.className = "slls-dle-item-meta";
-            meta.textContent = `Pending — will be added on save`;
+            meta.textContent =
+                `${wsName} · expression: ${entry.expressionName}${sqlBit} · Pending — will be added on save`;
             main.appendChild(meta);
             row.appendChild(main);
             const actions = document.createElement("div");
@@ -2277,8 +2333,24 @@ function render({ model, el }) {
             revertBtn.textContent = "Revert";
             revertBtn.title = "Remove this staged source";
             revertBtn.addEventListener("click", () => {
+                // Also drop any staged reassign_table / add_tables changes
+                // that reference this pending source's expression name,
+                // since that expression will no longer exist after revert.
+                const exprName = entry.expressionName;
                 revertChangesMatching(
-                    ch => ch.id === c.id,
+                    ch => (
+                        ch.id === c.id ||
+                        (
+                            ch.kind === "reassign_table" &&
+                            ch.payload &&
+                            ch.payload.expression_name === exprName
+                        ) ||
+                        (
+                            ch.kind === "add_tables" &&
+                            ch.payload &&
+                            ch.payload.expression_name === exprName
+                        )
+                    ),
                     `Reverted staged source '${p.source_name || ""}'.`,
                 );
             });
@@ -2600,6 +2672,15 @@ function render({ model, el }) {
                     payload,
                 });
             } else {
+                // Precompute the expression name this source will receive on
+                // save so it can be referenced immediately (e.g., for
+                // reassigning a table to this not-yet-saved source).
+                const savedExpr = (model.get("sources") || [])
+                    .map(s => s.expressionName);
+                const stagedExpr = pendingAddedSourcesWithNames()
+                    .map(e => e.expressionName);
+                const taken = new Set([...savedExpr, ...stagedExpr]);
+                payload.expression_name = previewExpressionName(payload, taken);
                 enqueuePendingChange({
                     id: pendingId(),
                     kind: "add_source",
@@ -2721,6 +2802,7 @@ function render({ model, el }) {
         };
 
         const sources = model.get("sources") || [];
+        const stagedSources = pendingAddedSourcesWithNames();
         const grid = document.createElement("div");
         grid.className = "slls-dle-grid";
         modal.appendChild(grid);
@@ -2733,6 +2815,22 @@ function render({ model, el }) {
             o.textContent = s.expressionName;
             if (s.expressionName === initial.expressionName) o.selected = true;
             exprSel.appendChild(o);
+        }
+        if (stagedSources.length) {
+            const group = document.createElement("optgroup");
+            group.label = "Pending (unsaved) sources";
+            for (const entry of stagedSources) {
+                const p = entry.change.payload || {};
+                const o = document.createElement("option");
+                o.value = entry.expressionName;
+                const label = p.source_name
+                    ? `${entry.expressionName} — ${p.source_name}`
+                    : entry.expressionName;
+                o.textContent = label;
+                if (entry.expressionName === initial.expressionName) o.selected = true;
+                group.appendChild(o);
+            }
+            exprSel.appendChild(group);
         }
         const exprField = makeField("Source (expression)", exprSel);
         grid.appendChild(exprField);
@@ -4299,10 +4397,16 @@ def direct_lake_manager(
                     return
                 # Defer table renames to the end so other staged changes
                 # that reference the original table name resolve correctly.
-                changes = sorted(
-                    changes,
-                    key=lambda ch: 1 if ch.get("kind") == "rename_table" else 0,
-                )
+                # Run add_source first so subsequent reassign_table /
+                # add_tables changes can reference its new expression by name.
+                def _change_order(ch):
+                    k = ch.get("kind")
+                    if k == "add_source":
+                        return 0
+                    if k == "rename_table":
+                        return 2
+                    return 1
+                changes = sorted(changes, key=_change_order)
                 summary = []
                 with connect_semantic_model(
                     dataset=ds_id, workspace=ws_id, readonly=False
@@ -4326,7 +4430,11 @@ def direct_lake_manager(
                                 use_sql_endpoint=use_sql,
                             )
                             base = "DatabaseQuery" if use_sql else f"DL_{src_type}"
-                            expr_name = _unique_expression_name(tom, base)
+                            preferred = p.get("expression_name")
+                            if preferred and not tom.model.Expressions.Find(preferred):
+                                expr_name = preferred
+                            else:
+                                expr_name = _unique_expression_name(tom, base)
                             tom.add_expression(name=expr_name, expression=expr_text)
                             summary.append(f"added source '{src_name}'")
                         elif kind == "update_source":
