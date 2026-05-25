@@ -46,76 +46,20 @@ _WIDGET_CSS = """
     box-sizing: border-box;
     position: relative;
 }
-@media (prefers-color-scheme: dark) {
-    .slls-dle.slls-dle-auto {
-        --slls-bg-solid: #1c1c1e;
-        --slls-surface: rgba(255, 255, 255, 0.04);
-        --slls-surface-2: rgba(255, 255, 255, 0.03);
-        --slls-border: rgba(255, 255, 255, 0.08);
-        --slls-border-strong: rgba(255, 255, 255, 0.16);
-        --slls-text: #f5f5f7;
-        --slls-text-secondary: #a1a1a6;
-        --slls-text-tertiary: #6e6e73;
-        --slls-accent-soft: rgba(10, 132, 255, 0.18);
-        --slls-accent: #0A84FF;
-        --slls-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.5);
-    }
-}
-.slls-dle.slls-dle-dark {
-    --slls-bg-solid: #1c1c1e;
-    --slls-surface: rgba(255, 255, 255, 0.04);
-    --slls-surface-2: rgba(255, 255, 255, 0.03);
-    --slls-border: rgba(255, 255, 255, 0.08);
-    --slls-border-strong: rgba(255, 255, 255, 0.16);
-    --slls-text: #f5f5f7;
-    --slls-text-secondary: #a1a1a6;
-    --slls-text-tertiary: #6e6e73;
-    --slls-accent-soft: rgba(10, 132, 255, 0.18);
-    --slls-accent: #0A84FF;
-    --slls-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.5);
-}
+/* Dark-mode tokens: auto (system preference) + explicit class. */
+@media (prefers-color-scheme: dark) { .slls-dle.slls-dle-auto { --slls-bg-solid: #1c1c1e; --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03); --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16); --slls-text: #f5f5f7; --slls-text-secondary: #a1a1a6; --slls-text-tertiary: #6e6e73; --slls-accent-soft: rgba(10,132,255,0.18); --slls-accent: #0A84FF; --slls-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.5); } }
+.slls-dle.slls-dle-dark { --slls-bg-solid: #1c1c1e; --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03); --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16); --slls-text: #f5f5f7; --slls-text-secondary: #a1a1a6; --slls-text-tertiary: #6e6e73; --slls-accent-soft: rgba(10,132,255,0.18); --slls-accent: #0A84FF; --slls-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.5); }
 .slls-dle * { box-sizing: border-box; }
 
-.slls-dle-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-}
-.slls-dle-titlewrap {
-    display: flex;
-    flex-direction: column;
-    margin-right: auto;
-    min-width: 0;
-}
-.slls-dle-title {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-}
-.slls-dle-subtitle {
-    font-size: 12px;
-    color: var(--slls-text-secondary);
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 600px;
-}
-.slls-dle-subtitle .slls-dle-sep {
-    color: var(--slls-text-tertiary);
-    margin: 0 6px;
-}
-.slls-dle-subtitle b {
-    color: var(--slls-text);
-    font-weight: 500;
-}
+.slls-dle-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.slls-dle-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.slls-dle-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
+.slls-dle-subtitle { font-size: 12px; color: var(--slls-text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 600px; }
+.slls-dle-subtitle .slls-dle-sep { color: var(--slls-text-tertiary); margin: 0 6px; }
+.slls-dle-subtitle b { color: var(--slls-text); font-weight: 500; }
 
 .slls-dle-select, .slls-dle-input {
-    appearance: none;
-    -webkit-appearance: none;
+    appearance: none; -webkit-appearance: none;
     background: var(--slls-surface);
     border: 1px solid var(--slls-border-strong);
     border-radius: 999px;
@@ -133,34 +77,12 @@ _WIDGET_CSS = """
     background-position: right 12px center;
 }
 .slls-dle-select:hover, .slls-dle-input:hover { border-color: var(--slls-text-tertiary); }
-.slls-dle-select:focus, .slls-dle-input:focus {
-    outline: none;
-    border-color: var(--slls-accent);
-    box-shadow: 0 0 0 3px var(--slls-accent-soft);
-}
+.slls-dle-select:focus, .slls-dle-input:focus { outline: none; border-color: var(--slls-accent); box-shadow: 0 0 0 3px var(--slls-accent-soft); }
 /* The browser-native dropdown list renders against the system surface, so
    force explicit colors that remain legible in both light and dark modes. */
-.slls-dle-select option,
-.slls-dle-select optgroup {
-    background: #ffffff;
-    color: #1d1d1f;
-}
-@media (prefers-color-scheme: dark) {
-    .slls-dle-select option,
-    .slls-dle-select optgroup {
-        background: #2c2c2e;
-        color: #f5f5f7;
-    }
-}
-.slls-dle.slls-dle-dark .slls-dle-select option,
-.slls-dle.slls-dle-dark .slls-dle-select optgroup {
-    background: #2c2c2e;
-    color: #f5f5f7;
-}
-.slls-dle-select option {
-    background-color: var(--slls-bg-solid);
-    color: var(--slls-text);
-}
+.slls-dle-select option, .slls-dle-select optgroup { background: #ffffff; color: #1d1d1f; }
+@media (prefers-color-scheme: dark) { .slls-dle-select option, .slls-dle-select optgroup { background: #2c2c2e; color: #f5f5f7; } }
+.slls-dle.slls-dle-dark .slls-dle-select option, .slls-dle.slls-dle-dark .slls-dle-select optgroup { background: #2c2c2e; color: #f5f5f7; }
 .slls-dle-input::placeholder { color: var(--slls-text-tertiary); }
 
 .slls-dle-btn {
@@ -168,493 +90,125 @@ _WIDGET_CSS = """
     border: 1px solid var(--slls-border-strong);
     background: var(--slls-surface);
     color: var(--slls-text);
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 500;
+    font-family: inherit; font-size: 13.5px; font-weight: 500;
     padding: 7px 16px;
     border-radius: 999px;
     cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease,
-        transform 80ms ease, box-shadow 120ms ease, opacity 120ms ease;
+    transition: background 120ms ease, border-color 120ms ease, transform 80ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
 .slls-dle-btn:hover { background: var(--slls-surface-2); border-color: var(--slls-text-tertiary); }
 .slls-dle-btn:active { transform: scale(0.97); }
 .slls-dle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.slls-dle-btn-primary {
-    background: var(--slls-accent);
-    border-color: var(--slls-accent);
-    color: #fff;
-}
+.slls-dle-btn-primary { background: var(--slls-accent); border-color: var(--slls-accent); color: #fff; }
 .slls-dle-btn-primary:hover { background: var(--slls-accent-hover); border-color: var(--slls-accent-hover); }
-
-.slls-dle-btn-danger {
-    background: transparent;
-    border-color: var(--slls-danger);
-    color: var(--slls-danger);
-}
+.slls-dle-btn-danger { background: transparent; border-color: var(--slls-danger); color: var(--slls-danger); }
 .slls-dle-btn-danger:hover { background: var(--slls-danger-soft); }
+.slls-dle-btn-icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 18px; line-height: 1; }
 
-.slls-dle-btn-icon {
-    width: 32px; height: 32px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    font-size: 18px;
-    line-height: 1;
-}
+.slls-dle-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-.slls-dle-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
+.slls-dle-section { border: 1px solid var(--slls-border); border-radius: var(--slls-radius); background: var(--slls-surface); padding: 16px; margin-top: 14px; }
+.slls-dle-section h3 { margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--slls-text); display: flex; align-items: center; gap: 8px; }
+.slls-dle-section h3 .slls-dle-count { color: var(--slls-text-tertiary); font-weight: 400; font-size: 12.5px; }
 
-.slls-dle-section {
-    border: 1px solid var(--slls-border);
-    border-radius: var(--slls-radius);
-    background: var(--slls-surface);
-    padding: 16px;
-    margin-top: 14px;
-}
-.slls-dle-section h3 {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--slls-text);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.slls-dle-section h3 .slls-dle-count {
-    color: var(--slls-text-tertiary);
-    font-weight: 400;
-    font-size: 12.5px;
-}
+/* minmax(0, 1fr) lets columns shrink so long option labels in
+   child <select> elements don't blow out the modal width. */
+.slls-dle-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.slls-dle-grid > .slls-dle-field { min-width: 0; }
+.slls-dle-grid > .slls-dle-field-wide { grid-column: 1 / -1; }
+.slls-dle-grid .slls-dle-select, .slls-dle-grid .slls-dle-input { width: 100%; max-width: 100%; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.slls-dle-field { display: flex; flex-direction: column; gap: 4px; }
+.slls-dle-field label { font-size: 12px; color: var(--slls-text-secondary); padding-left: 10px; }
+.slls-dle-checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--slls-text); cursor: pointer; user-select: none; }
 
-.slls-dle-grid {
-    display: grid;
-    /* minmax(0, 1fr) lets columns shrink so long option labels in
-       child <select> elements don't blow out the modal width. */
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
-}
-.slls-dle-grid > .slls-dle-field {
-    min-width: 0;
-}
-.slls-dle-grid > .slls-dle-field-wide {
-    grid-column: 1 / -1;
-}
-.slls-dle-grid .slls-dle-select,
-.slls-dle-grid .slls-dle-input {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-}
-.slls-dle-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-.slls-dle-field label {
-    font-size: 12px;
-    color: var(--slls-text-secondary);
-    padding-left: 10px;
-}
-.slls-dle-checkbox {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13.5px;
-    color: var(--slls-text);
-    cursor: pointer;
-    user-select: none;
-}
-
-.slls-dle-list {
-    border: 1px solid var(--slls-border);
-    border-radius: var(--slls-radius-sm);
-    background: var(--slls-bg-solid);
-    overflow: hidden;
-    max-height: 360px;
-    overflow-y: auto;
-}
+.slls-dle-list { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); background: var(--slls-bg-solid); overflow: hidden; max-height: 360px; overflow-y: auto; }
 .slls-dle-list::-webkit-scrollbar { width: 10px; height: 10px; }
-.slls-dle-list::-webkit-scrollbar-thumb {
-    background: var(--slls-border-strong);
-    border-radius: 999px;
-    background-clip: padding-box;
-    border: 2px solid transparent;
-}
+.slls-dle-list::-webkit-scrollbar-thumb { background: var(--slls-border-strong); border-radius: 999px; background-clip: padding-box; border: 2px solid transparent; }
 .slls-dle-list::-webkit-scrollbar-thumb:hover { background-color: var(--slls-text-tertiary); }
-.slls-dle-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--slls-border);
-}
+.slls-dle-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--slls-border); }
 .slls-dle-item:last-child { border-bottom: none; }
-.slls-dle-item-main {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    flex: 1;
-}
-.slls-dle-item-name {
-    font-size: 14px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.slls-dle-item-meta {
-    font-size: 12px;
-    color: var(--slls-text-tertiary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+.slls-dle-item-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.slls-dle-item-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-dle-item-meta { font-size: 12px; color: var(--slls-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-dle-item-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
 
 /* Apple-style icon-only button used as a menu trigger ("•••"). */
-.slls-dle-icon-btn {
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--slls-text-secondary);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 120ms ease, color 120ms ease,
-        border-color 120ms ease;
-}
-.slls-dle-icon-btn:hover {
-    background: var(--slls-surface-2);
-    color: var(--slls-text);
-}
-.slls-dle-icon-btn.active {
-    background: var(--slls-surface-2);
-    color: var(--slls-text);
-    border-color: var(--slls-border);
-}
+.slls-dle-icon-btn { width: 30px; height: 30px; padding: 0; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--slls-text-secondary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 120ms ease, color 120ms ease, border-color 120ms ease; }
+.slls-dle-icon-btn:hover { background: var(--slls-surface-2); color: var(--slls-text); }
+.slls-dle-icon-btn.active { background: var(--slls-surface-2); color: var(--slls-text); border-color: var(--slls-border); }
 
-/* Floating popover menu with subtle vibrancy + shadow. */
+/* Floating popover menu. Tokens are re-declared because it is portaled to document.body. */
 .slls-dle-menu {
-    /* Re-declare design tokens here because the menu is portaled to
-       document.body and is therefore outside the .slls-dle scope. */
-    --slls-surface: #ffffff;
-    --slls-surface-2: rgba(0, 0, 0, 0.05);
-    --slls-border: rgba(0, 0, 0, 0.10);
-    --slls-text: #1d1d1f;
-    --slls-text-secondary: #6e6e73;
-    --slls-red: #ff3b30;
-    position: fixed;
-    z-index: 10000;
-    background: var(--slls-surface);
-    border: 1px solid var(--slls-border);
-    border-radius: 12px;
-    box-shadow:
-        0 1px 1px rgba(0, 0, 0, 0.04),
-        0 10px 30px rgba(0, 0, 0, 0.18);
-    padding: 6px;
-    min-width: 200px;
-    color: var(--slls-text);
-    backdrop-filter: saturate(1.4) blur(20px);
-    -webkit-backdrop-filter: saturate(1.4) blur(20px);
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-    transform-origin: top right;
+    --slls-surface: #ffffff; --slls-surface-2: rgba(0,0,0,0.05); --slls-border: rgba(0,0,0,0.10);
+    --slls-text: #1d1d1f; --slls-text-secondary: #6e6e73; --slls-red: #ff3b30;
+    position: fixed; z-index: 10000;
+    background: var(--slls-surface); border: 1px solid var(--slls-border); border-radius: 12px;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04), 0 10px 30px rgba(0,0,0,0.18);
+    padding: 6px; min-width: 200px; color: var(--slls-text);
+    backdrop-filter: saturate(1.4) blur(20px); -webkit-backdrop-filter: saturate(1.4) blur(20px);
+    opacity: 0; transform: translateY(-4px) scale(0.98); transform-origin: top right;
     transition: opacity 120ms ease, transform 120ms ease;
 }
-@media (prefers-color-scheme: dark) {
-    .slls-dle-menu {
-        --slls-surface: #2c2c2e;
-        --slls-surface-2: rgba(255, 255, 255, 0.08);
-        --slls-border: rgba(255, 255, 255, 0.12);
-        --slls-text: #f5f5f7;
-        --slls-text-secondary: #a1a1a6;
-        box-shadow:
-            0 1px 1px rgba(0, 0, 0, 0.3),
-            0 10px 30px rgba(0, 0, 0, 0.55);
-    }
-}
-.slls-dle-menu.show {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-}
-.slls-dle-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 7px 10px;
-    border: none;
-    background: transparent;
-    color: var(--slls-text);
-    font-size: 13px;
-    text-align: left;
-    border-radius: 7px;
-    cursor: pointer;
-    transition: background 100ms ease;
-}
-.slls-dle-menu-item:hover { background: var(--slls-surface-2); }
-.slls-dle-menu-item:focus-visible {
-    outline: none;
-    background: var(--slls-surface-2);
-}
-.slls-dle-menu-item-icon {
-    width: 18px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--slls-text-secondary);
-    flex-shrink: 0;
-}
+@media (prefers-color-scheme: dark) { .slls-dle-menu { --slls-surface: #2c2c2e; --slls-surface-2: rgba(255,255,255,0.08); --slls-border: rgba(255,255,255,0.12); --slls-text: #f5f5f7; --slls-text-secondary: #a1a1a6; box-shadow: 0 1px 1px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.55); } }
+.slls-dle-menu.show { opacity: 1; transform: translateY(0) scale(1); }
+.slls-dle-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: none; background: transparent; color: var(--slls-text); font-size: 13px; text-align: left; border-radius: 7px; cursor: pointer; transition: background 100ms ease; }
+.slls-dle-menu-item:hover, .slls-dle-menu-item:focus-visible { outline: none; background: var(--slls-surface-2); }
+.slls-dle-menu-item-icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; color: var(--slls-text-secondary); flex-shrink: 0; }
 .slls-dle-menu-item-label { flex: 1; min-width: 0; }
-.slls-dle-menu-divider {
-    height: 1px;
-    background: var(--slls-border);
-    margin: 4px 2px;
-}
-.slls-dle-pill {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--slls-accent-soft);
-    color: var(--slls-accent);
-    font-size: 11.5px;
-    font-weight: 500;
-}
+.slls-dle-menu-divider { height: 1px; background: var(--slls-border); margin: 4px 2px; }
 
-.slls-dle-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: var(--slls-text-secondary);
-    opacity: 0.9;
-    width: 18px;
-    height: 18px;
-}
+.slls-dle-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--slls-accent-soft); color: var(--slls-accent); font-size: 11.5px; font-weight: 500; }
+
+.slls-dle-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--slls-text-secondary); opacity: 0.9; width: 18px; height: 18px; }
 .slls-dle-icon svg { display: block; }
-.slls-dle-table-icon { color: var(--slls-text-secondary); }
-.slls-dle-column-icon { color: var(--slls-text-secondary); }
-.slls-dle-source-icon { color: var(--slls-text-secondary); }
-.slls-dle-icon-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-}
+.slls-dle-icon-inline { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 
-.slls-dle-empty {
-    padding: 24px 16px;
-    text-align: center;
-    color: var(--slls-text-tertiary);
-    font-size: 13.5px;
-}
+.slls-dle-empty { padding: 24px 16px; text-align: center; color: var(--slls-text-tertiary); font-size: 13.5px; }
 
-.slls-dle-status {
-    margin-top: 14px;
-    margin-bottom: 6px;
-    padding: 10px 14px;
-    border-radius: var(--slls-radius-sm);
-    font-size: 13.5px;
-    display: none;
-}
+.slls-dle-status { margin-top: 14px; margin-bottom: 6px; padding: 10px 14px; border-radius: var(--slls-radius-sm); font-size: 13.5px; display: none; }
 .slls-dle-status.show { display: block; animation: slls-dle-fade-in 200ms ease; }
 .slls-dle-status.success { background: var(--slls-success-soft); color: var(--slls-success); }
 .slls-dle-status.error { background: var(--slls-danger-soft); color: var(--slls-danger); }
 .slls-dle-status.info { background: var(--slls-accent-soft); color: var(--slls-accent); }
 
 /* Orange "pending change" indicator for items modified since the last save. */
-.slls-dle-pending-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--slls-orange);
-    display: inline-block;
-    flex-shrink: 0;
-    box-shadow: 0 0 0 2px rgba(255, 149, 0, 0.18);
-}
-.slls-dle-savebar {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    margin-top: 10px;
-    border-radius: var(--slls-radius-sm);
-    background: rgba(255, 149, 0, 0.10);
-    border: 1px solid rgba(255, 149, 0, 0.45);
-    color: var(--slls-text);
-}
+.slls-dle-pending-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--slls-orange); display: inline-block; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(255,149,0,0.18); }
+.slls-dle-savebar { display: none; align-items: center; gap: 10px; padding: 10px 14px; margin-top: 10px; border-radius: var(--slls-radius-sm); background: rgba(255,149,0,0.10); border: 1px solid rgba(255,149,0,0.45); color: var(--slls-text); }
 .slls-dle-savebar.show { display: flex; }
-.slls-dle-savebar-label {
-    font-size: 13.5px;
-    margin-right: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+.slls-dle-savebar-label { font-size: 13.5px; margin-right: auto; display: flex; align-items: center; gap: 8px; }
 .slls-dle-item-name .slls-dle-pending-dot { margin-right: 4px; }
-.slls-dle-item.pending {
-    background: rgba(255, 149, 0, 0.06);
-}
+.slls-dle-item.pending { background: rgba(255,149,0,0.06); }
 
 /* Buffer above the manage toolbar so the Refresh button does not crowd
    any preceding cell output / status banner. */
-.slls-dle-manage-top {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid var(--slls-border);
-}
-@keyframes slls-dle-fade-in {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+.slls-dle-manage-top { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--slls-border); }
+@keyframes slls-dle-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
-.slls-dle-busy {
-    pointer-events: none;
-    opacity: 0.55;
-    transition: opacity 120ms ease;
-}
+.slls-dle-busy { pointer-events: none; opacity: 0.55; transition: opacity 120ms ease; }
 
-.slls-dle-overlay {
-    display: none;
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: 50;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 24px 16px;
-    border-radius: var(--slls-radius);
-    overflow-y: auto;
-}
+.slls-dle-overlay { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 50; align-items: flex-start; justify-content: center; padding: 24px 16px; border-radius: var(--slls-radius); overflow-y: auto; }
 .slls-dle-overlay.show { display: flex; }
-.slls-dle-modal {
-    background: var(--slls-bg-solid);
-    color: var(--slls-text);
-    border: 1px solid var(--slls-border);
-    border-radius: var(--slls-radius);
-    box-shadow: 0 30px 80px rgba(0,0,0,0.35);
-    width: 100%;
-    max-width: 560px;
-    padding: 22px;
-    margin: auto;
-}
-.slls-dle-modal h2 {
-    margin: 0 0 14px 0;
-    font-size: 17px;
-    font-weight: 600;
-}
-.slls-dle-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 18px;
-}
-.slls-dle-modal-wide {
-    max-width: 820px;
-}
-.slls-dle-columns-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 60vh;
-    overflow-y: auto;
-    padding-right: 4px;
-    margin-top: 4px;
-}
-.slls-dle-column-row {
-    border: 1px solid var(--slls-border);
-    border-radius: var(--slls-radius-sm);
-    background: var(--slls-surface-2);
-    padding: 10px 12px;
-    transition: border-color 120ms ease, background 120ms ease;
-}
-.slls-dle-column-row.pending {
-    border-color: var(--slls-orange);
-    background: rgba(255, 149, 0, 0.06);
-}
-.slls-dle-column-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-.slls-dle-column-name {
-    font-weight: 600;
-    font-size: 13.5px;
-    color: var(--slls-text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.slls-dle-column-type {
-    font-size: 11.5px;
-    color: var(--slls-text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-}
-.slls-dle-column-fields {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
-    gap: 10px;
-}
+.slls-dle-modal { background: var(--slls-bg-solid); color: var(--slls-text); border: 1px solid var(--slls-border); border-radius: var(--slls-radius); box-shadow: 0 30px 80px rgba(0,0,0,0.35); width: 100%; max-width: 560px; padding: 22px; margin: auto; }
+.slls-dle-modal h2 { margin: 0 0 14px 0; font-size: 17px; font-weight: 600; }
+.slls-dle-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.slls-dle-modal-wide { max-width: 820px; }
+.slls-dle-columns-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 4px; margin-top: 4px; }
+.slls-dle-column-row { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); background: var(--slls-surface-2); padding: 10px 12px; transition: border-color 120ms ease, background 120ms ease; }
+.slls-dle-column-row.pending { border-color: var(--slls-orange); background: rgba(255,149,0,0.06); }
+.slls-dle-column-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.slls-dle-column-name { font-weight: 600; font-size: 13.5px; color: var(--slls-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-dle-column-type { font-size: 11.5px; color: var(--slls-text-tertiary); text-transform: uppercase; letter-spacing: 0.4px; }
+.slls-dle-column-fields { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .slls-dle-column-fields > .slls-dle-field { min-width: 0; }
-.slls-dle-column-fields .slls-dle-select,
-.slls-dle-column-fields .slls-dle-input {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-}
+.slls-dle-column-fields .slls-dle-select, .slls-dle-column-fields .slls-dle-input { width: 100%; max-width: 100%; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 
-.slls-dle-tablerows {
-    border: 1px solid var(--slls-border);
-    border-radius: var(--slls-radius-sm);
-    max-height: 240px;
-    overflow-y: auto;
-    margin-top: 6px;
-}
-.slls-dle-tablerow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--slls-border);
-    font-size: 13px;
-}
+.slls-dle-tablerows { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); max-height: 240px; overflow-y: auto; margin-top: 6px; }
+.slls-dle-tablerow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--slls-border); font-size: 13px; }
 .slls-dle-tablerow:last-child { border-bottom: none; }
 .slls-dle-tablerow label { flex: 1; cursor: pointer; }
 
-.slls-dle-attribution {
-    margin-top: 18px;
-    text-align: right;
-    font-size: 11.5px;
-    color: var(--slls-text-tertiary);
-}
-.slls-dle-attribution a {
-    color: var(--slls-text-tertiary);
-    text-decoration: none;
-    transition: color 120ms ease;
-}
+.slls-dle-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--slls-text-tertiary); }
+.slls-dle-attribution a { color: var(--slls-text-tertiary); text-decoration: none; transition: color 120ms ease; }
 .slls-dle-attribution a:hover { color: var(--slls-accent); }
 
 .slls-dle-screen { display: none; }
@@ -1022,18 +576,14 @@ function render({ model, el }) {
         container.className = "slls-dle-tables-picker";
 
         const headerRow = document.createElement("div");
-        headerRow.style.display = "flex";
-        headerRow.style.gap = "6px";
-        headerRow.style.marginBottom = "6px";
-        headerRow.style.flexWrap = "wrap";
+        headerRow.style.cssText = "display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap";
         container.appendChild(headerRow);
 
         const search = document.createElement("input");
         search.type = "text";
         search.className = "slls-dle-input";
         search.placeholder = "Filter tables…";
-        search.style.flex = "1";
-        search.style.minWidth = "160px";
+        search.style.cssText = "flex:1;min-width:160px";
         headerRow.appendChild(search);
 
         const selectAllBtn = document.createElement("button");
@@ -1111,14 +661,7 @@ function render({ model, el }) {
             for (const [sch, items] of groups) {
                 if (sch) {
                     const hdr = document.createElement("div");
-                    hdr.style.padding = "6px 12px";
-                    hdr.style.fontWeight = "600";
-                    hdr.style.fontSize = "12px";
-                    hdr.style.letterSpacing = "0.3px";
-                    hdr.style.textTransform = "uppercase";
-                    hdr.style.color = "var(--slls-text-secondary)";
-                    hdr.style.background = "var(--slls-surface-2)";
-                    hdr.style.borderBottom = "1px solid var(--slls-border)";
+                    hdr.style.cssText = "padding:6px 12px;font-weight:600;font-size:12px;letter-spacing:0.3px;text-transform:uppercase;color:var(--slls-text-secondary);background:var(--slls-surface-2);border-bottom:1px solid var(--slls-border)";
                     hdr.textContent = sch;
                     listBox.appendChild(hdr);
                 }
@@ -1141,11 +684,7 @@ function render({ model, el }) {
                         notifyChange();
                     });
                     const lab = document.createElement("label");
-                    lab.style.display = "flex";
-                    lab.style.alignItems = "center";
-                    lab.style.gap = "8px";
-                    lab.style.flex = "1";
-                    lab.style.minWidth = "0";
+                    lab.style.cssText = "display:flex;align-items:center;gap:8px;flex:1;min-width:0";
                     const iconHolder = document.createElement("span");
                     iconHolder.innerHTML = iconHtml(iconType);
                     lab.appendChild(iconHolder.firstChild);
@@ -1153,24 +692,13 @@ function render({ model, el }) {
                     nameSpan.textContent = isExcluded
                         ? `${it.table} (already in model)`
                         : it.table;
-                    nameSpan.style.flex = "1";
-                    nameSpan.style.overflow = "hidden";
-                    nameSpan.style.textOverflow = "ellipsis";
-                    nameSpan.style.whiteSpace = "nowrap";
+                    nameSpan.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
                     if (isExcluded) nameSpan.style.color = "var(--slls-text-tertiary)";
                     lab.appendChild(nameSpan);
                     if (it.meta) {
                         const metaSpan = document.createElement("span");
                         metaSpan.textContent = it.meta;
-                        metaSpan.style.fontSize = "11px";
-                        metaSpan.style.fontFamily =
-                            "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-                        metaSpan.style.color = "var(--slls-text-secondary)";
-                        metaSpan.style.background = "var(--slls-surface-2)";
-                        metaSpan.style.border = "1px solid var(--slls-border)";
-                        metaSpan.style.borderRadius = "4px";
-                        metaSpan.style.padding = "1px 6px";
-                        metaSpan.style.flexShrink = "0";
+                        metaSpan.style.cssText = "font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--slls-text-secondary);background:var(--slls-surface-2);border:1px solid var(--slls-border);border-radius:4px;padding:1px 6px;flex-shrink:0";
                         lab.appendChild(metaSpan);
                     }
                     lab.addEventListener("click", (ev) => {
@@ -1307,10 +835,7 @@ function render({ model, el }) {
     );
 
     const toggleRow = document.createElement("div");
-    toggleRow.style.marginTop = "10px";
-    toggleRow.style.display = "flex";
-    toggleRow.style.gap = "18px";
-    toggleRow.style.flexWrap = "wrap";
+    toggleRow.style.cssText = "margin-top:10px;display:flex;gap:18px;flex-wrap:wrap";
     createSection.appendChild(toggleRow);
 
     function makeToggle(labelText, defaultChecked) {
@@ -1333,10 +858,7 @@ function render({ model, el }) {
     toggleRow.appendChild(refreshToggle);
 
     const createFooter = document.createElement("div");
-    createFooter.style.display = "flex";
-    createFooter.style.gap = "8px";
-    createFooter.style.marginTop = "14px";
-    createFooter.style.justifyContent = "flex-end";
+    createFooter.style.cssText = "display:flex;gap:8px;margin-top:14px;justify-content:flex-end";
     createSection.appendChild(createFooter);
 
     const cancelCreateBtn = document.createElement("button");
@@ -1388,10 +910,7 @@ function render({ model, el }) {
     columnsSection.appendChild(columnsBody);
 
     const columnsFooter = document.createElement("div");
-    columnsFooter.style.display = "flex";
-    columnsFooter.style.gap = "8px";
-    columnsFooter.style.marginTop = "14px";
-    columnsFooter.style.justifyContent = "flex-end";
+    columnsFooter.style.cssText = "display:flex;gap:8px;margin-top:14px;justify-content:flex-end";
     columnsSection.appendChild(columnsFooter);
 
     const backColumnsBtn = document.createElement("button");
@@ -1487,40 +1006,24 @@ function render({ model, el }) {
         columnsBody.innerHTML = "";
         columnsPickers = {};
         tableNameInputs = {};
+        const FIELD_LABEL_STYLE = "font-size:11px;text-transform:uppercase;letter-spacing:0.3px;color:var(--slls-text-secondary)";
         for (const spec of tables) {
             const wrap = document.createElement("div");
             wrap.className = "slls-dle-section";
-            wrap.style.marginBottom = "12px";
-            wrap.style.padding = "12px";
-            wrap.style.border = "1px solid var(--slls-border)";
-            wrap.style.borderRadius = "var(--slls-radius-sm)";
+            wrap.style.cssText = "margin-bottom:12px;padding:12px;border:1px solid var(--slls-border);border-radius:var(--slls-radius-sm)";
 
             // Header: source label (read-only) + editable display name.
             const hdrRow = document.createElement("div");
-            hdrRow.style.display = "flex";
-            hdrRow.style.alignItems = "center";
-            hdrRow.style.gap = "10px";
-            hdrRow.style.flexWrap = "wrap";
-            hdrRow.style.marginBottom = "10px";
+            hdrRow.style.cssText = "display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px";
             wrap.appendChild(hdrRow);
 
             const srcWrap = document.createElement("div");
-            srcWrap.style.display = "flex";
-            srcWrap.style.flexDirection = "column";
-            srcWrap.style.minWidth = "0";
+            srcWrap.style.cssText = "display:flex;flex-direction:column;min-width:0";
             const srcLab = document.createElement("div");
             srcLab.textContent = "Source table";
-            srcLab.style.fontSize = "11px";
-            srcLab.style.textTransform = "uppercase";
-            srcLab.style.letterSpacing = "0.3px";
-            srcLab.style.color = "var(--slls-text-secondary)";
+            srcLab.style.cssText = FIELD_LABEL_STYLE;
             const srcVal = document.createElement("div");
-            srcVal.style.fontWeight = "600";
-            srcVal.style.fontFamily =
-                "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-            srcVal.style.display = "flex";
-            srcVal.style.alignItems = "center";
-            srcVal.style.gap = "6px";
+            srcVal.style.cssText = "font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;display:flex;align-items:center;gap:6px";
             srcVal.innerHTML = `${iconHtml("table")}<span>${escapeHtml(spec)}</span>`;
             srcWrap.appendChild(srcLab);
             srcWrap.appendChild(srcVal);
@@ -1528,21 +1031,14 @@ function render({ model, el }) {
 
             const arrow = document.createElement("div");
             arrow.textContent = "→";
-            arrow.style.color = "var(--slls-text-tertiary)";
-            arrow.style.fontSize = "18px";
+            arrow.style.cssText = "color:var(--slls-text-tertiary);font-size:18px";
             hdrRow.appendChild(arrow);
 
             const nameWrap = document.createElement("div");
-            nameWrap.style.display = "flex";
-            nameWrap.style.flexDirection = "column";
-            nameWrap.style.flex = "1";
-            nameWrap.style.minWidth = "180px";
+            nameWrap.style.cssText = "display:flex;flex-direction:column;flex:1;min-width:180px";
             const nameLab = document.createElement("div");
             nameLab.textContent = "Table name in model";
-            nameLab.style.fontSize = "11px";
-            nameLab.style.textTransform = "uppercase";
-            nameLab.style.letterSpacing = "0.3px";
-            nameLab.style.color = "var(--slls-text-secondary)";
+            nameLab.style.cssText = FIELD_LABEL_STYLE;
             const nameInput = document.createElement("input");
             nameInput.type = "text";
             nameInput.className = "slls-dle-input";
@@ -1875,6 +1371,35 @@ function render({ model, el }) {
             }
         }
         return merged;
+    }
+    // Applies any staged sync_columns changes for `tableName` to the given
+    // baseline column list: removes columns flagged for removal and appends
+    // columns flagged for addition (mirroring the backend behavior). The
+    // returned list shares the shape of the input entries; added columns
+    // have columnType "Data" and an empty data category.
+    function applyPendingSyncToColumns(tableName, baseCols) {
+        const cols = baseCols.slice();
+        const known = new Set(cols.map(c => c.name));
+        const removed = new Set();
+        for (const c of pendingState.changes) {
+            if (c.kind !== "sync_columns" || c.key !== tableName) continue;
+            const p = c.payload || {};
+            for (const r of (p.remove || [])) removed.add(r);
+            for (const add of (p.add || [])) {
+                if (!add || !add.name) continue;
+                if (known.has(add.name) || removed.has(add.name)) continue;
+                cols.push({
+                    name: add.name,
+                    sourceColumn: add.name,
+                    dataType: convertColumnDataType(add.dataType),
+                    dataCategory: "",
+                    columnType: "Data",
+                    _stagedSync: true,
+                });
+                known.add(add.name);
+            }
+        }
+        return cols.filter(c => !removed.has(c.name));
     }
     // Returns the most recently staged rename_table payload for the given
     // table name (or null).
@@ -2919,6 +2444,32 @@ function render({ model, el }) {
         "DateTime",
     ];
 
+    // JS mirror of sempy_labs.semantic_model._helper.convert_column_data_type
+    // Maps a raw source data type (e.g. "integer", "varchar(50)") to the
+    // matching Power BI data type. Returns "" if input is falsy.
+    function convertColumnDataType(raw) {
+        if (!raw) return "";
+        const s = String(raw).toLowerCase();
+        const MAP = {
+            "boolean": "Boolean",
+            "tinyint": "Int64", "smallint": "Int64", "int": "Int64",
+            "integer": "Int64", "bigint": "Int64", "long": "Int64",
+            "short": "Int64",
+            "float": "Double", "double": "Double",
+            "decimal": "Decimal",
+            "string": "String", "char": "String", "varchar": "String",
+            "binary": "Binary",
+            "date": "DateTime", "timestamp": "DateTime",
+            "timestamp_ntz": "DateTime",
+        };
+        if (MAP[s]) return MAP[s];
+        if (s.includes("decimal")) return "Decimal";
+        if (s.includes("char") || s.includes("string")) return "String";
+        if (s.includes("int") || s.includes("long")) return "Int64";
+        if (s.includes("float") || s.includes("double")) return "Double";
+        return "String";
+    }
+
     function openColumnsModal(table) {
         modal.innerHTML = "";
         modal.classList.add("slls-dle-modal-wide");
@@ -2928,13 +2479,16 @@ function render({ model, el }) {
         h.textContent = `Edit columns: ${table.name}`;
         modal.appendChild(h);
 
-        const baseCols = (table.columns || []).map(c => ({
-            name: c.name,
-            sourceColumn: c.sourceColumn || "",
-            dataType: c.dataType || "",
-            dataCategory: c.dataCategory || "",
-            columnType: c.columnType || "",
-        }));
+        const baseCols = applyPendingSyncToColumns(
+            table.name,
+            (table.columns || []).map(c => ({
+                name: c.name,
+                sourceColumn: c.sourceColumn || "",
+                dataType: c.dataType || "",
+                dataCategory: c.dataCategory || "",
+                columnType: c.columnType || "",
+            })),
+        );
         const stagedMap = mergedPendingColumnEditsForTable(table.name);
 
         if (baseCols.length === 0) {
@@ -2983,7 +2537,9 @@ function render({ model, el }) {
             head.appendChild(nm);
             const ty = document.createElement("div");
             ty.className = "slls-dle-column-type";
-            ty.textContent = bc.columnType || "";
+            ty.textContent = bc._stagedSync
+                ? `${bc.columnType || "Data"} · pending sync`
+                : (bc.columnType || "");
             head.appendChild(ty);
             row.appendChild(head);
 
@@ -3224,11 +2780,7 @@ function render({ model, el }) {
         )) {
             const stagedNotice = document.createElement("div");
             stagedNotice.className = "slls-dle-item-meta";
-            stagedNotice.style.padding = "8px 10px";
-            stagedNotice.style.marginBottom = "10px";
-            stagedNotice.style.border = "1px solid var(--slls-orange)";
-            stagedNotice.style.background = "rgba(255, 149, 0, 0.06)";
-            stagedNotice.style.borderRadius = "var(--slls-radius-sm)";
+            stagedNotice.style.cssText = "padding:8px 10px;margin-bottom:10px;border:1px solid var(--slls-orange);background:rgba(255,149,0,0.06);border-radius:var(--slls-radius-sm)";
             stagedNotice.textContent =
                 "Showing the columns from your staged sync. Adjust the "
                 + "selection and click \"Stage changes\" to replace it, or "
@@ -3301,13 +2853,9 @@ function render({ model, el }) {
         function makeSection(title, hint) {
             const wrap = document.createElement("div");
             wrap.className = "slls-dle-section";
-            wrap.style.marginTop = "12px";
-            wrap.style.padding = "12px";
-            wrap.style.border = "1px solid var(--slls-border)";
-            wrap.style.borderRadius = "var(--slls-radius-sm)";
+            wrap.style.cssText = "margin-top:12px;padding:12px;border:1px solid var(--slls-border);border-radius:var(--slls-radius-sm)";
             const heading = document.createElement("div");
-            heading.style.fontWeight = "600";
-            heading.style.marginBottom = "4px";
+            heading.style.cssText = "font-weight:600;margin-bottom:4px";
             heading.textContent = title;
             wrap.appendChild(heading);
             const sub = document.createElement("div");
@@ -3326,33 +2874,18 @@ function render({ model, el }) {
             cb.checked = checked;
             cb.addEventListener("change", () => onChange(cb.checked));
             const lab = document.createElement("label");
-            lab.style.display = "flex";
-            lab.style.alignItems = "center";
-            lab.style.gap = "8px";
-            lab.style.flex = "1";
-            lab.style.minWidth = "0";
+            lab.style.cssText = "display:flex;align-items:center;gap:8px;flex:1;min-width:0";
             const iconHolder = document.createElement("span");
             iconHolder.innerHTML = iconHtml("column");
             lab.appendChild(iconHolder.firstChild);
             const nameSpan = document.createElement("span");
             nameSpan.textContent = label;
-            nameSpan.style.flex = "1";
-            nameSpan.style.overflow = "hidden";
-            nameSpan.style.textOverflow = "ellipsis";
-            nameSpan.style.whiteSpace = "nowrap";
+            nameSpan.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
             lab.appendChild(nameSpan);
             if (meta) {
                 const metaSpan = document.createElement("span");
                 metaSpan.textContent = meta;
-                metaSpan.style.fontSize = "11px";
-                metaSpan.style.fontFamily =
-                    "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-                metaSpan.style.color = "var(--slls-text-secondary)";
-                metaSpan.style.background = "var(--slls-surface-2)";
-                metaSpan.style.border = "1px solid var(--slls-border)";
-                metaSpan.style.borderRadius = "4px";
-                metaSpan.style.padding = "1px 6px";
-                metaSpan.style.flexShrink = "0";
+                metaSpan.style.cssText = "font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--slls-text-secondary);background:var(--slls-surface-2);border:1px solid var(--slls-border);border-radius:4px;padding:1px 6px;flex-shrink:0";
                 lab.appendChild(metaSpan);
             }
             lab.addEventListener("click", (ev) => {
@@ -3424,7 +2957,7 @@ function render({ model, el }) {
                         ? stagedAdds.has(c.name)
                         : true;
                     addChecks[c.name] = checked;
-                    renderRow(list, c.name, c.dataType || "", checked, (v) => {
+                    renderRow(list, c.name, convertColumnDataType(c.dataType), checked, (v) => {
                         addChecks[c.name] = v;
                         updateApply();
                     });
@@ -3511,7 +3044,10 @@ function render({ model, el }) {
             for (const c of (map && map.items) || []) srcMap.set(c.name, c.dataType || "");
             for (const colName of Object.keys(addChecks)) {
                 if (!addChecks[colName]) continue;
-                adds.push({ name: colName, dataType: srcMap.get(colName) || "" });
+                adds.push({
+                    name: colName,
+                    dataType: convertColumnDataType(srcMap.get(colName)),
+                });
             }
             const removes = Object.keys(removeChecks).filter(
                 (k) => removeChecks[k],
@@ -4403,9 +3939,11 @@ def direct_lake_manager(
                     k = ch.get("kind")
                     if k == "add_source":
                         return 0
+                    if k == "sync_columns":
+                        return 1
                     if k == "rename_table":
-                        return 2
-                    return 1
+                        return 3
+                    return 2
                 changes = sorted(changes, key=_change_order)
                 summary = []
                 with connect_semantic_model(
