@@ -1651,12 +1651,8 @@ function render({ model, el }) {
     }
 
     function openPendingSummaryModal() {
-        modal.innerHTML = "";
-        const h = document.createElement("h2");
         const n = pendingState.changes.length;
-        h.textContent =
-            `Pending changes (${n})`;
-        modal.appendChild(h);
+        modalHeader(`Pending changes (${n})`);
 
         if (n === 0) {
             const empty = document.createElement("div");
@@ -1701,23 +1697,13 @@ function render({ model, el }) {
             modal.appendChild(list);
         }
 
-        const footer = document.createElement("div");
-        footer.className = "slls-dle-modal-footer";
-        modal.appendChild(footer);
-        const close = document.createElement("button");
-        close.className = "slls-dle-btn";
-        close.textContent = "Close";
-        close.addEventListener("click", closeModal);
-        footer.appendChild(close);
+        const footer = modalFooter();
+        addCloseBtn(footer, "Close");
         if (pendingState.changes.length > 0) {
-            const save = document.createElement("button");
-            save.className = "slls-dle-btn slls-dle-btn-primary";
-            save.textContent = "Save changes";
-            save.addEventListener("click", () => {
+            footer.appendChild(makeBtn("Save changes", "slls-dle-btn slls-dle-btn-primary", () => {
                 closeModal();
                 applyPendingChanges();
-            });
-            footer.appendChild(save);
+            }));
         }
         openModal();
     }
@@ -2055,11 +2041,35 @@ function render({ model, el }) {
         }
     });
 
-    function openSourceModal(existing) {
+    // ----- Modal building helpers -----
+    function modalHeader(title) {
         modal.innerHTML = "";
         const h = document.createElement("h2");
-        h.textContent = existing ? `Edit source: ${existing.itemName}` : "Add a new source";
+        h.textContent = title;
         modal.appendChild(h);
+        return h;
+    }
+    function modalFooter() {
+        const f = document.createElement("div");
+        f.className = "slls-dle-modal-footer";
+        modal.appendChild(f);
+        return f;
+    }
+    function makeBtn(label, cls, onClick) {
+        const b = document.createElement("button");
+        b.className = cls || "slls-dle-btn";
+        b.textContent = label;
+        if (onClick) b.addEventListener("click", onClick);
+        return b;
+    }
+    function addCloseBtn(footer, label) {
+        const b = makeBtn(label || "Cancel", "slls-dle-btn", closeModal);
+        footer.appendChild(b);
+        return b;
+    }
+
+    function openSourceModal(existing) {
+        modalHeader(existing ? `Edit source: ${existing.itemName}` : "Add a new source");
 
         // Baseline = saved server values; staged = latest pending update_source
         // payload (if any). Initial form values come from staged ?? baseline so
@@ -2167,17 +2177,9 @@ function render({ model, el }) {
         refreshItems();
         refreshDots();
 
-        const footer = document.createElement("div");
-        footer.className = "slls-dle-modal-footer";
-        modal.appendChild(footer);
-        const cancel = document.createElement("button");
-        cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
-        cancel.addEventListener("click", closeModal);
-        footer.appendChild(cancel);
-        const save = document.createElement("button");
-        save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = existing ? "Stage changes" : "Stage source";
-        save.addEventListener("click", () => {
+        const footer = modalFooter();
+        addCloseBtn(footer);
+        const save = makeBtn(existing ? "Stage changes" : "Stage source", "slls-dle-btn slls-dle-btn-primary", () => {
             if (!itemSel.value) { setStatus("Please pick a source item.", "error"); return; }
             const opt = itemSel.options[itemSel.selectedIndex];
             const itemName = (opt && opt.textContent) || itemSel.value;
@@ -2220,10 +2222,7 @@ function render({ model, el }) {
     }
 
     function openRenameTableModal(table) {
-        modal.innerHTML = "";
-        const h = document.createElement("h2");
-        h.textContent = `Rename table: ${table.name}`;
-        modal.appendChild(h);
+        modalHeader(`Rename table: ${table.name}`);
 
         const stagedRename = latestPendingRenameForTable(table.name) || {};
         const initialName = stagedRename.new_name || table.name;
@@ -2246,34 +2245,22 @@ function render({ model, el }) {
         nameInput.addEventListener("input", refreshDots);
         refreshDots();
 
-        const footer = document.createElement("div");
-        footer.className = "slls-dle-modal-footer";
-        modal.appendChild(footer);
-        const cancel = document.createElement("button");
-        cancel.className = "slls-dle-btn";
-        cancel.textContent = "Cancel";
-        cancel.addEventListener("click", closeModal);
-        footer.appendChild(cancel);
+        const footer = modalFooter();
+        addCloseBtn(footer);
         if (pendingState.changes.some(
             c => c.kind === "rename_table" && c.key === table.name,
         )) {
-            const revert = document.createElement("button");
-            revert.className = "slls-dle-btn slls-dle-btn-danger";
-            revert.textContent = "Revert";
-            revert.title = "Discard staged rename for this table";
-            revert.addEventListener("click", () => {
+            const revert = makeBtn("Revert", "slls-dle-btn slls-dle-btn-danger", () => {
                 revertChangesMatching(
                     c => c.kind === "rename_table" && c.key === table.name,
                     `Reverted staged rename for '${table.name}'.`,
                 );
                 closeModal();
             });
+            revert.title = "Discard staged rename for this table";
             footer.appendChild(revert);
         }
-        const save = document.createElement("button");
-        save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = "Stage changes";
-        save.addEventListener("click", () => {
+        footer.appendChild(makeBtn("Stage changes", "slls-dle-btn slls-dle-btn-primary", () => {
             const newName = (nameInput.value || "").trim();
             if (!newName) {
                 setStatus("Table name is required.", "error");
@@ -2301,16 +2288,12 @@ function render({ model, el }) {
                 payload: { table_name: table.name, new_name: newName },
             });
             closeModal();
-        });
-        footer.appendChild(save);
+        }));
         openModal();
     }
 
     function openReassignModal(table) {
-        modal.innerHTML = "";
-        const h = document.createElement("h2");
-        h.textContent = `Reassign table: ${table.name}`;
-        modal.appendChild(h);
+        modalHeader(`Reassign table: ${table.name}`);
 
         // Baseline = saved values; staged = latest pending reassign_table
         // payload. Initial form values come from staged ?? baseline.
@@ -2386,34 +2369,23 @@ function render({ model, el }) {
         entityInput.addEventListener("input", refreshDots);
         refreshDots();
 
-        const footer = document.createElement("div");
-        footer.className = "slls-dle-modal-footer";
-        modal.appendChild(footer);
-        const cancel = document.createElement("button");
-        cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
-        cancel.addEventListener("click", closeModal);
-        footer.appendChild(cancel);
+        const footer = modalFooter();
+        addCloseBtn(footer);
         // Show Revert if there are staged reassign changes for this table.
         if (pendingState.changes.some(
             c => c.kind === "reassign_table" && c.key === table.name,
         )) {
-            const revert = document.createElement("button");
-            revert.className = "slls-dle-btn slls-dle-btn-danger";
-            revert.textContent = "Revert";
-            revert.title = "Discard staged reassign for this table";
-            revert.addEventListener("click", () => {
+            const revert = makeBtn("Revert", "slls-dle-btn slls-dle-btn-danger", () => {
                 revertChangesMatching(
                     c => c.kind === "reassign_table" && c.key === table.name,
                     `Reverted staged reassign for '${table.name}'.`,
                 );
                 closeModal();
             });
+            revert.title = "Discard staged reassign for this table";
             footer.appendChild(revert);
         }
-        const save = document.createElement("button");
-        save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = "Stage changes";
-        save.addEventListener("click", () => {
+        footer.appendChild(makeBtn("Stage changes", "slls-dle-btn slls-dle-btn-primary", () => {
             const entity = (entityInput.value || "").trim();
             if (!entity) { setStatus("Entity name is required.", "error"); return; }
             enqueuePendingChange({
@@ -2428,8 +2400,7 @@ function render({ model, el }) {
                 },
             });
             closeModal();
-        });
-        footer.appendChild(save);
+        }));
         openModal();
     }
 
@@ -2471,13 +2442,9 @@ function render({ model, el }) {
     }
 
     function openColumnsModal(table) {
-        modal.innerHTML = "";
         modal.classList.add("slls-dle-modal-wide");
         registerModalCleanup(() => modal.classList.remove("slls-dle-modal-wide"));
-
-        const h = document.createElement("h2");
-        h.textContent = `Edit columns: ${table.name}`;
-        modal.appendChild(h);
+        modalHeader(`Edit columns: ${table.name}`);
 
         const baseCols = applyPendingSyncToColumns(
             table.name,
@@ -2496,13 +2463,7 @@ function render({ model, el }) {
             p.className = "slls-dle-empty";
             p.textContent = "This table has no editable columns.";
             modal.appendChild(p);
-            const footer = document.createElement("div");
-            footer.className = "slls-dle-modal-footer";
-            modal.appendChild(footer);
-            const close = document.createElement("button");
-            close.className = "slls-dle-btn"; close.textContent = "Close";
-            close.addEventListener("click", closeModal);
-            footer.appendChild(close);
+            addCloseBtn(modalFooter(), "Close");
             openModal();
             return;
         }
@@ -2646,34 +2607,23 @@ function render({ model, el }) {
             list.appendChild(row);
         }
 
-        const footer = document.createElement("div");
-        footer.className = "slls-dle-modal-footer";
-        modal.appendChild(footer);
-        const cancel = document.createElement("button");
-        cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
-        cancel.addEventListener("click", closeModal);
-        footer.appendChild(cancel);
+        const footer = modalFooter();
+        addCloseBtn(footer);
         // Show Revert if there are staged column edits for this table.
         if (pendingState.changes.some(
             c => c.kind === "edit_columns" && c.key === table.name,
         )) {
-            const revert = document.createElement("button");
-            revert.className = "slls-dle-btn slls-dle-btn-danger";
-            revert.textContent = "Revert";
-            revert.title = "Discard staged column edits for this table";
-            revert.addEventListener("click", () => {
+            const revert = makeBtn("Revert", "slls-dle-btn slls-dle-btn-danger", () => {
                 revertChangesMatching(
                     c => c.kind === "edit_columns" && c.key === table.name,
                     `Reverted staged column edits for '${table.name}'.`,
                 );
                 closeModal();
             });
+            revert.title = "Discard staged column edits for this table";
             footer.appendChild(revert);
         }
-        const save = document.createElement("button");
-        save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = "Stage changes";
-        save.addEventListener("click", () => {
+        footer.appendChild(makeBtn("Stage changes", "slls-dle-btn slls-dle-btn-primary", () => {
             // Collect only the columns that diverge from baseline; for each
             // such column include only the properties that actually changed.
             const changed = [];
@@ -2714,19 +2664,14 @@ function render({ model, el }) {
                 payload: { table_name: table.name, columns: changed },
             });
             closeModal();
-        });
-        footer.appendChild(save);
+        }));
         openModal();
     }
 
     function openSyncColumnsModal(table) {
-        modal.innerHTML = "";
         modal.classList.add("slls-dle-modal-wide");
         registerModalCleanup(() => modal.classList.remove("slls-dle-modal-wide"));
-
-        const h = document.createElement("h2");
-        h.textContent = `Sync columns: ${table.name}`;
-        modal.appendChild(h);
+        modalHeader(`Sync columns: ${table.name}`);
 
         const sources = model.get("sources") || [];
         const source = sources.find(
@@ -2735,9 +2680,7 @@ function render({ model, el }) {
         const footer = document.createElement("div");
         footer.className = "slls-dle-modal-footer";
 
-        const cancel = document.createElement("button");
-        cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
-        cancel.addEventListener("click", closeModal);
+        const cancel = makeBtn("Cancel", "slls-dle-btn", closeModal);
 
         if (!source) {
             const p = document.createElement("div");
@@ -2802,22 +2745,17 @@ function render({ model, el }) {
             c => c.kind === "sync_columns" && c.key === table.name
         );
         if (hasStaged) {
-            const revertBtn = document.createElement("button");
-            revertBtn.className = "slls-dle-btn slls-dle-btn-danger";
-            revertBtn.textContent = "Revert";
-            revertBtn.title = "Discard staged column sync for this table";
-            revertBtn.addEventListener("click", () => {
+            const revertBtn = makeBtn("Revert", "slls-dle-btn slls-dle-btn-danger", () => {
                 revertChangesMatching(
                     c => c.kind === "sync_columns" && c.key === table.name,
                     `Reverted staged column sync for '${table.name}'.`,
                 );
                 closeModal();
             });
+            revertBtn.title = "Discard staged column sync for this table";
             footer.appendChild(revertBtn);
         }
-        const applyBtn = document.createElement("button");
-        applyBtn.className = "slls-dle-btn slls-dle-btn-primary";
-        applyBtn.textContent = "Stage changes";
+        const applyBtn = makeBtn("Stage changes", "slls-dle-btn slls-dle-btn-primary");
         applyBtn.disabled = true;
         footer.appendChild(applyBtn);
         openModal();
@@ -3080,10 +3018,7 @@ function render({ model, el }) {
     }
 
     function openAddTablesModal() {
-        modal.innerHTML = "";
-        const h = document.createElement("h2");
-        h.textContent = "Add tables to model";
-        modal.appendChild(h);
+        modalHeader("Add tables to model");
 
         const sources = model.get("sources") || [];
         if (sources.length === 0) {
@@ -3091,13 +3026,7 @@ function render({ model, el }) {
             p.className = "slls-dle-empty";
             p.textContent = "Add a source to the model before adding tables.";
             modal.appendChild(p);
-            const footer = document.createElement("div");
-            footer.className = "slls-dle-modal-footer";
-            modal.appendChild(footer);
-            const close = document.createElement("button");
-            close.className = "slls-dle-btn"; close.textContent = "Close";
-            close.addEventListener("click", closeModal);
-            footer.appendChild(close);
+            addCloseBtn(modalFooter(), "Close");
             openModal();
             return;
         }
@@ -3202,19 +3131,9 @@ function render({ model, el }) {
         });
         loadTablesForExpression();
 
-        const footer = document.createElement("div");
-        footer.className = "slls-dle-modal-footer";
-        modal.appendChild(footer);
-        const cancel = document.createElement("button");
-        cancel.className = "slls-dle-btn"; cancel.textContent = "Cancel";
-        cancel.addEventListener("click", () => {
-            closeModal();
-        });
-        footer.appendChild(cancel);
-        const save = document.createElement("button");
-        save.className = "slls-dle-btn slls-dle-btn-primary";
-        save.textContent = "Stage tables";
-        save.addEventListener("click", () => {
+        const footer = modalFooter();
+        addCloseBtn(footer);
+        footer.appendChild(makeBtn("Stage tables", "slls-dle-btn slls-dle-btn-primary", () => {
             const names = tablesPicker.getSelected();
             if (names.length === 0) { setStatus("Please select at least one table.", "error"); return; }
             const customName = (nameInput.value || "").trim();
@@ -3242,8 +3161,7 @@ function render({ model, el }) {
                 },
             });
             closeModal();
-        });
-        footer.appendChild(save);
+        }));
         openModal();
     }
 
