@@ -304,6 +304,111 @@ _WIDGET_CSS = """
     white-space: nowrap;
 }
 .slls-dle-item-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
+
+/* Apple-style icon-only button used as a menu trigger ("•••"). */
+.slls-dle-icon-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--slls-text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms ease, color 120ms ease,
+        border-color 120ms ease;
+}
+.slls-dle-icon-btn:hover {
+    background: var(--slls-surface-2);
+    color: var(--slls-text);
+}
+.slls-dle-icon-btn.active {
+    background: var(--slls-surface-2);
+    color: var(--slls-text);
+    border-color: var(--slls-border);
+}
+
+/* Floating popover menu with subtle vibrancy + shadow. */
+.slls-dle-menu {
+    /* Re-declare design tokens here because the menu is portaled to
+       document.body and is therefore outside the .slls-dle scope. */
+    --slls-surface: #ffffff;
+    --slls-surface-2: rgba(0, 0, 0, 0.05);
+    --slls-border: rgba(0, 0, 0, 0.10);
+    --slls-text: #1d1d1f;
+    --slls-text-secondary: #6e6e73;
+    --slls-red: #ff3b30;
+    position: fixed;
+    z-index: 10000;
+    background: var(--slls-surface);
+    border: 1px solid var(--slls-border);
+    border-radius: 12px;
+    box-shadow:
+        0 1px 1px rgba(0, 0, 0, 0.04),
+        0 10px 30px rgba(0, 0, 0, 0.18);
+    padding: 6px;
+    min-width: 200px;
+    color: var(--slls-text);
+    backdrop-filter: saturate(1.4) blur(20px);
+    -webkit-backdrop-filter: saturate(1.4) blur(20px);
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+    transform-origin: top right;
+    transition: opacity 120ms ease, transform 120ms ease;
+}
+@media (prefers-color-scheme: dark) {
+    .slls-dle-menu {
+        --slls-surface: #2c2c2e;
+        --slls-surface-2: rgba(255, 255, 255, 0.08);
+        --slls-border: rgba(255, 255, 255, 0.12);
+        --slls-text: #f5f5f7;
+        --slls-text-secondary: #a1a1a6;
+        box-shadow:
+            0 1px 1px rgba(0, 0, 0, 0.3),
+            0 10px 30px rgba(0, 0, 0, 0.55);
+    }
+}
+.slls-dle-menu.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.slls-dle-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    background: transparent;
+    color: var(--slls-text);
+    font-size: 13px;
+    text-align: left;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 100ms ease;
+}
+.slls-dle-menu-item:hover { background: var(--slls-surface-2); }
+.slls-dle-menu-item:focus-visible {
+    outline: none;
+    background: var(--slls-surface-2);
+}
+.slls-dle-menu-item-icon {
+    width: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slls-text-secondary);
+    flex-shrink: 0;
+}
+.slls-dle-menu-item-label { flex: 1; min-width: 0; }
+.slls-dle-menu-divider {
+    height: 1px;
+    background: var(--slls-border);
+    margin: 4px 2px;
+}
 .slls-dle-pill {
     display: inline-block;
     padding: 2px 8px;
@@ -572,6 +677,10 @@ function render({ model, el }) {
         table: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10" rx="1.8"/><path d="M2.5 6.75h11M8 6.75v6.25"/></svg>`,
         column: `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="4" height="11" rx="1.6"/></svg>`,
         source: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="3.75" rx="5" ry="1.5"/><path d="M3 3.75v8.5c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5v-8.5"/><path d="M3 8c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5"/></svg>`,
+        more: `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>`,
+        sync: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a5 5 0 0 1 8.6-3.5"/><path d="M11.6 2.5v2.5h-2.5"/><path d="M13 8a5 5 0 0 1-8.6 3.5"/><path d="M4.4 13.5V11h2.5"/></svg>`,
+        pencil: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.5l2 2L5 13H3v-2z"/><path d="M10 4l2 2"/></svg>`,
+        link: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5L9.5 6.5"/><path d="M7 4.5l1-1a2.5 2.5 0 1 1 3.5 3.5l-1 1"/><path d="M9 11.5l-1 1a2.5 2.5 0 1 1-3.5-3.5l1-1"/></svg>`,
     };
     function iconHtml(kind) {
         const svg = ICON_SVG[kind] || "";
@@ -580,6 +689,106 @@ function render({ model, el }) {
         else if (kind === "column") cls += " slls-dle-column-icon";
         else if (kind === "source") cls += " slls-dle-source-icon";
         return `<span class="${cls}">${svg}</span>`;
+    }
+
+    // Floating popover menu anchored to a trigger button. `items` is an
+    // array of { label, icon?, onClick, danger?, separatorBefore? }.
+    // Returns nothing; the menu auto-dismisses on outside click, Escape,
+    // window scroll, or window resize.
+    let _openMenuCleanup = null;
+    function closeOpenMenu() {
+        if (_openMenuCleanup) {
+            _openMenuCleanup();
+            _openMenuCleanup = null;
+        }
+    }
+    function openRowMenu(anchor, items) {
+        // Toggle if the same anchor reopens its menu.
+        if (anchor.classList.contains("active")) {
+            closeOpenMenu();
+            return;
+        }
+        closeOpenMenu();
+
+        const menu = document.createElement("div");
+        menu.className = "slls-dle-menu";
+        menu.setAttribute("role", "menu");
+        for (const item of items) {
+            if (!item) continue;
+            if (item.separatorBefore) {
+                const sep = document.createElement("div");
+                sep.className = "slls-dle-menu-divider";
+                menu.appendChild(sep);
+            }
+            const btn = document.createElement("button");
+            btn.className = "slls-dle-menu-item";
+            btn.setAttribute("role", "menuitem");
+            if (item.danger) btn.style.color = "var(--slls-red)";
+            const icon = document.createElement("span");
+            icon.className = "slls-dle-menu-item-icon";
+            icon.innerHTML = item.icon
+                ? (ICON_SVG[item.icon] || item.icon)
+                : "";
+            const label = document.createElement("span");
+            label.className = "slls-dle-menu-item-label";
+            label.textContent = item.label || "";
+            btn.appendChild(icon);
+            btn.appendChild(label);
+            btn.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                closeOpenMenu();
+                try { item.onClick && item.onClick(); } catch (_) { /* noop */ }
+            });
+            menu.appendChild(btn);
+        }
+        document.body.appendChild(menu);
+
+        // Position: right-align with the anchor's right edge, just below.
+        const rect = anchor.getBoundingClientRect();
+        // Temporarily make visible to measure.
+        menu.style.visibility = "hidden";
+        menu.style.display = "block";
+        const mw = menu.offsetWidth;
+        const mh = menu.offsetHeight;
+        let left = rect.right - mw;
+        let top = rect.bottom + 6;
+        // Flip above if not enough room.
+        if (top + mh > window.innerHeight - 8) {
+            top = Math.max(8, rect.top - mh - 6);
+        }
+        left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+        menu.style.visibility = "visible";
+        // Trigger transition.
+        requestAnimationFrame(() => menu.classList.add("show"));
+
+        anchor.classList.add("active");
+        const onDocClick = (ev) => {
+            if (menu.contains(ev.target) || anchor.contains(ev.target)) return;
+            closeOpenMenu();
+        };
+        const onKey = (ev) => {
+            if (ev.key === "Escape") closeOpenMenu();
+        };
+        const onScrollOrResize = () => closeOpenMenu();
+        // Defer attaching the click listener so the current click doesn't
+        // immediately dismiss the menu.
+        setTimeout(() => {
+            document.addEventListener("click", onDocClick, true);
+        }, 0);
+        document.addEventListener("keydown", onKey, true);
+        window.addEventListener("scroll", onScrollOrResize, true);
+        window.addEventListener("resize", onScrollOrResize, true);
+
+        _openMenuCleanup = () => {
+            document.removeEventListener("click", onDocClick, true);
+            document.removeEventListener("keydown", onKey, true);
+            window.removeEventListener("scroll", onScrollOrResize, true);
+            window.removeEventListener("resize", onScrollOrResize, true);
+            anchor.classList.remove("active");
+            if (menu.parentNode) menu.parentNode.removeChild(menu);
+        };
     }
 
     // ----------- Header -----------
@@ -2080,6 +2289,7 @@ function render({ model, el }) {
     }
 
     function renderTables() {
+        closeOpenMenu();
         const tables = model.get("tables") || [];
         const addedTables = pendingAddedTables();
         const totalCount = tables.length + addedTables.length;
@@ -2130,29 +2340,39 @@ function render({ model, el }) {
             row.appendChild(main);
             const actions = document.createElement("div");
             actions.className = "slls-dle-item-actions";
-            const colsBtn = document.createElement("button");
-            colsBtn.className = "slls-dle-btn";
-            colsBtn.textContent = "Columns";
-            colsBtn.addEventListener("click", () => openColumnsModal(t));
-            actions.appendChild(colsBtn);
-            const syncBtn = document.createElement("button");
-            syncBtn.className = "slls-dle-btn";
-            syncBtn.textContent = "Sync columns";
-            syncBtn.title =
-                "Compare columns in the source table with columns in the model";
-            syncBtn.addEventListener("click", () => openSyncColumnsModal(t));
-            actions.appendChild(syncBtn);
-            const reassignBtn = document.createElement("button");
-            reassignBtn.className = "slls-dle-btn";
-            reassignBtn.textContent = "Reassign";
-            reassignBtn.addEventListener("click", () => openReassignModal(t));
-            actions.appendChild(reassignBtn);
-            const renameBtn = document.createElement("button");
-            renameBtn.className = "slls-dle-btn";
-            renameBtn.textContent = "Rename";
-            renameBtn.title = "Rename this table in the model";
-            renameBtn.addEventListener("click", () => openRenameTableModal(t));
-            actions.appendChild(renameBtn);
+            const moreBtn = document.createElement("button");
+            moreBtn.className = "slls-dle-icon-btn";
+            moreBtn.setAttribute("aria-label", `Actions for ${t.name}`);
+            moreBtn.setAttribute("aria-haspopup", "menu");
+            moreBtn.title = "More actions";
+            moreBtn.innerHTML = ICON_SVG.more;
+            moreBtn.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                openRowMenu(moreBtn, [
+                    {
+                        label: "Edit columns…",
+                        icon: "column",
+                        onClick: () => openColumnsModal(t),
+                    },
+                    {
+                        label: "Sync columns with source…",
+                        icon: "sync",
+                        onClick: () => openSyncColumnsModal(t),
+                    },
+                    {
+                        separatorBefore: true,
+                        label: "Rename…",
+                        icon: "pencil",
+                        onClick: () => openRenameTableModal(t),
+                    },
+                    {
+                        label: "Reassign source…",
+                        icon: "link",
+                        onClick: () => openReassignModal(t),
+                    },
+                ]);
+            });
+            actions.appendChild(moreBtn);
             row.appendChild(actions);
             tablesList.appendChild(row);
         }
