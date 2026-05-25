@@ -58,10 +58,16 @@ def test_capture_dax_query_timings_returns_summary_df(monkeypatch):
         ]
     )
 
-    monkeypatch.setattr(dax_module.uuid, "uuid4", lambda: type("U", (), {"hex": "abc"})())
+    monkeypatch.setattr(dax_module, "uuid4", lambda: type("U", (), {"hex": "abc"})())
     monkeypatch.setattr(dax_module.time, "sleep", lambda _: None)
     monkeypatch.setattr(dax_module.fabric, "create_trace_connection", lambda dataset, workspace=None: _FakeTraceConnection(run_df))
-    monkeypatch.setattr(dax_module.fabric, "evaluate_dax", lambda dataset, workspace, dax_string: pd.DataFrame())
+    captured = {}
+
+    def _fake_evaluate_dax(dataset, workspace, dax_string):
+        captured["dax_string"] = dax_string
+        return pd.DataFrame()
+
+    monkeypatch.setattr(dax_module.fabric, "evaluate_dax", _fake_evaluate_dax)
 
     calls = {"clear": 0}
 
@@ -82,6 +88,9 @@ def test_capture_dax_query_timings_returns_summary_df(monkeypatch):
     assert result.loc[0, "Formula Engine (ms)"] == 180.0
     assert result.loc[0, "Trace Event Count"] == 2
     assert calls["clear"] == 1
+    assert captured["dax_string"] == '-- RUNID:abc\nEVALUATE ROW("x", 1)'
+    assert captured["dax_string"].startswith("-- RUNID:abc\n")
+    assert 'EVALUATE ROW("x", 1)' in captured["dax_string"]
 
 
 def test_capture_dax_query_timings_empty_trace(monkeypatch):
@@ -91,7 +100,7 @@ def test_capture_dax_query_timings_empty_trace(monkeypatch):
     monkeypatch.setattr(dax_module.fabric, "create_trace_connection", lambda dataset, workspace=None: _FakeTraceConnection(empty_df))
     monkeypatch.setattr(dax_module.fabric, "evaluate_dax", lambda dataset, workspace, dax_string: pd.DataFrame())
 
-    perf_values = iter([1.0, 1.5])
+    perf_values = iter([1.0, 1.1, 1.5])
     monkeypatch.setattr(dax_module.time, "perf_counter", lambda: next(perf_values))
 
     result = dax_module.capture_dax_query_timings(
@@ -102,5 +111,51 @@ def test_capture_dax_query_timings_empty_trace(monkeypatch):
 
     assert isinstance(result, pd.DataFrame)
     assert len(result) == 1
+    assert result.loc[0, "Total Elapsed (ms)"] == 100.0
     assert result.loc[0, "Storage Engine (ms)"] == 0.0
     assert result.loc[0, "Trace Event Count"] == 0
+
+
+def test_capture_dax_query_timings_se_duration_fallback(monkeypatch):
+    fallback_df = pd.DataFrame(
+        [
+            {
+                "EventClass": "VertiPaqSEQueryEnd",
+                "CurrentTime": "not-a-timestamp",
+                "Duration": 120,
+                "SessionID": "s1",
+                "ActivityID": "a1",
+                "RequestID": "r1",
+                "TextData": "SE event",
+            },
+            {
+                "EventClass": "QueryEnd",
+                "CurrentTime": "not-a-timestamp",
+                "Duration": 300,
+                "SessionID": "s1",
+                "ActivityID": "a1",
+                "RequestID": "r1",
+                "TextData": "-- RUNID:abc EVALUATE ROW(\"x\", 1)",
+            },
+        ]
+    )
+
+    monkeypatch.setattr(dax_module.time, "sleep", lambda _: None)
+    monkeypatch.setattr(dax_module.fabric, "create_trace_connection", lambda dataset, workspace=None: _FakeTraceConnection(fallback_df))
+    monkeypatch.setattr(dax_module.fabric, "evaluate_dax", lambda dataset, workspace, dax_string: pd.DataFrame())
+    monkeypatch.setattr(dax_module, "uuid4", lambda: type("U", (), {"hex": "abc"})())
+
+    perf_values = iter([1.0, 1.1, 1.4])
+    monkeypatch.setattr(dax_module.time, "perf_counter", lambda: next(perf_values))
+
+    result = dax_module.capture_dax_query_timings(
+        dataset="Model",
+        dax_query='EVALUATE ROW("x", 1)',
+        clear_cache=False,
+    )
+
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 1
+    assert result.loc[0, "Total Elapsed (ms)"] == 300.0
+    assert result.loc[0, "Storage Engine (ms)"] == 120.0
+    assert result.loc[0, "Formula Engine (ms)"] == 180.0

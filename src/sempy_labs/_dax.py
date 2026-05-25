@@ -392,6 +392,7 @@ def capture_dax_query_timings(
     tagged_query = f"{run_marker}\n{dax_query}"
 
     t0 = time.perf_counter()
+    eval_t1 = t0
     with fabric.create_trace_connection(dataset=dataset, workspace=workspace) as trace_connection:
         with trace_connection.create_trace(event_schema) as trace:
             trace.start()
@@ -400,12 +401,12 @@ def capture_dax_query_timings(
                 workspace=workspace,
                 dax_string=tagged_query,
             )
+            eval_t1 = time.perf_counter()
             time.sleep(post_wait_seconds)
             df = trace.stop()
-    t1 = time.perf_counter()
 
     if df is None or df.empty:
-        elapsed = round((t1 - t0) * 1000.0, 3)
+        elapsed = round((eval_t1 - t0) * 1000.0, 3)
         summary = {
             "Dataset": dataset,
             "Workspace": workspace,
@@ -510,6 +511,12 @@ def capture_dax_query_timings(
     if duration_col is not None:
         trace_df[duration_col] = pd.to_numeric(trace_df[duration_col], errors="coerce")
 
+    total_ms = round((eval_t1 - t0) * 1000.0, 3)
+    if not target.empty and duration_col is not None:
+        qe_duration = pd.to_numeric(target[duration_col], errors="coerce").iloc[-1]
+        if pd.notna(qe_duration) and float(qe_duration) > 0:
+            total_ms = round(float(qe_duration), 3)
+
     se_end_classes = {"VertiPaqSEQueryEnd", "DirectQueryEnd"}
     se_df = trace_df.loc[
         trace_df[event_class_col].astype(str).isin(se_end_classes)
@@ -543,12 +550,10 @@ def capture_dax_query_timings(
                 cur_start, cur_end = start, end
         se_total_ms += (cur_end - cur_start).total_seconds() * 1000.0
         se_ms = round(se_total_ms, 3)
-
-    total_ms = round((t1 - t0) * 1000.0, 3)
-    if not target.empty and duration_col is not None:
-        qe_duration = pd.to_numeric(target[duration_col], errors="coerce").iloc[-1]
-        if pd.notna(qe_duration) and float(qe_duration) > 0:
-            total_ms = round(float(qe_duration), 3)
+    elif duration_col is not None and not se_df.empty:
+        se_total_ms = pd.to_numeric(se_df[duration_col], errors="coerce").fillna(0.0).clip(lower=0.0).sum()
+        if se_total_ms > 0:
+            se_ms = round(min(float(se_total_ms), total_ms), 3)
 
     fe_ms = round(max(0.0, total_ms - se_ms), 3)
 
