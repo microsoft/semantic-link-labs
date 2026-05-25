@@ -556,7 +556,7 @@ function render({ model, el }) {
 
     const title = document.createElement("div");
     title.className = "slls-dle-title";
-    title.textContent = "Direct Lake Editor";
+    title.textContent = "Direct Lake Manager";
     titleWrap.appendChild(title);
 
     const subtitle = document.createElement("div");
@@ -2125,7 +2125,7 @@ def _unique_expression_name(tom, base):
 
 
 @log
-def direct_lake_editor(
+def direct_lake_manager(
     dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     dark_mode: bool = False,

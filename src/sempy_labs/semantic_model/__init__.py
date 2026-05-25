@@ -9,8 +9,8 @@ from ._caching import (
 from ._perspective_editor import (
     perspective_editor,
 )
-from ._direct_lake_editor import (
-    direct_lake_editor,
+from ._direct_lake_manager import (
+    direct_lake_manager,
 )
 
 __all__ = [
@@ -19,5 +19,5 @@ __all__ = [
     "make_discoverable",
     "enable_query_caching",
     "perspective_editor",
-    "direct_lake_editor",
+    "direct_lake_manager",
 ]
