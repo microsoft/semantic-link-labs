@@ -17,7 +17,7 @@ def test_get_delta_table_details_returns_size_files_and_partition_state(monkeypa
 
     assert actual["Table Name"] == "sales"
     assert actual["Size In Bytes"] == 2147483648
-    assert actual["Size In GB"] == 2
+    assert actual["Size In GB"] == 2.0
     assert actual["Files"] == 8
     assert actual["Partition Columns"] == ["event_date"]
     assert actual["Is Partitioned"] is True
@@ -39,29 +39,34 @@ def test_list_over_partitioned_tables_returns_matching_tables(monkeypatch):
             [
                 {"Table Name": "sales", "Schema Name": "dbo", "Format": "delta"},
                 {"Table Name": "customers", "Schema Name": "dbo", "Format": "delta"},
+                {"Table Name": "staging_sales", "Schema Name": "dbo", "Format": "csv"},
             ]
         )
 
     monkeypatch.setattr("sempy_labs.lakehouse._schemas.list_tables", _mock_list_tables)
-    monkeypatch.setattr(
-        partitioning,
-        "is_over_partitioned",
-        lambda table, **kwargs: table == "sales",
-    )
-    monkeypatch.setattr(
-        partitioning,
-        "get_delta_table_details",
-        lambda table, schema, **kwargs: {
+    called_tables = []
+
+    def _mock_get_delta_table_details(
+        table, schema, lakehouse=None, workspace=None
+    ):
+        called_tables.append(table)
+        return {
             "Table Name": table,
             "Schema Name": schema,
             "Size In Bytes": 2147483648,
             "Size In GB": 2,
-            "Files": 8,
+            "Files": 8 if table == "sales" else 1,
             "Partition Columns": ["event_date"],
-            "Is Partitioned": True,
-        },
+            "Is Partitioned": table == "sales",
+        }
+
+    monkeypatch.setattr(
+        partitioning,
+        "get_delta_table_details",
+        _mock_get_delta_table_details,
     )
 
     actual = partitioning.list_over_partitioned_tables()
 
     assert list(actual["Table Name"]) == ["sales"]
+    assert called_tables == ["sales", "customers"]

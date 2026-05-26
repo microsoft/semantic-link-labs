@@ -2,9 +2,49 @@ from typing import Optional, List
 from uuid import UUID
 import pandas as pd
 from sempy_labs._helper_functions import (
+    _create_dataframe,
     _get_delta_table,
 )
 from sempy._utils._log import log
+
+BYTES_PER_GB = 1024**3
+DELTA_TABLE_DETAIL_COLUMNS = [
+    "Table Name",
+    "Schema Name",
+    "Size In Bytes",
+    "Size In GB",
+    "Files",
+    "Partition Columns",
+    "Is Partitioned",
+]
+DELTA_TABLE_DETAIL_COLUMN_TYPES = {
+    "Table Name": "str",
+    "Schema Name": "str",
+    "Size In Bytes": "int",
+    "Size In GB": "float",
+    "Files": "int",
+    "Partition Columns": "object",
+    "Is Partitioned": "bool",
+}
+
+
+def _is_over_partitioned_by_details(
+    details: dict, total_table_size_gb: int, average_partition_size_gb: int
+) -> bool:
+    total_size_gb = details["Size In GB"]
+    partitioned = details["Is Partitioned"]
+    num_files = details["Files"]
+
+    # Only check if the table is partitioned
+    if partitioned and num_files > 0:
+        avg_partition_size_gb = total_size_gb / num_files
+
+        return (
+            total_size_gb < total_table_size_gb
+            or avg_partition_size_gb < average_partition_size_gb
+        )
+
+    return False
 
 
 @log
@@ -139,7 +179,7 @@ def get_delta_table_details(
         "Table Name": table,
         "Schema Name": schema,
         "Size In Bytes": size_bytes,
-        "Size In GB": size_bytes / (1024**3),
+        "Size In GB": size_bytes / BYTES_PER_GB,
         "Files": files,
         "Partition Columns": partition_columns,
         "Is Partitioned": len(partition_columns) > 0,
@@ -185,21 +225,11 @@ def is_over_partitioned(
     details = get_delta_table_details(
         table=table, schema=schema, lakehouse=lakehouse, workspace=workspace
     )
-    total_size_gb = details["Size In GB"]
-    partitioned = details["Is Partitioned"]
-    num_files = details["Files"]
-
-    # Only check if the table is partitioned
-    if partitioned and num_files > 0:
-        avg_partition_size_gb = total_size_gb / num_files
-
-        if (
-            total_size_gb < total_table_size_gb
-            or avg_partition_size_gb < average_partition_size_gb
-        ):
-            return True
-
-    return False
+    return _is_over_partitioned_by_details(
+        details=details,
+        total_table_size_gb=total_table_size_gb,
+        average_partition_size_gb=average_partition_size_gb,
+    )
 
 
 @log
@@ -242,29 +272,20 @@ def list_over_partitioned_tables(
     for _, row in df.query("Format == 'delta'").iterrows():
         table = row["Table Name"]
         table_schema = row["Schema Name"]
-        if is_over_partitioned(
+        details = get_delta_table_details(
             table=table,
             schema=table_schema,
             lakehouse=lakehouse,
             workspace=workspace,
+        )
+        if _is_over_partitioned_by_details(
+            details=details,
             total_table_size_gb=total_table_size_gb,
             average_partition_size_gb=average_partition_size_gb,
         ):
-            details = get_delta_table_details(
-                table=table,
-                schema=table_schema,
-                lakehouse=lakehouse,
-                workspace=workspace,
-            )
             over_partitioned_rows.append(details)
 
-    columns = [
-        "Table Name",
-        "Schema Name",
-        "Size In Bytes",
-        "Size In GB",
-        "Files",
-        "Partition Columns",
-        "Is Partitioned",
-    ]
-    return pd.DataFrame(over_partitioned_rows, columns=columns)
+    if not over_partitioned_rows:
+        return _create_dataframe(columns=DELTA_TABLE_DETAIL_COLUMN_TYPES)
+
+    return pd.DataFrame(over_partitioned_rows, columns=DELTA_TABLE_DETAIL_COLUMNS)
