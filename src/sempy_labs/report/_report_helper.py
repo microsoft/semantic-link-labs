@@ -148,11 +148,9 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
             entity = source_ref.get("Entity", "")
             property_value = data.get("Property", "")
 
-            object_type = (
-                keys_path[-1].replace("HierarchyLevel", "Hierarchy")
-                if keys_path
-                else "Unknown"
-            )
+            object_type = "Unknown"
+            if keys_path:
+                object_type = "Column" if keys_path[-1] == "HierarchyLevel" else keys_path[-1]
             result[property_value] = (entity, object_type)
             if keys_path:
                 keys_path.pop()
