@@ -1485,11 +1485,7 @@ class ReportWrapper:
                     entity = source_ref.get("Entity", "")
                     property_value = data.get("Property", "")
 
-                    object_type = "Unknown"
-                    if keys_path:
-                        object_type = (
-                            "Column" if keys_path[-1] == "HierarchyLevel" else keys_path[-1]
-                        )
+                    object_type = helper._resolve_object_type(keys_path=keys_path)
                     is_agg = len(keys_path) > 2 and keys_path[-3] == "Aggregation"
                     is_viz_calc = (
                         len(keys_path) > 2
