@@ -37,7 +37,7 @@ def generate_direct_lake_semantic_model(
     use_sql_endpoint: bool = False,
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
-    inherit_descriptions: bool = False,
+    inherit_descriptions: bool = True,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on tables in Fabric.
@@ -70,7 +70,7 @@ def generate_direct_lake_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     refresh : bool, default=True
         If True, refreshes the newly created semantic model after it is created.
-    inherit_descriptions : bool, default=False
+    inherit_descriptions : bool, default=True
         If True, sets table/column descriptions based on the comments/descriptions in the source table. Only available for lakehouse sources.
     """
     from sempy_labs._helper_functions import extract_descriptions_from_table_path
@@ -237,7 +237,9 @@ def generate_direct_lake_semantic_model(
         for table_name, table_info in model_map.items():
             schema_name = table_info["schema"]
             entity_name = table_info["entityName"]
-            tom.add_table(name=table_name, description=description)
+            tom.add_table(
+                name=table_name, description=table_info.get("description")
+            )
             tom.add_entity_partition(
                 table_name=table_name,
                 entity_name=entity_name,
@@ -252,7 +254,7 @@ def generate_direct_lake_semantic_model(
                     column_name=column_name,
                     data_type=data_type,
                     source_column=column_name,
-                    description=description,
+                    description=column.get("description"),
                 )
 
     if refresh:

@@ -198,9 +198,11 @@ _WIDGET_CSS = """
 .slls-dle-column-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .slls-dle-column-name { font-weight: 600; font-size: 13.5px; color: var(--slls-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-dle-column-type { font-size: 11.5px; color: var(--slls-text-tertiary); text-transform: uppercase; letter-spacing: 0.4px; }
-.slls-dle-column-fields { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.slls-dle-column-fields { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 10px; }
 .slls-dle-column-fields > .slls-dle-field { min-width: 0; }
+.slls-dle-column-fields > .slls-dle-field-wide { grid-column: 1 / -1; }
 .slls-dle-column-fields .slls-dle-select, .slls-dle-column-fields .slls-dle-input { width: 100%; max-width: 100%; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.slls-dle-column-fields textarea.slls-dle-input { white-space: pre-wrap; text-overflow: clip; overflow: auto; resize: vertical; min-height: 38px; }
 
 .slls-dle-tablerows { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); max-height: 240px; overflow-y: auto; margin-top: 6px; }
 .slls-dle-tablerow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--slls-border); font-size: 13px; }
@@ -1324,6 +1326,7 @@ function render({ model, el }) {
             c => (c.kind === "reassign_table" && c.key === tableName) ||
                  (c.kind === "edit_columns" && c.key === tableName) ||
                  (c.kind === "sync_columns" && c.key === tableName) ||
+                 (c.kind === "sync_descriptions" && c.key === tableName) ||
                  (c.kind === "rename_table" && c.key === tableName)
         );
     }
@@ -1351,7 +1354,7 @@ function render({ model, el }) {
         return payload;
     }
     // Merges all staged edit_columns payloads for the given table into a
-    // single { columnName -> { source_column?, data_type?, data_category?,
+    // single { columnName -> { source_column?, data_type?, description?,
     // new_name? } } map. Returns {} when there are no staged column edits.
     function mergedPendingColumnEditsForTable(tableName) {
         const merged = {};
@@ -1363,13 +1366,27 @@ function render({ model, el }) {
                     const cur = merged[col.name] || {};
                     if ("source_column" in col) cur.source_column = col.source_column;
                     if ("data_type" in col) cur.data_type = col.data_type;
-                    if ("data_category" in col) cur.data_category = col.data_category;
+                    if ("description" in col) cur.description = col.description;
                     if ("new_name" in col) cur.new_name = col.new_name;
                     merged[col.name] = cur;
                 }
             }
         }
         return merged;
+    }
+    // Returns the most recently staged table description for the given
+    // table (or undefined if none was staged).
+    function latestPendingTableDescription(tableName) {
+        let desc;
+        for (const c of pendingState.changes) {
+            if (c.kind === "edit_columns"
+                && c.key === tableName
+                && c.payload
+                && "table_description" in c.payload) {
+                desc = c.payload.table_description;
+            }
+        }
+        return desc;
     }
     // Applies any staged sync_columns changes for `tableName` to the given
     // baseline column list: removes columns flagged for removal and appends
@@ -1392,6 +1409,7 @@ function render({ model, el }) {
                     sourceColumn: add.name,
                     dataType: convertColumnDataType(add.dataType),
                     dataCategory: "",
+                    description: "",
                     columnType: "Data",
                     _stagedSync: true,
                 });
@@ -1614,15 +1632,41 @@ function render({ model, el }) {
                         parts.push(`source_column = ${col.source_column}`);
                     if ("data_type" in col)
                         parts.push(`data_type = ${col.data_type}`);
-                    if ("data_category" in col)
+                    if ("description" in col)
                         parts.push(
-                            `data_category = ${col.data_category || "(none)"}`,
+                            `description = ${col.description ? '"' + col.description + '"' : "(none)"}`,
                         );
                     return `${col.name}: ${parts.join(", ") || "(no changes)"}`;
                 });
+                if ("table_description" in p) {
+                    lines.unshift(
+                        `table description = ${p.table_description ? '"' + p.table_description + '"' : "(none)"}`,
+                    );
+                }
+                const colCount = cols.length;
+                const titleParts = [];
+                if (colCount > 0) {
+                    titleParts.push(
+                        `Edit ${colCount} column${colCount === 1 ? "" : "s"}`,
+                    );
+                }
+                if ("table_description" in p) {
+                    titleParts.push("table description");
+                }
+                const title = `${titleParts.join(" + ") || "Edit"} in '${c.key}'`;
                 return {
-                    title: `Edit ${cols.length} column${cols.length === 1 ? "" : "s"} in '${c.key}'`,
-                    details: lines.length ? lines : ["(no columns)"],
+                    title,
+                    details: lines.length ? lines : ["(no changes)"],
+                };
+            }
+            case "sync_descriptions": {
+                return {
+                    title: `Sync descriptions on '${c.key}' from source`,
+                    details: [
+                        p.overwrite
+                            ? "Overwrite existing descriptions"
+                            : "Fill only empty descriptions",
+                    ],
                 };
             }
             case "sync_columns": {
@@ -1940,6 +1984,11 @@ function render({ model, el }) {
                         label: "Sync columns with source…",
                         icon: "sync",
                         onClick: () => openSyncColumnsModal(t),
+                    },
+                    {
+                        label: "Sync descriptions from source…",
+                        icon: "sync",
+                        onClick: () => openSyncDescriptionsModal(t),
                     },
                     {
                         separatorBefore: true,
@@ -2452,10 +2501,16 @@ function render({ model, el }) {
                 sourceColumn: c.sourceColumn || "",
                 dataType: c.dataType || "",
                 dataCategory: c.dataCategory || "",
+                description: c.description || "",
                 columnType: c.columnType || "",
             })),
         );
         const stagedMap = mergedPendingColumnEditsForTable(table.name);
+        const baseTableDescription = table.description || "";
+        const stagedTableDescription = latestPendingTableDescription(table.name);
+        const initialTableDescription = stagedTableDescription !== undefined
+            ? (stagedTableDescription || "")
+            : baseTableDescription;
 
         if (baseCols.length === 0) {
             const p = document.createElement("div");
@@ -2466,6 +2521,39 @@ function render({ model, el }) {
             openModal();
             return;
         }
+
+        // Table-level fields (description). Rendered as a header card above
+        // the column list so the table description is editable alongside the
+        // column descriptions.
+        const tableCard = document.createElement("div");
+        tableCard.className = "slls-dle-column-row";
+        const tableHead = document.createElement("div");
+        tableHead.className = "slls-dle-column-head";
+        const tableNm = document.createElement("div");
+        tableNm.className = "slls-dle-column-name slls-dle-icon-inline";
+        tableNm.innerHTML = `${iconHtml("table")}<span>${escapeHtml(table.name)}</span>`;
+        tableHead.appendChild(tableNm);
+        const tableTy = document.createElement("div");
+        tableTy.className = "slls-dle-column-type";
+        tableTy.textContent = "Table";
+        tableHead.appendChild(tableTy);
+        tableCard.appendChild(tableHead);
+
+        const tableFields = document.createElement("div");
+        tableFields.className = "slls-dle-column-fields";
+        tableCard.appendChild(tableFields);
+
+        const tableDescInput = document.createElement("textarea");
+        tableDescInput.className = "slls-dle-input";
+        tableDescInput.rows = 2;
+        tableDescInput.value = initialTableDescription;
+        tableDescInput.placeholder = "(no description)";
+        const tableDescField = makeField(
+            "Table description", tableDescInput, { wide: true },
+        );
+        tableFields.appendChild(tableDescField);
+
+        modal.appendChild(tableCard);
 
         const list = document.createElement("div");
         list.className = "slls-dle-columns-list";
@@ -2479,9 +2567,20 @@ function render({ model, el }) {
                 name: "new_name" in st ? (st.new_name || bc.name) : bc.name,
                 sourceColumn: "source_column" in st ? (st.source_column || "") : bc.sourceColumn,
                 dataType: "data_type" in st ? (st.data_type || "") : bc.dataType,
-                dataCategory: "data_category" in st ? (st.data_category || "") : bc.dataCategory,
+                description: "description" in st ? (st.description || "") : bc.description,
             };
         }
+
+        // Updates the table-card "dirty" indicator based on the description
+        // input. Defined here so column rows can refresh it via the shared
+        // `refreshTableDirty` helper after editing.
+        function refreshTableDirty() {
+            const dirty = (tableDescInput.value || "") !== baseTableDescription;
+            setFieldDirty(tableDescField, dirty);
+            tableCard.classList.toggle("pending", dirty);
+        }
+        tableDescInput.addEventListener("input", refreshTableDirty);
+        refreshTableDirty();
 
         for (const bc of baseCols) {
             const row = document.createElement("div");
@@ -2549,13 +2648,15 @@ function render({ model, el }) {
             const typeField = makeField("Data type", typeSel);
             fields.appendChild(typeField);
 
-            const catInput = document.createElement("input");
-            catInput.type = "text";
-            catInput.className = "slls-dle-input";
-            catInput.value = state[bc.name].dataCategory;
-            catInput.placeholder = "(none)";
-            const catField = makeField("Data category", catInput);
-            fields.appendChild(catField);
+            const descInput = document.createElement("textarea");
+            descInput.className = "slls-dle-input";
+            descInput.rows = 2;
+            descInput.value = state[bc.name].description;
+            descInput.placeholder = "(no description)";
+            const descField = makeField(
+                "Description", descInput, { wide: true },
+            );
+            fields.appendChild(descField);
 
             function refreshDots() {
                 setFieldDirty(
@@ -2568,14 +2669,14 @@ function render({ model, el }) {
                 );
                 setFieldDirty(typeField, typeSel.value !== bc.dataType);
                 setFieldDirty(
-                    catField,
-                    (catInput.value || "") !== bc.dataCategory,
+                    descField,
+                    (descInput.value || "") !== (bc.description || ""),
                 );
                 const rowDirty =
                     (!nameInput.disabled && (nameInput.value || "") !== bc.name) ||
                     (!srcInput.disabled && srcInput.value !== bc.sourceColumn) ||
                     typeSel.value !== bc.dataType ||
-                    (catInput.value || "") !== bc.dataCategory;
+                    (descInput.value || "") !== (bc.description || "");
                 row.classList.toggle("pending", rowDirty);
                 // Update the head label live to reflect the staged rename.
                 const curName = (nameInput.value || "").trim() || bc.name;
@@ -2597,8 +2698,8 @@ function render({ model, el }) {
                 state[bc.name].dataType = typeSel.value;
                 refreshDots();
             });
-            catInput.addEventListener("input", () => {
-                state[bc.name].dataCategory = catInput.value;
+            descInput.addEventListener("input", () => {
+                state[bc.name].description = descInput.value;
                 refreshDots();
             });
             refreshDots();
@@ -2645,25 +2746,115 @@ function render({ model, el }) {
                     entry.data_type = cur.dataType;
                     dirty = true;
                 }
-                if (cur.dataCategory !== bc.dataCategory) {
-                    entry.data_category = cur.dataCategory;
+                if ((cur.description || "") !== (bc.description || "")) {
+                    entry.description = cur.description || "";
                     dirty = true;
                 }
                 if (dirty) changed.push(entry);
             }
-            if (changed.length === 0) {
+            const newTableDesc = tableDescInput.value || "";
+            const tableDescChanged = newTableDesc !== baseTableDescription;
+            if (changed.length === 0 && !tableDescChanged) {
                 setStatus("No column changes to stage.", "info");
                 closeModal();
                 return;
+            }
+            const payload = { table_name: table.name, columns: changed };
+            if (tableDescChanged) {
+                payload.table_description = newTableDesc;
             }
             enqueuePendingChange({
                 id: pendingId(),
                 kind: "edit_columns",
                 key: table.name,
-                payload: { table_name: table.name, columns: changed },
+                payload,
             });
             closeModal();
         }));
+        openModal();
+    }
+
+    function openSyncDescriptionsModal(table) {
+        modalHeader(`Sync descriptions: ${table.name}`);
+
+        const sources = model.get("sources") || [];
+        const source = sources.find(
+            (s) => s.expressionName === table.expressionName,
+        );
+        const footer = modalFooter();
+        const cancel = makeBtn("Cancel", "slls-dle-btn", closeModal);
+
+        if (!source || source.itemType !== "Lakehouse") {
+            const p = document.createElement("div");
+            p.className = "slls-dle-empty";
+            p.textContent =
+                "Description sync is only supported for tables sourced from a Lakehouse.";
+            modal.appendChild(p);
+            footer.appendChild(cancel);
+            openModal();
+            return;
+        }
+
+        const intro = document.createElement("div");
+        intro.className = "slls-dle-item-meta";
+        intro.style.marginBottom = "12px";
+        intro.textContent =
+            `This will set the descriptions on table '${table.name}' and its `
+            + `columns from the comments/descriptions on the source Lakehouse `
+            + `table '${(table.schemaName ? table.schemaName + "." : "")}${table.entityName || ""}'.`;
+        modal.appendChild(intro);
+
+        const optsRow = document.createElement("div");
+        optsRow.className = "slls-dle-field";
+        const overwriteWrap = document.createElement("label");
+        overwriteWrap.style.cssText =
+            "display:flex;gap:8px;align-items:center;font-size:13.5px;";
+        const overwriteChk = document.createElement("input");
+        overwriteChk.type = "checkbox";
+        overwriteChk.checked = false;
+        const overwriteLab = document.createElement("span");
+        overwriteLab.textContent =
+            "Overwrite existing descriptions (otherwise only empty descriptions are populated)";
+        overwriteWrap.appendChild(overwriteChk);
+        overwriteWrap.appendChild(overwriteLab);
+        optsRow.appendChild(overwriteWrap);
+        modal.appendChild(optsRow);
+
+        if (pendingState.changes.some(
+            c => c.kind === "sync_descriptions" && c.key === table.name,
+        )) {
+            const revert = makeBtn("Revert", "slls-dle-btn slls-dle-btn-danger", () => {
+                revertChangesMatching(
+                    c => c.kind === "sync_descriptions" && c.key === table.name,
+                    `Reverted staged description sync for '${table.name}'.`,
+                );
+                closeModal();
+            });
+            revert.title = "Discard the staged description sync for this table";
+            footer.appendChild(revert);
+        }
+        footer.appendChild(cancel);
+        footer.appendChild(makeBtn(
+            "Stage changes",
+            "slls-dle-btn slls-dle-btn-primary",
+            () => {
+                // Replace any previously staged sync_descriptions for this
+                // table so only the latest selection is applied on save.
+                pendingState.changes = pendingState.changes.filter(
+                    (c) => !(c.kind === "sync_descriptions" && c.key === table.name),
+                );
+                enqueuePendingChange({
+                    id: pendingId(),
+                    kind: "sync_descriptions",
+                    key: table.name,
+                    payload: {
+                        table_name: table.name,
+                        overwrite: !!overwriteChk.checked,
+                    },
+                });
+                closeModal();
+            },
+        ));
         openModal();
     }
 
@@ -3266,6 +3457,7 @@ def _build_tables_payload(tom):
                         "sourceColumn": getattr(c, "SourceColumn", "") or "",
                         "dataType": str(c.DataType),
                         "dataCategory": getattr(c, "DataCategory", "") or "",
+                        "description": getattr(c, "Description", "") or "",
                         "columnType": str(c.Type),
                     }
                 )
@@ -3275,6 +3467,7 @@ def _build_tables_payload(tom):
                     "expressionName": expression_name or "",
                     "entityName": entity_name or "",
                     "schemaName": schema_name or "",
+                    "description": getattr(t, "Description", "") or "",
                     "columns": columns,
                 }
             )
@@ -4066,7 +4259,20 @@ def direct_lake_manager(
                             cols = p.get("columns") or []
                             if not table_name:
                                 raise ValueError("Table is required to edit columns.")
-                            if not cols:
+                            # Apply table-level description first so it
+                            # persists even if there are no column edits.
+                            if "table_description" in p:
+                                if table_name not in [
+                                    t.Name for t in tom.model.Tables
+                                ]:
+                                    raise ValueError(
+                                        f"Table '{table_name}' not found "
+                                        "in the model."
+                                    )
+                                tom.model.Tables[table_name].Description = (
+                                    p.get("table_description") or ""
+                                )
+                            if not cols and "table_description" not in p:
                                 continue
                             renames = []
                             for col in cols:
@@ -4083,6 +4289,8 @@ def direct_lake_manager(
                                     kwargs["data_type"] = col["data_type"]
                                 if "data_category" in col:
                                     kwargs["data_category"] = col["data_category"]
+                                if "description" in col:
+                                    kwargs["description"] = col["description"] or ""
                                 if kwargs:
                                     tom.update_column(
                                         table_name=table_name,
@@ -4104,8 +4312,13 @@ def direct_lake_manager(
                                         f"'{old}' to '{new}' in "
                                         f"'{table_name}': {exc}"
                                     )
+                            parts = []
+                            if cols:
+                                parts.append(f"updated {len(cols)} column(s)")
+                            if "table_description" in p:
+                                parts.append("updated table description")
                             summary.append(
-                                f"updated {len(cols)} column(s) in " f"'{table_name}'"
+                                f"{' and '.join(parts)} in '{table_name}'"
                             )
                         elif kind == "rename_table":
                             old_name = change.get("key") or p.get("table_name")
@@ -4183,6 +4396,75 @@ def direct_lake_manager(
                             summary.append(
                                 f"synced columns in '{table_name}' "
                                 f"(+{added}, -{removed})"
+                            )
+                        elif kind == "sync_descriptions":
+                            from sempy_labs._helper_functions import (
+                                extract_descriptions_from_table_path,
+                            )
+                            import Microsoft.AnalysisServices.Tabular as TOM
+
+                            table_name = p.get("table_name")
+                            overwrite = bool(p.get("overwrite"))
+                            if not table_name:
+                                raise ValueError(
+                                    "Table is required to sync descriptions."
+                                )
+                            if table_name not in [
+                                t.Name for t in tom.model.Tables
+                            ]:
+                                raise ValueError(
+                                    f"Table '{table_name}' not found in the model."
+                                )
+                            t = tom.model.Tables[table_name]
+                            part = next(iter(t.Partitions), None)
+                            if part is None or part.Mode != TOM.ModeType.DirectLake:
+                                raise ValueError(
+                                    f"Table '{table_name}' is not a Direct Lake "
+                                    "table."
+                                )
+                            expr_name = part.Source.ExpressionSource.Name
+                            src_info = next(
+                                (
+                                    s
+                                    for s in widget.sources
+                                    if s.get("expressionName") == expr_name
+                                ),
+                                None,
+                            )
+                            if src_info is None or src_info.get("itemType") != "Lakehouse":
+                                raise ValueError(
+                                    f"Sync descriptions for '{table_name}' is "
+                                    "only supported when the source is a Lakehouse."
+                                )
+                            path = create_abfss_path(
+                                lakehouse_id=src_info.get("itemId"),
+                                lakehouse_workspace_id=src_info.get("workspaceId"),
+                                delta_table_name=part.Source.EntityName,
+                                schema=part.Source.SchemaName or None,
+                            )
+                            descriptions = extract_descriptions_from_table_path(path)
+                            table_description = descriptions.get("tableDescription") or ""
+                            if overwrite or not (t.Description or ""):
+                                t.Description = table_description
+                            applied = 0
+                            for c in t.Columns:
+                                if c.Type == TOM.ColumnType.RowNumber:
+                                    continue
+                                if not overwrite and (c.Description or ""):
+                                    continue
+                                desc = next(
+                                    (
+                                        col.get("description")
+                                        for col in descriptions.get("columns", [])
+                                        if col.get("columnName") == c.SourceColumn
+                                    ),
+                                    None,
+                                )
+                                c.Description = desc or ""
+                                applied += 1
+                            summary.append(
+                                f"synced descriptions on '{table_name}' "
+                                f"({applied} column(s))"
                             )
                         else:
                             raise ValueError(f"Unknown pending change kind: {kind!r}")
