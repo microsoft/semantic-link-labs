@@ -105,6 +105,58 @@ ICONS: dict[str, str] = {
         "<svg width='8' height='10' viewBox='0 0 8 10' fill='currentColor'>"
         "<path d='M1 0l6 5-6 5V0z'/></svg>"
     ),
+    "back": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M10 3L5 8l5 5"/></svg>'
+    ),
+    "refresh": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" '
+        'aria-hidden="true">'
+        '<path d="M8 2a6 6 0 0 1 5.196 3H11.5a.5.5 0 0 0 0 1h2.9A.6.6 0 0 0 '
+        "15 5.4V2.5a.5.5 0 0 0-1 0v1.55A7 7 0 1 0 15 8a.5.5 0 0 0-1 0A6 6 0 "
+        '1 1 8 2z"/></svg>'
+    ),
+    "source": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="8" cy="3.75" rx="5" ry="1.5"/>'
+        '<path d="M3 3.75v8.5c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5v-8.5"/>'
+        '<path d="M3 8c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5"/></svg>'
+    ),
+    "more": (
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" '
+        'aria-hidden="true">'
+        '<circle cx="3" cy="8" r="1.5"/>'
+        '<circle cx="8" cy="8" r="1.5"/>'
+        '<circle cx="13" cy="8" r="1.5"/></svg>'
+    ),
+    "sync": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 8a5 5 0 0 1 8.6-3.5"/>'
+        '<path d="M11.6 2.5v2.5h-2.5"/>'
+        '<path d="M13 8a5 5 0 0 1-8.6 3.5"/>'
+        '<path d="M4.4 13.5V11h2.5"/></svg>'
+    ),
+    "pencil": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M11.5 2.5l2 2L5 13H3v-2z"/>'
+        '<path d="M10 4l2 2"/></svg>'
+    ),
+    "link": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6.5 9.5L9.5 6.5"/>'
+        '<path d="M7 4.5l1-1a2.5 2.5 0 1 1 3.5 3.5l-1 1"/>'
+        '<path d="M9 11.5l-1 1a2.5 2.5 0 1 1-3.5-3.5l1-1"/></svg>'
+    ),
 }
 
 

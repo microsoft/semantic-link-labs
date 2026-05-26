@@ -237,23 +237,22 @@ function render({ model, el }) {
         }[c]));
     }
 
-    const PLUS_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3.25v9.5M3.25 8h9.5"/></svg>`;
-    const BACK_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg>`;
-    // Apple-style circular arrow refresh icon (SF Symbols `arrow.clockwise`).
-    const REFRESH_SVG = `<svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 2a6 6 0 0 1 5.196 3H11.5a.5.5 0 0 0 0 1h2.9A.6.6 0 0 0 15 5.4V2.5a.5.5 0 0 0-1 0v1.55A7 7 0 1 0 15 8a.5.5 0 0 0-1 0A6 6 0 1 1 8 2z"/></svg>`;
-    const SUN_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.3 3.3l1.05 1.05M11.65 11.65l1.05 1.05M3.3 12.7l1.05-1.05M11.65 4.35l1.05-1.05"/></svg>`;
-    const MOON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>`;
-    // Inline table/column icons used to make tables and columns visually
-    // distinct throughout the manager. Mirrors the styling used by
-    // sempy_labs.semantic_model._perspective_editor.
+    // Icons are injected from sempy_labs._ui_components.ICONS at module load
+    // time so every widget shares one source of truth (see template
+    // substitution at the bottom of this file).
+    const PLUS_SVG = `__SLLS_ICON_PLUS__`;
+    const BACK_SVG = `__SLLS_ICON_BACK__`;
+    const REFRESH_SVG = `__SLLS_ICON_REFRESH__`;
+    const SUN_SVG = `__SLLS_ICON_SUN__`;
+    const MOON_SVG = `__SLLS_ICON_MOON__`;
     const ICON_SVG = {
-        table: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10" rx="1.8"/><path d="M2.5 6.75h11M8 6.75v6.25"/></svg>`,
-        column: `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="4" height="11" rx="1.6"/></svg>`,
-        source: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="3.75" rx="5" ry="1.5"/><path d="M3 3.75v8.5c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5v-8.5"/><path d="M3 8c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5"/></svg>`,
-        more: `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>`,
-        sync: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a5 5 0 0 1 8.6-3.5"/><path d="M11.6 2.5v2.5h-2.5"/><path d="M13 8a5 5 0 0 1-8.6 3.5"/><path d="M4.4 13.5V11h2.5"/></svg>`,
-        pencil: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.5l2 2L5 13H3v-2z"/><path d="M10 4l2 2"/></svg>`,
-        link: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5L9.5 6.5"/><path d="M7 4.5l1-1a2.5 2.5 0 1 1 3.5 3.5l-1 1"/><path d="M9 11.5l-1 1a2.5 2.5 0 1 1-3.5-3.5l1-1"/></svg>`,
+        table: `__SLLS_ICON_TABLE__`,
+        column: `__SLLS_ICON_COLUMN__`,
+        source: `__SLLS_ICON_SOURCE__`,
+        more: `__SLLS_ICON_MORE__`,
+        sync: `__SLLS_ICON_SYNC__`,
+        pencil: `__SLLS_ICON_PENCIL__`,
+        link: `__SLLS_ICON_LINK__`,
     };
     function iconHtml(kind) {
         const svg = ICON_SVG[kind] || "";
@@ -3217,6 +3216,27 @@ export default { render };
 """
 
 
+# Inject SVG icons from the shared UI components module so every Semantic
+# Link Labs widget renders the same visual primitives (see
+# ``sempy_labs._ui_components.ICONS``).
+from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+
+_WIDGET_JS = (
+    _WIDGET_JS.replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])
+    .replace("__SLLS_ICON_BACK__", _UI_ICONS["back"])
+    .replace("__SLLS_ICON_REFRESH__", _UI_ICONS["refresh"])
+    .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
+    .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
+    .replace("__SLLS_ICON_TABLE__", _UI_ICONS["table"])
+    .replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])
+    .replace("__SLLS_ICON_SOURCE__", _UI_ICONS["source"])
+    .replace("__SLLS_ICON_MORE__", _UI_ICONS["more"])
+    .replace("__SLLS_ICON_SYNC__", _UI_ICONS["sync"])
+    .replace("__SLLS_ICON_PENCIL__", _UI_ICONS["pencil"])
+    .replace("__SLLS_ICON_LINK__", _UI_ICONS["link"])
+)
+
+
 def _build_tables_payload(tom):
     """Return a list of dicts describing Direct Lake tables and their partitions."""
     import Microsoft.AnalysisServices.Tabular as TOM
@@ -3427,9 +3447,7 @@ def direct_lake_manager(
             if source_type == "Lakehouse":
                 from sempy_labs.lakehouse import get_lakehouse_tables
 
-                dfT = get_lakehouse_tables(
-                    lakehouse=source_id, workspace=workspace_id
-                )
+                dfT = get_lakehouse_tables(lakehouse=source_id, workspace=workspace_id)
                 items = []
                 for _, r in dfT.iterrows():
                     schema = str(r.get("Schema Name") or "")
@@ -3454,9 +3472,7 @@ def direct_lake_manager(
                         if not table:
                             continue
                         items.append({"schema": schema, "table": table})
-            items.sort(
-                key=lambda x: ((x["schema"] or "").lower(), x["table"].lower())
-            )
+            items.sort(key=lambda x: ((x["schema"] or "").lower(), x["table"].lower()))
             return {"items": items}
         except Exception as e:
             return {"error": str(e)}
@@ -3691,7 +3707,12 @@ def direct_lake_manager(
                         continue
                     key = f"{ws_id}::{src_type}::{src_id}::{schema}::{table}"
                     new_map[key] = _list_source_columns_payload(
-                        ws_id, src_type, src_id, schema, table, use_sql,
+                        ws_id,
+                        src_type,
+                        src_id,
+                        schema,
+                        table,
+                        use_sql,
                     )
                 # Single assignment triggers one sync to the frontend, which
                 # then refreshes every visible column picker.
@@ -3807,12 +3828,14 @@ def direct_lake_manager(
                                 if c.Type == TOM.ColumnType.RowNumber:
                                     continue
                                 src_col = getattr(c, "SourceColumn", "") or ""
-                                if src_col and src_col not in wanted and c.Name not in wanted:
+                                if (
+                                    src_col
+                                    and src_col not in wanted
+                                    and c.Name not in wanted
+                                ):
                                     t.Columns.Remove(c.Name)
                     if refresh_after:
-                        refresh_semantic_model(
-                            dataset=ds_id_resolved, workspace=ws_id
-                        )
+                        refresh_semantic_model(dataset=ds_id_resolved, workspace=ws_id)
                 widget.workspace_id = str(ws_id)
                 widget.workspace_name = _resolve_ws_name(ws_id)
                 widget.dataset_id = str(ds_id_resolved)
@@ -3849,6 +3872,7 @@ def direct_lake_manager(
                 changes = data.get("changes") or []
                 if not changes:
                     return
+
                 # Defer table renames to the end so other staged changes
                 # that reference the original table name resolve correctly.
                 # Run add_source first so subsequent reassign_table /
@@ -3862,6 +3886,7 @@ def direct_lake_manager(
                     if k == "rename_table":
                         return 3
                     return 2
+
                 changes = sorted(changes, key=_change_order)
                 summary = []
                 with connect_semantic_model(
@@ -3981,7 +4006,9 @@ def direct_lake_manager(
                                 # can override the entity name.
                                 if isinstance(spec, dict):
                                     raw_spec = (spec.get("spec") or "").strip()
-                                    custom_name = (spec.get("name") or "").strip() or None
+                                    custom_name = (
+                                        spec.get("name") or ""
+                                    ).strip() or None
                                 else:
                                     raw_spec = str(spec).strip()
                                     custom_name = None
@@ -4038,9 +4065,7 @@ def direct_lake_manager(
                             table_name = p.get("table_name")
                             cols = p.get("columns") or []
                             if not table_name:
-                                raise ValueError(
-                                    "Table is required to edit columns."
-                                )
+                                raise ValueError("Table is required to edit columns.")
                             if not cols:
                                 continue
                             renames = []
@@ -4080,8 +4105,7 @@ def direct_lake_manager(
                                         f"'{table_name}': {exc}"
                                     )
                             summary.append(
-                                f"updated {len(cols)} column(s) in "
-                                f"'{table_name}'"
+                                f"updated {len(cols)} column(s) in " f"'{table_name}'"
                             )
                         elif kind == "rename_table":
                             old_name = change.get("key") or p.get("table_name")
@@ -4093,12 +4117,9 @@ def direct_lake_manager(
                                 )
                             if old_name == new_name:
                                 continue
-                            if old_name not in [
-                                t.Name for t in tom.model.Tables
-                            ]:
+                            if old_name not in [t.Name for t in tom.model.Tables]:
                                 raise ValueError(
-                                    f"Table '{old_name}' not found "
-                                    "in the model."
+                                    f"Table '{old_name}' not found " "in the model."
                                 )
                             try:
                                 tom.model.Tables[old_name].Name = new_name
@@ -4119,15 +4140,10 @@ def direct_lake_manager(
                             add_cols = p.get("add") or []
                             remove_cols = p.get("remove") or []
                             if not table_name:
+                                raise ValueError("Table is required to sync columns.")
+                            if table_name not in [t.Name for t in tom.model.Tables]:
                                 raise ValueError(
-                                    "Table is required to sync columns."
-                                )
-                            if table_name not in [
-                                t.Name for t in tom.model.Tables
-                            ]:
-                                raise ValueError(
-                                    f"Table '{table_name}' not found "
-                                    "in the model."
+                                    f"Table '{table_name}' not found " "in the model."
                                 )
                             added = 0
                             removed = 0
@@ -4142,10 +4158,7 @@ def direct_lake_manager(
                                 if dtype == "Binary":
                                     continue
                                 existing = {
-                                    c.Name
-                                    for c in tom.model.Tables[
-                                        table_name
-                                    ].Columns
+                                    c.Name for c in tom.model.Tables[table_name].Columns
                                 }
                                 target_name = col_name
                                 suffix = 1
@@ -4161,9 +4174,9 @@ def direct_lake_manager(
                                 added += 1
                             for col_name in remove_cols:
                                 try:
-                                    tom.model.Tables[
-                                        table_name
-                                    ].Columns.Remove(col_name)
+                                    tom.model.Tables[table_name].Columns.Remove(
+                                        col_name
+                                    )
                                     removed += 1
                                 except Exception:
                                     continue
