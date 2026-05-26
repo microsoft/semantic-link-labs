@@ -234,6 +234,7 @@ from ._dax import (
     evaluate_dax_impersonation,
     get_dax_query_dependencies,
     get_dax_query_memory_size,
+    test,
     # dax_perf_test,
     # dax_perf_test_bulk,
 )

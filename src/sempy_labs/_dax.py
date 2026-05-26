@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     generate_guid,
     resolve_workspace_id,
     resolve_item_id,
+    resolve_item_name_and_id,
 )
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List, Tuple
@@ -470,3 +471,437 @@ def _dax_perf_test_bulk(
                 rest_time=rest_time,
                 workspace=workspace,
             )
+
+
+@log
+def test(
+    dataset: str | UUID,
+    dax_string: str,
+    workspace: Optional[str | UUID] = None,
+    clear_cache: bool = True,
+    visualize: bool = True,
+) -> pd.DataFrame:
+    """
+    Runs a DAX query against a semantic model while capturing a server-side
+    trace, and computes high-level performance statistics (Total Duration,
+    Formula Engine Duration, Storage Engine Duration, and CPU time) using
+    the same conventions as `DAX Studio <https://github.com/DaxStudio/DaxStudio>`_.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    dax_string : str
+        The DAX query to execute.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    clear_cache : bool, default=True
+        If True, clears the dataset cache before running the query so the
+        run reflects a cold-cache state.
+    visualize : bool, default=True
+        If True, displays an interactive HTML widget showing the high-level
+        timings (Duration, FE, SE, CPU) and a per-event details table.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe of the captured trace events, including the
+        ``Event Class``, ``Event Subclass``, ``Duration`` and ``Cpu Time``
+        for each event.
+    """
+
+    from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+    from sempy_labs._helper_functions import resolve_workspace_name_and_id
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(item=dataset, type='SemanticModel', workspace=workspace_id)
+
+    event_schema = {
+        "QueryBegin": [
+            "EventClass",
+            "TextData",
+            "ApplicationName",
+            "StartTime",
+        ],
+        "QueryEnd": [
+            "EventClass",
+            "EventSubclass",
+            "TextData",
+            "StartTime",
+            "EndTime",
+            "Duration",
+            "CpuTime",
+            "Success",
+            "ApplicationName",
+        ],
+        "VertiPaqSEQueryEnd": [
+            "EventClass",
+            "EventSubclass",
+            "TextData",
+            "StartTime",
+            "EndTime",
+            "Duration",
+            "CpuTime",
+            "Success",
+        ],
+        "VertiPaqSEQueryCacheMatch": [
+            "EventClass",
+            "EventSubclass",
+            "TextData",
+            "StartTime",
+        ],
+    }
+
+    if clear_cache:
+        _clear_cache_fn(dataset=dataset_id, workspace=workspace_id)
+
+    with fabric.create_trace_connection(
+        dataset=datasetid, workspace=workspace_id
+    ) as trace_connection:
+        with trace_connection.create_trace(event_schema) as trace:
+            trace.start()
+            # Warm-up evaluation; filtered out of results below.
+            fabric.evaluate_dax(
+                dataset=datasetid,
+                workspace=workspace_id,
+                dax_string="EVALUATE {1}",
+            )
+            # Run the actual DAX query.
+            fabric.evaluate_dax(
+                dataset=dataset_id, workspace=workspace_id, dax_string=dax_string
+            )
+            # Allow the trace some time to flush events.
+            time.sleep(2)
+            df = trace.stop()
+
+    # Drop events from other sessions / warm-up evaluation.
+    if "Application Name" in df.columns:
+        df = df[~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])]
+    if "Text Data" in df.columns:
+        df = df[~df["Text Data"].astype(str).str.startswith("EVALUATE {1}")]
+    df = df.reset_index(drop=True)
+
+    # Compute aggregate stats using DAX Studio conventions:
+    #   Total Duration = QueryEnd.Duration
+    #   SE Duration    = sum of VertiPaqSEQueryEnd Duration, EXCLUDING
+    #                    internal sub-queries (EventSubclass contains
+    #                    "Internal") so we do not double-count time that
+    #                    is already rolled up into the parent scan.
+    #   FE Duration    = Total Duration - SE Duration
+    #   CPU            = QueryEnd.CpuTime
+    qe = df[df["Event Class"] == "QueryEnd"]
+    total_duration = int(qe["Duration"].iloc[-1]) if not qe.empty else 0
+    cpu_time = int(qe["Cpu Time"].iloc[-1]) if not qe.empty else 0
+
+    se_events = df[df["Event Class"] == "VertiPaqSEQueryEnd"]
+    if not se_events.empty:
+        not_internal = ~se_events["Event Subclass"].astype(str).str.contains(
+            "Internal", case=False, na=False
+        )
+        se_duration = int(se_events.loc[not_internal, "Duration"].sum())
+    else:
+        se_duration = 0
+    fe_duration = max(total_duration - se_duration, 0)
+
+    if visualize:
+        _visualize_dax_test(
+            df=df,
+            total_duration=total_duration,
+            fe_duration=fe_duration,
+            se_duration=se_duration,
+            cpu_time=cpu_time,
+            dax_string=dax_string,
+            dataset_name=str(dataset),
+            workspace_name=workspace_name,
+        )
+
+    return df
+
+
+def _visualize_dax_test(
+    df: pd.DataFrame,
+    total_duration: int,
+    fe_duration: int,
+    se_duration: int,
+    cpu_time: int,
+    dax_string: str,
+    dataset_name: Optional[str] = None,
+    workspace_name: Optional[str] = None,
+    dark_mode: bool = False,
+) -> None:
+    """Render an Apple-inspired interactive UI for :func:`test` results."""
+
+    import uuid
+    from html import escape as _esc
+    from IPython.display import display, HTML
+    from sempy_labs._ui_components import (
+        LIGHT_THEME_VARS as _UI_LIGHT_VARS,
+        DARK_THEME_VARS as _UI_DARK_VARS,
+        scoped_header_css as _ui_scoped_header_css,
+        scoped_attribution_css as _ui_scoped_attribution_css,
+        render_header_html as _ui_render_header_html,
+        render_attribution_html as _ui_render_attribution_html,
+        theme_toggle_script as _ui_theme_toggle_script,
+    )
+
+    uid = uuid.uuid4().hex[:8]
+    root_selector = f".dtx-{uid}"
+    theme_btn_id = f"dtx-theme-{uid}"
+
+    # Compute share-of-total percentages for FE / SE bars.
+    if total_duration > 0:
+        fe_pct = round(fe_duration / total_duration * 100)
+        se_pct = round(se_duration / total_duration * 100)
+    else:
+        fe_pct = 0
+        se_pct = 0
+
+    cards = [
+        ("Duration", f"{total_duration:,}", "ms", None),
+        ("FE Duration", f"{fe_duration:,}", "ms", fe_pct),
+        ("SE Duration", f"{se_duration:,}", "ms", se_pct),
+        ("CPU", f"{cpu_time:,}", "ms", None),
+    ]
+
+    # Build per-event rows for the details table. Only include events with
+    # a meaningful Subclass/Duration (QueryEnd + VertiPaq events).
+    detail_classes = {"QueryEnd", "VertiPaqSEQueryEnd", "VertiPaqSEQueryCacheMatch"}
+    rows_df = df[df["Event Class"].isin(detail_classes)].copy() if not df.empty else df
+    table_rows_html = []
+    if not rows_df.empty:
+        for _, row in rows_df.iterrows():
+            ec = str(row.get("Event Class", "") or "")
+            sc = str(row.get("Event Subclass", "") or "")
+            dur = row.get("Duration", 0)
+            cpu = row.get("Cpu Time", 0)
+            try:
+                dur_v = int(dur) if pd.notna(dur) else 0
+            except (TypeError, ValueError):
+                dur_v = 0
+            try:
+                cpu_v = int(cpu) if pd.notna(cpu) else 0
+            except (TypeError, ValueError):
+                cpu_v = 0
+            subclass_display = sc if sc else ec
+            table_rows_html.append(
+                "<tr>"
+                f"<td>{_esc(ec)}</td>"
+                f"<td>{_esc(subclass_display)}</td>"
+                f"<td class='dtx-num'>{dur_v:,}</td>"
+                f"<td class='dtx-num'>{cpu_v:,}</td>"
+                "</tr>"
+            )
+    if not table_rows_html:
+        table_rows_html.append(
+            "<tr><td colspan='4' class='dtx-empty'>No trace events captured.</td></tr>"
+        )
+
+    ui_header_css = _ui_scoped_header_css(root_selector)
+    ui_attribution_css = _ui_scoped_attribution_css(root_selector)
+
+    styles = f"""
+    <style>
+    {ui_header_css}
+    {ui_attribution_css}
+    .dtx-{uid} {{
+        {_UI_LIGHT_VARS}
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+            "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: var(--ui-text);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }}
+    .dtx-{uid}.dtx-dark {{
+        {_UI_DARK_VARS}
+    }}
+    .dtx-{uid} *, .dtx-{uid} *::before, .dtx-{uid} *::after {{
+        box-sizing: border-box;
+    }}
+    .dtx-{uid} .dtx-container {{
+        background: var(--ui-bg);
+        border: 1px solid var(--ui-border);
+        border-radius: 12px;
+        box-shadow: var(--ui-shadow-lg);
+        overflow: hidden;
+    }}
+    .dtx-{uid} .dtx-header {{
+        padding: 22px 24px 18px 24px;
+        background: var(--ui-bg);
+    }}
+    .dtx-{uid} .dtx-cards {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        padding: 0 24px 18px 24px;
+    }}
+    .dtx-{uid} .dtx-card {{
+        background: var(--ui-bg-secondary);
+        border: 1px solid var(--ui-border);
+        border-radius: 8px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }}
+    .dtx-{uid} .dtx-card-label {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ui-text-tertiary);
+    }}
+    .dtx-{uid} .dtx-card-value {{
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--ui-text);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+    }}
+    .dtx-{uid} .dtx-card-unit {{
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ui-text-tertiary);
+        margin-left: 4px;
+    }}
+    .dtx-{uid} .dtx-card-sub {{
+        font-size: 11px;
+        color: var(--ui-text-secondary);
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+    }}
+    .dtx-{uid} .dtx-query {{
+        margin: 0 24px 16px 24px;
+        padding: 12px 14px;
+        background: var(--ui-bg-tertiary);
+        border: 1px solid var(--ui-border);
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--ui-text-secondary);
+        white-space: pre-wrap;
+        max-height: 140px;
+        overflow: auto;
+    }}
+    .dtx-{uid} .dtx-section-title {{
+        padding: 4px 24px 10px 24px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ui-text-tertiary);
+    }}
+    .dtx-{uid} .dtx-table-wrap {{
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 480px;
+        border-top: 1px solid var(--ui-border);
+    }}
+    .dtx-{uid} table {{
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13px;
+    }}
+    .dtx-{uid} thead th {{
+        position: sticky;
+        top: 0;
+        padding: 10px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ui-text-secondary);
+        background: var(--ui-bg-secondary);
+        border-bottom: 1px solid var(--ui-border-strong);
+        white-space: nowrap;
+    }}
+    .dtx-{uid} tbody td {{
+        padding: 9px 16px;
+        border-bottom: 1px solid var(--ui-border);
+        color: var(--ui-text);
+        white-space: nowrap;
+    }}
+    .dtx-{uid} tbody tr:hover td {{
+        background: var(--ui-surface-2);
+    }}
+    .dtx-{uid} td.dtx-num {{
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }}
+    .dtx-{uid} td.dtx-empty {{
+        text-align: center;
+        color: var(--ui-text-tertiary);
+        padding: 24px 16px;
+    }}
+    </style>
+    """
+
+    header_html = _ui_render_header_html(
+        title="DAX Query Performance",
+        dataset_name=dataset_name,
+        workspace_name=workspace_name,
+        theme_btn_id=theme_btn_id,
+        dark_mode=dark_mode,
+    )
+
+    card_parts = []
+    for label, value, unit, pct in cards:
+        sub = f"<div class='dtx-card-sub'>{pct}% of total</div>" if pct is not None else ""
+        card_parts.append(
+            "<div class='dtx-card'>"
+            f"<div class='dtx-card-label'>{_esc(label)}</div>"
+            f"<div class='dtx-card-value'>{value}<span class='dtx-card-unit'>{unit}</span></div>"
+            f"{sub}"
+            "</div>"
+        )
+    cards_html = "<div class='dtx-cards'>" + "".join(card_parts) + "</div>"
+
+    query_html = (
+        f"<div class='dtx-query'>{_esc(dax_string.strip())}</div>"
+        if dax_string and dax_string.strip()
+        else ""
+    )
+
+    table_html = (
+        "<div class='dtx-section-title'>Trace details</div>"
+        "<div class='dtx-table-wrap'><table>"
+        "<thead><tr>"
+        "<th>Event Class</th>"
+        "<th>Event Subclass</th>"
+        "<th style='text-align:right'>Duration (ms)</th>"
+        "<th style='text-align:right'>CPU (ms)</th>"
+        "</tr></thead>"
+        f"<tbody>{''.join(table_rows_html)}</tbody>"
+        "</table></div>"
+    )
+
+    attribution_html = _ui_render_attribution_html()
+
+    root_class = f"dtx-{uid}" + (" dtx-dark" if dark_mode else "")
+    body_html = (
+        f"<div class='{root_class}'>"
+        "<div class='dtx-container'>"
+        f"<div class='dtx-header'>{header_html}</div>"
+        f"{cards_html}"
+        f"{query_html}"
+        f"{table_html}"
+        f"{attribution_html}"
+        "</div>"
+        "</div>"
+    )
+
+    theme_script = _ui_theme_toggle_script(
+        btn_id=theme_btn_id,
+        root_selector=root_selector,
+        dark_class="dtx-dark",
+    )
+
+    display(HTML(styles + body_html + theme_script))
