@@ -552,7 +552,7 @@ class TOMWrapper:
         display_folder: Optional[str] = None,
         data_category: Optional[str] = None,
         key: bool = False,
-        summarize_by: Optional[str] = None,
+        summarize_by: Optional[Literal["Default", "None", "Sum", "Min", "Max", "Count", "Average", "DistinctCount"]] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
@@ -581,7 +581,7 @@ class TOMWrapper:
             The data category of the column.
         key : bool, default=False
             Marks the column as the primary key of the table.
-        summarize_by : str, default=None
+        summarize_by : typing.Literal["Default", "None", "Sum", "Min", "Max", "Count", "Average", "DistinctCount"], default=None
             Sets the value for the Summarize By property of the column.
             Defaults to None resolves to 'Default'.
         lineage_tag : str, default=None
@@ -609,6 +609,11 @@ class TOMWrapper:
             .replace("Distinctcount", "DistinctCount")
             .replace("Avg", "Average")
         )
+        if summarize_by is None:
+            if data_type in ["Int64", "Decimal", "Double"]:
+                summarize_by = "Default"
+            else:
+                summarize_by = "None"
 
         obj = TOM.DataColumn()
         obj.Name = column_name

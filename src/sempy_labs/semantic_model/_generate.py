@@ -249,7 +249,9 @@ def generate_direct_lake_semantic_model(
                 data_type = column["dataType"]
                 summarize_by = "None"
                 if data_type in ["Int64", "Double", "Decimal"]:
-                    if column_name.lower().endswith('key') or column_name.lower().endswith('id'):
+                    if column_name.lower().endswith(
+                        "key"
+                    ) or column_name.lower().endswith("id"):
                         summarize_by = "Count"
                     else:
                         summarize_by = "Sum"
