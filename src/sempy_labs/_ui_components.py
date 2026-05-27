@@ -6,7 +6,7 @@ This module centralizes:
 
 - A library of monochrome SVG ``ICONS`` (use ``currentColor`` so they adapt to
   light/dark themes).
-- Apple-inspired light/dark theme CSS variable blocks.
+- Light/dark theme CSS variable blocks.
 - Helpers to render a reusable widget header (title, dataset/workspace
   subtitle, and a light/dark theme toggle button) and the small bit of
   JavaScript that powers the theme toggle for static-HTML widgets.
@@ -161,7 +161,7 @@ ICONS: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
-# Theme CSS variables (Apple-inspired light + dark palettes)
+# Theme CSS variables (Light + Dark palettes)
 # ---------------------------------------------------------------------------
 LIGHT_THEME_VARS: str = """\
 --ui-bg-solid: #ffffff;

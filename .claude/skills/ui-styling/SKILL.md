@@ -5,7 +5,7 @@ description: Guide for the visual style, structure, and shared building blocks u
 
 # UI Styling for Interactive Tools
 
-This skill describes the styling conventions, shared building blocks, and architectural patterns used by all interactive UI tools in Semantic Link Labs so that every tool has a consistent, elegant, Apple-inspired design.
+This skill describes the styling conventions, shared building blocks, and architectural patterns used by all interactive UI tools in Semantic Link Labs so that every tool has a consistent, elegant design.
 
 ## When to Use This Skill
 

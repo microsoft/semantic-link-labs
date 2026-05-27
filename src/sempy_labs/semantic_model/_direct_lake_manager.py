@@ -132,7 +132,7 @@ _WIDGET_CSS = """
 .slls-dle-item-meta { font-size: 12px; color: var(--slls-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-dle-item-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
 
-/* Apple-style icon-only button used as a menu trigger ("•••"). */
+/* Icon-only button used as a menu trigger ("•••"). */
 .slls-dle-icon-btn { width: 30px; height: 30px; padding: 0; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--slls-text-secondary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 120ms ease, color 120ms ease, border-color 120ms ease; }
 .slls-dle-icon-btn:hover { background: var(--slls-surface-2); color: var(--slls-text); }
 .slls-dle-icon-btn.active { background: var(--slls-surface-2); color: var(--slls-text); border-color: var(--slls-border); }
