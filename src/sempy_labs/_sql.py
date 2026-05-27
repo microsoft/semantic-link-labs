@@ -268,3 +268,32 @@ class ConnectMirroredAzureDatabricksCatalog(ConnectBase):
             workspace=workspace,
             timeout=timeout,
         )
+
+
+@log
+def get_primary_key(table: str, schema: str, item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> str | None:
+    """
+    Extracts the primary key column name for a specified table and schema within a Fabric SQLDatabase, Warehouse, or Lakehouse. If no primary key is found, returns None.
+    """
+    with ConnectBase(item=item, type=type, workspace=workspace) as sql:
+
+        df = sql.query(f"""
+        SELECT
+            tc.TABLE_SCHEMA,
+            tc.TABLE_NAME,
+            tc.CONSTRAINT_NAME,
+            kcu.COLUMN_NAME,
+            kcu.ORDINAL_POSITION
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+            ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+            AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+            AND tc.TABLE_NAME = kcu.TABLE_NAME
+        WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+        AND tc.TABLE_NAME = '{table}'
+        AND tc.TABLE_SCHEMA = '{schema}'
+        ORDER BY kcu.ORDINAL_POSITION""")
+        if not df.empty:
+            return df['COLUMN_NAME'].iloc[0]
+        else:
+            return None

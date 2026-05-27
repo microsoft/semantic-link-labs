@@ -81,7 +81,7 @@ _WIDGET_CSS = """
 /* The browser-native dropdown list renders against the system surface, so
    force explicit colors that remain legible in both light and dark modes. */
 .slls-dle-select option, .slls-dle-select optgroup { background: #ffffff; color: #1d1d1f; }
-@media (prefers-color-scheme: dark) { .slls-dle-select option, .slls-dle-select optgroup { background: #2c2c2e; color: #f5f5f7; } }
+@media (prefers-color-scheme: dark) { .slls-dle.slls-dle-auto .slls-dle-select option, .slls-dle.slls-dle-auto .slls-dle-select optgroup { background: #2c2c2e; color: #f5f5f7; } }
 .slls-dle.slls-dle-dark .slls-dle-select option, .slls-dle.slls-dle-dark .slls-dle-select optgroup { background: #2c2c2e; color: #f5f5f7; }
 .slls-dle-input::placeholder { color: var(--slls-text-tertiary); }
 
@@ -192,6 +192,15 @@ _WIDGET_CSS = """
 .slls-dle-modal h2 { margin: 0 0 14px 0; font-size: 17px; font-weight: 600; }
 .slls-dle-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .slls-dle-modal-wide { max-width: 820px; }
+/* Extra-wide modal for the relationships editor, where each row contains
+   two table+column pairs plus cardinality dropdowns and table/column
+   names can be longer than what fits in the standard wide modal. */
+.slls-dle-modal-xwide { max-width: 1100px; }
+/* Pins the modal to the bottom of the overlay instead of the default vertical center. Useful for context popups (e.g. the relationships editor) that should sit close to the controls that opened them. */
+.slls-dle-modal-bottom { margin-top: auto; margin-bottom: 16px; }
+.slls-dle-collapse-btn { background: transparent; border: none; cursor: pointer; color: var(--slls-text-secondary); padding: 2px 6px; font-size: 12px; line-height: 1; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; transition: transform 120ms ease, background 120ms ease; }
+.slls-dle-collapse-btn:hover { background: var(--slls-surface-2); color: var(--slls-text); }
+.slls-dle-collapse-btn[aria-expanded="false"] { transform: rotate(-90deg); }
 .slls-dle-columns-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 4px; margin-top: 4px; }
 .slls-dle-column-row { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); background: var(--slls-surface-2); padding: 10px 12px; transition: border-color 120ms ease, background 120ms ease; }
 .slls-dle-column-row.pending { border-color: var(--slls-orange); background: rgba(255,149,0,0.06); }
@@ -208,6 +217,13 @@ _WIDGET_CSS = """
 .slls-dle-tablerow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--slls-border); font-size: 13px; }
 .slls-dle-tablerow:last-child { border-bottom: none; }
 .slls-dle-tablerow label { flex: 1; cursor: pointer; }
+
+/* Per-row primary-key toggle used on the column-selection screen. */
+.slls-dle-pk-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: 0.4px; color: var(--slls-text-tertiary); border: 1px solid var(--slls-border); border-radius: 4px; padding: 2px 5px; cursor: pointer; user-select: none; background: transparent; transition: background 120ms ease, color 120ms ease, border-color 120ms ease; }
+.slls-dle-pk-toggle:hover { background: var(--slls-surface-2); color: var(--slls-text-secondary); }
+.slls-dle-pk-toggle.active { background: var(--slls-accent-soft); color: var(--slls-accent); border-color: var(--slls-accent); }
+.slls-dle-pk-toggle.detected:not(.active) { border-style: dashed; color: var(--slls-accent); }
+.slls-dle-pk-toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .slls-dle-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--slls-text-tertiary); }
 .slls-dle-attribution a { color: var(--slls-text-tertiary); text-decoration: none; transition: color 120ms ease; }
@@ -573,6 +589,7 @@ function render({ model, el }) {
     // request the underlying data from the backend (list_source_tables).
     function makeTablesPicker(opts) {
         const iconType = (opts && opts.iconType) || "table";
+        const pkSupport = !!(opts && opts.pkSupport);
         const container = document.createElement("div");
         container.className = "slls-dle-tables-picker";
 
@@ -614,6 +631,12 @@ function render({ model, el }) {
         let _state = "empty";
         let _msg = "Pick a source to load available tables.";
         let _onChange = null;
+        // Spec of the row currently marked as primary key (pkSupport only).
+        // Empty string means "no primary key selected".
+        let _primaryKey = "";
+        // The pk auto-detected from the source (kept for the "detected"
+        // visual hint even if the user clears or changes the selection).
+        let _detectedPk = "";
 
         function specOf(it) {
             return it.schema ? `${it.schema}.${it.table}` : it.table;
@@ -624,9 +647,13 @@ function render({ model, el }) {
             }
         }
         function updateCount() {
-            countLabel.textContent = _state === "loaded"
-                ? `${_selected.size} selected · ${_items.length} available`
-                : "";
+            if (_state !== "loaded") {
+                countLabel.textContent = "";
+                return;
+            }
+            const noun = iconType === "column" ? "columns" : "tables";
+            countLabel.textContent =
+                `${_selected.size}/${_items.length} ${noun} selected`;
         }
         function render() {
             listBox.innerHTML = "";
@@ -680,7 +707,14 @@ function render({ model, el }) {
                     }
                     cb.addEventListener("change", () => {
                         if (cb.checked) _selected.add(spec);
-                        else _selected.delete(spec);
+                        else {
+                            _selected.delete(spec);
+                            // Unchecking the PK column clears the PK.
+                            if (pkSupport && _primaryKey === spec) {
+                                _primaryKey = "";
+                                render();
+                            }
+                        }
                         updateCount();
                         notifyChange();
                     });
@@ -704,12 +738,54 @@ function render({ model, el }) {
                     }
                     lab.addEventListener("click", (ev) => {
                         if (cb.disabled) return;
+                        // Let clicks on the PK toggle propagate to its own handler.
+                        if (ev.target && ev.target.closest(".slls-dle-pk-toggle")) return;
                         ev.preventDefault();
                         cb.checked = !cb.checked;
                         cb.dispatchEvent(new Event("change"));
                     });
                     row.appendChild(cb);
                     row.appendChild(lab);
+                    if (pkSupport) {
+                        const pkBtn = document.createElement("button");
+                        pkBtn.type = "button";
+                        pkBtn.className = "slls-dle-pk-toggle";
+                        pkBtn.textContent = "PK";
+                        if (_primaryKey === spec) pkBtn.classList.add("active");
+                        if (_detectedPk === spec) pkBtn.classList.add("detected");
+                        if (isExcluded) {
+                            pkBtn.classList.add("disabled");
+                            pkBtn.disabled = true;
+                        }
+                        pkBtn.setAttribute(
+                            "aria-pressed",
+                            _primaryKey === spec ? "true" : "false",
+                        );
+                        pkBtn.title = isExcluded
+                            ? "This column is already in the model."
+                            : (_detectedPk === spec
+                                ? "Detected primary key from source. "
+                                  + "Click to mark/unmark as the table's primary key."
+                                : "Mark this column as the table's primary key.");
+                        pkBtn.addEventListener("click", (ev) => {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            if (isExcluded) return;
+                            if (_primaryKey === spec) {
+                                _primaryKey = "";
+                            } else {
+                                _primaryKey = spec;
+                                // Auto-select the column when made PK.
+                                if (!_selected.has(spec)) {
+                                    _selected.add(spec);
+                                }
+                            }
+                            render();
+                            updateCount();
+                            notifyChange();
+                        });
+                        row.appendChild(pkBtn);
+                    }
                     listBox.appendChild(row);
                 }
             }
@@ -729,6 +805,7 @@ function render({ model, el }) {
         });
         clearBtn.addEventListener("click", () => {
             _selected.clear();
+            if (pkSupport) _primaryKey = "";
             render();
             notifyChange();
         });
@@ -736,6 +813,17 @@ function render({ model, el }) {
         return {
             container,
             getSelected: () => Array.from(_selected),
+            getTotal: () => _items.length,
+            getPrimaryKey: () => _primaryKey || "",
+            setPrimaryKey(spec) {
+                if (!pkSupport) return;
+                _primaryKey = spec || "";
+                if (_primaryKey && !_selected.has(_primaryKey)) {
+                    _selected.add(_primaryKey);
+                }
+                render();
+                notifyChange();
+            },
             setItems(items, opts) {
                 _items = items || [];
                 _state = "loaded";
@@ -747,6 +835,27 @@ function render({ model, el }) {
                         if (!_excluded.has(spec)) _selected.add(spec);
                     }
                 }
+                if (pkSupport) {
+                    // Auto-pick a primary key from items flagged by the
+                    // backend (e.g. via INFORMATION_SCHEMA / get_primary_key).
+                    _detectedPk = "";
+                    let pkSpec = "";
+                    for (const it of _items) {
+                        if (it && it.isPrimaryKey) {
+                            const spec = specOf(it);
+                            if (_excluded.has(spec)) continue;
+                            pkSpec = spec;
+                            _detectedPk = spec;
+                            break;
+                        }
+                    }
+                    if (!(opts && opts.preservePrimaryKey === true)) {
+                        _primaryKey = pkSpec;
+                        if (_primaryKey && !_selected.has(_primaryKey)) {
+                            _selected.add(_primaryKey);
+                        }
+                    }
+                }
                 render();
                 notifyChange();
             },
@@ -754,6 +863,7 @@ function render({ model, el }) {
                 _state = "loading";
                 _msg = msg || "Loading tables…";
                 _selected.clear();
+                if (pkSupport) { _primaryKey = ""; _detectedPk = ""; }
                 render();
                 notifyChange();
             },
@@ -762,6 +872,7 @@ function render({ model, el }) {
                 _msg = msg || "Pick a source to load available tables.";
                 _items = [];
                 _selected.clear();
+                if (pkSupport) { _primaryKey = ""; _detectedPk = ""; }
                 render();
                 notifyChange();
             },
@@ -904,15 +1015,31 @@ function render({ model, el }) {
     columnsHint.className = "slls-dle-item-meta";
     columnsHint.style.marginBottom = "10px";
     columnsHint.textContent =
-        "All columns are selected by default. Uncheck any columns you want to exclude.";
+        "All columns are selected by default. Uncheck any columns you want to "
+        + "exclude. Optionally pick one column per table as its primary key "
+        + "(detected primary keys from the source are pre-selected).";
     columnsSection.appendChild(columnsHint);
 
     const columnsBody = document.createElement("div");
     columnsSection.appendChild(columnsBody);
 
     const columnsFooter = document.createElement("div");
-    columnsFooter.style.cssText = "display:flex;gap:8px;margin-top:14px;justify-content:flex-end";
+    columnsFooter.style.cssText = "display:flex;gap:8px;margin-top:14px;align-items:center";
     columnsSection.appendChild(columnsFooter);
+
+    const previewRelsBtn = document.createElement("button");
+    previewRelsBtn.className = "slls-dle-btn slls-dle-btn-icon";
+    previewRelsBtn.type = "button";
+    previewRelsBtn.innerHTML = ICON_SVG.link;
+    previewRelsBtn.title = "Preview relationships";
+    previewRelsBtn.setAttribute("aria-label", "Preview relationships");
+    previewRelsBtn.addEventListener("click", () => openRelationshipsModal());
+    columnsFooter.appendChild(previewRelsBtn);
+
+    // Pushes the Back/Create buttons to the right side of the footer.
+    const columnsFooterSpacer = document.createElement("div");
+    columnsFooterSpacer.style.cssText = "flex:1";
+    columnsFooter.appendChild(columnsFooterSpacer);
 
     const backColumnsBtn = document.createElement("button");
     backColumnsBtn.className = "slls-dle-btn";
@@ -933,6 +1060,15 @@ function render({ model, el }) {
     let columnsPickers = {};
     // Map of tableSpec -> input element for the user-facing table name.
     let tableNameInputs = {};
+    // Relationships staged from the Preview relationships modal.
+    // Each entry: { fromSpec, fromCol, toSpec, toCol }. Both sides are
+    // identified by the source table spec so the backend can resolve them
+    // against the user-facing display names at submit time.
+    let relationshipsList = [];
+    // Tracks whether the user has manually edited the list; if not we
+    // re-run auto-detection every time the modal opens so PK / column
+    // changes flow through.
+    let relationshipsTouched = false;
 
     function columnKey(tableSpec) {
         const wsId = newSrcWsSelect.value;
@@ -965,7 +1101,14 @@ function render({ model, el }) {
             return;
         }
         const items = (v.items || []).map(
-            (c) => ({ schema: "", table: c.name, meta: c.dataType || "" })
+            (c) => ({
+                schema: "",
+                table: c.name,
+                // Show the Power BI / TOM data type (e.g. "Int64") in the
+                // picker rather than the raw source type (e.g. "bigint").
+                meta: convertColumnDataType(c.dataType) || "",
+                isPrimaryKey: !!c.isPrimaryKey,
+            })
         );
         entry.picker.setItems(items, { selectAll: true });
     }
@@ -1007,16 +1150,30 @@ function render({ model, el }) {
         columnsBody.innerHTML = "";
         columnsPickers = {};
         tableNameInputs = {};
+        // Reset relationships state for a fresh create flow.
+        relationshipsList = [];
+        relationshipsTouched = false;
         const FIELD_LABEL_STYLE = "font-size:11px;text-transform:uppercase;letter-spacing:0.3px;color:var(--slls-text-secondary)";
         for (const spec of tables) {
             const wrap = document.createElement("div");
             wrap.className = "slls-dle-section";
             wrap.style.cssText = "margin-bottom:12px;padding:12px;border:1px solid var(--slls-border);border-radius:var(--slls-radius-sm)";
 
-            // Header: source label (read-only) + editable display name.
+            // Header: collapse toggle + source label (read-only) +
+            // editable display name. Clicking the chevron (or the source
+            // label) collapses/expands just this table's column picker.
             const hdrRow = document.createElement("div");
             hdrRow.style.cssText = "display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px";
             wrap.appendChild(hdrRow);
+
+            const collapseBtn = document.createElement("button");
+            collapseBtn.type = "button";
+            collapseBtn.className = "slls-dle-collapse-btn";
+            collapseBtn.setAttribute("aria-expanded", "true");
+            collapseBtn.title = "Collapse / expand columns";
+            collapseBtn.setAttribute("aria-label", "Collapse / expand columns");
+            collapseBtn.textContent = "\u25BE"; // ▾
+            hdrRow.appendChild(collapseBtn);
 
             const srcWrap = document.createElement("div");
             srcWrap.style.cssText = "display:flex;flex-direction:column;min-width:0";
@@ -1052,10 +1209,66 @@ function render({ model, el }) {
             hdrRow.appendChild(nameWrap);
             tableNameInputs[spec] = nameInput;
 
-            const picker = makeTablesPicker({ iconType: "column" });
-            wrap.appendChild(picker.container);
+            const picker = makeTablesPicker({ iconType: "column", pkSupport: true });
+
+            // Summary shown next to the source label whenever the section
+            // is collapsed so the user can see selection state without
+            // expanding every table.
+            const summary = document.createElement("div");
+            summary.className = "slls-dle-item-meta";
+            summary.style.cssText = "margin-left:8px;display:none;font-size:11.5px;line-height:1.4";
+
+            const body = document.createElement("div");
+            body.appendChild(picker.container);
+            wrap.appendChild(body);
+
+            const updateSummary = () => {
+                const selCount = picker.getSelected().length;
+                const total = picker.getTotal();
+                const pkSpec = picker.getPrimaryKey();
+                let pkName = "";
+                if (pkSpec) {
+                    const d = pkSpec.indexOf(".");
+                    pkName = d >= 0 ? pkSpec.slice(d + 1) : pkSpec;
+                }
+                summary.innerHTML = "";
+                const line1 = document.createElement("div");
+                line1.textContent = `${selCount}/${total} columns selected`;
+                summary.appendChild(line1);
+                if (pkName) {
+                    const line2 = document.createElement("div");
+                    line2.textContent = `PK: ${pkName}`;
+                    summary.appendChild(line2);
+                }
+            };
+            picker.onChange(updateSummary);
+            updateSummary();
+            srcWrap.appendChild(summary);
+
+            const setCollapsed = (collapsed) => {
+                body.style.display = collapsed ? "none" : "";
+                summary.style.display = collapsed ? "" : "none";
+                if (collapsed) updateSummary();
+                collapseBtn.setAttribute(
+                    "aria-expanded",
+                    collapsed ? "false" : "true",
+                );
+            };
+            collapseBtn.addEventListener("click", (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                setCollapsed(body.style.display !== "none" ? true : false);
+            });
+            // Clicking the source label also toggles collapse — gives the
+            // user a bigger hit target without interfering with the
+            // editable display-name input.
+            srcVal.style.cursor = "pointer";
+            srcVal.addEventListener("click", () => {
+                setCollapsed(body.style.display !== "none");
+            });
+
             columnsBody.appendChild(wrap);
-            columnsPickers[spec] = { picker, key: columnKey(spec) };
+            columnsPickers[spec] = { picker, key: columnKey(spec), updateSummary };
         }
         // Dispatch a single batched request for all uncached tables.
         // Calling runAction per table in the same JS tick overwrites
@@ -1091,6 +1304,343 @@ function render({ model, el }) {
         }
     }
 
+    // ---- Relationships preview / editor ----
+    // Builds a per-spec info bundle used by both auto-detection and the
+    // modal's dropdowns. Reads the latest picker state so any in-flight
+    // PK / column changes are reflected.
+    function buildRelTableInfo() {
+        const info = {};
+        const cacheMap = model.get("source_columns") || {};
+        for (const spec of Object.keys(columnsPickers)) {
+            const entry = columnsPickers[spec];
+            const dn = ((tableNameInputs[spec] && tableNameInputs[spec].value) || "")
+                .trim() || spec;
+            const cached = cacheMap[entry.key];
+            const colsMap = {};
+            for (const c of (cached && cached.items) || []) {
+                // Compare relationships using the converted Power BI type
+                // so e.g. "bigint" and "integer" both normalize to "Int64".
+                colsMap[c.name] = (
+                    convertColumnDataType(c.dataType) || ""
+                ).toLowerCase().trim();
+            }
+            info[spec] = {
+                displayName: dn,
+                selectedCols: entry.picker.getSelected(),
+                pk: entry.picker.getPrimaryKey() || "",
+                colsMap: colsMap,
+            };
+        }
+        return info;
+    }
+
+    // Auto-detects many-to-one relationships: every PK becomes a candidate
+    // "to" column; every other selected column with the same name and
+    // matching data type becomes a candidate "from" (Many) column.
+    function autoDetectRelationships(info) {
+        const rels = [];
+        const specs = Object.keys(info);
+        const seenKey = new Set();
+        for (const toSpec of specs) {
+            const pk = info[toSpec].pk;
+            if (!pk) continue;
+            const toDt = info[toSpec].colsMap[pk] || "";
+            if (!toDt) continue;
+            for (const fromSpec of specs) {
+                if (fromSpec === toSpec) continue;
+                const fromPk = info[fromSpec].pk;
+                for (const c of info[fromSpec].selectedCols) {
+                    if (c === fromPk) continue;
+                    if (c.toLowerCase() !== pk.toLowerCase()) continue;
+                    const fromDt = info[fromSpec].colsMap[c] || "";
+                    if (!fromDt || fromDt !== toDt) continue;
+                    const k = `${fromSpec}|${c}|${toSpec}|${pk}`;
+                    if (seenKey.has(k)) continue;
+                    seenKey.add(k);
+                    rels.push({
+                        fromSpec: fromSpec,
+                        fromCol: c,
+                        fromCardinality: "Many",
+                        toSpec: toSpec,
+                        toCol: pk,
+                        toCardinality: "One",
+                    });
+                }
+            }
+        }
+        return rels;
+    }
+
+    function openRelationshipsModal() {
+        // Recompute auto-suggested rels every time unless the user has
+        // already made manual edits in this create flow.
+        const info = buildRelTableInfo();
+        if (!relationshipsTouched) {
+            relationshipsList = autoDetectRelationships(info);
+        }
+        const specs = Object.keys(info);
+
+        modalHeader("Relationships");
+        // Position this modal near the bottom of the widget so it appears
+        // close to the "Preview relationships" button that opened it,
+        // rather than centered vertically. Also widen it because each row
+        // contains four table/column dropdowns that need room to breathe.
+        modal.classList.add("slls-dle-modal-bottom");
+        modal.classList.add("slls-dle-modal-xwide");
+        registerModalCleanup(() => {
+            modal.classList.remove("slls-dle-modal-bottom");
+            modal.classList.remove("slls-dle-modal-xwide");
+        });
+
+        const hint = document.createElement("div");
+        hint.className = "slls-dle-item-meta";
+        hint.style.cssText = "margin-bottom:12px;line-height:1.4";
+        hint.textContent =
+            "Many-to-one relationships are auto-detected from primary keys "
+            + "and matching column names with matching data types. Use the "
+            + "controls below to add, modify, or remove relationships before "
+            + "creating the model. The 'Many' side is the From table; the "
+            + "'One' side is the To table.";
+        modal.appendChild(hint);
+
+        const toolbar = document.createElement("div");
+        toolbar.style.cssText = "display:flex;gap:8px;margin-bottom:10px;align-items:center";
+        modal.appendChild(toolbar);
+
+        const detectBtn = makeBtn("Re-detect from primary keys", "slls-dle-btn");
+        detectBtn.addEventListener("click", () => {
+            relationshipsList = autoDetectRelationships(buildRelTableInfo());
+            relationshipsTouched = false;
+            renderList();
+        });
+        toolbar.appendChild(detectBtn);
+
+        const addBtn = document.createElement("button");
+        addBtn.className = "slls-dle-btn slls-dle-btn-icon";
+        addBtn.type = "button";
+        addBtn.innerHTML = PLUS_SVG;
+        addBtn.title = "Add relationship";
+        addBtn.setAttribute("aria-label", "Add relationship");
+        addBtn.addEventListener("click", () => {
+            // Add a blank row so the user makes all selections explicitly.
+            relationshipsList.push({
+                fromSpec: "",
+                fromCol: "",
+                fromCardinality: "Many",
+                toSpec: "",
+                toCol: "",
+                toCardinality: "One",
+            });
+            relationshipsTouched = true;
+            renderList();
+        });
+        toolbar.appendChild(addBtn);
+
+        const listWrap = document.createElement("div");
+        listWrap.style.cssText = "display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-right:4px";
+        modal.appendChild(listWrap);
+
+        function makeSelect(value, options, onChange) {
+            const s = document.createElement("select");
+            s.className = "slls-dle-select";
+            s.style.cssText = "min-width:0;flex:1 1 130px;max-width:200px";
+            if (options.length === 0 || !options.find((o) => o.value === value)) {
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "(none)";
+                placeholder.selected = !value;
+                s.appendChild(placeholder);
+            }
+            for (const opt of options) {
+                const o = document.createElement("option");
+                o.value = opt.value;
+                o.textContent = opt.label;
+                if (opt.value === value) o.selected = true;
+                s.appendChild(o);
+            }
+            s.addEventListener("change", () => onChange(s.value));
+            return s;
+        }
+
+        function tableOptions() {
+            return specs.map((s) => ({
+                value: s,
+                label: info[s].displayName,
+            }));
+        }
+
+        function columnOptions(spec) {
+            if (!spec || !info[spec]) return [];
+            const pk = info[spec].pk;
+            return info[spec].selectedCols.map((c) => ({
+                value: c,
+                label: c === pk ? `${c} (PK)` : c,
+            }));
+        }
+
+        function dataTypeOf(spec, col) {
+            if (!spec || !col || !info[spec]) return "";
+            return info[spec].colsMap[col] || "";
+        }
+
+        function renderList() {
+            listWrap.innerHTML = "";
+            if (relationshipsList.length === 0) {
+                const e = document.createElement("div");
+                e.className = "slls-dle-empty";
+                e.style.padding = "16px";
+                e.textContent =
+                    "No relationships defined. Click the '+' button to "
+                    + "create one manually, or 'Re-detect from primary keys' "
+                    + "to populate from auto-detection.";
+                listWrap.appendChild(e);
+                return;
+            }
+            const cardinalityOptions = [
+                { value: "Many", label: "Many" },
+                { value: "One", label: "One" },
+            ];
+            relationshipsList.forEach((rel, idx) => {
+                const row = document.createElement("div");
+                row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px;border:1px solid var(--slls-border);border-radius:var(--slls-radius-sm);background:var(--slls-surface-2)";
+
+                const fromLab = document.createElement("span");
+                fromLab.textContent = "From:";
+                fromLab.style.cssText = "font-size:11px;font-weight:600;color:var(--slls-text-secondary);text-transform:uppercase;letter-spacing:0.3px";
+                row.appendChild(fromLab);
+
+                const fromTblSel = makeSelect(rel.fromSpec, tableOptions(), (v) => {
+                    rel.fromSpec = v;
+                    // Reset column when the table changes.
+                    rel.fromCol = "";
+                    relationshipsTouched = true;
+                    renderList();
+                });
+                row.appendChild(fromTblSel);
+
+                const fromDot = document.createElement("span");
+                fromDot.textContent = ".";
+                fromDot.style.color = "var(--slls-text-tertiary)";
+                row.appendChild(fromDot);
+
+                const fromColSel = makeSelect(
+                    rel.fromCol,
+                    columnOptions(rel.fromSpec),
+                    (v) => {
+                        rel.fromCol = v;
+                        relationshipsTouched = true;
+                        renderList();
+                    },
+                );
+                row.appendChild(fromColSel);
+
+                const fromCardSel = makeSelect(
+                    rel.fromCardinality || "Many",
+                    cardinalityOptions,
+                    (v) => {
+                        rel.fromCardinality = v;
+                        relationshipsTouched = true;
+                        renderList();
+                    },
+                );
+                fromCardSel.style.flex = "0 0 80px";
+                fromCardSel.title = "From cardinality";
+                row.appendChild(fromCardSel);
+
+                const arrow = document.createElement("span");
+                arrow.textContent = "→";
+                arrow.style.cssText = "color:var(--slls-text-tertiary);font-size:16px;margin:0 4px";
+                row.appendChild(arrow);
+
+                const toLab = document.createElement("span");
+                toLab.textContent = "To:";
+                toLab.style.cssText = "font-size:11px;font-weight:600;color:var(--slls-text-secondary);text-transform:uppercase;letter-spacing:0.3px";
+                row.appendChild(toLab);
+
+                const toTblSel = makeSelect(rel.toSpec, tableOptions(), (v) => {
+                    rel.toSpec = v;
+                    rel.toCol = "";
+                    relationshipsTouched = true;
+                    renderList();
+                });
+                row.appendChild(toTblSel);
+
+                const toDot = document.createElement("span");
+                toDot.textContent = ".";
+                toDot.style.color = "var(--slls-text-tertiary)";
+                row.appendChild(toDot);
+
+                const toColSel = makeSelect(
+                    rel.toCol,
+                    columnOptions(rel.toSpec),
+                    (v) => {
+                        rel.toCol = v;
+                        relationshipsTouched = true;
+                        renderList();
+                    },
+                );
+                row.appendChild(toColSel);
+
+                const toCardSel = makeSelect(
+                    rel.toCardinality || "One",
+                    cardinalityOptions,
+                    (v) => {
+                        rel.toCardinality = v;
+                        relationshipsTouched = true;
+                        renderList();
+                    },
+                );
+                toCardSel.style.flex = "0 0 80px";
+                toCardSel.title = "To cardinality";
+                row.appendChild(toCardSel);
+
+                const spacer = document.createElement("div");
+                spacer.style.cssText = "flex:1";
+                row.appendChild(spacer);
+
+                const removeBtn = makeBtn("Remove", "slls-dle-btn slls-dle-btn-danger");
+                removeBtn.addEventListener("click", () => {
+                    relationshipsList.splice(idx, 1);
+                    relationshipsTouched = true;
+                    renderList();
+                });
+                row.appendChild(removeBtn);
+
+                // Validation banner: same table or mismatched data types.
+                const issues = [];
+                if (!rel.fromSpec || !rel.fromCol
+                    || !rel.toSpec || !rel.toCol) {
+                    issues.push("Both sides must be set.");
+                } else if (rel.fromSpec === rel.toSpec) {
+                    issues.push("From and To tables must be different.");
+                } else {
+                    const fdt = dataTypeOf(rel.fromSpec, rel.fromCol);
+                    const tdt = dataTypeOf(rel.toSpec, rel.toCol);
+                    if (fdt && tdt && fdt !== tdt) {
+                        issues.push(
+                            `Data type mismatch: ${fdt} vs ${tdt}. `
+                            + "The relationship may fail to apply.",
+                        );
+                    }
+                }
+                if (issues.length > 0) {
+                    const warn = document.createElement("div");
+                    warn.style.cssText = "flex-basis:100%;font-size:11.5px;color:var(--slls-danger,#ff3b30)";
+                    warn.textContent = "⚠ " + issues.join(" ");
+                    row.appendChild(warn);
+                }
+
+                listWrap.appendChild(row);
+            });
+        }
+
+        renderList();
+
+        const footer = modalFooter();
+        addCloseBtn(footer, "Done");
+        openModal();
+    }
+
     submitCreateBtn.addEventListener("click", () => {
         const name = (newNameInput.value || "").trim();
         const specs = Object.keys(columnsPickers);
@@ -1123,6 +1673,7 @@ function render({ model, el }) {
         // Keep selected_columns keyed by source spec so the backend can map
         // it back to source columns regardless of the renamed table name.
         const selectedColumns = {};
+        const primaryKeys = {};
         for (const spec of specs) {
             const cols = columnsPickers[spec].picker.getSelected();
             if (cols.length === 0) {
@@ -1133,7 +1684,27 @@ function render({ model, el }) {
                 return;
             }
             selectedColumns[spec] = cols;
+            const pk = columnsPickers[spec].picker.getPrimaryKey();
+            if (pk) primaryKeys[spec] = pk;
         }
+        // If the user never opened the relationships modal, auto-detect now
+        // so the model gets reasonable defaults out of the box.
+        if (!relationshipsTouched && relationshipsList.length === 0) {
+            relationshipsList = autoDetectRelationships(buildRelTableInfo());
+        }
+        // Filter out incomplete / self-referential relationships before
+        // sending them to the backend.
+        const cleanRels = relationshipsList.filter((r) =>
+            r && r.fromSpec && r.fromCol && r.toSpec && r.toCol
+            && r.fromSpec !== r.toSpec,
+        ).map((r) => ({
+            from_table_spec: r.fromSpec,
+            from_column: r.fromCol,
+            from_cardinality: r.fromCardinality || "Many",
+            to_table_spec: r.toSpec,
+            to_column: r.toCol,
+            to_cardinality: r.toCardinality || "One",
+        }));
         runAction("create_model", {
             dataset_name: name,
             workspace_id: newWsSelect.value,
@@ -1142,6 +1713,8 @@ function render({ model, el }) {
             source_id: newSrcItemSelect.value,
             tables: tablesDict,
             selected_columns: selectedColumns,
+            primary_keys: primaryKeys,
+            relationships: cleanRels,
             use_sql_endpoint: useSqlToggle._input.checked,
             refresh: refreshToggle._input.checked,
         });
@@ -1771,8 +2344,32 @@ function render({ model, el }) {
     const tablesSection = document.createElement("div");
     tablesSection.className = "slls-dle-section";
     manageScreen.appendChild(tablesSection);
+    // Header row: heading on the left, "..." menu (with bulk actions that
+    // apply across every Direct Lake table) on the right.
+    const tablesHeaderRow = document.createElement("div");
+    tablesHeaderRow.style.cssText =
+        "display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;";
     const tablesHeading = document.createElement("h3");
-    tablesSection.appendChild(tablesHeading);
+    tablesHeading.style.margin = "0";
+    tablesHeaderRow.appendChild(tablesHeading);
+    const tablesMoreBtn = document.createElement("button");
+    tablesMoreBtn.className = "slls-dle-icon-btn";
+    tablesMoreBtn.setAttribute("aria-label", "Actions for all tables");
+    tablesMoreBtn.setAttribute("aria-haspopup", "menu");
+    tablesMoreBtn.title = "More actions for all tables";
+    tablesMoreBtn.innerHTML = ICON_SVG.more;
+    tablesMoreBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openRowMenu(tablesMoreBtn, [
+            {
+                label: "Sync descriptions from source…",
+                icon: "sync",
+                onClick: () => openSyncDescriptionsAllTablesModal(),
+            },
+        ]);
+    });
+    tablesHeaderRow.appendChild(tablesMoreBtn);
+    tablesSection.appendChild(tablesHeaderRow);
     const tablesList = document.createElement("div");
     tablesList.className = "slls-dle-list";
     tablesSection.appendChild(tablesList);
@@ -1963,6 +2560,18 @@ function render({ model, el }) {
                 : effEntity;
             meta.textContent = `Entity: ${entity || "(unknown)"} · Source: ${sourceLabel}`;
             main.appendChild(meta);
+            // Render the table's description (if any) directly below the
+            // entity/source meta line so it is visible at a glance.
+            const stagedDesc = latestPendingTableDescription(t.name);
+            const effDesc = stagedDesc !== undefined
+                ? (stagedDesc || "")
+                : (t.description || "");
+            if (effDesc) {
+                const descMeta = document.createElement("div");
+                descMeta.className = "slls-dle-item-meta";
+                descMeta.textContent = `Description: ${effDesc}`;
+                main.appendChild(descMeta);
+            }
             row.appendChild(main);
             const actions = document.createElement("div");
             actions.className = "slls-dle-item-actions";
@@ -1981,14 +2590,14 @@ function render({ model, el }) {
                         onClick: () => openColumnsModal(t),
                     },
                     {
+                        label: "Edit table description…",
+                        icon: "pencil",
+                        onClick: () => openTableDescriptionModal(t),
+                    },
+                    {
                         label: "Sync columns with source…",
                         icon: "sync",
                         onClick: () => openSyncColumnsModal(t),
-                    },
-                    {
-                        label: "Sync descriptions from source…",
-                        icon: "sync",
-                        onClick: () => openSyncDescriptionsModal(t),
                     },
                     {
                         separatorBefore: true,
@@ -2506,11 +3115,6 @@ function render({ model, el }) {
             })),
         );
         const stagedMap = mergedPendingColumnEditsForTable(table.name);
-        const baseTableDescription = table.description || "";
-        const stagedTableDescription = latestPendingTableDescription(table.name);
-        const initialTableDescription = stagedTableDescription !== undefined
-            ? (stagedTableDescription || "")
-            : baseTableDescription;
 
         if (baseCols.length === 0) {
             const p = document.createElement("div");
@@ -2521,39 +3125,6 @@ function render({ model, el }) {
             openModal();
             return;
         }
-
-        // Table-level fields (description). Rendered as a header card above
-        // the column list so the table description is editable alongside the
-        // column descriptions.
-        const tableCard = document.createElement("div");
-        tableCard.className = "slls-dle-column-row";
-        const tableHead = document.createElement("div");
-        tableHead.className = "slls-dle-column-head";
-        const tableNm = document.createElement("div");
-        tableNm.className = "slls-dle-column-name slls-dle-icon-inline";
-        tableNm.innerHTML = `${iconHtml("table")}<span>${escapeHtml(table.name)}</span>`;
-        tableHead.appendChild(tableNm);
-        const tableTy = document.createElement("div");
-        tableTy.className = "slls-dle-column-type";
-        tableTy.textContent = "Table";
-        tableHead.appendChild(tableTy);
-        tableCard.appendChild(tableHead);
-
-        const tableFields = document.createElement("div");
-        tableFields.className = "slls-dle-column-fields";
-        tableCard.appendChild(tableFields);
-
-        const tableDescInput = document.createElement("textarea");
-        tableDescInput.className = "slls-dle-input";
-        tableDescInput.rows = 2;
-        tableDescInput.value = initialTableDescription;
-        tableDescInput.placeholder = "(no description)";
-        const tableDescField = makeField(
-            "Table description", tableDescInput, { wide: true },
-        );
-        tableFields.appendChild(tableDescField);
-
-        modal.appendChild(tableCard);
 
         const list = document.createElement("div");
         list.className = "slls-dle-columns-list";
@@ -2571,17 +3142,7 @@ function render({ model, el }) {
             };
         }
 
-        // Updates the table-card "dirty" indicator based on the description
-        // input. Defined here so column rows can refresh it via the shared
-        // `refreshTableDirty` helper after editing.
-        function refreshTableDirty() {
-            const dirty = (tableDescInput.value || "") !== baseTableDescription;
-            setFieldDirty(tableDescField, dirty);
-            tableCard.classList.toggle("pending", dirty);
-        }
-        tableDescInput.addEventListener("input", refreshTableDirty);
-        refreshTableDirty();
-
+        // Updates a column row's "dirty" indicator after editing.
         for (const bc of baseCols) {
             const row = document.createElement("div");
             row.className = "slls-dle-column-row";
@@ -2752,17 +3313,12 @@ function render({ model, el }) {
                 }
                 if (dirty) changed.push(entry);
             }
-            const newTableDesc = tableDescInput.value || "";
-            const tableDescChanged = newTableDesc !== baseTableDescription;
-            if (changed.length === 0 && !tableDescChanged) {
+            if (changed.length === 0) {
                 setStatus("No column changes to stage.", "info");
                 closeModal();
                 return;
             }
             const payload = { table_name: table.name, columns: changed };
-            if (tableDescChanged) {
-                payload.table_description = newTableDesc;
-            }
             enqueuePendingChange({
                 id: pendingId(),
                 kind: "edit_columns",
@@ -2774,21 +3330,125 @@ function render({ model, el }) {
         openModal();
     }
 
-    function openSyncDescriptionsModal(table) {
-        modalHeader(`Sync descriptions: ${table.name}`);
+    function openTableDescriptionModal(table) {
+        modalHeader(`Edit description: ${table.name}`);
 
-        const sources = model.get("sources") || [];
-        const source = sources.find(
-            (s) => s.expressionName === table.expressionName,
+        const baseTableDescription = table.description || "";
+        const stagedTableDescription = latestPendingTableDescription(table.name);
+        const initialTableDescription = stagedTableDescription !== undefined
+            ? (stagedTableDescription || "")
+            : baseTableDescription;
+
+        const grid = document.createElement("div");
+        grid.className = "slls-dle-grid";
+        modal.appendChild(grid);
+
+        const descInput = document.createElement("textarea");
+        descInput.className = "slls-dle-input";
+        descInput.rows = 4;
+        descInput.value = initialTableDescription;
+        descInput.placeholder = "(no description)";
+        const descField = makeField(
+            "Table description", descInput, { wide: true },
         );
+        grid.appendChild(descField);
+
+        function refreshDots() {
+            setFieldDirty(
+                descField,
+                (descInput.value || "") !== baseTableDescription,
+            );
+        }
+        descInput.addEventListener("input", refreshDots);
+        refreshDots();
+
+        const footer = modalFooter();
+        addCloseBtn(footer);
+        // Show Revert if a staged edit_columns change for this table carries
+        // a table_description override.
+        if (pendingState.changes.some(
+            c => c.kind === "edit_columns"
+                && c.key === table.name
+                && c.payload
+                && "table_description" in c.payload
+                && !(c.payload.columns || []).length,
+        )) {
+            const revert = makeBtn(
+                "Revert",
+                "slls-dle-btn slls-dle-btn-danger",
+                () => {
+                    revertChangesMatching(
+                        c => c.kind === "edit_columns"
+                            && c.key === table.name
+                            && c.payload
+                            && "table_description" in c.payload
+                            && !(c.payload.columns || []).length,
+                        `Reverted staged description for '${table.name}'.`,
+                    );
+                    closeModal();
+                },
+            );
+            revert.title = "Discard the staged table description for this table";
+            footer.appendChild(revert);
+        }
+        footer.appendChild(makeBtn(
+            "Stage changes",
+            "slls-dle-btn slls-dle-btn-primary",
+            () => {
+                const newDesc = descInput.value || "";
+                if (newDesc === baseTableDescription) {
+                    setStatus("No description change to stage.", "info");
+                    closeModal();
+                    return;
+                }
+                // Replace any previously staged description-only change for
+                // this table so only the latest value is applied on save.
+                pendingState.changes = pendingState.changes.filter(
+                    (c) => !(
+                        c.kind === "edit_columns"
+                        && c.key === table.name
+                        && c.payload
+                        && "table_description" in c.payload
+                        && !(c.payload.columns || []).length
+                    ),
+                );
+                enqueuePendingChange({
+                    id: pendingId(),
+                    kind: "edit_columns",
+                    key: table.name,
+                    payload: {
+                        table_name: table.name,
+                        columns: [],
+                        table_description: newDesc,
+                    },
+                });
+                closeModal();
+            },
+        ));
+        openModal();
+    }
+
+    function openSyncDescriptionsAllTablesModal() {
+        modalHeader("Sync descriptions from source");
+
+        const tables = model.get("tables") || [];
+        const sources = model.get("sources") || [];
+        const sourceById = {};
+        for (const s of sources) sourceById[s.expressionName] = s;
+        const eligible = tables.filter((t) => {
+            const s = sourceById[t.expressionName];
+            return s && s.itemType === "Lakehouse";
+        });
+
         const footer = modalFooter();
         const cancel = makeBtn("Cancel", "slls-dle-btn", closeModal);
 
-        if (!source || source.itemType !== "Lakehouse") {
+        if (eligible.length === 0) {
             const p = document.createElement("div");
             p.className = "slls-dle-empty";
             p.textContent =
-                "Description sync is only supported for tables sourced from a Lakehouse.";
+                "Description sync is only supported for tables sourced from "
+                + "a Lakehouse. None of the tables in this model qualify.";
             modal.appendChild(p);
             footer.appendChild(cancel);
             openModal();
@@ -2799,9 +3459,9 @@ function render({ model, el }) {
         intro.className = "slls-dle-item-meta";
         intro.style.marginBottom = "12px";
         intro.textContent =
-            `This will set the descriptions on table '${table.name}' and its `
-            + `columns from the comments/descriptions on the source Lakehouse `
-            + `table '${(table.schemaName ? table.schemaName + "." : "")}${table.entityName || ""}'.`;
+            `This will set descriptions on ${eligible.length} table(s) and `
+            + `their columns from the comments/descriptions on the source `
+            + `Lakehouse delta tables.`;
         modal.appendChild(intro);
 
         const optsRow = document.createElement("div");
@@ -2814,23 +3474,27 @@ function render({ model, el }) {
         overwriteChk.checked = false;
         const overwriteLab = document.createElement("span");
         overwriteLab.textContent =
-            "Overwrite existing descriptions (otherwise only empty descriptions are populated)";
+            "Overwrite existing descriptions (otherwise only empty "
+            + "descriptions are populated)";
         overwriteWrap.appendChild(overwriteChk);
         overwriteWrap.appendChild(overwriteLab);
         optsRow.appendChild(overwriteWrap);
         modal.appendChild(optsRow);
 
-        if (pendingState.changes.some(
-            c => c.kind === "sync_descriptions" && c.key === table.name,
-        )) {
-            const revert = makeBtn("Revert", "slls-dle-btn slls-dle-btn-danger", () => {
-                revertChangesMatching(
-                    c => c.kind === "sync_descriptions" && c.key === table.name,
-                    `Reverted staged description sync for '${table.name}'.`,
-                );
-                closeModal();
-            });
-            revert.title = "Discard the staged description sync for this table";
+        if (pendingState.changes.some(c => c.kind === "sync_descriptions")) {
+            const revert = makeBtn(
+                "Revert",
+                "slls-dle-btn slls-dle-btn-danger",
+                () => {
+                    revertChangesMatching(
+                        c => c.kind === "sync_descriptions",
+                        "Reverted staged description sync for all tables.",
+                    );
+                    closeModal();
+                },
+            );
+            revert.title =
+                "Discard every staged description sync in this model";
             footer.appendChild(revert);
         }
         footer.appendChild(cancel);
@@ -2838,20 +3502,22 @@ function render({ model, el }) {
             "Stage changes",
             "slls-dle-btn slls-dle-btn-primary",
             () => {
-                // Replace any previously staged sync_descriptions for this
-                // table so only the latest selection is applied on save.
+                // Replace any previously staged sync_descriptions changes so
+                // a fresh bulk sync uses the latest overwrite setting.
                 pendingState.changes = pendingState.changes.filter(
-                    (c) => !(c.kind === "sync_descriptions" && c.key === table.name),
+                    (c) => c.kind !== "sync_descriptions",
                 );
-                enqueuePendingChange({
-                    id: pendingId(),
-                    kind: "sync_descriptions",
-                    key: table.name,
-                    payload: {
-                        table_name: table.name,
-                        overwrite: !!overwriteChk.checked,
-                    },
-                });
+                for (const t of eligible) {
+                    enqueuePendingChange({
+                        id: pendingId(),
+                        kind: "sync_descriptions",
+                        key: t.name,
+                        payload: {
+                            table_name: t.name,
+                            overwrite: !!overwriteChk.checked,
+                        },
+                    });
+                }
                 closeModal();
             },
         ));
@@ -3611,7 +4277,7 @@ def direct_lake_manager(
         }
         item_type = type_map.get(source_type, source_type)
         try:
-            dfI = fabric.list_items(workspace=workspace_id, type=item_type)
+            dfI = fabric.list_items(workspace=workspace_id, item_type=item_type)
         except Exception:
             return []
         id_col, name_col = _pick_columns(dfI, ["Id"], ["Display Name", "Name"])
@@ -3673,18 +4339,36 @@ def direct_lake_manager(
     def _list_source_columns_payload(
         workspace_id, source_type, source_id, schema, table, use_sql_endpoint=False
     ):
-        """Return ``{"items": [{"name", "dataType"}, ...]}`` for one source table.
+        """Return ``{"items": [{"name", "dataType", "isPrimaryKey"}, ...]}``
+        for one source table.
 
         For Lakehouse sources this uses
         :func:`sempy_labs._helper_functions.list_columns_from_path` against the
         delta-table abfss path; for other source types it queries
         ``INFORMATION_SCHEMA.COLUMNS`` via :class:`sempy_labs._sql.ConnectBase`.
+        The primary-key column (if any) is detected via
+        :func:`sempy_labs._sql.get_primary_key`.
         """
         from sempy_labs._helper_functions import (
             list_columns_from_path,
             create_abfss_path,
         )
-        from sempy_labs._sql import ConnectBase
+        from sempy_labs._sql import ConnectBase, get_primary_key
+
+        # Best-effort primary-key lookup. Fails silently — e.g. when the
+        # source type isn't supported by ConnectBase or the user lacks
+        # SQL endpoint access — so column listing still works.
+        pk_col = None
+        try:
+            pk_col = get_primary_key(
+                table=table,
+                schema=schema or "dbo",
+                item=source_id,
+                type=source_type,
+                workspace=workspace_id,
+            )
+        except Exception:
+            pk_col = None
 
         try:
             if source_type == "Lakehouse":
@@ -3702,7 +4386,13 @@ def direct_lake_manager(
                         dtype = str(r.get("Data Type") or "")
                         if not col:
                             continue
-                        items.append({"name": col, "dataType": dtype})
+                        items.append(
+                            {
+                                "name": col,
+                                "dataType": dtype,
+                                "isPrimaryKey": bool(pk_col) and col == pk_col,
+                            }
+                        )
             else:
                 with ConnectBase(
                     item=source_id, type=source_type, workspace=workspace_id
@@ -3722,7 +4412,13 @@ def direct_lake_manager(
                         dtype = str(r.get("DATA_TYPE") or "")
                         if not col:
                             continue
-                        items.append({"name": col, "dataType": dtype})
+                        items.append(
+                            {
+                                "name": col,
+                                "dataType": dtype,
+                                "isPrimaryKey": bool(pk_col) and col == pk_col,
+                            }
+                        )
             return {"items": items}
         except Exception as e:
             return {"error": str(e)}
@@ -3949,6 +4645,13 @@ def direct_lake_manager(
                 src_id = data.get("source_id")
                 tables = data.get("tables") or []
                 selected_columns = data.get("selected_columns") or {}
+                # Use `in data` so an empty dict is still treated as the
+                # user's authoritative choice ("no PK on any table"), which
+                # is distinct from older clients that omit the key entirely.
+                primary_keys = (
+                    data.get("primary_keys") if "primary_keys" in data else None
+                )
+                relationships = data.get("relationships") or []
                 refresh_after = bool(data.get("refresh"))
                 if not name or not src_id or not tables:
                     widget.status = {
@@ -3956,8 +4659,14 @@ def direct_lake_manager(
                         "kind": "error",
                     }
                     return
-                # If column selections were provided, defer the refresh until
-                # after we prune unselected columns from the generated model.
+                # If column selections, primary keys, or relationships were
+                # provided, defer the refresh until after we post-process
+                # the generated model.
+                needs_post_process = (
+                    bool(selected_columns)
+                    or primary_keys is not None
+                    or bool(relationships)
+                )
                 generate_direct_lake_semantic_model(
                     dataset=name,
                     tables=tables,
@@ -3966,10 +4675,10 @@ def direct_lake_manager(
                     source_workspace=src_ws_id,
                     use_sql_endpoint=bool(data.get("use_sql_endpoint")),
                     workspace=ws_id,
-                    refresh=refresh_after and not selected_columns,
+                    refresh=refresh_after and not needs_post_process,
                 )
                 ds_name, ds_id_resolved = resolve_dataset_name_and_id(name, ws_id)
-                if selected_columns:
+                if needs_post_process:
                     # Map each model table back to its source table spec by
                     # matching schema + entity names. generate_direct_lake_
                     # semantic_model derives table_name from the part after
@@ -3988,6 +4697,10 @@ def direct_lake_manager(
                         workspace=ws_id,
                         readonly=False,
                     ) as tom:
+                        # Built while iterating tables; used afterwards to
+                        # resolve relationship endpoints from source specs
+                        # back to TOM table names.
+                        spec_to_tbl_name = {}
                         for t in list(tom.model.Tables):
                             # Find matching source spec for this table.
                             matching_spec = None
@@ -4013,20 +4726,129 @@ def direct_lake_manager(
                                     break
                             if matching_spec is None:
                                 continue
+                            spec_to_tbl_name[matching_spec] = t.Name
                             wanted = set(selected_columns.get(matching_spec) or [])
-                            if not wanted:
-                                continue
-                            for c in list(t.Columns):
-                                # Preserve the auto-generated RowNumber column.
-                                if c.Type == TOM.ColumnType.RowNumber:
-                                    continue
-                                src_col = getattr(c, "SourceColumn", "") or ""
-                                if (
-                                    src_col
-                                    and src_col not in wanted
-                                    and c.Name not in wanted
+                            if wanted:
+                                for c in list(t.Columns):
+                                    # Preserve the auto-generated RowNumber column.
+                                    if c.Type == TOM.ColumnType.RowNumber:
+                                        continue
+                                    src_col = getattr(c, "SourceColumn", "") or ""
+                                    if (
+                                        src_col
+                                        and src_col not in wanted
+                                        and c.Name not in wanted
+                                    ):
+                                        t.Columns.Remove(c.Name)
+                            # Apply the user's primary key choice. The
+                            # frontend sends an empty/absent entry to mean
+                            # "no primary key" — in that case clear any
+                            # IsKey flag set by generate_direct_lake_
+                            # semantic_model's auto-detection.
+                            if primary_keys is not None:
+                                pk_choice = (
+                                    primary_keys.get(matching_spec) or ""
+                                ).strip()
+                                target = None
+                                if pk_choice:
+                                    for c in t.Columns:
+                                        if c.Type == TOM.ColumnType.RowNumber:
+                                            continue
+                                        src_col = (
+                                            getattr(c, "SourceColumn", "") or ""
+                                        )
+                                        if src_col == pk_choice or c.Name == pk_choice:
+                                            target = c
+                                            break
+                                for c in t.Columns:
+                                    if c.Type == TOM.ColumnType.RowNumber:
+                                        continue
+                                    desired = target is not None and c is target
+                                    if bool(getattr(c, "IsKey", False)) != desired:
+                                        try:
+                                            c.IsKey = desired
+                                        except Exception:
+                                            pass
+                        # Apply user-defined relationships now that all
+                        # table-level edits are done. Endpoints come in
+                        # as source specs + source column names; resolve
+                        # to the matching TOM table and column names.
+                        if relationships:
+                            def _resolve_col(tbl_name, src_col_name):
+                                tbl = tom.model.Tables[tbl_name]
+                                for col in tbl.Columns:
+                                    if col.Type == TOM.ColumnType.RowNumber:
+                                        continue
+                                    sc = getattr(col, "SourceColumn", "") or ""
+                                    if sc == src_col_name or col.Name == src_col_name:
+                                        return col.Name
+                                return None
+
+                            for rel in relationships:
+                                from_spec = (rel.get("from_table_spec") or "").strip()
+                                to_spec = (rel.get("to_table_spec") or "").strip()
+                                from_col_src = (rel.get("from_column") or "").strip()
+                                to_col_src = (rel.get("to_column") or "").strip()
+                                from_card = (
+                                    rel.get("from_cardinality") or "Many"
+                                ).strip() or "Many"
+                                to_card = (
+                                    rel.get("to_cardinality") or "One"
+                                ).strip() or "One"
+                                if from_card not in ("Many", "One", "None"):
+                                    from_card = "Many"
+                                if to_card not in ("Many", "One", "None"):
+                                    to_card = "One"
+                                if not (
+                                    from_spec
+                                    and to_spec
+                                    and from_col_src
+                                    and to_col_src
                                 ):
-                                    t.Columns.Remove(c.Name)
+                                    continue
+                                if from_spec == to_spec:
+                                    continue
+                                from_tbl = spec_to_tbl_name.get(from_spec)
+                                to_tbl = spec_to_tbl_name.get(to_spec)
+                                if not from_tbl or not to_tbl:
+                                    continue
+                                from_col = _resolve_col(from_tbl, from_col_src)
+                                to_col = _resolve_col(to_tbl, to_col_src)
+                                if not from_col or not to_col:
+                                    continue
+                                # Skip if a relationship with the same
+                                # endpoints already exists (avoids dupes
+                                # if the user re-runs create).
+                                duplicate = False
+                                for existing in tom.model.Relationships:
+                                    try:
+                                        if (
+                                            existing.FromTable.Name == from_tbl
+                                            and existing.FromColumn.Name == from_col
+                                            and existing.ToTable.Name == to_tbl
+                                            and existing.ToColumn.Name == to_col
+                                        ):
+                                            duplicate = True
+                                            break
+                                    except Exception:
+                                        continue
+                                if duplicate:
+                                    continue
+                                try:
+                                    tom.add_relationship(
+                                        from_table=from_tbl,
+                                        from_column=from_col,
+                                        to_table=to_tbl,
+                                        to_column=to_col,
+                                        from_cardinality=from_card,
+                                        to_cardinality=to_card,
+                                    )
+                                except Exception as e:
+                                    print(
+                                        f"⚠ Could not create relationship "
+                                        f"'{from_tbl}[{from_col}]' -> "
+                                        f"'{to_tbl}[{to_col}]': {e}"
+                                    )
                     if refresh_after:
                         refresh_semantic_model(dataset=ds_id_resolved, workspace=ws_id)
                 widget.workspace_id = str(ws_id)
@@ -4262,9 +5084,7 @@ def direct_lake_manager(
                             # Apply table-level description first so it
                             # persists even if there are no column edits.
                             if "table_description" in p:
-                                if table_name not in [
-                                    t.Name for t in tom.model.Tables
-                                ]:
+                                if table_name not in [t.Name for t in tom.model.Tables]:
                                     raise ValueError(
                                         f"Table '{table_name}' not found "
                                         "in the model."
@@ -4317,9 +5137,7 @@ def direct_lake_manager(
                                 parts.append(f"updated {len(cols)} column(s)")
                             if "table_description" in p:
                                 parts.append("updated table description")
-                            summary.append(
-                                f"{' and '.join(parts)} in '{table_name}'"
-                            )
+                            summary.append(f"{' and '.join(parts)} in '{table_name}'")
                         elif kind == "rename_table":
                             old_name = change.get("key") or p.get("table_name")
                             new_name = (p.get("new_name") or "").strip()
@@ -4409,9 +5227,7 @@ def direct_lake_manager(
                                 raise ValueError(
                                     "Table is required to sync descriptions."
                                 )
-                            if table_name not in [
-                                t.Name for t in tom.model.Tables
-                            ]:
+                            if table_name not in [t.Name for t in tom.model.Tables]:
                                 raise ValueError(
                                     f"Table '{table_name}' not found in the model."
                                 )
@@ -4431,7 +5247,10 @@ def direct_lake_manager(
                                 ),
                                 None,
                             )
-                            if src_info is None or src_info.get("itemType") != "Lakehouse":
+                            if (
+                                src_info is None
+                                or src_info.get("itemType") != "Lakehouse"
+                            ):
                                 raise ValueError(
                                     f"Sync descriptions for '{table_name}' is "
                                     "only supported when the source is a Lakehouse."
@@ -4443,7 +5262,9 @@ def direct_lake_manager(
                                 schema=part.Source.SchemaName or None,
                             )
                             descriptions = extract_descriptions_from_table_path(path)
-                            table_description = descriptions.get("tableDescription") or ""
+                            table_description = (
+                                descriptions.get("tableDescription") or ""
+                            )
                             if overwrite or not (t.Description or ""):
                                 t.Description = table_description
                             applied = 0
