@@ -1047,6 +1047,7 @@ function render({ model, el }) {
     backColumnsBtn.addEventListener("click", () => {
         columnsSection.style.display = "none";
         createSection.style.display = "";
+        renderSubtitle();
     });
     columnsFooter.appendChild(backColumnsBtn);
 
@@ -1148,6 +1149,8 @@ function render({ model, el }) {
         createSection.style.display = "none";
         columnsSection.style.display = "";
         columnsBody.innerHTML = "";
+        // Update the header to reflect the pending model name + target ws.
+        renderSubtitle();
         columnsPickers = {};
         tableNameInputs = {};
         // Reset relationships state for a fresh create flow.
@@ -4026,6 +4029,28 @@ function render({ model, el }) {
         const ws = model.get("workspace_name") || "";
         const ds = model.get("dataset_name") || "";
         const screen = model.get("screen") || "select";
+        // On the create flow's column-picker page, surface the pending
+        // model name + target workspace in the header so the user has the
+        // same orienting context they get when managing an existing model.
+        const onColumnsPage =
+            screen !== "manage" && columnsSection.style.display !== "none";
+        if (onColumnsPage) {
+            const pendingName = (newNameInput.value || "").trim()
+                || "Untitled model";
+            const tgtWs = (
+                newWsSelect.options[newWsSelect.selectedIndex]
+                    && newWsSelect.options[newWsSelect.selectedIndex].textContent
+            ) || "";
+            subtitle.innerHTML =
+                `<b>${escapeHtml(pendingName)}</b>` +
+                (tgtWs
+                    ? `<span class="slls-dle-sep">·</span>${escapeHtml(tgtWs)}`
+                    : "") +
+                `<span class="slls-dle-sep">·</span>`
+                + `<span title="This model has not been created yet.">`
+                + `Pending</span>`;
+            return;
+        }
         if (screen === "manage" && ds) {
             subtitle.innerHTML =
                 `<b>${escapeHtml(ds)}</b>` +
@@ -4039,6 +4064,10 @@ function render({ model, el }) {
     model.on("change:screen", renderScreen);
     model.on("change:workspace_name", renderSubtitle);
     model.on("change:dataset_name", renderSubtitle);
+    // Re-render the subtitle when the user edits the pending model name
+    // or switches the target workspace from the create form.
+    newNameInput.addEventListener("input", renderSubtitle);
+    newWsSelect.addEventListener("change", renderSubtitle);
 
     // ----------- Attribution -----------
     const attribution = document.createElement("div");
