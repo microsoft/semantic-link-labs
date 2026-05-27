@@ -247,12 +247,19 @@ def generate_direct_lake_semantic_model(
             for column in table_info["columns"]:
                 column_name = column["columnName"]
                 data_type = column["dataType"]
+                summarize_by = "None"
+                if data_type in ["Int64", "Double", "Decimal"]:
+                    if column_name.lower().endswith('key') or column_name.lower().endswith('id'):
+                        summarize_by = "Count"
+                    else:
+                        summarize_by = "Sum"
                 tom.add_data_column(
                     table_name=table_name,
                     column_name=column_name,
                     data_type=data_type,
                     source_column=column_name,
                     description=column.get("description"),
+                    summarize_by=summarize_by,
                 )
             # If the source table defines a primary key, mark the
             # corresponding model column with IsKey=True. Failures here are

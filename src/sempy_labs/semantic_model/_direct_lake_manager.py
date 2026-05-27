@@ -4740,9 +4740,7 @@ def direct_lake_manager(
                                     for c in t.Columns:
                                         if c.Type == TOM.ColumnType.RowNumber:
                                             continue
-                                        src_col = (
-                                            getattr(c, "SourceColumn", "") or ""
-                                        )
+                                        src_col = getattr(c, "SourceColumn", "") or ""
                                         if src_col == pk_choice or c.Name == pk_choice:
                                             target = c
                                             break
@@ -4760,6 +4758,7 @@ def direct_lake_manager(
                         # as source specs + source column names; resolve
                         # to the matching TOM table and column names.
                         if relationships:
+
                             def _resolve_col(tbl_name, src_col_name):
                                 tbl = tom.model.Tables[tbl_name]
                                 for col in tbl.Columns:
@@ -5293,9 +5292,7 @@ def direct_lake_manager(
                         refresh_semantic_model(dataset=ds_id, workspace=ws_id)
                         refresh_note = " Model refreshed."
                     except Exception as refresh_exc:
-                        refresh_note = (
-                            f" Note: model refresh failed: {refresh_exc}"
-                        )
+                        refresh_note = f" Note: model refresh failed: {refresh_exc}"
                 _load_model_state(ds_id, ws_id)
                 widget.status = {
                     "message": (
