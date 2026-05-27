@@ -1839,20 +1839,6 @@ function render({ model, el }) {
     manageScreen.className = "slls-dle-screen";
     root.appendChild(manageScreen);
 
-    const manageToolbar = document.createElement("div");
-    manageToolbar.className = "slls-dle-toolbar slls-dle-manage-top";
-    manageToolbar.style.marginBottom = "8px";
-    manageScreen.appendChild(manageToolbar);
-
-    const refreshModelBtn = document.createElement("button");
-    refreshModelBtn.className = "slls-dle-btn";
-    refreshModelBtn.innerHTML = `${REFRESH_SVG} <span style="margin-left:6px;">Refresh model</span>`;
-    refreshModelBtn.title = "Refresh the semantic model";
-    refreshModelBtn.addEventListener("click", () => {
-        runAction("refresh_model", {});
-    });
-    manageToolbar.appendChild(refreshModelBtn);
-
     // ----------- Pending changes / save bar -----------
     // Modal "Save" buttons enqueue changes here instead of writing to the
     // model immediately. Changes are only persisted when the user clicks
@@ -4904,6 +4890,11 @@ def direct_lake_manager(
 
                 changes = sorted(changes, key=_change_order)
                 summary = []
+                # Track whether any change adds or removes columns / tables
+                # from the model. Direct Lake tables need a model refresh
+                # after column-set changes so that the framing picks up the
+                # new column data.
+                needs_refresh = False
                 with connect_semantic_model(
                     dataset=ds_id, workspace=ws_id, readonly=False
                 ) as tom:
@@ -5076,6 +5067,7 @@ def direct_lake_manager(
                                     )
                                 existing_names.add(table_display)
                                 summary.append(f"added table '{table_display}'")
+                                needs_refresh = True
                         elif kind == "edit_columns":
                             table_name = p.get("table_name")
                             cols = p.get("columns") or []
@@ -5211,6 +5203,8 @@ def direct_lake_manager(
                                     removed += 1
                                 except Exception:
                                     continue
+                            if added or removed:
+                                needs_refresh = True
                             summary.append(
                                 f"synced columns in '{table_name}' "
                                 f"(+{added}, -{removed})"
@@ -5290,13 +5284,26 @@ def direct_lake_manager(
                         else:
                             raise ValueError(f"Unknown pending change kind: {kind!r}")
                     tom.model.SaveChanges()
+                # Refresh the model after the TOM context closes so the
+                # SaveChanges commit is durable before the refresh picks
+                # up the new column / table set.
+                refresh_note = ""
+                if needs_refresh:
+                    try:
+                        refresh_semantic_model(dataset=ds_id, workspace=ws_id)
+                        refresh_note = " Model refreshed."
+                    except Exception as refresh_exc:
+                        refresh_note = (
+                            f" Note: model refresh failed: {refresh_exc}"
+                        )
                 _load_model_state(ds_id, ws_id)
                 widget.status = {
                     "message": (
                         f"Saved {len(changes)} change(s) to the model: "
-                        f"{', '.join(summary)}."
+                        f"{', '.join(summary)}.{refresh_note}"
                         if summary
                         else f"Saved {len(changes)} change(s) to the model."
+                        f"{refresh_note}"
                     ),
                     "kind": "success",
                 }
