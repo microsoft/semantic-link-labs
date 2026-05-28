@@ -560,6 +560,67 @@ def _visualize_dax_test(
     color: var(--ui-text);
     box-shadow: var(--ui-shadow-sm);
 }}
+.dtx .dtx-seg-btn[disabled] {{
+    opacity: 0.45;
+    cursor: not-allowed;
+}}
+.dtx .dtx-seg-btn[disabled]:hover {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-chart-wrap {{
+    padding: 12px 24px 20px 24px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}}
+.dtx .dtx-chart-empty {{
+    padding: 24px;
+    text-align: center;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+}}
+.dtx .dtx-chart-controls {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 0 24px 8px 24px;
+}}
+.dtx .dtx-chart-controls label {{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--ui-text-tertiary);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}}
+.dtx .dtx-chart-controls select {{
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 4px 26px 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ui-text-tertiary) 50%),
+        linear-gradient(135deg, var(--ui-text-tertiary) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}}
+.dtx .dtx-chart-controls select:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-chart-svg {{ display: block; max-width: 100%; }}
+.dtx .dtx-chart-bar {{ fill: var(--ui-accent); transition: opacity 100ms ease; }}
+.dtx .dtx-chart-bar:hover {{ opacity: 0.8; }}
+.dtx .dtx-chart-axis line, .dtx .dtx-chart-axis path {{ stroke: var(--ui-border-strong); fill: none; }}
+.dtx .dtx-chart-axis text {{ fill: var(--ui-text-secondary); font-size: 10px; font-family: inherit; }}
+.dtx .dtx-chart-grid line {{ stroke: var(--ui-border); stroke-dasharray: 2 3; }}
 .dtx .dtx-result-meta {{
     padding: 0 24px 8px 24px;
     font-size: 11px;
@@ -891,6 +952,7 @@ def _visualize_dax_test(
     min-width: 0;
     display: flex;
     flex-direction: column;
+    padding-left: 12px;
 }}
 """
     )
@@ -1269,8 +1331,13 @@ function render({ model, el }) {
     segResult.type = "button";
     segResult.className = "dtx-seg-btn";
     segResult.textContent = "Query result";
+    const segChart = document.createElement("button");
+    segChart.type = "button";
+    segChart.className = "dtx-seg-btn";
+    segChart.textContent = "Chart";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
+    seg.appendChild(segChart);
     viewToolbar.appendChild(seg);
     segTrace.addEventListener("click", () => {
         model.set("view_mode", "trace");
@@ -1280,10 +1347,48 @@ function render({ model, el }) {
         model.set("view_mode", "result");
         model.save_changes();
     });
+    segChart.addEventListener("click", () => {
+        if (segChart.disabled) return;
+        model.set("view_mode", "chart");
+        model.save_changes();
+    });
+
+    // Maximum number of rows for which we render an interactive chart.
+    // Beyond this, the Chart option is disabled to keep the widget responsive.
+    const CHART_MAX_ROWS = 200;
+
+    function chartEligibility() {
+        const cols = model.get("result_columns") || [];
+        const rows = model.get("result_rows") || [];
+        const total = model.get("result_total_rows") || 0;
+        const truncated = model.get("result_truncated") === true;
+        if (!cols.length || !rows.length) {
+            return { ok: false, reason: "No query result available." };
+        }
+        if (truncated || total > CHART_MAX_ROWS) {
+            return {
+                ok: false,
+                reason: `Too many rows to chart (${total.toLocaleString()}; limit ${CHART_MAX_ROWS.toLocaleString()}).`,
+            };
+        }
+        const numericCols = cols.map((_, i) =>
+            rows.some(r => typeof r[i] === "number") &&
+            rows.every(r => r[i] === null || typeof r[i] === "number")
+        );
+        if (!numericCols.some(Boolean)) {
+            return { ok: false, reason: "No numeric column to chart." };
+        }
+        return { ok: true, numericCols };
+    }
+
     function renderSeg() {
         const mode = model.get("view_mode") || "trace";
         segTrace.classList.toggle("dtx-seg-btn-on", mode === "trace");
         segResult.classList.toggle("dtx-seg-btn-on", mode === "result");
+        segChart.classList.toggle("dtx-seg-btn-on", mode === "chart");
+        const elig = chartEligibility();
+        segChart.disabled = !elig.ok;
+        segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
     }
 
     const resultMeta = document.createElement("div");
@@ -1294,6 +1399,19 @@ function render({ model, el }) {
     const tableWrap = document.createElement("div");
     tableWrap.className = "dtx-table-wrap";
     main.appendChild(tableWrap);
+
+    const chartControls = document.createElement("div");
+    chartControls.className = "dtx-chart-controls";
+    chartControls.style.display = "none";
+    main.appendChild(chartControls);
+
+    const chartWrap = document.createElement("div");
+    chartWrap.className = "dtx-chart-wrap";
+    chartWrap.style.display = "none";
+    main.appendChild(chartWrap);
+
+    // Persisted per-render chart axis selections (not synced to Python).
+    const chartState = { xIdx: null, yIdx: null };
 
     function renderTraceTable() {
         const rows = model.get("trace_rows") || [];
@@ -1350,9 +1468,167 @@ function render({ model, el }) {
         }
     }
 
+    function renderChart() {
+        const cols = model.get("result_columns") || [];
+        const rows = model.get("result_rows") || [];
+        const elig = chartEligibility();
+        chartControls.innerHTML = "";
+        chartWrap.innerHTML = "";
+        if (!elig.ok) {
+            const msg = document.createElement("div");
+            msg.className = "dtx-chart-empty";
+            msg.textContent = elig.reason;
+            chartWrap.appendChild(msg);
+            chartControls.style.display = "none";
+            return;
+        }
+        const numericCols = elig.numericCols;
+        const numericIdxs = numericCols.map((b, i) => b ? i : -1).filter(i => i >= 0);
+        // Default y = first numeric col; x = first non-numeric col or row index.
+        if (chartState.yIdx == null || !numericIdxs.includes(chartState.yIdx)) {
+            chartState.yIdx = numericIdxs[0];
+        }
+        const nonNumIdxs = cols.map((_, i) => numericCols[i] ? -1 : i).filter(i => i >= 0);
+        if (chartState.xIdx == null || (chartState.xIdx !== -1 &&
+            (chartState.xIdx >= cols.length || chartState.xIdx === chartState.yIdx))) {
+            chartState.xIdx = nonNumIdxs.length ? nonNumIdxs[0] : -1;
+        }
+
+        // Axis selectors.
+        const xLabel = document.createElement("label");
+        xLabel.innerHTML = "<span>X</span>";
+        const xSel = document.createElement("select");
+        const idxOpt = document.createElement("option");
+        idxOpt.value = "-1";
+        idxOpt.textContent = "(row index)";
+        xSel.appendChild(idxOpt);
+        cols.forEach((c, i) => {
+            if (i === chartState.yIdx) return;
+            const o = document.createElement("option");
+            o.value = String(i);
+            o.textContent = c;
+            xSel.appendChild(o);
+        });
+        xSel.value = String(chartState.xIdx);
+        xSel.addEventListener("change", () => {
+            chartState.xIdx = parseInt(xSel.value, 10);
+            renderChart();
+        });
+        xLabel.appendChild(xSel);
+        chartControls.appendChild(xLabel);
+
+        const yLabel = document.createElement("label");
+        yLabel.innerHTML = "<span>Y</span>";
+        const ySel = document.createElement("select");
+        numericIdxs.forEach(i => {
+            const o = document.createElement("option");
+            o.value = String(i);
+            o.textContent = cols[i];
+            ySel.appendChild(o);
+        });
+        ySel.value = String(chartState.yIdx);
+        ySel.addEventListener("change", () => {
+            chartState.yIdx = parseInt(ySel.value, 10);
+            renderChart();
+        });
+        yLabel.appendChild(ySel);
+        chartControls.appendChild(yLabel);
+        chartControls.style.display = "";
+
+        // Build data.
+        const yIdx = chartState.yIdx;
+        const xIdx = chartState.xIdx;
+        const data = rows.map((r, i) => ({
+            label: xIdx === -1 ? String(i + 1) : (r[xIdx] == null ? "" : String(r[xIdx])),
+            value: typeof r[yIdx] === "number" ? r[yIdx] : 0,
+        }));
+
+        // SVG bar chart.
+        const n = data.length;
+        const barWidth = 28;
+        const barGap = 8;
+        const leftPad = 56;
+        const rightPad = 16;
+        const topPad = 12;
+        const bottomPad = 56;
+        const plotWidth = Math.max(n * (barWidth + barGap), 200);
+        const width = leftPad + plotWidth + rightPad;
+        const height = 280;
+        const plotHeight = height - topPad - bottomPad;
+        const values = data.map(d => d.value);
+        const dataMin = Math.min(0, ...values);
+        const dataMax = Math.max(0, ...values);
+
+        // Compute "nice" integer-only axis bounds and step.
+        function niceStep(raw) {
+            if (raw <= 0) return 1;
+            const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+            const norm = raw / mag;
+            let nice;
+            if (norm <= 1) nice = 1;
+            else if (norm <= 2) nice = 2;
+            else if (norm <= 5) nice = 5;
+            else nice = 10;
+            return Math.max(1, Math.round(nice * mag));
+        }
+        const ticks = 5;
+        const rawSpan = (dataMax - dataMin) || 1;
+        const step = niceStep(rawSpan / ticks);
+        const axisMin = Math.floor(dataMin / step) * step;
+        const axisMax = Math.ceil(dataMax / step) * step;
+        const span = (axisMax - axisMin) || 1;
+        const yScale = v => topPad + plotHeight - ((v - axisMin) / span) * plotHeight;
+        const fmtNum = v => Number(v).toLocaleString();
+
+        let gridLines = "";
+        let yTicks = "";
+        for (let v = axisMin; v <= axisMax + 0.5; v += step) {
+            const iv = Math.round(v);
+            const y = yScale(iv);
+            gridLines += `<line x1="${leftPad}" x2="${leftPad + plotWidth}" y1="${y}" y2="${y}"/>`;
+            yTicks += `<text x="${leftPad - 6}" y="${y + 3}" text-anchor="end">${escapeHtml(fmtNum(iv))}</text>`;
+        }
+        const baselineY = yScale(Math.max(axisMin, Math.min(0, axisMax)));
+
+        let bars = "";
+        let xLabels = "";
+        data.forEach((d, i) => {
+            const x = leftPad + i * (barWidth + barGap) + barGap / 2;
+            const y = d.value >= 0 ? yScale(d.value) : baselineY;
+            const h = Math.max(1, Math.abs(yScale(d.value) - baselineY));
+            const tip = `${d.label}: ${fmtNum(d.value)}`;
+            bars += `<rect class="dtx-chart-bar" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="2"><title>${escapeHtml(tip)}</title></rect>`;
+            const cx = x + barWidth / 2;
+            const labelTxt = d.label.length > 16 ? d.label.slice(0, 15) + "\u2026" : d.label;
+            const ly = height - bottomPad + 14;
+            xLabels += `<text x="${cx}" y="${ly}" text-anchor="end" transform="rotate(-35 ${cx} ${ly})">`
+                + `<title>${escapeHtml(d.label)}</title>${escapeHtml(labelTxt)}</text>`;
+        });
+
+        const svg = `<svg class="dtx-chart-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+            + `<g class="dtx-chart-grid">${gridLines}</g>`
+            + `<g class="dtx-chart-axis">`
+            + `<line x1="${leftPad}" x2="${leftPad}" y1="${topPad}" y2="${topPad + plotHeight}"/>`
+            + `<line x1="${leftPad}" x2="${leftPad + plotWidth}" y1="${baselineY}" y2="${baselineY}"/>`
+            + `${yTicks}${xLabels}`
+            + `</g>`
+            + `<g>${bars}</g>`
+            + `</svg>`;
+        chartWrap.innerHTML = svg;
+    }
+
     function renderTable() {
         const mode = model.get("view_mode") || "trace";
-        if (mode === "result") {
+        // Default visibility — chart/table swap below.
+        tableWrap.style.display = "";
+        chartWrap.style.display = "none";
+        chartControls.style.display = "none";
+        if (mode === "chart") {
+            tableWrap.style.display = "none";
+            chartWrap.style.display = "";
+            resultMeta.style.display = "none";
+            renderChart();
+        } else if (mode === "result") {
             renderResultTable();
             resultMeta.style.display = (model.get("result_columns") || []).length ? "" : "none";
         } else {
