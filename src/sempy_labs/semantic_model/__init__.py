@@ -21,3 +21,6 @@ __all__ = [
     "perspective_editor",
     "direct_lake_manager",
 ]
+
+from ._Fix_WholeNumberFormat import fix_whole_number_format
+__all__ += ["fix_whole_number_format"]
