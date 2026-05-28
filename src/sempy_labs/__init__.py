@@ -297,6 +297,7 @@ from ._model_bpa_bulk import (
     create_model_bpa_semantic_model,
 )
 from ._model_bpa import run_model_bpa
+from ._fix_model_bpa import fix_model_bpa
 from ._model_bpa_rules import model_bpa_rules
 from ._model_dependencies import (
     measure_dependency_tree,
@@ -354,22 +355,10 @@ from ._catalog import (
     list_endorsements,
     list_favorites,
 )
-from ._item_recovery import (
-    list_recoverable_items,
-    recover_item,
-    permanently_delete_item,
-)
-from ._items import (
-    bulk_export_items,
-    bulk_import_items,
-)
+from ._pbi_fixer import pbi_fixer
 
 __all__ = [
-    "bulk_export_items",
-    "bulk_import_items",
-    "list_recoverable_items",
-    "recover_item",
-    "permanently_delete_item",
+    "pbi_fixer",
     "resolve_warehouse_id",
     "ConnectWarehouse",
     "ConnectLakehouse",
@@ -419,6 +408,7 @@ __all__ = [
     "resolve_report_name",
     "model_bpa_rules",
     "run_model_bpa",
+    "fix_model_bpa",
     "measure_dependency_tree",
     "get_measure_dependencies",
     "get_model_calc_dependencies",
