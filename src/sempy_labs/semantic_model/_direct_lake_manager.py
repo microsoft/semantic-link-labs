@@ -3427,9 +3427,7 @@ def direct_lake_manager(
             if source_type == "Lakehouse":
                 from sempy_labs.lakehouse import get_lakehouse_tables
 
-                dfT = get_lakehouse_tables(
-                    lakehouse=source_id, workspace=workspace_id
-                )
+                dfT = get_lakehouse_tables(lakehouse=source_id, workspace=workspace_id)
                 items = []
                 for _, r in dfT.iterrows():
                     schema = str(r.get("Schema Name") or "")
@@ -3454,9 +3452,7 @@ def direct_lake_manager(
                         if not table:
                             continue
                         items.append({"schema": schema, "table": table})
-            items.sort(
-                key=lambda x: ((x["schema"] or "").lower(), x["table"].lower())
-            )
+            items.sort(key=lambda x: ((x["schema"] or "").lower(), x["table"].lower()))
             return {"items": items}
         except Exception as e:
             return {"error": str(e)}
@@ -3691,7 +3687,12 @@ def direct_lake_manager(
                         continue
                     key = f"{ws_id}::{src_type}::{src_id}::{schema}::{table}"
                     new_map[key] = _list_source_columns_payload(
-                        ws_id, src_type, src_id, schema, table, use_sql,
+                        ws_id,
+                        src_type,
+                        src_id,
+                        schema,
+                        table,
+                        use_sql,
                     )
                 # Single assignment triggers one sync to the frontend, which
                 # then refreshes every visible column picker.
@@ -3807,12 +3808,14 @@ def direct_lake_manager(
                                 if c.Type == TOM.ColumnType.RowNumber:
                                     continue
                                 src_col = getattr(c, "SourceColumn", "") or ""
-                                if src_col and src_col not in wanted and c.Name not in wanted:
+                                if (
+                                    src_col
+                                    and src_col not in wanted
+                                    and c.Name not in wanted
+                                ):
                                     t.Columns.Remove(c.Name)
                     if refresh_after:
-                        refresh_semantic_model(
-                            dataset=ds_id_resolved, workspace=ws_id
-                        )
+                        refresh_semantic_model(dataset=ds_id_resolved, workspace=ws_id)
                 widget.workspace_id = str(ws_id)
                 widget.workspace_name = _resolve_ws_name(ws_id)
                 widget.dataset_id = str(ds_id_resolved)
@@ -3849,6 +3852,7 @@ def direct_lake_manager(
                 changes = data.get("changes") or []
                 if not changes:
                     return
+
                 # Defer table renames to the end so other staged changes
                 # that reference the original table name resolve correctly.
                 # Run add_source first so subsequent reassign_table /
@@ -3862,6 +3866,7 @@ def direct_lake_manager(
                     if k == "rename_table":
                         return 3
                     return 2
+
                 changes = sorted(changes, key=_change_order)
                 summary = []
                 with connect_semantic_model(
@@ -3981,7 +3986,9 @@ def direct_lake_manager(
                                 # can override the entity name.
                                 if isinstance(spec, dict):
                                     raw_spec = (spec.get("spec") or "").strip()
-                                    custom_name = (spec.get("name") or "").strip() or None
+                                    custom_name = (
+                                        spec.get("name") or ""
+                                    ).strip() or None
                                 else:
                                     raw_spec = str(spec).strip()
                                     custom_name = None
@@ -4038,9 +4045,7 @@ def direct_lake_manager(
                             table_name = p.get("table_name")
                             cols = p.get("columns") or []
                             if not table_name:
-                                raise ValueError(
-                                    "Table is required to edit columns."
-                                )
+                                raise ValueError("Table is required to edit columns.")
                             if not cols:
                                 continue
                             renames = []
@@ -4080,8 +4085,7 @@ def direct_lake_manager(
                                         f"'{table_name}': {exc}"
                                     )
                             summary.append(
-                                f"updated {len(cols)} column(s) in "
-                                f"'{table_name}'"
+                                f"updated {len(cols)} column(s) in " f"'{table_name}'"
                             )
                         elif kind == "rename_table":
                             old_name = change.get("key") or p.get("table_name")
@@ -4093,12 +4097,9 @@ def direct_lake_manager(
                                 )
                             if old_name == new_name:
                                 continue
-                            if old_name not in [
-                                t.Name for t in tom.model.Tables
-                            ]:
+                            if old_name not in [t.Name for t in tom.model.Tables]:
                                 raise ValueError(
-                                    f"Table '{old_name}' not found "
-                                    "in the model."
+                                    f"Table '{old_name}' not found " "in the model."
                                 )
                             try:
                                 tom.model.Tables[old_name].Name = new_name
@@ -4119,15 +4120,10 @@ def direct_lake_manager(
                             add_cols = p.get("add") or []
                             remove_cols = p.get("remove") or []
                             if not table_name:
+                                raise ValueError("Table is required to sync columns.")
+                            if table_name not in [t.Name for t in tom.model.Tables]:
                                 raise ValueError(
-                                    "Table is required to sync columns."
-                                )
-                            if table_name not in [
-                                t.Name for t in tom.model.Tables
-                            ]:
-                                raise ValueError(
-                                    f"Table '{table_name}' not found "
-                                    "in the model."
+                                    f"Table '{table_name}' not found " "in the model."
                                 )
                             added = 0
                             removed = 0
@@ -4142,10 +4138,7 @@ def direct_lake_manager(
                                 if dtype == "Binary":
                                     continue
                                 existing = {
-                                    c.Name
-                                    for c in tom.model.Tables[
-                                        table_name
-                                    ].Columns
+                                    c.Name for c in tom.model.Tables[table_name].Columns
                                 }
                                 target_name = col_name
                                 suffix = 1
@@ -4161,9 +4154,9 @@ def direct_lake_manager(
                                 added += 1
                             for col_name in remove_cols:
                                 try:
-                                    tom.model.Tables[
-                                        table_name
-                                    ].Columns.Remove(col_name)
+                                    tom.model.Tables[table_name].Columns.Remove(
+                                        col_name
+                                    )
                                     removed += 1
                                 except Exception:
                                     continue

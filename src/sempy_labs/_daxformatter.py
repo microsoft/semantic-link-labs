@@ -15,8 +15,12 @@ def _format_dax(
         expressions = [expressions]
         metadata = [metadata] if metadata else [{}]
 
-    # Add variable assignment to each expression
-    expressions = [f"x :={item}" for item in expressions]
+    # Add variable assignment to each expression (skip for EVALUATE queries,
+    # which are already valid standalone DAX statements).
+    expressions = [
+        item if item.lstrip().lower().startswith("evaluate") else f"x :={item}"
+        for item in expressions
+    ]
 
     url = "https://daxformatter.azurewebsites.net/api/daxformatter/daxtextformatmulti"
 
