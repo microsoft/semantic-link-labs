@@ -334,6 +334,35 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
     return tree
 
 
+def _classify_dax_spans(dax_expression: str) -> list:
+    """Classify a DAX expression into a flat list of ``{text, kind}`` spans
+    using the project's DAX parser/tokenizer.
+
+    Spans cover the full string including inter-token whitespace (which has
+    ``kind = ""``) so the front-end can faithfully reproduce the input
+    layout while applying syntax colors.
+    """
+
+    if not dax_expression:
+        return []
+    try:
+        from sempy_labs.dax._format import _classify_tokens
+        classified = _classify_tokens(dax_expression)
+    except Exception:
+        return [{"text": dax_expression, "kind": ""}]
+
+    spans: list = []
+    cursor = 0
+    for token, kind in classified:
+        if token.position > cursor:
+            spans.append({"text": dax_expression[cursor:token.position], "kind": ""})
+        spans.append({"text": token.text, "kind": kind or ""})
+        cursor = token.position + len(token.text)
+    if cursor < len(dax_expression):
+        spans.append({"text": dax_expression[cursor:], "kind": ""})
+    return spans
+
+
 def _visualize_dax_test(
     df: pd.DataFrame,
     total_duration: int,
@@ -377,6 +406,13 @@ def _visualize_dax_test(
         formatted_initial = _formatted[0] if _formatted else (dax_string or "")
     except Exception:
         formatted_initial = dax_string or ""
+
+    # Normalize line endings to "\n". The DAX Formatter API returns "\r\n"
+    # line endings, but a <textarea> normalizes those to "\n" on assignment.
+    # If left un-normalized, the classified token text (which still contains
+    # "\r") no longer matches the textarea length, so the front-end falls
+    # back to plain (uncolored) rendering of the DAX.
+    formatted_initial = formatted_initial.replace("\r\n", "\n").replace("\r", "\n")
     initial_rows = _trace_rows_from_df(df)
 
     widget_css = (
@@ -660,6 +696,39 @@ def _visualize_dax_test(
     background: #b91c1c;
     border-color: #b91c1c;
 }}
+.dtx .dtx-query-wrap {{
+    position: relative;
+}}
+.dtx .dtx-query-hl {{
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ui-text);
+    background: transparent;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+}}
+.dtx .dtx-query-hl span {{ background: transparent; }}
+.dtx .dtx-query-hl .dtx-tk-function,
+.dtx .dtx-query-hl .dtx-tk-keyword {{ color: #5E9EFF !important; }}
+.dtx .dtx-query-hl .dtx-tk-variable {{ color: #5AC8B8 !important; }}
+.dtx .dtx-query-hl .dtx-tk-number {{ color: #FF9F45 !important; }}
+.dtx .dtx-query-hl .dtx-tk-virtual_column {{ color: #FF7A8A !important; }}
+.dtx .dtx-query-hl .dtx-tk-string {{ color: #9BB87A !important; }}
+.dtx .dtx-query-hl .dtx-tk-operator,
+.dtx .dtx-query-hl .dtx-tk-punctuation {{ color: #A6A6A6 !important; }}
 .dtx .dtx-query {{
     width: 100%;
     min-height: 120px;
@@ -671,10 +740,19 @@ def _visualize_dax_test(
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px;
     line-height: 1.5;
-    color: var(--ui-text);
+    color: transparent;
+    caret-color: var(--ui-text);
+    -webkit-text-fill-color: transparent;
     resize: vertical;
     outline: none;
+    position: relative;
+    z-index: 1;
     transition: border-color 120ms ease, box-shadow 120ms ease;
+}}
+.dtx .dtx-query::selection {{
+    background: var(--ui-accent-soft);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
 }}
 .dtx .dtx-query:focus {{
     border-color: var(--ui-accent);
@@ -1282,9 +1360,45 @@ function render({ model, el }) {
     textarea.className = "dtx-query";
     textarea.spellcheck = false;
     textarea.value = model.get("dax_query") || "";
+
+    const queryWrap = document.createElement("div");
+    queryWrap.className = "dtx-query-wrap";
+    const hl = document.createElement("pre");
+    hl.className = "dtx-query-hl";
+    hl.setAttribute("aria-hidden", "true");
+    queryWrap.appendChild(hl);
+    queryWrap.appendChild(textarea);
+    queryBlock.appendChild(queryWrap);
+
+    function renderHighlight() {
+        const tokens = model.get("dax_tokens") || [];
+        const text = textarea.value;
+        let total = 0;
+        for (const t of tokens) total += (t.text || "").length;
+        if (tokens.length && total === text.length) {
+            hl.innerHTML = tokens.map(t => {
+                const txt = escapeHtml(t.text);
+                return t.kind
+                    ? `<span class="dtx-tk-${t.kind}">${txt}</span>`
+                    : txt;
+            }).join("") + "\n";
+        } else {
+            // Token list out of sync with current text (user is typing) —
+            // fall back to plain rendering until Python reclassifies.
+            hl.textContent = text + "\n";
+        }
+        hl.scrollTop = textarea.scrollTop;
+        hl.scrollLeft = textarea.scrollLeft;
+    }
+
     textarea.addEventListener("input", () => {
         model.set("dax_query", textarea.value);
         model.save_changes();
+        renderHighlight();
+    });
+    textarea.addEventListener("scroll", () => {
+        hl.scrollTop = textarea.scrollTop;
+        hl.scrollLeft = textarea.scrollLeft;
     });
     // Ctrl/Cmd+Enter to run
     textarea.addEventListener("keydown", (e) => {
@@ -1293,7 +1407,6 @@ function render({ model, el }) {
             runBtn.click();
         }
     });
-    queryBlock.appendChild(textarea);
 
     // ---------- Error message ----------
     const errorEl = document.createElement("div");
@@ -1667,7 +1780,9 @@ function render({ model, el }) {
         if (textarea.value !== model.get("dax_query")) {
             textarea.value = model.get("dax_query") || "";
         }
+        renderHighlight();
     });
+    model.on("change:dax_tokens", renderHighlight);
     model.on("change:clear_cache", renderCacheBtn);
     model.on("change:sidebar_collapsed", renderSidebarChrome);
     model.on("change:metadata_loading", () => { renderSidebarChrome(); renderTree(); });
@@ -1682,6 +1797,7 @@ function render({ model, el }) {
     renderTable();
     renderSidebarChrome();
     renderTree();
+    renderHighlight();
 }
 export default { render };
 """
@@ -1700,6 +1816,7 @@ export default { render };
         _css = widget_css
 
         dax_query = traitlets.Unicode("").tag(sync=True)
+        dax_tokens = traitlets.List([]).tag(sync=True)
         dataset_name = traitlets.Unicode("").tag(sync=True)
         workspace_name = traitlets.Unicode("").tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
@@ -1727,6 +1844,7 @@ export default { render };
 
     widget = DaxTestWidget(
         dax_query=formatted_initial or "",
+        dax_tokens=_classify_dax_spans(formatted_initial or ""),
         dataset_name=dataset_name or "",
         workspace_name=workspace_name or "",
         dark_mode=bool(dark_mode),
@@ -1845,6 +1963,16 @@ export default { render };
 
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
+
+    def _on_query_change(change):
+        # Re-classify on every edit so the syntax-highlight overlay stays
+        # in sync. The DAX tokenizer is cheap relative to comm latency.
+        try:
+            widget.dax_tokens = _classify_dax_spans(change["new"] or "")
+        except Exception:
+            pass
+
+    widget.observe(_on_query_change, names="dax_query")
 
     def _load_metadata() -> None:
         try:
