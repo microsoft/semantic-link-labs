@@ -2634,6 +2634,14 @@ function render({ model, el }) {
     function setupZone(zone, isFilter) {
         zone.addEventListener("dragover", (e) => {
             e.preventDefault();
+            const list = isFilter ? builderFilters : builderFields;
+            const isDupe = !builderReorder && dragFieldMeta
+                && list.some(x => x.kind === dragFieldMeta.kind
+                    && x.ref === dragFieldMeta.ref);
+            if (isDupe) {
+                e.dataTransfer.dropEffect = "none";
+                return;
+            }
             e.dataTransfer.dropEffect = builderReorder ? "move" : "copy";
             zone.classList.add("dtx-drop-over");
         });
@@ -2667,6 +2675,9 @@ function render({ model, el }) {
                 }
             }
             if (!meta || !meta.name) return;
+            const dupe = list.some(x =>
+                x.kind === meta.kind && x.ref === meta.ref);
+            if (dupe) return;
             const item = {
                 id: "qb" + (++qbSeq),
                 kind: meta.kind,
