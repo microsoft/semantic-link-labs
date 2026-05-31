@@ -1686,6 +1686,16 @@ def _visualize_dax_test(
 .dtx.dtx-dark .dtx-tree-label.dtx-hidden {{
     color: #9ca3af;
 }}
+.dtx:not(.dtx-dark) .dtx-tree-leaf .dtx-tree-label:not(.dtx-hidden),
+.dtx:not(.dtx-dark) .dtx-tree-node > .dtx-tree-label:not(.dtx-hidden),
+.dtx:not(.dtx-dark) .dtx-tree-folder-header .dtx-tree-label:not(.dtx-hidden) {{
+    color: #2b2b30;
+}}
+.dtx.dtx-dark .dtx-tree-leaf .dtx-tree-label:not(.dtx-hidden),
+.dtx.dtx-dark .dtx-tree-node > .dtx-tree-label:not(.dtx-hidden),
+.dtx.dtx-dark .dtx-tree-folder-header .dtx-tree-label:not(.dtx-hidden) {{
+    color: var(--ui-text);
+}}
 .dtx .dtx-tree-type {{
     margin-left: 6px;
     flex: 0 0 auto;
