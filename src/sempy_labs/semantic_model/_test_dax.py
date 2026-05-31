@@ -3253,7 +3253,8 @@ function render({ model, el }) {
             // disappears as soon as the user types anything.
             hl.innerHTML = '<span class="dtx-query-placeholder">'
                 + 'EVALUATE — type a DAX query here, drag model objects in '
-                + 'from the left, or click Generate to create a sample query.'
+                + 'from the left, use the Query Builder, or click Generate '
+                + 'to create a sample query.'
                 + '</span>';
             hl.scrollTop = textarea.scrollTop;
             hl.scrollLeft = textarea.scrollLeft;
