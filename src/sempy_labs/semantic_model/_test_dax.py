@@ -11,8 +11,8 @@ import time
 
 @log
 def test(
-    dataset: str | UUID,
-    dax_string: str,
+    dataset: Optional[str | UUID] = None,
+    dax_string: str = "",
     workspace: Optional[str | UUID] = None,
     clear_cache: bool = True,
     visualize: bool = True,
@@ -27,10 +27,15 @@ def test(
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
-        Name or ID of the semantic model.
-    dax_string : str
-        The DAX query to execute.
+    dataset : str | uuid.UUID, default=None
+        Name or ID of the semantic model. Optional when ``visualize=True``:
+        if not provided, the interactive widget lets you choose a workspace
+        and a semantic model within it before running a query. Required when
+        ``visualize=False``.
+    dax_string : str, default=""
+        The DAX query to execute. May be left empty when ``visualize=True``
+        (you can type the query directly in the widget). Required when
+        ``visualize=False``.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -69,19 +74,49 @@ def test(
             "one of them."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_item_name_and_id(
-        item=dataset, type="SemanticModel", workspace=workspace_id
-    )
+    if not visualize:
+        if dataset is None:
+            raise ValueError(
+                "The 'dataset' parameter is required when 'visualize=False'."
+            )
+        if not (dax_string and dax_string.strip()):
+            raise ValueError(
+                "The 'dax_string' parameter is required when 'visualize=False'."
+            )
 
-    df, total_duration, fe_duration, se_duration, cpu_time, result_df = _run_dax_trace(
-        dataset_id=dataset_id,
-        workspace_id=workspace_id,
-        dax_string=dax_string,
-        clear_cache=clear_cache,
-        effective_user_name=effective_user_name,
-        role=role,
-    )
+    df = pd.DataFrame()
+    result_df = pd.DataFrame()
+    total_duration = fe_duration = se_duration = cpu_time = 0
+    dataset_name = None
+    dataset_id = None
+    workspace_name = None
+    workspace_id = None
+
+    if dataset is not None:
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        (dataset_name, dataset_id) = resolve_item_name_and_id(
+            item=dataset, type="SemanticModel", workspace=workspace_id
+        )
+        if dax_string and dax_string.strip():
+            (
+                df,
+                total_duration,
+                fe_duration,
+                se_duration,
+                cpu_time,
+                result_df,
+            ) = _run_dax_trace(
+                dataset_id=dataset_id,
+                workspace_id=workspace_id,
+                dax_string=dax_string,
+                clear_cache=clear_cache,
+                effective_user_name=effective_user_name,
+                role=role,
+            )
+    elif workspace is not None:
+        # No dataset chosen yet, but a workspace was provided: resolve it so
+        # the widget's model picker can pre-select that workspace.
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if visualize:
         _visualize_dax_test(
@@ -93,7 +128,11 @@ def test(
             dax_string=dax_string,
             dataset_id=dataset_id,
             workspace_id=workspace_id,
-            dataset_name=str(dataset_name) if dataset_name else str(dataset),
+            dataset_name=(
+                (str(dataset_name) if dataset_name else str(dataset))
+                if dataset is not None
+                else None
+            ),
             workspace_name=workspace_name,
             clear_cache=clear_cache,
             result_df=result_df,
@@ -428,6 +467,165 @@ def _collect_model_roles(dataset_id: str, workspace_id: str) -> list:
     return roles
 
 
+def _list_workspaces_for_picker() -> list:
+    """Return a list of ``{"id", "name"}`` dicts for the workspaces the user
+    can access, sorted alphabetically. Used by the interactive widget's model
+    picker when no ``dataset`` is supplied to :func:`test`."""
+
+    out: list = []
+    try:
+        dfW = fabric.list_workspaces()
+    except Exception:
+        return []
+    for _, r in dfW.iterrows():
+        out.append({"id": str(r["Id"]), "name": str(r["Name"])})
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def _list_datasets_for_picker(workspace_id: str) -> list:
+    """Return a list of ``{"id", "name"}`` dicts for the semantic models in
+    the given workspace, sorted alphabetically. Used by the interactive
+    widget's model picker."""
+
+    out: list = []
+    try:
+        dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
+    except Exception:
+        return []
+    for _, r in dfD.iterrows():
+        out.append(
+            {"id": str(r["Dataset Id"]), "name": str(r["Dataset Name"])}
+        )
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def _pick_groupby_column(table) -> Optional[str]:
+    """Pick a reasonable column to group by from a TOM table: prefer a
+    visible string/text column, otherwise the first visible non-RowNumber
+    column. Returns the column name or None."""
+
+    candidate = None
+    try:
+        columns = list(table.Columns)
+    except Exception:
+        return None
+    for c in columns:
+        try:
+            name = str(c.Name)
+            col_type = str(getattr(c, "Type", ""))
+            if col_type == "RowNumber" or name == "RowNumber":
+                continue
+            if getattr(c, "IsHidden", False):
+                continue
+        except Exception:
+            continue
+        if candidate is None:
+            candidate = name
+        if str(getattr(c, "DataType", "")) == "String":
+            return name
+    return candidate
+
+
+def _generate_sample_dax(dataset_id: str, workspace_id: str) -> str:
+    """Generate a simple ``EVALUATE SUMMARIZECOLUMNS(...)`` DAX query against
+    the model: a measure grouped by a column from a table related to the
+    measure's home table (falling back to a column from the measure's own
+    table when no relationship exists). Returns an empty string if the model
+    has no usable measure/column."""
+
+    try:
+        from sempy_labs.tom import connect_semantic_model
+    except Exception:
+        return ""
+
+    try:
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=True
+        ) as tom:
+            # Pick a measure (prefer a visible one).
+            measure = None
+            for m in tom.all_measures():
+                if measure is None:
+                    measure = m
+                if not getattr(m, "IsHidden", False):
+                    measure = m
+                    break
+            if measure is None:
+                return ""
+            measure_name = str(measure.Name)
+            try:
+                measure_table = str(measure.Parent.Name)
+            except Exception:
+                measure_table = None
+
+            group_table = None
+            group_column = None
+
+            # Look for a table related to the measure's home table and pick a
+            # column from it.
+            if measure_table is not None:
+                for rel in tom.model.Relationships:
+                    try:
+                        from_table = str(rel.FromTable.Name)
+                        to_table = str(rel.ToTable.Name)
+                    except Exception:
+                        continue
+                    other = None
+                    if from_table == measure_table:
+                        other = to_table
+                    elif to_table == measure_table:
+                        other = from_table
+                    if other is None:
+                        continue
+                    try:
+                        other_tbl = tom.model.Tables[other]
+                    except Exception:
+                        continue
+                    col = _pick_groupby_column(other_tbl)
+                    if col:
+                        group_table = other
+                        group_column = col
+                        break
+
+            # Fall back to a column from the measure's own table.
+            if group_column is None and measure_table is not None:
+                try:
+                    own_tbl = tom.model.Tables[measure_table]
+                    col = _pick_groupby_column(own_tbl)
+                    if col:
+                        group_table = measure_table
+                        group_column = col
+                except Exception:
+                    pass
+    except Exception:
+        return ""
+
+    def _tbl_ref(name: str) -> str:
+        return "'" + name.replace("'", "''") + "'"
+
+    def _mea_ref(name: str) -> str:
+        return "[" + name.replace("]", "]]") + "]"
+
+    if group_table and group_column:
+        col_ref = _tbl_ref(group_table) + _mea_ref(group_column)
+        return (
+            "EVALUATE\n"
+            "SUMMARIZECOLUMNS(\n"
+            f"    {col_ref},\n"
+            f'    "{measure_name}", {_mea_ref(measure_name)}\n'
+            ")"
+        )
+    # No usable column: emit a measure-only query.
+    return (
+        "EVALUATE\n"
+        "ROW(\n"
+        f'    "{measure_name}", {_mea_ref(measure_name)}\n'
+        ")"
+    )
+
+
 def _classify_dax_spans(dax_expression: str) -> list:
     """Classify a DAX expression into a flat list of ``{text, kind}`` spans
     using the project's DAX parser/tokenizer.
@@ -464,8 +662,8 @@ def _visualize_dax_test(
     se_duration: int,
     cpu_time: int,
     dax_string: str,
-    dataset_id: str,
-    workspace_id: str,
+    dataset_id: Optional[str],
+    workspace_id: Optional[str],
     dataset_name: Optional[str] = None,
     workspace_name: Optional[str] = None,
     dark_mode: bool = False,
@@ -594,13 +792,78 @@ def _visualize_dax_test(
     gap: 8px;
     margin-bottom: 8px;
 }}
+.dtx .dtx-query-titlegroup {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+}}
 .dtx .dtx-query-title {{
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ui-text-tertiary);
-    margin-right: auto;
+}}
+.dtx .dtx-gen-btn {{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-gen-btn:hover:not(:disabled) {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-gen-btn:disabled {{
+    opacity: 0.5;
+    cursor: default;
+}}
+.dtx .dtx-change-btn {{
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 2px 8px;
+    margin-left: 2px;
+    border-radius: 5px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-change-btn:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-picker-cancel {{
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    line-height: 1;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-picker-cancel:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-query-placeholder {{
+    color: var(--ui-text-tertiary);
+    font-style: italic;
 }}
 .dtx .dtx-cache-label {{
     display: inline-flex;
@@ -657,6 +920,38 @@ def _visualize_dax_test(
     border-color: var(--ui-accent);
     box-shadow: 0 0 0 3px var(--ui-accent-soft);
 }}
+.dtx .dtx-picker {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-picker-label {{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-picker-select {{ min-width: 190px; }}
+.dtx .dtx-picker-spin {{ font-size: 12px; color: var(--ui-text-tertiary); }}
+.dtx .dtx-picker-btn {{
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--ui-accent);
+    background: var(--ui-accent);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, opacity 120ms ease;
+}}
+.dtx .dtx-picker-btn:hover {{ background: var(--ui-accent-hover); }}
+.dtx .dtx-picker-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
 .dtx .dtx-icon-btn {{
     appearance: none;
     -webkit-appearance: none;
@@ -1044,6 +1339,29 @@ def _visualize_dax_test(
     animation: dtx-spin 0.9s linear infinite;
 }}
 @keyframes dtx-spin {{ to {{ transform: rotate(360deg); }} }}
+.dtx .dtx-sidebar-search {{
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-search {{ display: none; }}
+.dtx .dtx-sidebar-search input {{
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+}}
+.dtx .dtx-sidebar-search input:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-sidebar-search input::placeholder {{ color: var(--ui-text-tertiary); }}
 .dtx .dtx-sidebar-body {{
     overflow-y: auto;
     overflow-x: hidden;
@@ -1291,9 +1609,32 @@ function render({ model, el }) {
     const subtitle = document.createElement("div");
     subtitle.className = "sl-subtitle";
     titleWrap.appendChild(subtitle);
+
+    const changeModelBtn = document.createElement("button");
+    changeModelBtn.type = "button";
+    changeModelBtn.className = "dtx-change-btn";
+    changeModelBtn.textContent = "Change model";
+    changeModelBtn.title = "Choose a different workspace / semantic model";
+    titleWrap.appendChild(changeModelBtn);
+    changeModelBtn.addEventListener("click", () => {
+        pickerOpen = true;
+        // (Re)load the workspace list so the picker is populated even when a
+        // dataset was supplied directly to test().
+        model.set("error_message", "");
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
+        renderPicker();
+    });
     function renderSubtitle() {
         const ds = model.get("dataset_name") || "";
         const ws = model.get("workspace_name") || "";
+        changeModelBtn.style.display =
+            model.get("dataset_chosen") === true ? "" : "none";
+        if (model.get("dataset_chosen") !== true) {
+            subtitle.textContent = "No semantic model selected";
+            return;
+        }
         if (!ds && !ws) { subtitle.textContent = ""; return; }
         subtitle.innerHTML =
             (ds ? `<b>${escapeHtml(ds)}</b>` : "") +
@@ -1356,6 +1697,23 @@ function render({ model, el }) {
         model.save_changes();
     });
     sidebarHeader.appendChild(sidebarToggle);
+
+    const sidebarSearch = document.createElement("div");
+    sidebarSearch.className = "dtx-sidebar-search";
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.placeholder = "Search tables, columns, measures…";
+    searchInput.setAttribute("aria-label", "Search the model");
+    searchInput.spellcheck = false;
+    sidebarSearch.appendChild(searchInput);
+    sidebar.appendChild(sidebarSearch);
+
+    let treeFilter = "";
+    let treeExpand = false;
+    searchInput.addEventListener("input", () => {
+        treeFilter = searchInput.value || "";
+        renderTree();
+    });
 
     const sidebarBody = document.createElement("div");
     sidebarBody.className = "dtx-sidebar-body";
@@ -1443,7 +1801,8 @@ function render({ model, el }) {
             + `<span class="dtx-tree-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
         const children = document.createElement("div");
         children.className = "dtx-tree-subtree";
-        children.style.display = "none";
+        children.style.display = treeExpand ? "block" : "none";
+        header.classList.toggle("dtx-open", treeExpand);
         header.addEventListener("click", () => {
             const open = !header.classList.contains("dtx-open");
             header.classList.toggle("dtx-open", open);
@@ -1487,7 +1846,8 @@ function render({ model, el }) {
             header.classList.toggle("dtx-open", open);
             children.style.display = open ? "block" : "none";
         });
-        children.style.display = "none";
+        children.style.display = treeExpand ? "block" : "none";
+        header.classList.toggle("dtx-open", treeExpand);
         wrap.appendChild(header);
         wrap.appendChild(children);
         return wrap;
@@ -1514,7 +1874,8 @@ function render({ model, el }) {
             if (hasLevels) {
                 const lchildren = document.createElement("div");
                 lchildren.className = "dtx-tree-subtree";
-                lchildren.style.display = "none";
+                lchildren.style.display = treeExpand ? "block" : "none";
+                node.classList.toggle("dtx-open", treeExpand);
                 for (const lvl of it.levels) {
                     const lleaf = document.createElement("div");
                     lleaf.className = "dtx-tree-leaf dtx-tree-level";
@@ -1536,15 +1897,58 @@ function render({ model, el }) {
         };
     }
 
+    // Filter the model tree by a case-insensitive substring. A table is kept
+    // in full when its own name matches; otherwise only its matching children
+    // (columns, measures, hierarchies/levels, calculation items) are kept.
+    function matchStr(s, q) {
+        return String(s == null ? "" : s).toLowerCase().indexOf(q) !== -1;
+    }
+
+    function filterTree(tree, q) {
+        if (!q) return tree;
+        const out = [];
+        for (const tbl of tree) {
+            if (matchStr(tbl.name, q)) { out.push(tbl); continue; }
+            const cols = (tbl.columns || []).filter(it => matchStr(it.name, q));
+            const meas = (tbl.measures || []).filter(it => matchStr(it.name, q));
+            const hiers = (tbl.hierarchies || []).map(h => {
+                if (matchStr(h.name, q)) return h;
+                const lv = (h.levels || []).filter(l => matchStr(l.name, q));
+                return lv.length ? Object.assign({}, h, { levels: lv }) : null;
+            }).filter(h => h);
+            const cis = (tbl.calculation_items || []).filter(
+                it => matchStr(it.name, q));
+            if (cols.length || meas.length || hiers.length || cis.length) {
+                out.push(Object.assign({}, tbl, {
+                    columns: cols,
+                    measures: meas,
+                    hierarchies: hiers,
+                    calculation_items: cis,
+                }));
+            }
+        }
+        return out;
+    }
+
     function renderTree() {
         sidebarBody.innerHTML = "";
-        const tree = model.get("model_tree") || [];
-        if (!tree.length) {
+        const rawTree = model.get("model_tree") || [];
+        const q = String(treeFilter || "").trim().toLowerCase();
+        treeExpand = q.length > 0;
+        const tree = filterTree(rawTree, q);
+        if (!rawTree.length) {
             const empty = document.createElement("div");
             empty.className = "dtx-sidebar-empty";
             empty.textContent = model.get("metadata_loading") === true
                 ? "Loading model metadata…"
                 : "No metadata available.";
+            sidebarBody.appendChild(empty);
+            return;
+        }
+        if (!tree.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-sidebar-empty";
+            empty.textContent = 'No objects match "' + treeFilter + '".';
             sidebarBody.appendChild(empty);
             return;
         }
@@ -1576,7 +1980,8 @@ function render({ model, el }) {
                 node.classList.toggle("dtx-open", open);
                 children.style.display = open ? "block" : "none";
             });
-            children.style.display = "none";
+            children.style.display = treeExpand ? "block" : "none";
+            node.classList.toggle("dtx-open", treeExpand);
             sidebarBody.appendChild(node);
             sidebarBody.appendChild(children);
         }
@@ -1585,6 +1990,108 @@ function render({ model, el }) {
     const main = document.createElement("div");
     main.className = "dtx-main";
     body.appendChild(main);
+
+    // ---------- Model picker (shown when no dataset is chosen) ----------
+    let pickerOpen = model.get("dataset_chosen") !== true;
+    const pickerBar = document.createElement("div");
+    pickerBar.className = "dtx-picker";
+    const pickerLabel = document.createElement("span");
+    pickerLabel.className = "dtx-picker-label";
+    pickerLabel.textContent = "Choose a semantic model:";
+    const wsSel = document.createElement("select");
+    wsSel.className = "dtx-imp-select dtx-picker-select";
+    wsSel.title = "Workspace";
+    const dsSel = document.createElement("select");
+    dsSel.className = "dtx-imp-select dtx-picker-select";
+    dsSel.title = "Semantic model";
+    const pickerBtn = document.createElement("button");
+    pickerBtn.type = "button";
+    pickerBtn.className = "dtx-picker-btn";
+    pickerBtn.textContent = "Use model";
+    const pickerCancelBtn = document.createElement("button");
+    pickerCancelBtn.type = "button";
+    pickerCancelBtn.className = "dtx-picker-cancel";
+    pickerCancelBtn.textContent = "Cancel";
+    const pickerSpin = document.createElement("span");
+    pickerSpin.className = "dtx-picker-spin";
+    pickerBar.appendChild(pickerLabel);
+    pickerBar.appendChild(wsSel);
+    pickerBar.appendChild(dsSel);
+    pickerBar.appendChild(pickerBtn);
+    pickerBar.appendChild(pickerCancelBtn);
+    pickerBar.appendChild(pickerSpin);
+    main.appendChild(pickerBar);
+
+    function renderPicker() {
+        const chosen = model.get("dataset_chosen") === true;
+        const show = pickerOpen || !chosen;
+        pickerBar.style.display = show ? "" : "none";
+        // Allow canceling only when a model is already in use.
+        pickerCancelBtn.style.display = chosen ? "" : "none";
+        const loading = model.get("picker_loading") === true;
+        const curWs = model.get("selected_workspace_id") || "";
+        const curDs = model.get("selected_dataset_id") || "";
+        const wss = model.get("available_workspaces") || [];
+        wsSel.innerHTML = "";
+        const wph = document.createElement("option");
+        wph.value = "";
+        wph.textContent = wss.length ? "Select a workspace…" : "No workspaces";
+        wsSel.appendChild(wph);
+        wss.forEach(w => {
+            const o = document.createElement("option");
+            o.value = w.id;
+            o.textContent = w.name;
+            wsSel.appendChild(o);
+        });
+        wsSel.value = curWs;
+        const dss = model.get("available_datasets") || [];
+        dsSel.innerHTML = "";
+        const dph = document.createElement("option");
+        dph.value = "";
+        dph.textContent = !curWs
+            ? "Select a workspace first"
+            : (loading
+                ? "Loading…"
+                : (dss.length ? "Select a semantic model…" : "No semantic models"));
+        dsSel.appendChild(dph);
+        dss.forEach(d => {
+            const o = document.createElement("option");
+            o.value = d.id;
+            o.textContent = d.name;
+            dsSel.appendChild(o);
+        });
+        dsSel.value = curDs;
+        dsSel.disabled = !curWs || loading;
+        pickerBtn.disabled = loading || !curDs;
+        pickerSpin.textContent = loading ? "Loading…" : "";
+    }
+    wsSel.addEventListener("change", () => {
+        model.set("selected_workspace_id", wsSel.value);
+        model.set("selected_dataset_id", "");
+        model.set("available_datasets", []);
+        if (wsSel.value) {
+            model.set("select_workspace_trigger",
+                (model.get("select_workspace_trigger") || 0) + 1);
+        }
+        model.save_changes();
+        renderPicker();
+    });
+    dsSel.addEventListener("change", () => {
+        model.set("selected_dataset_id", dsSel.value);
+        model.save_changes();
+        renderPicker();
+    });
+    pickerBtn.addEventListener("click", () => {
+        if (!model.get("selected_dataset_id")) return;
+        model.set("error_message", "");
+        model.set("select_dataset_trigger",
+            (model.get("select_dataset_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    pickerCancelBtn.addEventListener("click", () => {
+        pickerOpen = false;
+        renderPicker();
+    });
 
     // ---------- Cards ----------
     const cardsEl = document.createElement("div");
@@ -1622,10 +2129,32 @@ function render({ model, el }) {
     toolbar.className = "dtx-query-toolbar";
     queryBlock.appendChild(toolbar);
 
+    const qTitleGroup = document.createElement("div");
+    qTitleGroup.className = "dtx-query-titlegroup";
+    toolbar.appendChild(qTitleGroup);
+
     const qTitle = document.createElement("div");
     qTitle.className = "dtx-query-title";
     qTitle.textContent = "DAX Query";
-    toolbar.appendChild(qTitle);
+    qTitleGroup.appendChild(qTitle);
+
+    const genBtn = document.createElement("button");
+    genBtn.type = "button";
+    genBtn.className = "dtx-gen-btn";
+    genBtn.textContent = "Generate";
+    genBtn.title = "Generate a sample EVALUATE SUMMARIZECOLUMNS query "
+        + "from a measure and a related column in the model";
+    qTitleGroup.appendChild(genBtn);
+    genBtn.addEventListener("click", () => {
+        if (model.get("dataset_chosen") !== true) return;
+        model.set("error_message", "");
+        model.set("generate_query_trigger",
+            (model.get("generate_query_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    function renderGenBtn() {
+        genBtn.disabled = model.get("dataset_chosen") !== true;
+    }
 
     const cacheLabel = document.createElement("label");
     cacheLabel.className = "dtx-cache-label";
@@ -1772,6 +2301,8 @@ function render({ model, el }) {
     runBtn.className = "dtx-btn";
     function renderRunBtn() {
         const running = model.get("is_running") === true;
+        const chosen = model.get("dataset_chosen") === true;
+        runBtn.disabled = !running && !chosen;
         if (running) {
             runBtn.classList.add("dtx-btn-stop");
             runBtn.innerHTML = STOP_SVG;
@@ -1817,6 +2348,18 @@ function render({ model, el }) {
     function renderHighlight() {
         const tokens = model.get("dax_tokens") || [];
         const text = textarea.value;
+        if (text.length === 0) {
+            // The textarea's own text is transparent, so render the
+            // placeholder helper text in the highlight overlay instead. It
+            // disappears as soon as the user types anything.
+            hl.innerHTML = '<span class="dtx-query-placeholder">'
+                + 'EVALUATE — type a DAX query here, drag model objects in '
+                + 'from the left, or click Generate to create a sample query.'
+                + '</span>';
+            hl.scrollTop = textarea.scrollTop;
+            hl.scrollLeft = textarea.scrollLeft;
+            return;
+        }
         let total = 0;
         for (const t of tokens) total += (t.text || "").length;
         if (tokens.length && total === text.length) {
@@ -2278,6 +2821,15 @@ function render({ model, el }) {
     model.on("change:sidebar_collapsed", renderSidebarChrome);
     model.on("change:metadata_loading", () => { renderSidebarChrome(); renderTree(); });
     model.on("change:model_tree", renderTree);
+    model.on("change:dataset_chosen", () => {
+        if (model.get("dataset_chosen") === true) { pickerOpen = false; }
+        renderPicker(); renderRunBtn(); renderSubtitle(); renderGenBtn();
+    });
+    model.on("change:available_workspaces", renderPicker);
+    model.on("change:available_datasets", renderPicker);
+    model.on("change:selected_workspace_id", renderPicker);
+    model.on("change:selected_dataset_id", renderPicker);
+    model.on("change:picker_loading", renderPicker);
 
     applyTheme();
     renderSubtitle();
@@ -2288,6 +2840,8 @@ function render({ model, el }) {
     renderError();
     renderTable();
     renderSidebarChrome();
+    renderPicker();
+    renderGenBtn();
     renderTree();
     renderHighlight();
 }
@@ -2338,8 +2892,24 @@ export default { render };
         impersonation_mode = traitlets.Unicode("none").tag(sync=True)
         impersonation_value = traitlets.Unicode("").tag(sync=True)
         model_roles = traitlets.List([]).tag(sync=True)
+        dataset_chosen = traitlets.Bool(False).tag(sync=True)
+        available_workspaces = traitlets.List([]).tag(sync=True)
+        available_datasets = traitlets.List([]).tag(sync=True)
+        selected_workspace_id = traitlets.Unicode("").tag(sync=True)
+        selected_dataset_id = traitlets.Unicode("").tag(sync=True)
+        picker_loading = traitlets.Bool(False).tag(sync=True)
+        select_workspace_trigger = traitlets.Int(0).tag(sync=True)
+        select_dataset_trigger = traitlets.Int(0).tag(sync=True)
+        load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
+        generate_query_trigger = traitlets.Int(0).tag(sync=True)
 
     initial_result = _result_payload_from_df(result_df)
+
+    # Mutable model context so the front-end model picker can switch the
+    # active dataset/workspace at runtime (the run/metadata workers read the
+    # current ids from this dict rather than closing over fixed values).
+    model_ctx = {"dataset_id": dataset_id, "workspace_id": workspace_id}
+    dataset_chosen = dataset_id is not None
 
     # Collect the model metadata tree synchronously before constructing the
     # widget. Loading it in a background thread that sets traits right after
@@ -2348,15 +2918,37 @@ export default { render };
     # sidebar stuck on "Loading model metadata…". The tree collection is
     # fast, so building it up-front (and shipping it as initial state) is
     # both reliable and quick.
-    try:
-        initial_tree = _collect_model_tree(dataset_id, workspace_id)
-    except Exception:
+    if dataset_chosen:
+        try:
+            initial_tree = _collect_model_tree(dataset_id, workspace_id)
+        except Exception:
+            initial_tree = []
+        try:
+            initial_roles = _collect_model_roles(dataset_id, workspace_id)
+        except Exception:
+            initial_roles = []
+    else:
         initial_tree = []
-
-    try:
-        initial_roles = _collect_model_roles(dataset_id, workspace_id)
-    except Exception:
         initial_roles = []
+
+    # When no dataset was supplied, populate the workspace picker up-front so
+    # the user can immediately choose a workspace and then a semantic model.
+    if dataset_chosen:
+        initial_workspaces = []
+        initial_datasets = []
+    else:
+        try:
+            initial_workspaces = _list_workspaces_for_picker()
+        except Exception:
+            initial_workspaces = []
+        # If a workspace was provided (but no dataset), pre-load its models.
+        if workspace_id:
+            try:
+                initial_datasets = _list_datasets_for_picker(workspace_id)
+            except Exception:
+                initial_datasets = []
+        else:
+            initial_datasets = []
 
     widget = DaxTestWidget(
         dax_query=formatted_initial or "",
@@ -2383,6 +2975,16 @@ export default { render };
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
         metadata_loading=False,
+        dataset_chosen=dataset_chosen,
+        available_workspaces=initial_workspaces,
+        available_datasets=initial_datasets,
+        selected_workspace_id=str(workspace_id) if workspace_id else "",
+        selected_dataset_id="",
+        picker_loading=False,
+        select_workspace_trigger=0,
+        select_dataset_trigger=0,
+        load_workspaces_trigger=0,
+        generate_query_trigger=0,
         impersonation_mode=(
             "user" if effective_user_name else ("role" if role else "none")
         ),
@@ -2420,8 +3022,8 @@ export default { render };
                 new_cpu,
                 new_result,
             ) = _run_dax_trace(
-                dataset_id=dataset_id,
-                workspace_id=workspace_id,
+                dataset_id=model_ctx["dataset_id"],
+                workspace_id=model_ctx["workspace_id"],
                 dax_string=query,
                 clear_cache=clear_cache_flag,
                 effective_user_name=effective_user,
@@ -2460,6 +3062,13 @@ export default { render };
 
     def _on_run(change):
         if change["new"] == change["old"]:
+            return
+        if model_ctx["dataset_id"] is None:
+            widget.error_message = (
+                "No semantic model selected. Choose a workspace and a "
+                "semantic model first."
+            )
+            widget.is_running = False
             return
         query = widget.dax_query or ""
         if not query.strip():
@@ -2516,9 +3125,16 @@ export default { render };
     widget.observe(_on_query_change, names="dax_query")
 
     def _load_metadata() -> None:
+        if model_ctx["dataset_id"] is None:
+            widget.metadata_loading = False
+            return
         try:
-            tree = _collect_model_tree(dataset_id, workspace_id)
-            roles = _collect_model_roles(dataset_id, workspace_id)
+            tree = _collect_model_tree(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+            roles = _collect_model_roles(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
         except Exception as exc:  # noqa: BLE001
             widget.metadata_loading = False
             widget.error_message = f"Failed to load model metadata: {exc}"
@@ -2536,5 +3152,142 @@ export default { render };
         threading.Thread(target=_load_metadata, daemon=True).start()
 
     widget.observe(_on_refresh_metadata, names="refresh_metadata_trigger")
+
+    def _load_datasets_for_selected_workspace() -> None:
+        ws_id = (widget.selected_workspace_id or "").strip()
+        if not ws_id:
+            widget.available_datasets = []
+            widget.picker_loading = False
+            return
+        try:
+            datasets = _list_datasets_for_picker(ws_id)
+        except Exception as exc:  # noqa: BLE001
+            widget.available_datasets = []
+            widget.picker_loading = False
+            widget.error_message = f"Failed to list semantic models: {exc}"
+            return
+        widget.available_datasets = datasets
+        widget.picker_loading = False
+
+    def _on_select_workspace(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        widget.picker_loading = True
+        threading.Thread(
+            target=_load_datasets_for_selected_workspace, daemon=True
+        ).start()
+
+    widget.observe(_on_select_workspace, names="select_workspace_trigger")
+
+    def _activate_selected_dataset() -> None:
+        ws_id = (widget.selected_workspace_id or "").strip()
+        ds_id = (widget.selected_dataset_id or "").strip()
+        if not ws_id or not ds_id:
+            widget.picker_loading = False
+            return
+        try:
+            from sempy_labs._helper_functions import (
+                resolve_workspace_name_and_id as _rwni,
+            )
+
+            (ws_name, ws_id_resolved) = _rwni(ws_id)
+            (ds_name, ds_id_resolved) = resolve_item_name_and_id(
+                item=ds_id, type="SemanticModel", workspace=ws_id_resolved
+            )
+            model_ctx["workspace_id"] = ws_id_resolved
+            model_ctx["dataset_id"] = ds_id_resolved
+            tree = _collect_model_tree(ds_id_resolved, ws_id_resolved)
+            roles = _collect_model_roles(ds_id_resolved, ws_id_resolved)
+        except Exception as exc:  # noqa: BLE001
+            widget.picker_loading = False
+            widget.error_message = f"Failed to load semantic model: {exc}"
+            return
+        widget.dataset_name = str(ds_name) if ds_name else str(ds_id)
+        widget.workspace_name = str(ws_name) if ws_name else ""
+        widget.model_tree = tree
+        widget.model_roles = roles
+        # Reset impersonation so a stale role/user from a prior model isn't
+        # reused against a model that may not define it.
+        widget.impersonation_mode = "none"
+        widget.impersonation_value = ""
+        widget.dataset_chosen = True
+        widget.error_message = ""
+        widget.picker_loading = False
+
+    def _on_select_dataset(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        widget.picker_loading = True
+        threading.Thread(target=_activate_selected_dataset, daemon=True).start()
+
+    widget.observe(_on_select_dataset, names="select_dataset_trigger")
+
+    def _load_workspaces() -> None:
+        try:
+            workspaces = _list_workspaces_for_picker()
+        except Exception as exc:  # noqa: BLE001
+            widget.picker_loading = False
+            widget.error_message = f"Failed to list workspaces: {exc}"
+            return
+        widget.available_workspaces = workspaces
+        # Refresh the dataset list for the currently selected workspace too.
+        ws_id = (widget.selected_workspace_id or "").strip()
+        if ws_id:
+            try:
+                widget.available_datasets = _list_datasets_for_picker(ws_id)
+            except Exception:
+                pass
+        widget.picker_loading = False
+
+    def _on_load_workspaces(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        widget.picker_loading = True
+        threading.Thread(target=_load_workspaces, daemon=True).start()
+
+    widget.observe(_on_load_workspaces, names="load_workspaces_trigger")
+
+    def _generate_query() -> None:
+        if model_ctx["dataset_id"] is None:
+            widget.error_message = (
+                "No semantic model selected. Choose a workspace and a "
+                "semantic model first."
+            )
+            return
+        try:
+            dax = _generate_sample_dax(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to generate a DAX query: {exc}"
+            return
+        if not dax:
+            widget.error_message = (
+                "Could not generate a DAX query: the model has no usable "
+                "measure to summarize."
+            )
+            return
+        try:
+            formatted = _format_dax(dax)
+            dax_out = formatted[0] if formatted else dax
+        except Exception:
+            dax_out = dax
+        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
+        widget.dax_query = dax_out
+        widget.dax_tokens = _classify_dax_spans(dax_out)
+        widget.error_message = ""
+
+    def _on_generate_query(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_generate_query, daemon=True).start()
+
+    widget.observe(_on_generate_query, names="generate_query_trigger")
 
     display(widget)
