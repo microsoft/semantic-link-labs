@@ -626,6 +626,189 @@ def _generate_sample_dax(dataset_id: str, workspace_id: str) -> str:
     )
 
 
+def _classify_filter_type(kind: str, data_type: str) -> str:
+    """Classify a query-builder field into a filter family used to pick the
+    available filter operators: ``measure``, ``numeric``, ``datetime``,
+    ``boolean`` or ``text``."""
+
+    if kind == "measure":
+        return "measure"
+    dt = (data_type or "").strip().lower()
+    if dt in ("int64", "double", "decimal", "currency", "int", "integer"):
+        return "numeric"
+    if dt in ("datetime", "date", "time"):
+        return "datetime"
+    if dt in ("boolean", "bool"):
+        return "boolean"
+    return "text"
+
+
+def _qb_quote_str(value: str) -> str:
+    """Return a DAX string literal for ``value`` (double quotes escaped)."""
+
+    return '"' + str(value).replace('"', '""') + '"'
+
+
+def _qb_numeric_literal(value: str) -> str:
+    """Return a numeric DAX literal for ``value`` or a quoted string if the
+    value is not numeric."""
+
+    raw = str(value).strip()
+    try:
+        float(raw)
+        return raw
+    except ValueError:
+        return _qb_quote_str(raw)
+
+
+def _qb_value_literal(filter_type: str, value: str) -> str:
+    """Return a DAX literal for a filter value based on its filter family."""
+
+    import re as _re
+
+    raw = str(value).strip()
+    if filter_type in ("numeric", "measure"):
+        return _qb_numeric_literal(raw)
+    if filter_type == "datetime":
+        m = _re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", raw)
+        if m:
+            return f"DATE({int(m.group(1))}, {int(m.group(2))}, " f"{int(m.group(3))})"
+        return _qb_quote_str(raw)
+    return _qb_quote_str(raw)
+
+
+def _qb_build_predicate(item: dict) -> Optional[str]:
+    """Build a single DAX boolean predicate for a query-builder filter item.
+    Returns None if the operator/value combination is unusable."""
+
+    ref = item.get("ref") or ""
+    if not ref:
+        return None
+    ftype = _classify_filter_type(
+        item.get("kind", "column"), item.get("data_type", "")
+    )
+    op = (item.get("op") or "").strip()
+    value = item.get("value", "")
+    value2 = item.get("value2", "")
+
+    if op == "blank":
+        return f"ISBLANK({ref})"
+    if op == "notblank":
+        return f"NOT ISBLANK({ref})"
+    if op == "istrue":
+        return f"{ref} = TRUE()"
+    if op == "isfalse":
+        return f"{ref} = FALSE()"
+
+    if ftype == "text":
+        if op == "contains":
+            return f"CONTAINSSTRING({ref}, {_qb_quote_str(value)})"
+        if op == "startswith":
+            length = len(str(value))
+            return f"LEFT({ref}, {length}) = {_qb_quote_str(value)}"
+        if op == "eq":
+            return f"{ref} = {_qb_quote_str(value)}"
+        if op == "ne":
+            return f"{ref} <> {_qb_quote_str(value)}"
+        return None
+
+    symbol = {
+        "eq": "=",
+        "ne": "<>",
+        "gt": ">",
+        "ge": ">=",
+        "lt": "<",
+        "le": "<=",
+    }.get(op)
+    if op == "between":
+        lo = _qb_value_literal(ftype, value)
+        hi = _qb_value_literal(ftype, value2)
+        return f"{ref} >= {lo} && {ref} <= {hi}"
+    if symbol is not None:
+        return f"{ref} {symbol} {_qb_value_literal(ftype, value)}"
+    return None
+
+
+def _build_summarize_dax(state: dict, dataset_id: str, workspace_id: str) -> str:
+    """Build an ``EVALUATE SUMMARIZECOLUMNS(...)`` DAX statement from a
+    query-builder state (a dict with ``fields`` and ``filters`` lists).
+
+    The generated query follows the canonical "DAX as a query language"
+    pattern (see ``.claude/skills/sql_to_dax`` / the Query Builder SKILL):
+
+    1. ``EVALUATE``
+    2. ``SUMMARIZECOLUMNS(`` with elements in strict order:
+       a. attributes (group-by columns),
+       b. filters (column filters via ``FILTER(KEEPFILTERS(VALUES(col)), ...)``),
+       c. measures (``"Name", [Measure]``),
+    3. measure filters wrap the table via ``FILTER(SUMMARIZECOLUMNS(...), ...)``,
+    4. ``ORDER BY`` the attribute columns.
+
+    Returns an empty string if there is nothing usable to build.
+    """
+
+    fields = state.get("fields") or []
+    filters = state.get("filters") or []
+
+    group_cols = [f for f in fields if f.get("kind") == "column"]
+    measures = [f for f in fields if f.get("kind") == "measure"]
+    if not group_cols and not measures:
+        return ""
+
+    def _tbl_ref(name: str) -> str:
+        return "'" + str(name).replace("'", "''") + "'"
+
+    def _mea_ref(name: str) -> str:
+        return "[" + str(name).replace("]", "]]") + "]"
+
+    def _col_ref(item: dict) -> str:
+        ref = item.get("ref")
+        if ref:
+            return str(ref)
+        return _tbl_ref(item.get("table")) + _mea_ref(item.get("name"))
+
+    # Split filters into column predicates (applied inline within
+    # SUMMARIZECOLUMNS) and measure predicates (applied via an outer FILTER
+    # over the summarized table, since measures are projected as columns).
+    col_filters: list = []
+    meas_preds: list = []
+    for item in filters:
+        pred = _qb_build_predicate(item)
+        if not pred:
+            continue
+        if item.get("kind") == "measure":
+            meas_preds.append(pred)
+        else:
+            col_filters.append(
+                f"FILTER(KEEPFILTERS(VALUES({_col_ref(item)})), {pred})"
+            )
+
+    # SUMMARIZECOLUMNS elements: attributes, then column filters, then
+    # measures (in that exact order, as required by the engine).
+    parts: list = []
+    for c in group_cols:
+        parts.append(_col_ref(c))
+    parts.extend(col_filters)
+    for m in measures:
+        parts.append(f'{_qb_quote_str(m.get("name"))}, {_mea_ref(m.get("name"))}')
+
+    inner = "SUMMARIZECOLUMNS(" + ", ".join(parts) + ")"
+
+    # Measure-based filters cannot live inside SUMMARIZECOLUMNS; wrap the
+    # whole table in a FILTER referencing the measure columns.
+    if meas_preds:
+        inner = "FILTER(" + inner + ", " + " && ".join(meas_preds) + ")"
+
+    dax = "EVALUATE\n" + inner
+
+    # ORDER BY the attribute columns (ascending), per the canonical pattern.
+    if group_cols:
+        order_cols = ", ".join(_col_ref(c) for c in group_cols)
+        dax += "\nORDER BY " + order_cols
+
+    return dax
+
+
 def _classify_dax_spans(dax_expression: str) -> list:
     """Classify a DAX expression into a flat list of ``{text, kind}`` spans
     using the project's DAX parser/tokenizer.
@@ -850,6 +1033,34 @@ def _visualize_dax_test(
 .dtx .dtx-change-btn:hover {{
     border-color: var(--ui-accent);
     color: var(--ui-accent);
+}}
+.dtx .dtx-builder-show-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    margin-right: 6px;
+    flex: 0 0 auto;
+    border-radius: 7px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-builder-show-btn svg {{
+    width: 17px;
+    height: 17px;
+}}
+.dtx .dtx-builder-show-btn:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-builder-show-btn.dtx-active {{
+    border-color: var(--ui-accent);
+    background: var(--ui-accent);
+    color: #fff;
 }}
 .dtx .dtx-picker-cancel {{
     display: inline-flex;
@@ -1536,6 +1747,216 @@ def _visualize_dax_test(
     flex-direction: column;
     padding-left: 12px;
 }}
+.dtx .dtx-builder {{
+    flex: 0 0 260px;
+    max-width: 260px;
+    min-width: 260px;
+    border-right: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}}
+.dtx .dtx-builder.dtx-builder-hidden {{
+    display: none;
+}}
+.dtx .dtx-builder-header {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px 10px 14px;
+    border-bottom: 1px solid var(--ui-border);
+    min-height: 44px;
+}}
+.dtx .dtx-builder-title {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+    margin-right: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-builder-toggle {{
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-builder-toggle:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-builder-toggle svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-builder-content {{
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+    padding: 10px;
+    gap: 12px;
+    overflow-y: auto;
+}}
+.dtx .dtx-builder-section {{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}}
+.dtx .dtx-builder-section-label {{
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-builder-zone {{
+    min-height: 70px;
+    border: 1px dashed var(--ui-border);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--ui-bg);
+    transition: border-color 120ms ease, background 120ms ease;
+}}
+.dtx .dtx-builder-zone.dtx-drop-over {{
+    border-color: var(--ui-accent);
+    background: var(--ui-bg-hover);
+}}
+.dtx .dtx-builder-placeholder {{
+    font-size: 11px;
+    color: var(--ui-text-tertiary);
+    text-align: center;
+    padding: 12px 4px;
+    pointer-events: none;
+}}
+.dtx .dtx-builder-chip {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: var(--ui-bg-secondary);
+    cursor: grab;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+    max-width: 100%;
+}}
+.dtx .dtx-builder-chip.dtx-chip-dragging {{ opacity: 0.5; }}
+.dtx .dtx-chip-icon {{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-chip-icon svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-chip-label {{
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    color: var(--ui-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-chip-remove {{
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--ui-text-tertiary);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 4px;
+}}
+.dtx .dtx-chip-remove:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-chip-op {{
+    flex: 1 1 100%;
+    font-size: 11px;
+    padding: 3px 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+}}
+.dtx .dtx-chip-values {{
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}}
+.dtx .dtx-chip-value {{
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    font-size: 11px;
+    padding: 3px 5px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+}}
+.dtx .dtx-chip-sep {{
+    flex: 0 0 auto;
+    font-size: 10px;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-builder-footer {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 6px;
+}}
+.dtx .dtx-builder-clear {{
+    padding: 6px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+}}
+.dtx .dtx-builder-clear:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-build-btn {{
+    padding: 6px 16px;
+    border: 1px solid var(--ui-accent);
+    border-radius: 6px;
+    background: var(--ui-accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}}
+.dtx .dtx-build-btn:hover {{ filter: brightness(1.05); }}
+.dtx .dtx-build-btn:disabled {{
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+}}
 """
     )
 
@@ -1587,6 +2008,14 @@ function render({ model, el }) {
         + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6.5 3v10"/>'
         + '<path d="M8.5 6.5L10.5 8l-2 1.5"/></svg>';
+    const BUILDER_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/>'
+        + '<path d="M2 6h12"/><path d="M4.5 9h4"/><path d="M4.5 11h2"/>'
+        + '<path d="M11.5 9.2v3.2M9.9 10.8h3.2"/></svg>';
+    const CLOSE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M4 4l8 8M12 4l-8 8"/></svg>';
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -1669,6 +2098,18 @@ function render({ model, el }) {
         model.set("dark_mode", !(model.get("dark_mode") === true));
         model.save_changes();
     });
+
+    const builderShowBtn = document.createElement("button");
+    builderShowBtn.type = "button";
+    builderShowBtn.className = "dtx-builder-show-btn";
+    builderShowBtn.innerHTML = BUILDER_SVG;
+    builderShowBtn.title = "Show query builder";
+    builderShowBtn.setAttribute("aria-label", "Show query builder");
+    builderShowBtn.addEventListener("click", () => {
+        builderVisible = !builderVisible;
+        renderBuilderChrome();
+    });
+    header.appendChild(builderShowBtn);
     header.appendChild(themeBtn);
 
     // ---------- Body: sidebar + main ----------
@@ -1744,6 +2185,11 @@ function render({ model, el }) {
 
     // Shared drag payload for dropping model objects into the editor.
     let dragPayload = null;
+    // Richer metadata for the dragged model object (used by the query
+    // builder). Null when the drag is not a single column/measure.
+    let dragFieldMeta = null;
+    // Set when reordering a chip inside a query-builder pane.
+    let builderReorder = null;
 
     function daxTableRef(name) {
         return "'" + String(name).replace(/'/g, "''") + "'";
@@ -1756,18 +2202,26 @@ function render({ model, el }) {
             + "[" + String(objName).replace(/\]/g, "]]") + "]";
     }
 
-    function makeDraggable(elem, dragText) {
+    function makeDraggable(elem, dragText, meta) {
         elem.setAttribute("draggable", "true");
         elem.classList.add("dtx-draggable");
         elem.addEventListener("dragstart", (e) => {
             dragPayload = dragText;
+            dragFieldMeta = meta || null;
             e.dataTransfer.setData("text/plain", dragText);
+            if (meta) {
+                e.dataTransfer.setData(
+                    "application/x-dtx-field", JSON.stringify(meta));
+            }
             e.dataTransfer.effectAllowed = "copy";
         });
-        elem.addEventListener("dragend", () => { dragPayload = null; });
+        elem.addEventListener("dragend", () => {
+            dragPayload = null;
+            dragFieldMeta = null;
+        });
     }
 
-    function makeLeaf(iconSvg, name, hidden, dataType, dragText, description, pad) {
+    function makeLeaf(iconSvg, name, hidden, dataType, dragText, description, pad, meta) {
         const leaf = document.createElement("div");
         leaf.className = "dtx-tree-leaf";
         leaf.style.paddingLeft = (pad == null ? 30 : pad) + "px";
@@ -1779,7 +2233,7 @@ function render({ model, el }) {
             + `<span class="dtx-tree-label${hidden ? " dtx-hidden" : ""}"`
             + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
             + typeHtml;
-        if (dragText) makeDraggable(leaf, dragText);
+        if (dragText) makeDraggable(leaf, dragText, meta);
         return leaf;
     }
 
@@ -1840,7 +2294,7 @@ function render({ model, el }) {
         }
     }
 
-    function makeGroup(label, items, iconSvg, dragFn, leafBuilder) {
+    function makeGroup(label, items, iconSvg, dragFn, leafBuilder, metaFn) {
         if (!items || !items.length) return null;
         const wrap = document.createElement("div");
         wrap.className = "dtx-tree-group";
@@ -1852,7 +2306,8 @@ function render({ model, el }) {
         children.className = "dtx-tree-children";
         const build = leafBuilder || ((it, pad) => makeLeaf(
             iconSvg, it.name, !!it.hidden, it.data_type,
-            dragFn ? dragFn(it) : null, it.description, pad));
+            dragFn ? dragFn(it) : null, it.description, pad,
+            metaFn ? metaFn(it) : null));
         renderFolderTree(children, buildFolderTree(items), build, 0);
         header.addEventListener("click", () => {
             const open = !header.classList.contains("dtx-open");
@@ -1977,9 +2432,15 @@ function render({ model, el }) {
             const children = document.createElement("div");
             children.className = "dtx-tree-children";
             const colGrp = makeGroup("Columns", tbl.columns, COLUMN_SVG,
-                (it) => daxColumnRef(tbl.name, it.name));
+                (it) => daxColumnRef(tbl.name, it.name), null,
+                (it) => ({kind: "column", table: tbl.name, name: it.name,
+                    data_type: it.data_type,
+                    ref: daxColumnRef(tbl.name, it.name)}));
             const meaGrp = makeGroup("Measures", tbl.measures, MEASURE_SVG,
-                (it) => daxMeasureRef(it.name));
+                (it) => daxMeasureRef(it.name), null,
+                (it) => ({kind: "measure", table: tbl.name, name: it.name,
+                    data_type: it.data_type,
+                    ref: daxMeasureRef(it.name)}));
             const hieGrp = makeGroup("Hierarchies", tbl.hierarchies, HIERARCHY_SVG,
                 null, makeHierarchyLeaf(tbl.name));
             if (colGrp) children.appendChild(colGrp);
@@ -2003,6 +2464,364 @@ function render({ model, el }) {
     const main = document.createElement("div");
     main.className = "dtx-main";
     body.appendChild(main);
+
+    // ---------- Query Builder pane (between sidebar and main) ----------
+    // Hidden by default; revealed via the header "Query Builder" button.
+    let builderVisible = false;
+    let builderFields = [];
+    let builderFilters = [];
+    let qbSeq = 0;
+
+    const QB_OPS = {
+        text: [["eq", "equals"], ["ne", "does not equal"],
+            ["contains", "contains"], ["startswith", "starts with"],
+            ["blank", "is blank"], ["notblank", "is not blank"]],
+        numeric: [["eq", "="], ["ne", "\u2260"], ["gt", ">"], ["ge", "\u2265"],
+            ["lt", "<"], ["le", "\u2264"], ["between", "between"],
+            ["blank", "is blank"], ["notblank", "is not blank"]],
+        datetime: [["eq", "on"], ["ne", "not on"], ["gt", "after"],
+            ["ge", "on or after"], ["lt", "before"], ["le", "on or before"],
+            ["between", "between"], ["blank", "is blank"],
+            ["notblank", "is not blank"]],
+        boolean: [["istrue", "is TRUE"], ["isfalse", "is FALSE"]],
+        measure: [["eq", "="], ["ne", "\u2260"], ["gt", ">"], ["ge", "\u2265"],
+            ["lt", "<"], ["le", "\u2264"], ["between", "between"]],
+    };
+
+    function qbClassify(field) {
+        if (field.kind === "measure") return "measure";
+        const dt = String(field.data_type || "").toLowerCase();
+        if (dt === "int64" || dt === "double" || dt === "decimal"
+            || dt === "currency" || dt === "int" || dt === "integer") {
+            return "numeric";
+        }
+        if (dt === "datetime" || dt === "date" || dt === "time") {
+            return "datetime";
+        }
+        if (dt === "boolean" || dt === "bool") return "boolean";
+        return "text";
+    }
+
+    function qbIcon(kind) {
+        return kind === "measure" ? MEASURE_SVG : COLUMN_SVG;
+    }
+
+    function qbDisplayName(f) {
+        return (f.kind === "column" && f.table)
+            ? f.table + "[" + f.name + "]"
+            : "[" + f.name + "]";
+    }
+
+    const builderPane = document.createElement("div");
+    builderPane.className = "dtx-builder";
+    body.insertBefore(builderPane, main);
+
+    const builderHeader = document.createElement("div");
+    builderHeader.className = "dtx-builder-header";
+    const builderTitle = document.createElement("div");
+    builderTitle.className = "dtx-builder-title";
+    builderTitle.textContent = "Query Builder";
+    const builderToggle = document.createElement("button");
+    builderToggle.type = "button";
+    builderToggle.className = "dtx-builder-toggle";
+    builderToggle.innerHTML = CLOSE_SVG;
+    builderToggle.title = "Hide query builder";
+    builderToggle.setAttribute("aria-label", "Hide query builder");
+    builderToggle.addEventListener("click", () => {
+        builderVisible = false;
+        renderBuilderChrome();
+    });
+    builderHeader.appendChild(builderTitle);
+    builderHeader.appendChild(builderToggle);
+    builderPane.appendChild(builderHeader);
+
+    const builderContent = document.createElement("div");
+    builderContent.className = "dtx-builder-content";
+    builderPane.appendChild(builderContent);
+
+    const fieldsSection = document.createElement("div");
+    fieldsSection.className = "dtx-builder-section";
+    const fieldsLabel = document.createElement("div");
+    fieldsLabel.className = "dtx-builder-section-label";
+    fieldsLabel.textContent = "Columns & Measures";
+    const fieldsZone = document.createElement("div");
+    fieldsZone.className = "dtx-builder-zone dtx-builder-fields";
+    fieldsSection.appendChild(fieldsLabel);
+    fieldsSection.appendChild(fieldsZone);
+    builderContent.appendChild(fieldsSection);
+
+    const filtersSection = document.createElement("div");
+    filtersSection.className = "dtx-builder-section";
+    const filtersLabel = document.createElement("div");
+    filtersLabel.className = "dtx-builder-section-label";
+    filtersLabel.textContent = "Filters";
+    const filtersZone = document.createElement("div");
+    filtersZone.className = "dtx-builder-zone dtx-builder-filters";
+    filtersSection.appendChild(filtersLabel);
+    filtersSection.appendChild(filtersZone);
+    builderContent.appendChild(filtersSection);
+
+    const builderFooter = document.createElement("div");
+    builderFooter.className = "dtx-builder-footer";
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "dtx-builder-clear";
+    clearBtn.textContent = "Clear";
+    clearBtn.addEventListener("click", () => {
+        builderFields = [];
+        builderFilters = [];
+        renderBuilderZones();
+    });
+    const buildBtn = document.createElement("button");
+    buildBtn.type = "button";
+    buildBtn.className = "dtx-build-btn";
+    buildBtn.textContent = "Build";
+    buildBtn.addEventListener("click", onBuildClick);
+    builderFooter.appendChild(clearBtn);
+    builderFooter.appendChild(buildBtn);
+    builderContent.appendChild(builderFooter);
+
+    function zoneIndexFromEvent(zone, e) {
+        const chips = Array.from(zone.querySelectorAll(".dtx-builder-chip"));
+        for (let i = 0; i < chips.length; i++) {
+            const r = chips[i].getBoundingClientRect();
+            if (e.clientY < r.top + r.height / 2) return i;
+        }
+        return chips.length;
+    }
+
+    function setupZone(zone, isFilter) {
+        zone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = builderReorder ? "move" : "copy";
+            zone.classList.add("dtx-drop-over");
+        });
+        zone.addEventListener("dragleave", (e) => {
+            if (!zone.contains(e.relatedTarget)) {
+                zone.classList.remove("dtx-drop-over");
+            }
+        });
+        zone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            zone.classList.remove("dtx-drop-over");
+            const list = isFilter ? builderFilters : builderFields;
+            const zoneName = isFilter ? "filters" : "fields";
+            const idx = zoneIndexFromEvent(zone, e);
+            if (builderReorder) {
+                if (builderReorder.zone !== zoneName) return;
+                const from = list.findIndex(x => x.id === builderReorder.id);
+                if (from === -1) return;
+                const moved = list.splice(from, 1)[0];
+                let insert = idx;
+                if (from < idx) insert = idx - 1;
+                list.splice(insert, 0, moved);
+                renderBuilderZones();
+                return;
+            }
+            let meta = dragFieldMeta;
+            if (!meta) {
+                const raw = e.dataTransfer.getData("application/x-dtx-field");
+                if (raw) {
+                    try { meta = JSON.parse(raw); } catch (err) { meta = null; }
+                }
+            }
+            if (!meta || !meta.name) return;
+            const item = {
+                id: "qb" + (++qbSeq),
+                kind: meta.kind,
+                table: meta.table || "",
+                name: meta.name,
+                data_type: meta.data_type || "",
+                ref: meta.ref,
+            };
+            if (isFilter) {
+                const tc = qbClassify(item);
+                item.typeClass = tc;
+                item.op = QB_OPS[tc][0][0];
+                item.value = "";
+                item.value2 = "";
+            }
+            list.splice(idx, 0, item);
+            renderBuilderZones();
+        });
+    }
+    setupZone(fieldsZone, false);
+    setupZone(filtersZone, true);
+
+    function attachChipReorder(chip, f, zoneName) {
+        chip.setAttribute("draggable", "true");
+        chip.addEventListener("dragstart", (e) => {
+            builderReorder = {id: f.id, zone: zoneName};
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", "");
+            e.stopPropagation();
+            chip.classList.add("dtx-chip-dragging");
+        });
+        chip.addEventListener("dragend", () => {
+            builderReorder = null;
+            chip.classList.remove("dtx-chip-dragging");
+        });
+    }
+
+    function makeChipRemove(onClick) {
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "dtx-chip-remove";
+        rm.innerHTML = "&times;";
+        rm.title = "Remove";
+        rm.addEventListener("click", onClick);
+        return rm;
+    }
+
+    function makeFieldChip(f) {
+        const chip = document.createElement("div");
+        chip.className = "dtx-builder-chip";
+        const ic = document.createElement("span");
+        ic.className = "dtx-chip-icon";
+        ic.innerHTML = qbIcon(f.kind);
+        const label = document.createElement("span");
+        label.className = "dtx-chip-label";
+        label.textContent = qbDisplayName(f);
+        label.title = qbDisplayName(f);
+        chip.appendChild(ic);
+        chip.appendChild(label);
+        chip.appendChild(makeChipRemove(() => {
+            builderFields = builderFields.filter(x => x.id !== f.id);
+            renderBuilderZones();
+        }));
+        attachChipReorder(chip, f, "fields");
+        return chip;
+    }
+
+    function makeFilterChip(f) {
+        const chip = document.createElement("div");
+        chip.className = "dtx-builder-chip dtx-builder-chip-filter";
+        const ic = document.createElement("span");
+        ic.className = "dtx-chip-icon";
+        ic.innerHTML = qbIcon(f.kind);
+        const label = document.createElement("span");
+        label.className = "dtx-chip-label";
+        label.textContent = qbDisplayName(f);
+        label.title = qbDisplayName(f);
+        const opSel = document.createElement("select");
+        opSel.className = "dtx-chip-op";
+        const ops = QB_OPS[f.typeClass] || QB_OPS.text;
+        for (const pair of ops) {
+            const o = document.createElement("option");
+            o.value = pair[0];
+            o.textContent = pair[1];
+            if (pair[0] === f.op) o.selected = true;
+            opSel.appendChild(o);
+        }
+        const valWrap = document.createElement("span");
+        valWrap.className = "dtx-chip-values";
+        function renderVals() {
+            valWrap.innerHTML = "";
+            const op = f.op;
+            if (op === "blank" || op === "notblank"
+                || op === "istrue" || op === "isfalse") {
+                return;
+            }
+            const ph = f.typeClass === "datetime" ? "YYYY-MM-DD" : "value";
+            const v1 = document.createElement("input");
+            v1.type = "text";
+            v1.className = "dtx-chip-value";
+            v1.value = f.value || "";
+            v1.placeholder = ph;
+            v1.addEventListener("input", () => { f.value = v1.value; });
+            valWrap.appendChild(v1);
+            if (op === "between") {
+                const sep = document.createElement("span");
+                sep.className = "dtx-chip-sep";
+                sep.textContent = "and";
+                const v2 = document.createElement("input");
+                v2.type = "text";
+                v2.className = "dtx-chip-value";
+                v2.value = f.value2 || "";
+                v2.placeholder = ph;
+                v2.addEventListener("input", () => { f.value2 = v2.value; });
+                valWrap.appendChild(sep);
+                valWrap.appendChild(v2);
+            }
+        }
+        opSel.addEventListener("change", () => {
+            f.op = opSel.value;
+            renderVals();
+        });
+        renderVals();
+        chip.appendChild(ic);
+        chip.appendChild(label);
+        chip.appendChild(opSel);
+        chip.appendChild(valWrap);
+        chip.appendChild(makeChipRemove(() => {
+            builderFilters = builderFilters.filter(x => x.id !== f.id);
+            renderBuilderZones();
+        }));
+        attachChipReorder(chip, f, "filters");
+        return chip;
+    }
+
+    function renderBuilderZones() {
+        fieldsZone.innerHTML = "";
+        if (!builderFields.length) {
+            const ph = document.createElement("div");
+            ph.className = "dtx-builder-placeholder";
+            ph.textContent = "Drag columns or measures here";
+            fieldsZone.appendChild(ph);
+        } else {
+            for (const f of builderFields) {
+                fieldsZone.appendChild(makeFieldChip(f));
+            }
+        }
+        filtersZone.innerHTML = "";
+        if (!builderFilters.length) {
+            const ph = document.createElement("div");
+            ph.className = "dtx-builder-placeholder";
+            ph.textContent = "Drag fields here to filter";
+            filtersZone.appendChild(ph);
+        } else {
+            for (const f of builderFilters) {
+                filtersZone.appendChild(makeFilterChip(f));
+            }
+        }
+    }
+
+    function onBuildClick() {
+        if (model.get("dataset_chosen") !== true) return;
+        const state = {
+            fields: builderFields.map(f => ({
+                kind: f.kind, table: f.table, name: f.name,
+                data_type: f.data_type, ref: f.ref,
+            })),
+            filters: builderFilters.map(f => ({
+                kind: f.kind, table: f.table, name: f.name,
+                data_type: f.data_type, ref: f.ref,
+                op: f.op, value: f.value, value2: f.value2,
+            })),
+        };
+        model.set("query_builder_state", JSON.stringify(state));
+        model.set("error_message", "");
+        model.set("build_query_trigger",
+            (model.get("build_query_trigger") || 0) + 1);
+        model.save_changes();
+    }
+
+    function renderBuilderChrome() {
+        builderPane.classList.toggle("dtx-builder-hidden", !builderVisible);
+        builderShowBtn.classList.toggle("dtx-active", builderVisible);
+        const label = builderVisible
+            ? "Hide query builder" : "Show query builder";
+        builderShowBtn.title = label;
+        builderShowBtn.setAttribute("aria-label", label);
+    }
+
+    function renderBuildBtn() {
+        const chosen = model.get("dataset_chosen") === true;
+        buildBtn.disabled = !chosen;
+        buildBtn.title = chosen
+            ? "Build a DAX query from the selected fields"
+            : "Choose a semantic model first";
+    }
 
     // ---------- Model picker (shown when no dataset is chosen) ----------
     let pickerOpen = model.get("dataset_chosen") !== true;
@@ -2844,6 +3663,7 @@ function render({ model, el }) {
     model.on("change:dataset_chosen", () => {
         if (model.get("dataset_chosen") === true) { pickerOpen = false; }
         renderPicker(); renderRunBtn(); renderSubtitle(); renderGenBtn();
+        renderBuildBtn();
     });
     model.on("change:available_workspaces", renderPicker);
     model.on("change:available_datasets", renderPicker);
@@ -2866,6 +3686,9 @@ function render({ model, el }) {
     renderGenBtn();
     renderTree();
     renderHighlight();
+    renderBuilderChrome();
+    renderBuilderZones();
+    renderBuildBtn();
 }
 export default { render };
 """
@@ -2926,6 +3749,8 @@ export default { render };
         select_dataset_trigger = traitlets.Int(0).tag(sync=True)
         load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
         generate_query_trigger = traitlets.Int(0).tag(sync=True)
+        query_builder_state = traitlets.Unicode("").tag(sync=True)
+        build_query_trigger = traitlets.Int(0).tag(sync=True)
 
     initial_result = _result_payload_from_df(result_df)
 
@@ -3011,6 +3836,8 @@ export default { render };
         select_dataset_trigger=0,
         load_workspaces_trigger=0,
         generate_query_trigger=0,
+        query_builder_state="",
+        build_query_trigger=0,
         impersonation_mode=(
             "user" if effective_user_name else ("role" if role else "none")
         ),
@@ -3317,5 +4144,55 @@ export default { render };
         threading.Thread(target=_generate_query, daemon=True).start()
 
     widget.observe(_on_generate_query, names="generate_query_trigger")
+
+    def _build_query() -> None:
+        if model_ctx["dataset_id"] is None:
+            widget.error_message = (
+                "No semantic model selected. Choose a workspace and a "
+                "semantic model first."
+            )
+            return
+        import json as _json
+
+        try:
+            state = _json.loads(widget.query_builder_state or "{}")
+        except Exception:
+            widget.error_message = "Could not read the query builder state."
+            return
+        fields = state.get("fields") or []
+        if not fields:
+            widget.error_message = (
+                "Add at least one column or measure to the query builder "
+                "before building a query."
+            )
+            return
+        try:
+            dax = _build_summarize_dax(
+                state, model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to build a DAX query: {exc}"
+            return
+        if not dax:
+            widget.error_message = (
+                "Could not build a DAX query from the current selection."
+            )
+            return
+        try:
+            formatted = _format_dax(dax)
+            dax_out = formatted[0] if formatted else dax
+        except Exception:
+            dax_out = dax
+        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
+        widget.dax_query = dax_out
+        widget.dax_tokens = _classify_dax_spans(dax_out)
+        widget.error_message = ""
+
+    def _on_build_query(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_build_query, daemon=True).start()
+
+    widget.observe(_on_build_query, names="build_query_trigger")
 
     display(widget)
