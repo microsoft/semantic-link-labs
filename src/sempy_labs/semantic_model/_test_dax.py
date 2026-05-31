@@ -16,6 +16,8 @@ def test(
     workspace: Optional[str | UUID] = None,
     clear_cache: bool = True,
     visualize: bool = True,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Runs a DAX query against a semantic model while capturing a server-side
@@ -40,6 +42,15 @@ def test(
         If True, displays an interactive widget showing the high-level
         timings (Duration, FE, SE, CPU), a per-event details table, and an
         editable DAX editor with a Run button to re-execute the query.
+    effective_user_name : str, default=None
+        If set, runs the query impersonating this user (passed as the
+        ``effective_user_name`` parameter of ``fabric.evaluate_dax``). Use
+        this for user impersonation. Cannot be used together with ``role``.
+    role : str, default=None
+        If set, runs the query impersonating this security role (passed as
+        the ``role`` parameter of ``fabric.evaluate_dax``). Use this for
+        role impersonation. Cannot be used together with
+        ``effective_user_name``.
 
     Returns
     -------
@@ -51,6 +62,13 @@ def test(
 
     from sempy_labs._helper_functions import resolve_workspace_name_and_id
 
+    if effective_user_name and role:
+        raise ValueError(
+            "Cannot use both 'effective_user_name' (user impersonation) and "
+            "'role' (role impersonation) at the same time. Specify at most "
+            "one of them."
+        )
+
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
@@ -61,6 +79,8 @@ def test(
         workspace_id=workspace_id,
         dax_string=dax_string,
         clear_cache=clear_cache,
+        effective_user_name=effective_user_name,
+        role=role,
     )
 
     if visualize:
@@ -77,6 +97,8 @@ def test(
             workspace_name=workspace_name,
             clear_cache=clear_cache,
             result_df=result_df,
+            effective_user_name=effective_user_name,
+            role=role,
         )
 
     return df
@@ -141,6 +163,8 @@ def _run_dax_trace(
     workspace_id: str,
     dax_string: str,
     clear_cache: bool,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame]:
     """Run a DAX query with a server-side trace and compute DAX Studio style
     aggregate stats.
@@ -169,7 +193,11 @@ def _run_dax_trace(
             )
             # Run the actual DAX query.
             result_df = fabric.evaluate_dax(
-                dataset=dataset_id, workspace=workspace_id, dax_string=dax_string
+                dataset=dataset_id,
+                workspace=workspace_id,
+                dax_string=dax_string,
+                effective_user_name=effective_user_name,
+                role=role,
             )
             # Allow the trace some time to flush events.
             time.sleep(2)
@@ -378,6 +406,28 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
     return tree
 
 
+def _collect_model_roles(dataset_id: str, workspace_id: str) -> list:
+    """Collect the security role names defined in the semantic model, sorted
+    alphabetically (case-insensitive). Returns an empty list if the model has
+    no roles or the metadata cannot be read."""
+
+    try:
+        from sempy_labs.tom import connect_semantic_model
+    except Exception:
+        return []
+
+    roles: list = []
+    try:
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=True
+        ) as tom:
+            roles = [str(r.Name) for r in tom.model.Roles]
+    except Exception:
+        return []
+    roles.sort(key=lambda x: x.lower())
+    return roles
+
+
 def _classify_dax_spans(dax_expression: str) -> list:
     """Classify a DAX expression into a flat list of ``{text, kind}`` spans
     using the project's DAX parser/tokenizer.
@@ -421,6 +471,8 @@ def _visualize_dax_test(
     dark_mode: bool = False,
     clear_cache: bool = True,
     result_df: Optional[pd.DataFrame] = None,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
 ) -> None:
     """Render an interactive editable DAX widget for :func:`test` results."""
 
@@ -562,6 +614,48 @@ def _visualize_dax_test(
 .dtx .dtx-cache-label input {{
     cursor: pointer;
     accent-color: var(--ui-accent);
+}}
+.dtx .dtx-imp-wrap {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}}
+.dtx .dtx-imp-select {{
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 26px 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ui-text-tertiary) 50%),
+        linear-gradient(135deg, var(--ui-text-tertiary) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}}
+.dtx .dtx-imp-select:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-imp-input {{
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    width: 150px;
+}}
+.dtx .dtx-imp-input:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
 }}
 .dtx .dtx-icon-btn {{
     appearance: none;
@@ -1552,6 +1646,127 @@ function render({ model, el }) {
     }
     toolbar.appendChild(cacheLabel);
 
+    // Impersonation: none / user (effective_user_name) / role (role).
+    const impWrap = document.createElement("div");
+    impWrap.className = "dtx-imp-wrap";
+    const impSel = document.createElement("select");
+    impSel.className = "dtx-imp-select";
+    impSel.title = "Run the query impersonating a user or a security role";
+    [
+        ["none", "No impersonation"],
+        ["user", "User impersonation"],
+        ["role", "Role impersonation"],
+    ].forEach(([val, label]) => {
+        const o = document.createElement("option");
+        o.value = val;
+        o.textContent = label;
+        impSel.appendChild(o);
+    });
+    // Text input for user impersonation (effective_user_name).
+    const impInput = document.createElement("input");
+    impInput.type = "text";
+    impInput.className = "dtx-imp-input";
+    // Dropdown of model roles for role impersonation.
+    const impRoleSel = document.createElement("select");
+    impRoleSel.className = "dtx-imp-select dtx-imp-role-select";
+    impWrap.appendChild(impSel);
+    impWrap.appendChild(impInput);
+    impWrap.appendChild(impRoleSel);
+    toolbar.appendChild(impWrap);
+
+    function hasRoles() {
+        const roles = model.get("model_roles") || [];
+        return roles.length > 0;
+    }
+
+    function renderRoleOption() {
+        // Disable the "Role impersonation" choice when the model has no roles.
+        const opt = Array.from(impSel.options).find(o => o.value === "role");
+        if (opt) {
+            opt.disabled = !hasRoles();
+            opt.textContent = hasRoles()
+                ? "Role impersonation"
+                : "Role impersonation (no roles)";
+        }
+    }
+
+    function renderRoleChoices() {
+        const roles = model.get("model_roles") || [];
+        const current = model.get("impersonation_value") || "";
+        impRoleSel.innerHTML = "";
+        roles.forEach(rn => {
+            const o = document.createElement("option");
+            o.value = rn;
+            o.textContent = rn;
+            impRoleSel.appendChild(o);
+        });
+        if (roles.length) {
+            impRoleSel.value = roles.includes(current) ? current : roles[0];
+        }
+    }
+
+    function renderImpersonation() {
+        renderRoleOption();
+        let mode = model.get("impersonation_mode") || "none";
+        // If role impersonation is selected but the model has no roles, notify
+        // the user and fall back to no impersonation.
+        if (mode === "role" && !hasRoles()) {
+            model.set("impersonation_mode", "none");
+            model.set("impersonation_value", "");
+            model.set("error_message",
+                "Role impersonation is not available: this model does not "
+                + "contain any roles.");
+            model.save_changes();
+            mode = "none";
+        }
+        if (impSel.value !== mode) impSel.value = mode;
+        if (mode === "user") {
+            impInput.style.display = "";
+            impRoleSel.style.display = "none";
+            impInput.placeholder = "user@domain.com";
+            impInput.title = "User to impersonate (effective_user_name)";
+            const val = model.get("impersonation_value") || "";
+            if (impInput.value !== val) impInput.value = val;
+        } else if (mode === "role") {
+            impInput.style.display = "none";
+            impRoleSel.style.display = "";
+            impRoleSel.title = "Security role to impersonate (role)";
+            renderRoleChoices();
+            // Persist the resolved selection (e.g. defaulted to first role).
+            if (impRoleSel.value !== (model.get("impersonation_value") || "")) {
+                model.set("impersonation_value", impRoleSel.value);
+                model.save_changes();
+            }
+        } else {
+            impInput.style.display = "none";
+            impRoleSel.style.display = "none";
+        }
+    }
+    impSel.addEventListener("change", () => {
+        const mode = impSel.value;
+        if (mode === "role" && !hasRoles()) {
+            model.set("error_message",
+                "Role impersonation is not available: this model does not "
+                + "contain any roles.");
+            impSel.value = model.get("impersonation_mode") || "none";
+            model.save_changes();
+            return;
+        }
+        model.set("impersonation_mode", mode);
+        // Reset the value so a stale user string isn't reused as a role, etc.
+        model.set("impersonation_value", "");
+        model.save_changes();
+        renderImpersonation();
+    });
+    impInput.addEventListener("input", () => {
+        model.set("impersonation_value", impInput.value);
+        model.save_changes();
+    });
+    impRoleSel.addEventListener("change", () => {
+        model.set("impersonation_value", impRoleSel.value);
+        model.save_changes();
+    });
+
     const runBtn = document.createElement("button");
     runBtn.type = "button";
     runBtn.className = "dtx-btn";
@@ -2057,6 +2272,9 @@ function render({ model, el }) {
     });
     model.on("change:dax_tokens", renderHighlight);
     model.on("change:clear_cache", renderCacheBtn);
+    model.on("change:impersonation_mode", renderImpersonation);
+    model.on("change:impersonation_value", renderImpersonation);
+    model.on("change:model_roles", renderImpersonation);
     model.on("change:sidebar_collapsed", renderSidebarChrome);
     model.on("change:metadata_loading", () => { renderSidebarChrome(); renderTree(); });
     model.on("change:model_tree", renderTree);
@@ -2066,6 +2284,7 @@ function render({ model, el }) {
     renderCards();
     renderRunBtn();
     renderCacheBtn();
+    renderImpersonation();
     renderError();
     renderTable();
     renderSidebarChrome();
@@ -2116,6 +2335,9 @@ export default { render };
         sidebar_collapsed = traitlets.Bool(False).tag(sync=True)
         refresh_metadata_trigger = traitlets.Int(0).tag(sync=True)
         metadata_loading = traitlets.Bool(False).tag(sync=True)
+        impersonation_mode = traitlets.Unicode("none").tag(sync=True)
+        impersonation_value = traitlets.Unicode("").tag(sync=True)
+        model_roles = traitlets.List([]).tag(sync=True)
 
     initial_result = _result_payload_from_df(result_df)
 
@@ -2130,6 +2352,11 @@ export default { render };
         initial_tree = _collect_model_tree(dataset_id, workspace_id)
     except Exception:
         initial_tree = []
+
+    try:
+        initial_roles = _collect_model_roles(dataset_id, workspace_id)
+    except Exception:
+        initial_roles = []
 
     widget = DaxTestWidget(
         dax_query=formatted_initial or "",
@@ -2156,6 +2383,11 @@ export default { render };
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
         metadata_loading=False,
+        impersonation_mode=(
+            "user" if effective_user_name else ("role" if role else "none")
+        ),
+        impersonation_value=(effective_user_name or role or ""),
+        model_roles=initial_roles,
     )
 
     # Expose the most recent dataframes for programmatic access.
@@ -2172,7 +2404,13 @@ export default { render };
     }
     state_lock = threading.Lock()
 
-    def _worker(query: str, clear_cache_flag: bool, run_id: int) -> None:
+    def _worker(
+        query: str,
+        clear_cache_flag: bool,
+        run_id: int,
+        effective_user: Optional[str],
+        role_name: Optional[str],
+    ) -> None:
         try:
             (
                 new_df,
@@ -2186,6 +2424,8 @@ export default { render };
                 workspace_id=workspace_id,
                 dax_string=query,
                 clear_cache=clear_cache_flag,
+                effective_user_name=effective_user,
+                role=role_name,
             )
         except Exception as exc:  # noqa: BLE001
             with state_lock:
@@ -2226,12 +2466,24 @@ export default { render };
             widget.error_message = "DAX query is empty."
             widget.is_running = False
             return
+        mode = widget.impersonation_mode or "none"
+        imp_value = (widget.impersonation_value or "").strip()
+        effective_user = imp_value if mode == "user" else None
+        role_name = imp_value if mode == "role" else None
+        if mode in ("user", "role") and not imp_value:
+            label = "user" if mode == "user" else "role"
+            widget.error_message = (
+                f"Impersonation is set to '{label}' but no {label} value "
+                "was provided."
+            )
+            widget.is_running = False
+            return
         with state_lock:
             run_state["current_run_id"] += 1
             run_id = run_state["current_run_id"]
         thread = threading.Thread(
             target=_worker,
-            args=(query, bool(widget.clear_cache), run_id),
+            args=(query, bool(widget.clear_cache), run_id, effective_user, role_name),
             daemon=True,
         )
         with state_lock:
@@ -2266,11 +2518,13 @@ export default { render };
     def _load_metadata() -> None:
         try:
             tree = _collect_model_tree(dataset_id, workspace_id)
+            roles = _collect_model_roles(dataset_id, workspace_id)
         except Exception as exc:  # noqa: BLE001
             widget.metadata_loading = False
             widget.error_message = f"Failed to load model metadata: {exc}"
             return
         widget.model_tree = tree
+        widget.model_roles = roles
         widget.metadata_loading = False
 
     def _on_refresh_metadata(change):
