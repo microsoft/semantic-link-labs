@@ -293,6 +293,10 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                             "name": str(c.Name),
                             "hidden": bool(getattr(c, "IsHidden", False)),
                             "data_type": str(getattr(c, "DataType", "") or ""),
+                            "description": str(getattr(c, "Description", "") or ""),
+                            "display_folder": str(
+                                getattr(c, "DisplayFolder", "") or ""
+                            ),
                         }
                         for c in table.Columns
                         if str(getattr(c, "Type", "")) != "RowNumber"
@@ -304,6 +308,10 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                         {
                             "name": str(m.Name),
                             "hidden": bool(getattr(m, "IsHidden", False)),
+                            "description": str(getattr(m, "Description", "") or ""),
+                            "display_folder": str(
+                                getattr(m, "DisplayFolder", "") or ""
+                            ),
                         }
                         for m in table.Measures
                     ),
@@ -314,6 +322,22 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                         {
                             "name": str(h.Name),
                             "hidden": bool(getattr(h, "IsHidden", False)),
+                            "description": str(getattr(h, "Description", "") or ""),
+                            "display_folder": str(
+                                getattr(h, "DisplayFolder", "") or ""
+                            ),
+                            "levels": [
+                                {
+                                    "name": str(lvl.Name),
+                                    "description": str(
+                                        getattr(lvl, "Description", "") or ""
+                                    ),
+                                }
+                                for lvl in sorted(
+                                    h.Levels,
+                                    key=lambda lvl: getattr(lvl, "Ordinal", 0),
+                                )
+                            ],
                         }
                         for h in table.Hierarchies
                     ),
@@ -326,7 +350,12 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                 if is_calc_group:
                     calculation_items = sorted(
                         (
-                            {"name": str(ci.Name)}
+                            {
+                                "name": str(ci.Name),
+                                "description": str(
+                                    getattr(ci, "Description", "") or ""
+                                ),
+                            }
                             for ci in table.CalculationGroup.CalculationItems
                         ),
                         key=lambda x: x["name"].lower(),
@@ -335,6 +364,7 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                     {
                         "name": tname,
                         "hidden": bool(getattr(table, "IsHidden", False)),
+                        "description": str(getattr(table, "Description", "") or ""),
                         "calculation_group": bool(is_calc_group),
                         "calculation_items": calculation_items,
                         "columns": columns,
@@ -947,6 +977,14 @@ def _visualize_dax_test(
     text-overflow: ellipsis;
 }}
 .dtx .dtx-tree-node:hover {{ background: var(--ui-surface-2); }}
+.dtx .dtx-tree-leaf.dtx-draggable {{ cursor: grab; }}
+.dtx .dtx-tree-leaf.dtx-draggable:active {{ cursor: grabbing; }}
+.dtx .dtx-tree-node.dtx-draggable > .dtx-tree-label {{ cursor: grab; }}
+.dtx .dtx-tree-node.dtx-draggable:active > .dtx-tree-label {{ cursor: grabbing; }}
+.dtx .dtx-query.dtx-drop-target {{
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
 .dtx .dtx-tree-leaf {{
     display: flex;
     align-items: center;
@@ -971,6 +1009,15 @@ def _visualize_dax_test(
     transition: transform 120ms ease;
 }}
 .dtx .dtx-tree-node.dtx-open > .dtx-tree-caret {{ transform: rotate(90deg); }}
+.dtx .dtx-tree-folder-header.dtx-open > .dtx-tree-caret,
+.dtx .dtx-tree-group-header.dtx-open > .dtx-tree-caret,
+.dtx .dtx-tree-leaf.dtx-open > .dtx-tree-caret {{ transform: rotate(90deg); }}
+.dtx .dtx-tree-caret-spacer {{
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+}}
 .dtx .dtx-tree-caret svg {{ width: 12px; height: 12px; }}
 .dtx .dtx-tree-icon {{
     display: inline-flex;
@@ -1016,6 +1063,25 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-tree-children {{ display: none; padding-left: 14px; }}
 .dtx .dtx-tree-node.dtx-open + .dtx-tree-children {{ display: block; }}
+.dtx .dtx-tree-subtree {{ display: none; }}
+.dtx .dtx-tree-folder-header {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-tree-folder-header:hover {{ background: var(--ui-surface-2); color: var(--ui-text); }}
+.dtx .dtx-tree-folder-header .dtx-tree-icon {{ color: var(--ui-text-tertiary); }}
+.dtx .dtx-tree-folder-header .dtx-tree-label {{ font-size: 12px; }}
+.dtx .dtx-tree-level {{ color: var(--ui-text-tertiary); cursor: default; }}
+.dtx .dtx-tree-level:hover {{ background: var(--ui-surface-2); color: var(--ui-text-secondary); }}
 .dtx .dtx-tree-group {{
     margin-top: 2px;
 }}
@@ -1062,6 +1128,8 @@ def _visualize_dax_test(
     measure_icon = _UI_ICONS["measure"].replace("`", "\\`")
     hierarchy_icon = _UI_ICONS["hierarchy"].replace("`", "\\`")
     caret_icon = _UI_ICONS["caret_right"].replace("`", "\\`")
+    folder_icon = _UI_ICONS["folder"].replace("`", "\\`")
+    level_icon = _UI_ICONS["level"].replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -1082,6 +1150,8 @@ function render({ model, el }) {
     const MEASURE_SVG = `__DTX_MEASURE__`;
     const HIERARCHY_SVG = `__DTX_HIERARCHY__`;
     const CARET_SVG = `__DTX_CARET__`;
+    const FOLDER_SVG = `__DTX_FOLDER__`;
+    const LEVEL_SVG = `__DTX_LEVEL__`;
     const REFRESH_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
         + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89"/><path d="M13.5 2.5v3h-3"/></svg>';
@@ -1207,21 +1277,104 @@ function render({ model, el }) {
         refreshBtn.classList.toggle("dtx-spinning", model.get("metadata_loading") === true);
     }
 
-    function makeLeaf(iconSvg, name, hidden, dataType) {
+    // Shared drag payload for dropping model objects into the editor.
+    let dragPayload = null;
+
+    function daxTableRef(name) {
+        return "'" + String(name).replace(/'/g, "''") + "'";
+    }
+    function daxMeasureRef(name) {
+        return "[" + String(name).replace(/\]/g, "]]") + "]";
+    }
+    function daxColumnRef(tableName, objName) {
+        return daxTableRef(tableName)
+            + "[" + String(objName).replace(/\]/g, "]]") + "]";
+    }
+
+    function makeDraggable(elem, dragText) {
+        elem.setAttribute("draggable", "true");
+        elem.classList.add("dtx-draggable");
+        elem.addEventListener("dragstart", (e) => {
+            dragPayload = dragText;
+            e.dataTransfer.setData("text/plain", dragText);
+            e.dataTransfer.effectAllowed = "copy";
+        });
+        elem.addEventListener("dragend", () => { dragPayload = null; });
+    }
+
+    function makeLeaf(iconSvg, name, hidden, dataType, dragText, description, pad) {
         const leaf = document.createElement("div");
         leaf.className = "dtx-tree-leaf";
-        leaf.style.paddingLeft = "30px";
+        leaf.style.paddingLeft = (pad == null ? 30 : pad) + "px";
+        const tip = description ? description : name;
         const typeHtml = dataType
             ? `<span class="dtx-tree-type" title="${escapeHtml(dataType)}">${escapeHtml(dataType)}</span>`
             : "";
         leaf.innerHTML = `<span class="dtx-tree-icon">${iconSvg}</span>`
             + `<span class="dtx-tree-label${hidden ? " dtx-hidden" : ""}"`
-            + ` title="${escapeHtml(name)}">${escapeHtml(name)}</span>`
+            + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
             + typeHtml;
+        if (dragText) makeDraggable(leaf, dragText);
         return leaf;
     }
 
-    function makeGroup(label, items, iconSvg) {
+    // Group items by their (possibly nested) display folder. Folder paths are
+    // split on "\\"; items without a display folder live at the group root.
+    function buildFolderTree(items) {
+        const root = { folders: new Map(), items: [] };
+        for (const it of items) {
+            const df = String(it.display_folder || "").trim();
+            if (!df) { root.items.push(it); continue; }
+            const parts = df.split("\\").map(p => p.trim()).filter(p => p.length);
+            let node = root;
+            for (const part of parts) {
+                if (!node.folders.has(part)) {
+                    node.folders.set(part, { folders: new Map(), items: [] });
+                }
+                node = node.folders.get(part);
+            }
+            node.items.push(it);
+        }
+        return root;
+    }
+
+    function makeFolder(label, pad) {
+        const wrap = document.createElement("div");
+        wrap.className = "dtx-tree-folder";
+        const header = document.createElement("div");
+        header.className = "dtx-tree-folder-header";
+        header.style.paddingLeft = pad + "px";
+        header.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span>`
+            + `<span class="dtx-tree-icon">${FOLDER_SVG}</span>`
+            + `<span class="dtx-tree-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+        const children = document.createElement("div");
+        children.className = "dtx-tree-subtree";
+        children.style.display = "none";
+        header.addEventListener("click", () => {
+            const open = !header.classList.contains("dtx-open");
+            header.classList.toggle("dtx-open", open);
+            children.style.display = open ? "block" : "none";
+        });
+        wrap.appendChild(header);
+        wrap.appendChild(children);
+        return { wrap, children };
+    }
+
+    function renderFolderTree(parentEl, node, build, depth) {
+        const pad = 30 + depth * 14;
+        const folderNames = Array.from(node.folders.keys()).sort(
+            (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        for (const fname of folderNames) {
+            const folder = makeFolder(fname, pad);
+            parentEl.appendChild(folder.wrap);
+            renderFolderTree(folder.children, node.folders.get(fname), build, depth + 1);
+        }
+        for (const it of node.items) {
+            parentEl.appendChild(build(it, pad));
+        }
+    }
+
+    function makeGroup(label, items, iconSvg, dragFn, leafBuilder) {
         if (!items || !items.length) return null;
         const wrap = document.createElement("div");
         wrap.className = "dtx-tree-group";
@@ -1231,7 +1384,10 @@ function render({ model, el }) {
         header.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span><span>${escapeHtml(label)}</span><span class="dtx-tree-group-count">${items.length}</span>`;
         const children = document.createElement("div");
         children.className = "dtx-tree-children";
-        for (const it of items) children.appendChild(makeLeaf(iconSvg, it.name, !!it.hidden, it.data_type));
+        const build = leafBuilder || ((it, pad) => makeLeaf(
+            iconSvg, it.name, !!it.hidden, it.data_type,
+            dragFn ? dragFn(it) : null, it.description, pad));
+        renderFolderTree(children, buildFolderTree(items), build, 0);
         header.addEventListener("click", () => {
             const open = !header.classList.contains("dtx-open");
             header.classList.toggle("dtx-open", open);
@@ -1241,6 +1397,49 @@ function render({ model, el }) {
         wrap.appendChild(header);
         wrap.appendChild(children);
         return wrap;
+    }
+
+    // Leaf builder for hierarchies: the hierarchy is draggable and (when it
+    // has levels) expands to show its levels. Levels are NOT draggable.
+    function makeHierarchyLeaf(tableName) {
+        return (it, pad) => {
+            const frag = document.createDocumentFragment();
+            const hasLevels = it.levels && it.levels.length;
+            const node = document.createElement("div");
+            node.className = "dtx-tree-leaf";
+            node.style.paddingLeft = pad + "px";
+            const tip = it.description ? it.description : it.name;
+            node.innerHTML = (hasLevels
+                    ? `<span class="dtx-tree-caret">${CARET_SVG}</span>`
+                    : `<span class="dtx-tree-caret-spacer"></span>`)
+                + `<span class="dtx-tree-icon">${HIERARCHY_SVG}</span>`
+                + `<span class="dtx-tree-label${it.hidden ? " dtx-hidden" : ""}"`
+                + ` title="${escapeHtml(tip)}">${escapeHtml(it.name)}</span>`;
+            makeDraggable(node, daxColumnRef(tableName, it.name));
+            frag.appendChild(node);
+            if (hasLevels) {
+                const lchildren = document.createElement("div");
+                lchildren.className = "dtx-tree-subtree";
+                lchildren.style.display = "none";
+                for (const lvl of it.levels) {
+                    const lleaf = document.createElement("div");
+                    lleaf.className = "dtx-tree-leaf dtx-tree-level";
+                    lleaf.style.paddingLeft = (pad + 18) + "px";
+                    const ltip = lvl.description ? lvl.description : lvl.name;
+                    lleaf.innerHTML = `<span class="dtx-tree-icon">${LEVEL_SVG}</span>`
+                        + `<span class="dtx-tree-label"`
+                        + ` title="${escapeHtml(ltip)}">${escapeHtml(lvl.name)}</span>`;
+                    lchildren.appendChild(lleaf);
+                }
+                node.addEventListener("click", () => {
+                    const open = !node.classList.contains("dtx-open");
+                    node.classList.toggle("dtx-open", open);
+                    lchildren.style.display = open ? "block" : "none";
+                });
+                frag.appendChild(lchildren);
+            }
+            return frag;
+        };
     }
 
     function renderTree() {
@@ -1262,16 +1461,21 @@ function render({ model, el }) {
             node.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span>`
                 + `<span class="dtx-tree-icon">${tblIcon}</span>`
                 + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
-                + ` title="${escapeHtml(tbl.name)}">${escapeHtml(tbl.name)}</span>`;
+                + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`;
+            makeDraggable(node, daxTableRef(tbl.name));
             const children = document.createElement("div");
             children.className = "dtx-tree-children";
-            const colGrp = makeGroup("Columns", tbl.columns, COLUMN_SVG);
-            const meaGrp = makeGroup("Measures", tbl.measures, MEASURE_SVG);
-            const hieGrp = makeGroup("Hierarchies", tbl.hierarchies, HIERARCHY_SVG);
+            const colGrp = makeGroup("Columns", tbl.columns, COLUMN_SVG,
+                (it) => daxColumnRef(tbl.name, it.name));
+            const meaGrp = makeGroup("Measures", tbl.measures, MEASURE_SVG,
+                (it) => daxMeasureRef(it.name));
+            const hieGrp = makeGroup("Hierarchies", tbl.hierarchies, HIERARCHY_SVG,
+                null, makeHierarchyLeaf(tbl.name));
             if (colGrp) children.appendChild(colGrp);
             if (meaGrp) children.appendChild(meaGrp);
             if (hieGrp) children.appendChild(hieGrp);
-            const ciGrp = makeGroup("Calculation items", tbl.calculation_items, CALC_ITEM_SVG);
+            const ciGrp = makeGroup("Calculation items", tbl.calculation_items, CALC_ITEM_SVG,
+                (it) => daxColumnRef(tbl.name, it.name));
             if (ciGrp) children.appendChild(ciGrp);
             node.addEventListener("click", () => {
                 const open = !node.classList.contains("dtx-open");
@@ -1430,6 +1634,50 @@ function render({ model, el }) {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
             runBtn.click();
+        }
+    });
+
+    // Drag-and-drop model objects into the editor.
+    function insertAtCursor(text) {
+        const start = textarea.selectionStart != null
+            ? textarea.selectionStart : textarea.value.length;
+        const end = textarea.selectionEnd != null
+            ? textarea.selectionEnd : textarea.value.length;
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
+        textarea.value = before + text + after;
+        const caret = start + text.length;
+        textarea.selectionStart = textarea.selectionEnd = caret;
+        textarea.focus();
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+    }
+    textarea.addEventListener("dragover", (e) => {
+        if (dragPayload != null) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            textarea.classList.add("dtx-drop-target");
+        }
+    });
+    textarea.addEventListener("dragleave", () => {
+        textarea.classList.remove("dtx-drop-target");
+    });
+    textarea.addEventListener("drop", (e) => {
+        const text = (e.dataTransfer && e.dataTransfer.getData("text/plain"))
+            || dragPayload;
+        if (text) {
+            e.preventDefault();
+            textarea.classList.remove("dtx-drop-target");
+            // Position the caret where the drop happened, when supported.
+            if (document.caretRangeFromPoint) {
+                const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+                if (range && range.startContainer === textarea.firstChild) {
+                    textarea.selectionStart = textarea.selectionEnd =
+                        range.startOffset;
+                }
+            }
+            insertAtCursor(text);
         }
     });
 
@@ -1836,6 +2084,8 @@ export default { render };
         .replace("__DTX_MEASURE__", measure_icon)
         .replace("__DTX_HIERARCHY__", hierarchy_icon)
         .replace("__DTX_CARET__", caret_icon)
+        .replace("__DTX_FOLDER__", folder_icon)
+        .replace("__DTX_LEVEL__", level_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):

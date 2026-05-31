@@ -119,6 +119,21 @@ ICONS: dict[str, str] = {
         "<svg width='8' height='10' viewBox='0 0 8 10' fill='currentColor'>"
         "<path d='M1 0l6 5-6 5V0z'/></svg>"
     ),
+    "folder": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2 4.25c0-.7.55-1.25 1.25-1.25h3l1.5 1.75h4.75c.7 0 '
+        '1.25.55 1.25 1.25v6c0 .7-.55 1.25-1.25 1.25H3.25C2.55 13.25 2 '
+        '12.7 2 12V4.25z"/></svg>'
+    ),
+    "level": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4 3v7.5c0 .7.55 1.25 1.25 1.25H12"/>'
+        '<path d="M9.5 9.5L12 11.75 9.5 14"/></svg>'
+    ),
 }
 
 
