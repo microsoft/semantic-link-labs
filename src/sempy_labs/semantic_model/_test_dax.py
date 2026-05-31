@@ -933,6 +933,7 @@ def _visualize_dax_test(
     flex-wrap: wrap;
     flex: 0 0 auto;
     padding: 14px 24px;
+    margin-bottom: 18px;
     border-bottom: 1px solid var(--ui-border);
     background: var(--ui-bg-secondary);
 }}
@@ -2074,7 +2075,14 @@ function render({ model, el }) {
         });
         dsSel.value = curDs;
         dsSel.disabled = !curWs || loading;
-        pickerBtn.disabled = loading || !curDs;
+        // Disable "Use model" when the selection matches the model already
+        // in use (same workspace and dataset).
+        const sameAsActive = curWs === (model.get("active_workspace_id") || "")
+            && curDs === (model.get("active_dataset_id") || "");
+        pickerBtn.disabled = loading || !curDs || sameAsActive;
+        pickerBtn.title = sameAsActive
+            ? "This semantic model is already in use"
+            : "";
         pickerSpin.textContent = loading ? "Loading…" : "";
     }
     wsSel.addEventListener("change", () => {
@@ -2841,6 +2849,8 @@ function render({ model, el }) {
     model.on("change:available_datasets", renderPicker);
     model.on("change:selected_workspace_id", renderPicker);
     model.on("change:selected_dataset_id", renderPicker);
+    model.on("change:active_workspace_id", renderPicker);
+    model.on("change:active_dataset_id", renderPicker);
     model.on("change:picker_loading", renderPicker);
 
     applyTheme();
@@ -2909,6 +2919,8 @@ export default { render };
         available_datasets = traitlets.List([]).tag(sync=True)
         selected_workspace_id = traitlets.Unicode("").tag(sync=True)
         selected_dataset_id = traitlets.Unicode("").tag(sync=True)
+        active_workspace_id = traitlets.Unicode("").tag(sync=True)
+        active_dataset_id = traitlets.Unicode("").tag(sync=True)
         picker_loading = traitlets.Bool(False).tag(sync=True)
         select_workspace_trigger = traitlets.Int(0).tag(sync=True)
         select_dataset_trigger = traitlets.Int(0).tag(sync=True)
@@ -2992,6 +3004,8 @@ export default { render };
         available_datasets=initial_datasets,
         selected_workspace_id=str(workspace_id) if workspace_id else "",
         selected_dataset_id="",
+        active_workspace_id=str(workspace_id) if workspace_id else "",
+        active_dataset_id=str(dataset_id) if dataset_id else "",
         picker_loading=False,
         select_workspace_trigger=0,
         select_dataset_trigger=0,
@@ -3218,6 +3232,8 @@ export default { render };
             return
         widget.dataset_name = str(ds_name) if ds_name else str(ds_id)
         widget.workspace_name = str(ws_name) if ws_name else ""
+        widget.active_workspace_id = str(ws_id_resolved)
+        widget.active_dataset_id = str(ds_id_resolved)
         widget.model_tree = tree
         widget.model_roles = roles
         # Reset impersonation so a stale role/user from a prior model isn't
