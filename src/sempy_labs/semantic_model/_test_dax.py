@@ -294,8 +294,8 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                             "hidden": bool(getattr(c, "IsHidden", False)),
                             "data_type": str(getattr(c, "DataType", "") or ""),
                         }
-                        for c in tom.all_columns()
-                        if c.Parent == table
+                        for c in table.Columns
+                        if str(getattr(c, "Type", "")) != "RowNumber"
                     ),
                     key=lambda x: x["name"].lower(),
                 )
@@ -319,10 +319,24 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                     ),
                     key=lambda x: x["name"].lower(),
                 )
+                is_calc_group = (
+                    getattr(table, "CalculationGroup", None) is not None
+                )
+                calculation_items: list = []
+                if is_calc_group:
+                    calculation_items = sorted(
+                        (
+                            {"name": str(ci.Name)}
+                            for ci in table.CalculationGroup.CalculationItems
+                        ),
+                        key=lambda x: x["name"].lower(),
+                    )
                 tree.append(
                     {
                         "name": tname,
                         "hidden": bool(getattr(table, "IsHidden", False)),
+                        "calculation_group": bool(is_calc_group),
+                        "calculation_items": calculation_items,
                         "columns": columns,
                         "measures": measures,
                         "hierarchies": hierarchies,
@@ -957,22 +971,26 @@ def _visualize_dax_test(
     transition: transform 120ms ease;
 }}
 .dtx .dtx-tree-node.dtx-open > .dtx-tree-caret {{ transform: rotate(90deg); }}
-.dtx .dtx-tree-caret svg {{ width: 10px; height: 10px; }}
+.dtx .dtx-tree-caret svg {{ width: 12px; height: 12px; }}
 .dtx .dtx-tree-icon {{
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
-    flex: 0 0 14px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
     color: var(--ui-text-tertiary);
 }}
-.dtx .dtx-tree-icon svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-tree-icon svg {{ width: 18px; height: 18px; }}
 .dtx .dtx-tree-label {{
     flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}}
+.dtx .dtx-tree-node > .dtx-tree-label {{
+    font-size: 13px;
+    font-weight: 600;
 }}
 .dtx .dtx-tree-label.dtx-hidden {{
     color: var(--ui-text-tertiary);
@@ -1038,6 +1056,8 @@ def _visualize_dax_test(
     sun_icon = _UI_ICONS["sun"].replace("`", "\\`")
     moon_icon = _UI_ICONS["moon"].replace("`", "\\`")
     table_icon = _UI_ICONS["table"].replace("`", "\\`")
+    calc_group_icon = _UI_ICONS["calculation_group"].replace("`", "\\`")
+    calc_item_icon = _UI_ICONS["calculation_item"].replace("`", "\\`")
     column_icon = _UI_ICONS["column"].replace("`", "\\`")
     measure_icon = _UI_ICONS["measure"].replace("`", "\\`")
     hierarchy_icon = _UI_ICONS["hierarchy"].replace("`", "\\`")
@@ -1056,6 +1076,8 @@ function render({ model, el }) {
     const PLAY_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
     const STOP_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1.2"/></svg>';
     const TABLE_SVG = `__DTX_TABLE__`;
+    const CALC_GROUP_SVG = `__DTX_CALC_GROUP__`;
+    const CALC_ITEM_SVG = `__DTX_CALC_ITEM__`;
     const COLUMN_SVG = `__DTX_COLUMN__`;
     const MEASURE_SVG = `__DTX_MEASURE__`;
     const HIERARCHY_SVG = `__DTX_HIERARCHY__`;
@@ -1236,8 +1258,9 @@ function render({ model, el }) {
         for (const tbl of tree) {
             const node = document.createElement("div");
             node.className = "dtx-tree-node";
+            const tblIcon = tbl.calculation_group ? CALC_GROUP_SVG : TABLE_SVG;
             node.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span>`
-                + `<span class="dtx-tree-icon">${TABLE_SVG}</span>`
+                + `<span class="dtx-tree-icon">${tblIcon}</span>`
                 + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
                 + ` title="${escapeHtml(tbl.name)}">${escapeHtml(tbl.name)}</span>`;
             const children = document.createElement("div");
@@ -1248,6 +1271,8 @@ function render({ model, el }) {
             if (colGrp) children.appendChild(colGrp);
             if (meaGrp) children.appendChild(meaGrp);
             if (hieGrp) children.appendChild(hieGrp);
+            const ciGrp = makeGroup("Calculation items", tbl.calculation_items, CALC_ITEM_SVG);
+            if (ciGrp) children.appendChild(ciGrp);
             node.addEventListener("click", () => {
                 const open = !node.classList.contains("dtx-open");
                 node.classList.toggle("dtx-open", open);
@@ -1805,6 +1830,8 @@ export default { render };
         widget_js.replace("__DTX_SUN__", sun_icon)
         .replace("__DTX_MOON__", moon_icon)
         .replace("__DTX_TABLE__", table_icon)
+        .replace("__DTX_CALC_GROUP__", calc_group_icon)
+        .replace("__DTX_CALC_ITEM__", calc_item_icon)
         .replace("__DTX_COLUMN__", column_icon)
         .replace("__DTX_MEASURE__", measure_icon)
         .replace("__DTX_HIERARCHY__", hierarchy_icon)
@@ -1842,6 +1869,18 @@ export default { render };
 
     initial_result = _result_payload_from_df(result_df)
 
+    # Collect the model metadata tree synchronously before constructing the
+    # widget. Loading it in a background thread that sets traits right after
+    # display() races with the widget comm being opened: the finished-tree
+    # update can be sent before the front-end is listening, leaving the
+    # sidebar stuck on "Loading model metadata…". The tree collection is
+    # fast, so building it up-front (and shipping it as initial state) is
+    # both reliable and quick.
+    try:
+        initial_tree = _collect_model_tree(dataset_id, workspace_id)
+    except Exception:
+        initial_tree = []
+
     widget = DaxTestWidget(
         dax_query=formatted_initial or "",
         dax_tokens=_classify_dax_spans(formatted_initial or ""),
@@ -1863,10 +1902,10 @@ export default { render };
         error_message="",
         run_trigger=0,
         cancel_trigger=0,
-        model_tree=[],
+        model_tree=initial_tree,
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
-        metadata_loading=True,
+        metadata_loading=False,
     )
 
     # Expose the most recent dataframes for programmatic access.
@@ -1993,8 +2032,5 @@ export default { render };
         threading.Thread(target=_load_metadata, daemon=True).start()
 
     widget.observe(_on_refresh_metadata, names="refresh_metadata_trigger")
-
-    # Initial metadata load in the background so the widget displays immediately.
-    threading.Thread(target=_load_metadata, daemon=True).start()
 
     display(widget)

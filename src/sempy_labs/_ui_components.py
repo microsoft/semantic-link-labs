@@ -31,6 +31,13 @@ ICONS: dict[str, str] = {
         '<rect x="2.5" y="3" width="11" height="10" rx="1.8"/>'
         '<path d="M2.5 6.75h11M8 6.75v6.25"/></svg>'
     ),
+    "calculation_group": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="3" width="11" height="10" rx="1.8"/>'
+        '<path d="M2.5 6.75h11M5.25 9.5h5.5M5.25 11.4h3.5"/></svg>'
+    ),
     "column": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -58,6 +65,13 @@ ICONS: dict[str, str] = {
         '<circle cx="3.75" cy="12.75" r="1.4"/>'
         '<circle cx="12.25" cy="12.75" r="1.4"/>'
         '<path d="M8 4.65V8M8 8H3.75v3.35M8 8h4.25v3.35"/></svg>'
+    ),
+    "calculation_item": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="2.5" width="11" height="11" rx="2.4"/>'
+        '<path d="M9.75 5.75H7.4q-.9 0-.9.95V11M5.6 8.2h2.6"/></svg>'
     ),
     "partition": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
