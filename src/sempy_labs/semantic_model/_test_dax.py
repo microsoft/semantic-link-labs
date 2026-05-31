@@ -700,6 +700,15 @@ def _qb_build_predicate(item: dict) -> Optional[str]:
     if op == "isfalse":
         return f"{ref} = FALSE()"
 
+    if op in ("in", "notin"):
+        items = [v.strip() for v in str(value).split(",")]
+        items = [v for v in items if v != ""]
+        if not items:
+            return None
+        literals = ", ".join(_qb_value_literal(ftype, v) for v in items)
+        predicate = f"{ref} IN {{{literals}}}"
+        return f"NOT({predicate})" if op == "notin" else predicate
+
     if ftype == "text":
         if op == "contains":
             return f"CONTAINSSTRING({ref}, {_qb_quote_str(value)})"
@@ -1760,6 +1769,25 @@ def _visualize_dax_test(
 .dtx .dtx-builder.dtx-builder-hidden {{
     display: none;
 }}
+.dtx .dtx-builder.dtx-builder-collapsed {{
+    flex: 0 0 38px;
+    max-width: 38px;
+    min-width: 38px;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-title,
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-content {{
+    display: none;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-header {{
+    justify-content: center;
+    padding: 10px 6px;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle {{
+    display: none;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle.dtx-builder-collapse {{
+    display: inline-flex;
+}}
 .dtx .dtx-builder-header {{
     display: flex;
     align-items: center;
@@ -2468,6 +2496,7 @@ function render({ model, el }) {
     // ---------- Query Builder pane (between sidebar and main) ----------
     // Hidden by default; revealed via the header "Query Builder" button.
     let builderVisible = false;
+    let builderCollapsed = false;
     let builderFields = [];
     let builderFilters = [];
     let qbSeq = 0;
@@ -2475,17 +2504,20 @@ function render({ model, el }) {
     const QB_OPS = {
         text: [["eq", "equals"], ["ne", "does not equal"],
             ["contains", "contains"], ["startswith", "starts with"],
+            ["in", "in"], ["notin", "not in"],
             ["blank", "is blank"], ["notblank", "is not blank"]],
         numeric: [["eq", "="], ["ne", "\u2260"], ["gt", ">"], ["ge", "\u2265"],
             ["lt", "<"], ["le", "\u2264"], ["between", "between"],
+            ["in", "in"], ["notin", "not in"],
             ["blank", "is blank"], ["notblank", "is not blank"]],
         datetime: [["eq", "on"], ["ne", "not on"], ["gt", "after"],
             ["ge", "on or after"], ["lt", "before"], ["le", "on or before"],
-            ["between", "between"], ["blank", "is blank"],
-            ["notblank", "is not blank"]],
+            ["between", "between"], ["in", "in"], ["notin", "not in"],
+            ["blank", "is blank"], ["notblank", "is not blank"]],
         boolean: [["istrue", "is TRUE"], ["isfalse", "is FALSE"]],
         measure: [["eq", "="], ["ne", "\u2260"], ["gt", ">"], ["ge", "\u2265"],
-            ["lt", "<"], ["le", "\u2264"], ["between", "between"]],
+            ["lt", "<"], ["le", "\u2264"], ["between", "between"],
+            ["in", "in"], ["notin", "not in"]],
     };
 
     function qbClassify(field) {
@@ -2521,6 +2553,13 @@ function render({ model, el }) {
     const builderTitle = document.createElement("div");
     builderTitle.className = "dtx-builder-title";
     builderTitle.textContent = "Query Builder";
+    const builderCollapseBtn = document.createElement("button");
+    builderCollapseBtn.type = "button";
+    builderCollapseBtn.className = "dtx-builder-toggle dtx-builder-collapse";
+    builderCollapseBtn.addEventListener("click", () => {
+        builderCollapsed = !builderCollapsed;
+        renderBuilderChrome();
+    });
     const builderToggle = document.createElement("button");
     builderToggle.type = "button";
     builderToggle.className = "dtx-builder-toggle";
@@ -2529,9 +2568,11 @@ function render({ model, el }) {
     builderToggle.setAttribute("aria-label", "Hide query builder");
     builderToggle.addEventListener("click", () => {
         builderVisible = false;
+        builderCollapsed = false;
         renderBuilderChrome();
     });
     builderHeader.appendChild(builderTitle);
+    builderHeader.appendChild(builderCollapseBtn);
     builderHeader.appendChild(builderToggle);
     builderPane.appendChild(builderHeader);
 
@@ -2727,7 +2768,8 @@ function render({ model, el }) {
             v1.type = "text";
             v1.className = "dtx-chip-value";
             v1.value = f.value || "";
-            v1.placeholder = ph;
+            v1.placeholder = (op === "in" || op === "notin")
+                ? "value1, value2, …" : ph;
             v1.addEventListener("input", () => { f.value = v1.value; });
             valWrap.appendChild(v1);
             if (op === "between") {
@@ -2808,6 +2850,13 @@ function render({ model, el }) {
 
     function renderBuilderChrome() {
         builderPane.classList.toggle("dtx-builder-hidden", !builderVisible);
+        builderPane.classList.toggle("dtx-builder-collapsed", builderCollapsed);
+        builderCollapseBtn.innerHTML = builderCollapsed
+            ? PANEL_EXPAND_SVG : PANEL_COLLAPSE_SVG;
+        const clabel = builderCollapsed
+            ? "Expand query builder" : "Collapse query builder";
+        builderCollapseBtn.title = clabel;
+        builderCollapseBtn.setAttribute("aria-label", clabel);
         builderShowBtn.classList.toggle("dtx-active", builderVisible);
         const label = builderVisible
             ? "Hide query builder" : "Show query builder";

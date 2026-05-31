@@ -16,6 +16,9 @@ class TokenType(Enum):
     RPAREN = auto()
     COMMA = auto()
 
+    LBRACE = auto()
+    RBRACE = auto()
+
     OPERATOR = auto()
 
     VAR = auto()

@@ -558,6 +558,26 @@ class Parser:
 
             token = self.current
 
+            # IN membership operator: `<expr> IN { ... }`. Tokenized as a
+            # bare identifier, so handle it before the generic operator
+            # branch. Uses comparison-level precedence.
+            if (
+                token.token_type == TokenType.IDENTIFIER
+                and token.text.upper() == "IN"
+            ):
+                in_precedence = 5
+                if in_precedence < precedence:
+                    break
+                self.advance()
+                right = self.expression(in_precedence + 1)
+                left = In(
+                    args={
+                        "this": left,
+                        "expression": right,
+                    }
+                )
+                continue
+
             if token.token_type != TokenType.OPERATOR:
                 break
 
@@ -766,6 +786,27 @@ class Parser:
             self.advance()
 
             return expr
+
+        elif token.token_type == TokenType.LBRACE:
+
+            self.advance()
+
+            elements = []
+
+            while self.current.token_type != TokenType.RBRACE:
+
+                elements.append(self.statement())
+
+                if self.current.token_type == TokenType.COMMA:
+                    self.advance()
+
+            self.advance()
+
+            return Set(
+                args={
+                    "expressions": elements,
+                }
+            )
 
         raise SyntaxError(f"Unexpected token: {token}")
 

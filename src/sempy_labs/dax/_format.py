@@ -85,9 +85,14 @@ def _classify_tokens(dax_expression: str):
             kind = "string"
         elif tt == TokenType.OPERATOR:
             kind = "operator"
-        elif tt in (TokenType.LPAREN, TokenType.RPAREN, TokenType.COMMA):
+        elif tt in (
+            TokenType.LPAREN,
+            TokenType.RPAREN,
+            TokenType.COMMA,
+            TokenType.LBRACE,
+            TokenType.RBRACE,
+        ):
             kind = "punctuation"
-
         classified.append((token, kind))
 
     return classified

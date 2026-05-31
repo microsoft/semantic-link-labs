@@ -101,6 +101,18 @@ class Unary(Expression):
     pass
 
 
+class In(Expression):
+    """An ``IN`` membership test: ``<expression> IN { <values> }``."""
+
+    pass
+
+
+class Set(Expression):
+    """A brace-enclosed list of values, e.g. ``{ 1, 2, 3 }``."""
+
+    pass
+
+
 class Var(Expression):
     pass
 

@@ -22,6 +22,8 @@ TOKEN_REGEX = [
     (TokenType.OPERATOR, r"<=|>=|<>|&&|\|\||[-+*/=<>&]"),
     (TokenType.LPAREN, r"\("),
     (TokenType.RPAREN, r"\)"),
+    (TokenType.LBRACE, r"\{"),
+    (TokenType.RBRACE, r"\}"),
     (TokenType.COMMA, r","),
 ]
 
