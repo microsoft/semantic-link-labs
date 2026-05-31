@@ -745,6 +745,7 @@ def _visualize_dax_test(
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
+    flex: 0 0 auto;
     padding: 0 24px 18px 24px;
 }}
 .dtx .dtx-card {{
@@ -830,16 +831,21 @@ def _visualize_dax_test(
 .dtx .dtx-change-btn {{
     display: inline-flex;
     align-items: center;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1;
-    padding: 2px 8px;
-    margin-left: 2px;
-    border-radius: 5px;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    margin-left: 4px;
+    flex: 0 0 auto;
+    border-radius: 6px;
     border: 1px solid var(--ui-border);
     background: transparent;
     color: var(--ui-text-secondary);
     cursor: pointer;
+}}
+.dtx .dtx-change-btn svg {{
+    width: 15px;
+    height: 15px;
 }}
 .dtx .dtx-change-btn:hover {{
     border-color: var(--ui-accent);
@@ -925,6 +931,7 @@ def _visualize_dax_test(
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    flex: 0 0 auto;
     padding: 14px 24px;
     border-bottom: 1px solid var(--ui-border);
     background: var(--ui-bg-secondary);
@@ -1567,6 +1574,10 @@ function render({ model, el }) {
     const REFRESH_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
         + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89"/><path d="M13.5 2.5v3h-3"/></svg>';
+    const SWAP_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M2.5 5.5h9"/><path d="M9 3l2.5 2.5L9 8"/>'
+        + '<path d="M13.5 10.5h-9"/><path d="M7 8l-2.5 2.5L7 13"/></svg>';
     const PANEL_COLLAPSE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
         + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6.5 3v10"/>'
@@ -1613,8 +1624,9 @@ function render({ model, el }) {
     const changeModelBtn = document.createElement("button");
     changeModelBtn.type = "button";
     changeModelBtn.className = "dtx-change-btn";
-    changeModelBtn.textContent = "Change model";
-    changeModelBtn.title = "Choose a different workspace / semantic model";
+    changeModelBtn.innerHTML = SWAP_SVG;
+    changeModelBtn.title = "Change model";
+    changeModelBtn.setAttribute("aria-label", "Change model");
     titleWrap.appendChild(changeModelBtn);
     changeModelBtn.addEventListener("click", () => {
         pickerOpen = true;
