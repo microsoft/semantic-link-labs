@@ -37,7 +37,7 @@ def generate_direct_lake_semantic_model(
     use_sql_endpoint: bool = False,
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
-    inherit_descriptions: bool = False,
+    inherit_descriptions: bool = True,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on tables in Fabric.
@@ -70,7 +70,7 @@ def generate_direct_lake_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     refresh : bool, default=True
         If True, refreshes the newly created semantic model after it is created.
-    inherit_descriptions : bool, default=False
+    inherit_descriptions : bool, default=True
         If True, sets table/column descriptions based on the comments/descriptions in the source table. Only available for lakehouse sources.
     """
     from sempy_labs._helper_functions import extract_descriptions_from_table_path
@@ -237,7 +237,7 @@ def generate_direct_lake_semantic_model(
         for table_name, table_info in model_map.items():
             schema_name = table_info["schema"]
             entity_name = table_info["entityName"]
-            tom.add_table(name=table_name, description=description)
+            tom.add_table(name=table_name, description=table_info.get("description"))
             tom.add_entity_partition(
                 table_name=table_name,
                 entity_name=entity_name,
@@ -247,13 +247,67 @@ def generate_direct_lake_semantic_model(
             for column in table_info["columns"]:
                 column_name = column["columnName"]
                 data_type = column["dataType"]
+                summarize_by = "None"
+                if data_type in ["Int64", "Double", "Decimal"]:
+                    if column_name.lower().endswith(
+                        "key"
+                    ) or column_name.lower().endswith("id"):
+                        summarize_by = "Count"
+                    else:
+                        summarize_by = "Sum"
                 tom.add_data_column(
                     table_name=table_name,
                     column_name=column_name,
                     data_type=data_type,
                     source_column=column_name,
-                    description=description,
+                    description=column.get("description"),
+                    summarize_by=summarize_by,
                 )
+            # If the source table defines a primary key, mark the
+            # corresponding model column with IsKey=True. Failures here are
+            # non-fatal: not every source supports INFORMATION_SCHEMA queries
+            # and a missing primary key should not block model creation.
+            from sempy_labs._sql import get_primary_key
+
+            try:
+                pk_col = get_primary_key(
+                    table=entity_name,
+                    schema=schema_name or "dbo",
+                    item=source_id,
+                    type=source_type,
+                    workspace=source_workspace_id,
+                )
+            except Exception:
+                pk_col = None
+            if pk_col:
+                try:
+                    # get_primary_key returns the source column name; find
+                    # the model column whose SourceColumn matches it.
+                    target = next(
+                        (
+                            c
+                            for c in tom.model.Tables[table_name].Columns
+                            if getattr(c, "SourceColumn", "") == pk_col
+                        ),
+                        None,
+                    )
+                    if target is None:
+                        print(
+                            f"{icons.warning} Primary key source column "
+                            f"'{pk_col}' was not found among the columns of "
+                            f"table '{table_name}'."
+                        )
+                    else:
+                        target.IsKey = True
+                        print(
+                            f"{icons.green_dot} Marked column '{target.Name}' "
+                            f"in table '{table_name}' as the primary key."
+                        )
+                except Exception as e:
+                    print(
+                        f"{icons.warning} Could not mark column '{pk_col}' "
+                        f"in table '{table_name}' as the primary key: {e}"
+                    )
 
     if refresh:
         refresh_semantic_model(dataset=dataset_id, workspace=workspace_id)

@@ -5,7 +5,7 @@ description: Guide for the visual style, structure, and shared building blocks u
 
 # UI Styling for Interactive Tools
 
-This skill describes the styling conventions, shared building blocks, and architectural patterns used by all interactive UI tools in Semantic Link Labs so that every tool has a consistent, elegant, Apple-inspired design.
+This skill describes the styling conventions, shared building blocks, and architectural patterns used by all interactive UI tools in Semantic Link Labs so that every tool has a consistent, elegant design.
 
 ## When to Use This Skill
 
@@ -39,7 +39,7 @@ Semantic Link Labs has exactly two supported patterns for interactive UI tools. 
 
 | Export | Purpose |
 |--------|---------|
-| `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `column`, `column_chunk`, `measure`, `hierarchy`, `partition`, `relationship`) and UI icons (`sun`, `moon`, `search`, `plus`, `caret_right`). |
+| `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `column`, `column_chunk`, `measure`, `hierarchy`, `partition`, `relationship`), UI chrome icons (`sun`, `moon`, `search`, `plus`, `caret_right`, `back`, `refresh`, `more`), and action icons (`source`, `sync`, `pencil`, `link`). |
 | `LIGHT_THEME_VARS`, `DARK_THEME_VARS` | CSS custom-property blocks defining the Apple-inspired light and dark palettes. Always reference colors via these `--ui-*` tokens, never hard-coded hex values. |
 | `HEADER_CSS`, `scoped_header_css(root_selector)` | Standard widget header styles (title + dataset/workspace subtitle + theme toggle button). `scoped_header_css` prefixes every rule with the root selector so the styles win against notebook host CSS (e.g. Jupyter's `.jp-RenderedHTMLCommon button`). |
 | `render_header_html(title, dataset_name, workspace_name, theme_btn_id, dark_mode)` | Renders the standard header markup. |
@@ -232,6 +232,156 @@ The frontend `render({ model, el })` function should:
 ### Reference
 
 - `src/sempy_labs/semantic_model/_perspective_editor.py` — `perspective_editor`. Full implementation showing widget class definition, traitlets, the `pending_action` + `run` callback pattern, dark-mode round-trip, and lazy-import guard.
+- `src/sempy_labs/semantic_model/_direct_lake_manager.py` — `direct_lake_manager`. Multi-screen anywidget with model-selection / model-management screens, popover menus, modals, pending-change tracking, and a save bar. Demonstrates icon-template-substitution from `_ui_components.ICONS`.
+
+### 6. Icon template-substitution recipe (anywidget)
+
+Because `_WIDGET_JS` is a raw string passed to anywidget's `_esm`, you cannot directly call Python at JS render time. To keep icons centralized in `_ui_components.ICONS`, use **placeholder substitution at module-import time**:
+
+1. In `_WIDGET_JS`, refer to icons through uppercase placeholders, e.g.:
+
+    ```javascript
+    const SUN_SVG = `__SLLS_ICON_SUN__`;
+    const ICON_SVG = {
+        table: `__SLLS_ICON_TABLE__`,
+        column: `__SLLS_ICON_COLUMN__`,
+        // ...
+    };
+    ```
+
+2. Immediately after `_WIDGET_JS = r"""...""""`, substitute each placeholder from `ICONS`:
+
+    ```python
+    from sempy_labs._ui_components import ICONS as _UI_ICONS
+
+    _WIDGET_JS = (
+        _WIDGET_JS
+        .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
+        .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
+        .replace("__SLLS_ICON_TABLE__", _UI_ICONS["table"])
+        .replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])
+        # ...one .replace per icon used
+    )
+    ```
+
+Do **not** inline raw SVG strings inside `_WIDGET_JS`. If you need an icon that isn't in `ICONS` yet, add it to `_ui_components.ICONS` first, then substitute it in.
+
+### 7. Minimal anywidget template
+
+```python
+from typing import Optional
+from uuid import UUID
+from sempy._utils._log import log
+
+_WIDGET_CSS = """
+.my-widget { /* root container styles, using --ui-* tokens */ }
+.my-widget.my-widget-dark { /* DARK_THEME_VARS-equivalent overrides */ }
+"""
+
+_WIDGET_JS = r"""
+function render({ model, el }) {
+    const root = document.createElement("div");
+    root.className = "my-widget";
+
+    function applyTheme() {
+        root.classList.remove("my-widget-dark", "my-widget-auto");
+        const dm = model.get("dark_mode");
+        if (dm === true) root.classList.add("my-widget-dark");
+        else if (dm == null) root.classList.add("my-widget-auto");
+    }
+    applyTheme();
+    model.on("change:dark_mode", applyTheme);
+    el.appendChild(root);
+
+    const SUN = `__SLLS_ICON_SUN__`;
+    const MOON = `__SLLS_ICON_MOON__`;
+
+    // ... build header, body, attribution ...
+
+    // Trigger a Python action:
+    function runAction(payload) {
+        model.set("pending_action", payload);
+        model.set("run", model.get("run") + 1);
+        model.save_changes();
+    }
+}
+export default { render };
+"""
+
+from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+
+_WIDGET_JS = (
+    _WIDGET_JS
+    .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
+    .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
+)
+
+
+@log
+def my_widget_function(
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    dark_mode: bool = False,
+):
+    """One-line description.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        ...
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID. Defaults to the attached lakehouse
+        workspace or the notebook workspace.
+    dark_mode : bool, default=False
+        If True, renders with a dark color theme.
+    """
+    try:
+        import anywidget
+        import traitlets
+    except ImportError as e:
+        raise ImportError(
+            "The 'my_widget_function' function requires the 'anywidget' "
+            "package. Install it with: pip install anywidget"
+        ) from e
+
+    from IPython.display import display
+    from sempy_labs._helper_functions import (
+        resolve_workspace_name_and_id,
+        resolve_dataset_name_and_id,
+    )
+
+    ws_name, ws_id = resolve_workspace_name_and_id(workspace)
+    ds_name, ds_id = resolve_dataset_name_and_id(dataset, ws_id)
+
+    class _Widget(anywidget.AnyWidget):
+        _esm = _WIDGET_JS
+        _css = _WIDGET_CSS
+        dataset_name = traitlets.Unicode("").tag(sync=True)
+        workspace_name = traitlets.Unicode("").tag(sync=True)
+        dark_mode = traitlets.Bool(False).tag(sync=True)
+        status = traitlets.Dict().tag(sync=True)
+        pending_action = traitlets.Dict().tag(sync=True)
+        run = traitlets.Int(0).tag(sync=True)
+
+    widget = _Widget(
+        dataset_name=ds_name,
+        workspace_name=ws_name or "",
+        dark_mode=bool(dark_mode),
+    )
+
+    def _on_run(_change):
+        action = (widget.pending_action or {}).get("action")
+        if not action:
+            return
+        try:
+            # ... dispatch on action, mutate traitlets ...
+            widget.status = {"message": "Done.", "kind": "success"}
+        except Exception as e:
+            widget.status = {"message": f"Error: {e}", "kind": "error"}
+
+    widget.observe(_on_run, names=["run"])
+    display(widget)  # do NOT return widget
+```
 
 ---
 
@@ -250,7 +400,7 @@ All interactive UI functions follow the same Python signature conventions as the
 ## Checklist for a New Interactive UI
 
 - [ ] Picked the correct pattern: static-HTML if no Python callbacks are needed, anywidget if they are.
-- [ ] All icons come from `sempy_labs._ui_components.ICONS` (no inlined one-off SVGs).
+- [ ] All icons come from `sempy_labs._ui_components.ICONS` (no inlined one-off SVGs). For anywidget tools, icons are injected into `_WIDGET_JS` via `__SLLS_ICON_*__` placeholder substitution at module-import time.
 - [ ] All colors come from `LIGHT_THEME_VARS` / `DARK_THEME_VARS` (no hard-coded hex values).
 - [ ] Standard header rendered via `render_header_html` (static) or built in JS using the same layout/tokens (anywidget).
 - [ ] Standard "Powered by Semantic Link Labs" attribution rendered at the bottom.

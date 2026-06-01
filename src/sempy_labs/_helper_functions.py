@@ -2677,7 +2677,7 @@ def _get_or_create_warehouse(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfI = fabric.list_items(type="Warehouse", workspace=workspace)
+    dfI = fabric.list_items(item_type="Warehouse", workspace=workspace)
     dfI_filt_name = dfI[dfI["Display Name"] == warehouse]
     dfI_filt_id = dfI[dfI["Id"] == warehouse]
 

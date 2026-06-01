@@ -24,7 +24,7 @@ def list_mini_models(
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
-        return tom.list_mini_models(show_filters=shows_filters)
+        return tom.list_mini_models(show_filters=show_filters)
 
 
 @log
