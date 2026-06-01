@@ -894,20 +894,14 @@ def _visualize_dax_test(
         ICONS as _UI_ICONS,
     )
 
-    try:
-        _formatted = (
-            _format_dax(dax_string) if dax_string and dax_string.strip() else []
-        )
-        formatted_initial = _formatted[0] if _formatted else (dax_string or "")
-    except Exception:
-        formatted_initial = dax_string or ""
-
-    # Normalize line endings to "\n". The DAX Formatter API returns "\r\n"
-    # line endings, but a <textarea> normalizes those to "\n" on assignment.
-    # If left un-normalized, the classified token text (which still contains
-    # "\r") no longer matches the textarea length, so the front-end falls
-    # back to plain (uncolored) rendering of the DAX.
-    formatted_initial = formatted_initial.replace("\r\n", "\n").replace("\r", "\n")
+    # The DAX is intentionally NOT auto-formatted on load (formatting calls
+    # the external DAX Formatter service and would slow down ``test()``).
+    # The user can format on demand via the "Format" button in the widget.
+    # Still normalize line endings to "\n" so the classified token text
+    # matches the <textarea> length (a <textarea> normalizes "\r\n" to "\n"
+    # on assignment; a mismatch makes the front-end fall back to plain,
+    # uncolored rendering of the DAX).
+    formatted_initial = (dax_string or "").replace("\r\n", "\n").replace("\r", "\n")
     initial_rows = _trace_rows_from_df(df)
 
     widget_css = (
@@ -1029,6 +1023,39 @@ def _visualize_dax_test(
 .dtx .dtx-gen-btn:disabled {{
     opacity: 0.5;
     cursor: default;
+}}
+.dtx .dtx-fmt-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    cursor: pointer;
+}}
+.dtx .dtx-fmt-btn svg {{
+    width: 28px;
+    height: auto;
+    display: block;
+}}
+.dtx .dtx-fmt-btn:hover:not(:disabled) {{
+    border-color: var(--ui-accent);
+    background: var(--ui-surface-2);
+}}
+.dtx .dtx-fmt-btn:disabled {{
+    opacity: 0.45;
+    cursor: default;
+}}
+.dtx .dtx-fmt-btn.dtx-fmt-loading {{
+    cursor: progress;
+}}
+.dtx .dtx-fmt-btn.dtx-fmt-loading svg {{
+    animation: dtx-fmt-pulse 0.9s ease-in-out infinite;
+}}
+@keyframes dtx-fmt-pulse {{
+    0%, 100% {{ opacity: 1; }}
+    50% {{ opacity: 0.35; }}
 }}
 .dtx .dtx-change-btn {{
     display: inline-flex;
@@ -2106,6 +2133,18 @@ def _visualize_dax_test(
     panel_expand_icon = _UI_ICONS["panel_expand"].replace("`", "\\`")
     builder_icon = _UI_ICONS["builder"].replace("`", "\\`")
     close_icon = _UI_ICONS["close"].replace("`", "\\`")
+    # The DAX Formatter logo mark (the orange "formatted lines" glyph from
+    # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
+    # clearly visible in both light and dark themes.
+    daxformat_icon = (
+        '<svg viewBox="0 0 35 32" aria-hidden="true">'
+        '<rect x="0" y="2.1" width="19.8" height="7.2" fill="#E14E37"/>'
+        '<rect x="22.1" y="2.1" width="8.1" height="7.2" fill="#E14E37"/>'
+        '<rect x="11.6" y="12.2" width="16.5" height="7.2" fill="#E14E37"/>'
+        '<rect x="30.1" y="12.2" width="4.9" height="7.2" fill="#E14E37"/>'
+        '<rect x="6.2" y="22.2" width="10.5" height="7.2" fill="#E14E37"/>'
+        '</svg>'
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -2136,6 +2175,7 @@ function render({ model, el }) {
     const PANEL_EXPAND_SVG = `__DTX_PANEL_EXPAND__`;
     const BUILDER_SVG = `__DTX_BUILDER__`;
     const CLOSE_SVG = `__DTX_CLOSE__`;
+    const DAXFORMAT_SVG = `__DTX_DAXFORMAT__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3340,6 +3380,28 @@ function render({ model, el }) {
         genBtn.disabled = model.get("dataset_chosen") !== true;
     }
 
+    const fmtBtn = document.createElement("button");
+    fmtBtn.type = "button";
+    fmtBtn.className = "dtx-fmt-btn";
+    fmtBtn.innerHTML = DAXFORMAT_SVG;
+    fmtBtn.title = "Format the DAX query using DAX Formatter by SQLBI";
+    fmtBtn.setAttribute("aria-label", "Format DAX with DAX Formatter");
+    qTitleGroup.appendChild(fmtBtn);
+    fmtBtn.addEventListener("click", () => {
+        if (fmtBtn.disabled) return;
+        model.set("dax_query", textarea.value);
+        model.set("error_message", "");
+        model.set("format_query_trigger",
+            (model.get("format_query_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    function renderFmtBtn() {
+        const loading = model.get("format_loading") === true;
+        const hasText = String(textarea.value || "").trim().length > 0;
+        fmtBtn.disabled = loading || !hasText;
+        fmtBtn.classList.toggle("dtx-fmt-loading", loading);
+    }
+
     const cacheLabel = document.createElement("label");
     cacheLabel.className = "dtx-cache-label";
     cacheLabel.title = "Clear the dataset cache before running (cold-cache run)";
@@ -3567,6 +3629,7 @@ function render({ model, el }) {
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
+        renderFmtBtn();
     });
     textarea.addEventListener("scroll", () => {
         hl.scrollTop = textarea.scrollTop;
@@ -4024,8 +4087,10 @@ function render({ model, el }) {
             textarea.value = model.get("dax_query") || "";
         }
         renderHighlight();
+        renderFmtBtn();
     });
     model.on("change:dax_tokens", renderHighlight);
+    model.on("change:format_loading", renderFmtBtn);
     model.on("change:clear_cache", renderCacheBtn);
     model.on("change:impersonation_mode", renderImpersonation);
     model.on("change:impersonation_value", renderImpersonation);
@@ -4057,6 +4122,7 @@ function render({ model, el }) {
     renderSidebarChrome();
     renderPicker();
     renderGenBtn();
+    renderFmtBtn();
     renderTree();
     renderHighlight();
     renderBuilderChrome();
@@ -4087,6 +4153,7 @@ export default { render };
         .replace("__DTX_PANEL_EXPAND__", panel_expand_icon)
         .replace("__DTX_BUILDER__", builder_icon)
         .replace("__DTX_CLOSE__", close_icon)
+        .replace("__DTX_DAXFORMAT__", daxformat_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -4132,6 +4199,8 @@ export default { render };
         select_dataset_trigger = traitlets.Int(0).tag(sync=True)
         load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
         generate_query_trigger = traitlets.Int(0).tag(sync=True)
+        format_query_trigger = traitlets.Int(0).tag(sync=True)
+        format_loading = traitlets.Bool(False).tag(sync=True)
         query_builder_state = traitlets.Unicode("").tag(sync=True)
         build_query_trigger = traitlets.Int(0).tag(sync=True)
 
@@ -4219,6 +4288,8 @@ export default { render };
         select_dataset_trigger=0,
         load_workspaces_trigger=0,
         generate_query_trigger=0,
+        format_query_trigger=0,
+        format_loading=False,
         query_builder_state="",
         build_query_trigger=0,
         impersonation_mode=(
@@ -4527,6 +4598,34 @@ export default { render };
         threading.Thread(target=_generate_query, daemon=True).start()
 
     widget.observe(_on_generate_query, names="generate_query_trigger")
+
+    def _format_query() -> None:
+        dax = widget.dax_query or ""
+        if not dax.strip():
+            widget.format_loading = False
+            return
+        try:
+            formatted = _format_dax(dax)
+            dax_out = formatted[0] if formatted else dax
+        except Exception as exc:  # noqa: BLE001
+            widget.format_loading = False
+            widget.error_message = f"Failed to format the DAX query: {exc}"
+            return
+        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
+        widget.dax_query = dax_out
+        widget.dax_tokens = _classify_dax_spans(dax_out)
+        widget.error_message = ""
+        widget.format_loading = False
+
+    def _on_format_query(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.format_loading:
+            return
+        widget.format_loading = True
+        threading.Thread(target=_format_query, daemon=True).start()
+
+    widget.observe(_on_format_query, names="format_query_trigger")
 
     def _build_query() -> None:
         if model_ctx["dataset_id"] is None:
