@@ -1057,6 +1057,31 @@ def _visualize_dax_test(
     0%, 100% {{ opacity: 1; }}
     50% {{ opacity: 0.35; }}
 }}
+.dtx .dtx-hist-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-hist-btn svg {{
+    width: 15px;
+    height: 15px;
+}}
+.dtx .dtx-hist-btn:hover:not(:disabled) {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-hist-btn:disabled {{
+    opacity: 0.4;
+    cursor: default;
+}}
 .dtx .dtx-change-btn {{
     display: inline-flex;
     align-items: center;
@@ -2145,6 +2170,22 @@ def _visualize_dax_test(
         '<rect x="6.2" y="22.2" width="10.5" height="7.2" fill="#E14E37"/>'
         '</svg>'
     ).replace("`", "\\`")
+    undo_icon = (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M7 4 L3 8 L7 12"/>'
+        '<path d="M3 8 H10 A3 3 0 0 1 10 14 H8"/>'
+        '</svg>'
+    ).replace("`", "\\`")
+    redo_icon = (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M9 4 L13 8 L9 12"/>'
+        '<path d="M13 8 H6 A3 3 0 0 0 6 14 H8"/>'
+        '</svg>'
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -2176,6 +2217,8 @@ function render({ model, el }) {
     const BUILDER_SVG = `__DTX_BUILDER__`;
     const CLOSE_SVG = `__DTX_CLOSE__`;
     const DAXFORMAT_SVG = `__DTX_DAXFORMAT__`;
+    const UNDO_SVG = `__DTX_UNDO__`;
+    const REDO_SVG = `__DTX_REDO__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3402,6 +3445,30 @@ function render({ model, el }) {
         fmtBtn.classList.toggle("dtx-fmt-loading", loading);
     }
 
+    const undoBtn = document.createElement("button");
+    undoBtn.type = "button";
+    undoBtn.className = "dtx-hist-btn";
+    undoBtn.innerHTML = UNDO_SVG;
+    undoBtn.title = "Undo (Ctrl/Cmd+Z)";
+    undoBtn.setAttribute("aria-label", "Undo");
+    qTitleGroup.appendChild(undoBtn);
+
+    const redoBtn = document.createElement("button");
+    redoBtn.type = "button";
+    redoBtn.className = "dtx-hist-btn";
+    redoBtn.innerHTML = REDO_SVG;
+    redoBtn.title = "Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)";
+    redoBtn.setAttribute("aria-label", "Redo");
+    qTitleGroup.appendChild(redoBtn);
+
+    undoBtn.addEventListener("click", () => doUndo());
+    redoBtn.addEventListener("click", () => doRedo());
+
+    function renderHistBtns() {
+        undoBtn.disabled = undoStack.length === 0;
+        redoBtn.disabled = redoStack.length === 0;
+    }
+
     const cacheLabel = document.createElement("label");
     cacheLabel.className = "dtx-cache-label";
     cacheLabel.title = "Clear the dataset cache before running (cold-cache run)";
@@ -3582,6 +3649,76 @@ function render({ model, el }) {
     textarea.spellcheck = false;
     textarea.value = model.get("dax_query") || "";
 
+    // ---------- Undo / redo history (DAX query pane only) ----------
+    // A dedicated history stack for the editor text. A custom stack is used
+    // (instead of the textarea's native undo) so programmatic edits such as
+    // drag-and-drop, "Define", "Generate" and "Format" are also undoable.
+    const undoStack = [];
+    const redoStack = [];
+    const HISTORY_LIMIT = 200;
+    let histPresent = { value: textarea.value, s: 0, e: 0 };
+    let lastTypingTs = 0;
+    let lastEditWasTyping = false;
+
+    // Record a change to the editor text in the history. ``coalesce`` merges
+    // rapid consecutive typing into a single undo entry.
+    function commitHistory(newValue, coalesce) {
+        if (newValue === histPresent.value) return;
+        const now = Date.now();
+        const canCoalesce = coalesce && lastEditWasTyping
+            && (now - lastTypingTs < 500) && undoStack.length > 0;
+        if (!canCoalesce) {
+            undoStack.push({
+                value: histPresent.value, s: histPresent.s, e: histPresent.e });
+            if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        }
+        histPresent = {
+            value: newValue,
+            s: textarea.selectionStart || 0,
+            e: textarea.selectionEnd || 0,
+        };
+        redoStack.length = 0;
+        lastTypingTs = now;
+        lastEditWasTyping = !!coalesce;
+        renderHistBtns();
+    }
+
+    function applyHistoryState(st) {
+        textarea.value = st.value;
+        try {
+            textarea.selectionStart = st.s;
+            textarea.selectionEnd = st.e;
+        } catch (e) {}
+        histPresent = { value: st.value, s: st.s, e: st.e };
+        lastEditWasTyping = false;
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        renderFmtBtn();
+        renderHistBtns();
+        textarea.focus();
+    }
+
+    function doUndo() {
+        if (!undoStack.length) return;
+        redoStack.push({
+            value: histPresent.value,
+            s: textarea.selectionStart || 0,
+            e: textarea.selectionEnd || 0,
+        });
+        applyHistoryState(undoStack.pop());
+    }
+
+    function doRedo() {
+        if (!redoStack.length) return;
+        undoStack.push({
+            value: histPresent.value,
+            s: textarea.selectionStart || 0,
+            e: textarea.selectionEnd || 0,
+        });
+        applyHistoryState(redoStack.pop());
+    }
+
     const queryWrap = document.createElement("div");
     queryWrap.className = "dtx-query-wrap";
     const hl = document.createElement("pre");
@@ -3626,6 +3763,7 @@ function render({ model, el }) {
     }
 
     textarea.addEventListener("input", () => {
+        commitHistory(textarea.value, true);
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
@@ -3635,11 +3773,26 @@ function render({ model, el }) {
         hl.scrollTop = textarea.scrollTop;
         hl.scrollLeft = textarea.scrollLeft;
     });
-    // Ctrl/Cmd+Enter to run
+    // Ctrl/Cmd+Enter to run; Ctrl/Cmd+Z / Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y for
+    // undo/redo (handled by the editor's own history stack).
     textarea.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
             runBtn.click();
+            return;
+        }
+        if (e.ctrlKey || e.metaKey) {
+            const k = e.key.toLowerCase();
+            if (k === "z" && !e.shiftKey) {
+                e.preventDefault();
+                doUndo();
+                return;
+            }
+            if ((k === "z" && e.shiftKey) || k === "y") {
+                e.preventDefault();
+                doRedo();
+                return;
+            }
         }
     });
 
@@ -3655,6 +3808,7 @@ function render({ model, el }) {
         const caret = start + text.length;
         textarea.selectionStart = textarea.selectionEnd = caret;
         textarea.focus();
+        commitHistory(textarea.value, false);
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
@@ -3681,6 +3835,7 @@ function render({ model, el }) {
             newText = "DEFINE\n" + measureLine + "\n\n" + existing;
         }
         textarea.value = newText;
+        commitHistory(textarea.value, false);
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
@@ -4084,7 +4239,11 @@ function render({ model, el }) {
     model.on("change:error_message", renderError);
     model.on("change:dax_query", () => {
         if (textarea.value !== model.get("dax_query")) {
-            textarea.value = model.get("dax_query") || "";
+            const newVal = model.get("dax_query") || "";
+            textarea.value = newVal;
+            // External update (e.g. Format / Generate from Python) — record
+            // it as a discrete, undoable history entry.
+            commitHistory(newVal, false);
         }
         renderHighlight();
         renderFmtBtn();
@@ -4123,6 +4282,7 @@ function render({ model, el }) {
     renderPicker();
     renderGenBtn();
     renderFmtBtn();
+    renderHistBtns();
     renderTree();
     renderHighlight();
     renderBuilderChrome();
@@ -4154,6 +4314,8 @@ export default { render };
         .replace("__DTX_BUILDER__", builder_icon)
         .replace("__DTX_CLOSE__", close_icon)
         .replace("__DTX_DAXFORMAT__", daxformat_icon)
+        .replace("__DTX_UNDO__", undo_icon)
+        .replace("__DTX_REDO__", redo_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
