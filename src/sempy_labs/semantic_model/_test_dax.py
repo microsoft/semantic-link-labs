@@ -1028,14 +1028,16 @@ def _visualize_dax_test(
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 3px 8px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
     border-radius: 6px;
     border: 1px solid var(--ui-border);
     background: var(--ui-surface);
     cursor: pointer;
 }}
 .dtx .dtx-fmt-btn svg {{
-    width: 28px;
+    width: 24px;
     height: auto;
     display: block;
 }}
@@ -2162,7 +2164,7 @@ def _visualize_dax_test(
     # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
     # clearly visible in both light and dark themes.
     daxformat_icon = (
-        '<svg viewBox="0 0 35 32" aria-hidden="true">'
+        '<svg viewBox="0 2.1 35 27.3" aria-hidden="true">'
         '<rect x="0" y="2.1" width="19.8" height="7.2" fill="#E14E37"/>'
         '<rect x="22.1" y="2.1" width="8.1" height="7.2" fill="#E14E37"/>'
         '<rect x="11.6" y="12.2" width="16.5" height="7.2" fill="#E14E37"/>'
@@ -2171,19 +2173,19 @@ def _visualize_dax_test(
         '</svg>'
     ).replace("`", "\\`")
     undo_icon = (
-        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
-        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true">'
-        '<path d="M7 4 L3 8 L7 12"/>'
-        '<path d="M3 8 H10 A3 3 0 0 1 10 14 H8"/>'
+        '<path d="M3 7 v5 h5"/>'
+        '<path d="M3.5 12 a8 8 0 1 1 1.5 5"/>'
         '</svg>'
     ).replace("`", "\\`")
     redo_icon = (
-        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
-        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true">'
-        '<path d="M9 4 L13 8 L9 12"/>'
-        '<path d="M13 8 H6 A3 3 0 0 0 6 14 H8"/>'
+        '<path d="M21 7 v5 h-5"/>'
+        '<path d="M20.5 12 a8 8 0 1 0 -1.5 5"/>'
         '</svg>'
     ).replace("`", "\\`")
 
