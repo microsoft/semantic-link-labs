@@ -379,6 +379,7 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                             "display_folder": str(
                                 getattr(m, "DisplayFolder", "") or ""
                             ),
+                            "expression": str(getattr(m, "Expression", "") or ""),
                         }
                         for m in table.Measures
                     ),
@@ -1634,6 +1635,28 @@ def _visualize_dax_test(
     border-color: var(--ui-accent);
     box-shadow: 0 0 0 3px var(--ui-accent-soft);
 }}
+.dtx .dtx-context-menu {{
+    position: fixed;
+    z-index: 9999;
+    min-width: 140px;
+    padding: 4px;
+    background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    color: var(--ui-text);
+}}
+.dtx .dtx-context-menu-item {{
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--ui-text);
+}}
+.dtx .dtx-context-menu-item:hover {{
+    background: var(--ui-bg-hover);
+}}
 .dtx .dtx-tree-leaf {{
     display: flex;
     align-items: center;
@@ -2299,6 +2322,46 @@ function render({ model, el }) {
             + "[" + String(objName).replace(/\]/g, "]]") + "]";
     }
 
+    // ---------- Lightweight right-click context menu ----------
+    let ctxMenuEl = null;
+    function hideContextMenu() {
+        if (ctxMenuEl) { ctxMenuEl.remove(); ctxMenuEl = null; }
+    }
+    function showContextMenu(x, y, items) {
+        hideContextMenu();
+        const menu = document.createElement("div");
+        menu.className = "dtx-context-menu";
+        for (const it of items) {
+            const mi = document.createElement("div");
+            mi.className = "dtx-context-menu-item";
+            mi.textContent = it.label;
+            mi.addEventListener("click", (e) => {
+                e.stopPropagation();
+                hideContextMenu();
+                try { it.action(); } catch (err) {}
+            });
+            menu.appendChild(mi);
+        }
+        menu.style.visibility = "hidden";
+        root.appendChild(menu);
+        // Reposition so the menu stays within the viewport.
+        const rect = menu.getBoundingClientRect();
+        let left = x, top = y;
+        if (left + rect.width > window.innerWidth) {
+            left = window.innerWidth - rect.width - 4;
+        }
+        if (top + rect.height > window.innerHeight) {
+            top = window.innerHeight - rect.height - 4;
+        }
+        menu.style.left = Math.max(0, left) + "px";
+        menu.style.top = Math.max(0, top) + "px";
+        menu.style.visibility = "visible";
+        ctxMenuEl = menu;
+    }
+    document.addEventListener("click", hideContextMenu);
+    window.addEventListener("blur", hideContextMenu);
+    window.addEventListener("scroll", hideContextMenu, true);
+
     function makeDraggable(elem, dragText, meta) {
         elem.setAttribute("draggable", "true");
         elem.classList.add("dtx-draggable");
@@ -2331,6 +2394,15 @@ function render({ model, el }) {
             + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
             + typeHtml;
         if (dragText) makeDraggable(leaf, dragText, meta);
+        if (meta && meta.kind === "measure") {
+            leaf.addEventListener("contextmenu", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showContextMenu(e.clientX, e.clientY, [
+                    { label: "Define", action: () => defineMeasure(meta) },
+                ]);
+            });
+        }
         return leaf;
     }
 
@@ -2537,6 +2609,7 @@ function render({ model, el }) {
                 (it) => daxMeasureRef(it.name), null,
                 (it) => ({kind: "measure", table: tbl.name, name: it.name,
                     data_type: it.data_type,
+                    expression: it.expression,
                     ref: daxMeasureRef(it.name)}));
             const hieGrp = makeGroup("Hierarchies", tbl.hierarchies, HIERARCHY_SVG,
                 null, makeHierarchyLeaf(tbl.name));
@@ -3170,7 +3243,11 @@ function render({ model, el }) {
         pickerBtn.title = sameAsActive
             ? "This semantic model is already in use"
             : "";
-        pickerSpin.textContent = loading ? "Loading…" : "";
+        // Only show the spinner next to "Use model" while the model metadata
+        // is loading (i.e. after "Use model" is clicked, when a dataset is
+        // selected). During workspace selection the dataset list is loading
+        // and the spinner belongs in the dataset dropdown only.
+        pickerSpin.textContent = (loading && curDs) ? "Loading…" : "";
     }
     wsSel.addEventListener("change", () => {
         model.set("selected_workspace_id", wsSel.value);
@@ -3518,6 +3595,33 @@ function render({ model, el }) {
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
+    }
+
+    // Prepend a `DEFINE MEASURE` block for the given measure above the
+    // existing query text. If a DEFINE block already exists, the new
+    // measure line is added under it instead of duplicating the keyword.
+    function defineMeasure(meta) {
+        const table = meta.table || "";
+        const name = meta.name || "";
+        const expr = String(meta.expression == null ? "" : meta.expression).trim();
+        const ref = (table ? daxTableRef(table) : "")
+            + "[" + String(name).replace(/\]/g, "]]") + "]";
+        const measureLine = "MEASURE " + ref + " = " + expr;
+        const existing = textarea.value;
+        const lead = /^(\s*)DEFINE\b[^\n]*/i.exec(existing);
+        let newText;
+        if (lead) {
+            const idx = lead.index + lead[0].length;
+            newText = existing.slice(0, idx) + "\n" + measureLine
+                + existing.slice(idx);
+        } else {
+            newText = "DEFINE\n" + measureLine + "\n\n" + existing;
+        }
+        textarea.value = newText;
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        textarea.focus();
     }
     textarea.addEventListener("dragover", (e) => {
         if (dragPayload != null) {
