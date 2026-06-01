@@ -134,6 +134,68 @@ ICONS: dict[str, str] = {
         '<path d="M4 3v7.5c0 .7.55 1.25 1.25 1.25H12"/>'
         '<path d="M9.5 9.5L12 11.75 9.5 14"/></svg>'
     ),
+    "play": (
+        '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">'
+        '<path d="M4 2.5v11l9-5.5z"/></svg>'
+    ),
+    "stop": (
+        '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">'
+        '<rect x="4" y="4" width="8" height="8" rx="1.2"/></svg>'
+    ),
+    "refresh": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89"/>'
+        '<path d="M13.5 2.5v3h-3"/></svg>'
+    ),
+    "swap": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M2.5 5.5h9"/><path d="M9 3l2.5 2.5L9 8"/>'
+        '<path d="M13.5 10.5h-9"/><path d="M7 8l-2.5 2.5L7 13"/></svg>'
+    ),
+    "sort_asc": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M5 12.5V3.5"/><path d="M2.5 6L5 3.5L7.5 6"/></svg>'
+    ),
+    "sort_desc": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M5 3.5v9"/><path d="M2.5 10L5 12.5L7.5 10"/></svg>'
+    ),
+    "panel_collapse": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="3" width="12" height="10" rx="1.5"/>'
+        '<path d="M6.5 3v10"/><path d="M10.5 6.5L8.5 8l2 1.5"/></svg>'
+    ),
+    "panel_expand": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="3" width="12" height="10" rx="1.5"/>'
+        '<path d="M6.5 3v10"/><path d="M8.5 6.5L10.5 8l-2 1.5"/></svg>'
+    ),
+    "builder": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/>'
+        '<path d="M2 6h12"/><path d="M4.5 9h4"/><path d="M4.5 11h2"/>'
+        '<path d="M11.5 9.2v3.2M9.9 10.8h3.2"/></svg>'
+    ),
+    "close": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg>'
+    ),
 }
 
 
@@ -145,6 +207,7 @@ LIGHT_THEME_VARS: str = """\
 --ui-bg: #ffffff;
 --ui-bg-secondary: #f5f5f7;
 --ui-bg-tertiary: #fbfbfd;
+--ui-bg-hover: #f0f0f2;
 --ui-surface: rgba(255, 255, 255, 0.85);
 --ui-surface-2: rgba(0, 0, 0, 0.025);
 --ui-border: rgba(0, 0, 0, 0.08);
@@ -155,6 +218,12 @@ LIGHT_THEME_VARS: str = """\
 --ui-accent: #0071e3;
 --ui-accent-hover: #0a6cdb;
 --ui-accent-soft: rgba(0, 113, 227, 0.12);
+--ui-on-accent: #ffffff;
+--ui-danger: #dc2626;
+--ui-danger-hover: #b91c1c;
+--ui-danger-bg: rgba(220, 38, 38, 0.10);
+--ui-danger-border: rgba(220, 38, 38, 0.35);
+--ui-danger-text: #b91c1c;
 --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
@@ -165,6 +234,7 @@ DARK_THEME_VARS: str = """\
 --ui-bg: #1e1e22;
 --ui-bg-secondary: #2a2a30;
 --ui-bg-tertiary: #26262b;
+--ui-bg-hover: #2c2c33;
 --ui-surface: rgba(255, 255, 255, 0.04);
 --ui-surface-2: rgba(255, 255, 255, 0.03);
 --ui-border: rgba(255, 255, 255, 0.08);
@@ -175,9 +245,35 @@ DARK_THEME_VARS: str = """\
 --ui-accent: #0A84FF;
 --ui-accent-hover: #1a8cff;
 --ui-accent-soft: rgba(10, 132, 255, 0.18);
+--ui-on-accent: #ffffff;
+--ui-danger: #dc2626;
+--ui-danger-hover: #b91c1c;
+--ui-danger-bg: rgba(248, 113, 113, 0.12);
+--ui-danger-border: rgba(248, 113, 113, 0.35);
+--ui-danger-text: #fca5a5;
 --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4);
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+"""
+
+
+# ---------------------------------------------------------------------------
+# DAX / code syntax-highlight palette
+# ---------------------------------------------------------------------------
+# Theme-independent token colors used to colorize DAX (or similar code) in
+# editors/highlighters. The values are tuned to read well on both the light
+# and dark surfaces above, so the same block is injected once into a widget's
+# base scope (it is not overridden in dark mode). Reference these via the
+# ``--ui-syntax-*`` custom properties — never hard-code the hex values.
+SYNTAX_HIGHLIGHT_VARS: str = """\
+--ui-syntax-keyword: #5E9EFF;
+--ui-syntax-function: #5E9EFF;
+--ui-syntax-variable: #5AC8B8;
+--ui-syntax-number: #FF9F45;
+--ui-syntax-virtual-column: #FF7A8A;
+--ui-syntax-string: #9BB87A;
+--ui-syntax-operator: #A6A6A6;
+--ui-syntax-punctuation: #A6A6A6;
 """
 
 

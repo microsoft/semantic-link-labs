@@ -887,6 +887,7 @@ def _visualize_dax_test(
     from sempy_labs._ui_components import (
         LIGHT_THEME_VARS as _UI_LIGHT_VARS,
         DARK_THEME_VARS as _UI_DARK_VARS,
+        SYNTAX_HIGHLIGHT_VARS as _UI_SYNTAX_VARS,
         HEADER_CSS as _UI_HEADER_CSS,
         ATTRIBUTION_CSS as _UI_ATTRIBUTION_CSS,
         ICONS as _UI_ICONS,
@@ -916,6 +917,7 @@ def _visualize_dax_test(
         + f"""
 .dtx {{
     {_UI_LIGHT_VARS}
+    {_UI_SYNTAX_VARS}
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
         "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: var(--ui-text);
@@ -1076,7 +1078,7 @@ def _visualize_dax_test(
 .dtx .dtx-builder-show-btn.dtx-active {{
     border-color: var(--ui-accent);
     background: var(--ui-accent);
-    color: #fff;
+    color: var(--ui-on-accent);
 }}
 .dtx .dtx-picker-cancel {{
     display: inline-flex;
@@ -1176,7 +1178,7 @@ def _visualize_dax_test(
     -webkit-appearance: none;
     border: 1px solid var(--ui-accent);
     background: var(--ui-accent);
-    color: #fff;
+    color: var(--ui-on-accent);
     padding: 6px 14px;
     border-radius: 6px;
     font-family: inherit;
@@ -1336,7 +1338,7 @@ def _visualize_dax_test(
     -webkit-appearance: none;
     border: 1px solid var(--ui-accent);
     background: var(--ui-accent);
-    color: #fff;
+    color: var(--ui-on-accent);
     width: 32px;
     height: 32px;
     padding: 0;
@@ -1357,12 +1359,12 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-btn svg {{ width: 14px; height: 14px; display: block; }}
 .dtx .dtx-btn.dtx-btn-stop {{
-    background: #dc2626;
-    border-color: #dc2626;
+    background: var(--ui-danger);
+    border-color: var(--ui-danger);
 }}
 .dtx .dtx-btn.dtx-btn-stop:hover {{
-    background: #b91c1c;
-    border-color: #b91c1c;
+    background: var(--ui-danger-hover);
+    border-color: var(--ui-danger-hover);
 }}
 .dtx .dtx-query-wrap {{
     position: relative;
@@ -1390,13 +1392,13 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-query-hl span {{ background: transparent; }}
 .dtx .dtx-query-hl .dtx-tk-function,
-.dtx .dtx-query-hl .dtx-tk-keyword {{ color: #5E9EFF !important; }}
-.dtx .dtx-query-hl .dtx-tk-variable {{ color: #5AC8B8 !important; }}
-.dtx .dtx-query-hl .dtx-tk-number {{ color: #FF9F45 !important; }}
-.dtx .dtx-query-hl .dtx-tk-virtual_column {{ color: #FF7A8A !important; }}
-.dtx .dtx-query-hl .dtx-tk-string {{ color: #9BB87A !important; }}
+.dtx .dtx-query-hl .dtx-tk-keyword {{ color: var(--ui-syntax-keyword) !important; }}
+.dtx .dtx-query-hl .dtx-tk-variable {{ color: var(--ui-syntax-variable) !important; }}
+.dtx .dtx-query-hl .dtx-tk-number {{ color: var(--ui-syntax-number) !important; }}
+.dtx .dtx-query-hl .dtx-tk-virtual_column {{ color: var(--ui-syntax-virtual-column) !important; }}
+.dtx .dtx-query-hl .dtx-tk-string {{ color: var(--ui-syntax-string) !important; }}
 .dtx .dtx-query-hl .dtx-tk-operator,
-.dtx .dtx-query-hl .dtx-tk-punctuation {{ color: #A6A6A6 !important; }}
+.dtx .dtx-query-hl .dtx-tk-punctuation {{ color: var(--ui-syntax-operator) !important; }}
 .dtx .dtx-query {{
     width: 100%;
     min-height: 120px;
@@ -1431,15 +1433,15 @@ def _visualize_dax_test(
     padding: 10px 14px;
     border-radius: 8px;
     font-size: 12px;
-    background: rgba(220, 38, 38, 0.10);
-    border: 1px solid rgba(220, 38, 38, 0.35);
-    color: #b91c1c;
+    background: var(--ui-danger-bg);
+    border: 1px solid var(--ui-danger-border);
+    color: var(--ui-danger-text);
     white-space: pre-wrap;
 }}
 .dtx.dtx-dark .dtx-error {{
-    background: rgba(248, 113, 113, 0.12);
-    border-color: rgba(248, 113, 113, 0.35);
-    color: #fca5a5;
+    background: var(--ui-danger-bg);
+    border-color: var(--ui-danger-border);
+    color: var(--ui-danger-text);
 }}
 .dtx .dtx-section-title {{
     padding: 4px 24px 10px 24px;
@@ -1691,12 +1693,12 @@ def _visualize_dax_test(
     font-style: italic;
 }}
 .dtx.dtx-dark .dtx-tree-label.dtx-hidden {{
-    color: #9ca3af;
+    color: var(--ui-text-tertiary);
 }}
 .dtx:not(.dtx-dark) .dtx-tree-leaf .dtx-tree-label:not(.dtx-hidden),
 .dtx:not(.dtx-dark) .dtx-tree-node > .dtx-tree-label:not(.dtx-hidden),
 .dtx:not(.dtx-dark) .dtx-tree-folder-header .dtx-tree-label:not(.dtx-hidden) {{
-    color: #2b2b30;
+    color: var(--ui-text);
 }}
 .dtx.dtx-dark .dtx-tree-leaf .dtx-tree-label:not(.dtx-hidden),
 .dtx.dtx-dark .dtx-tree-node > .dtx-tree-label:not(.dtx-hidden),
@@ -1999,7 +2001,7 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-order-toggle.dtx-on::after {{
     transform: translateX(12px);
-    background: #fff;
+    background: var(--ui-on-accent);
 }}
 .dtx .dtx-order-dir {{
     flex: 0 0 auto;
@@ -2046,7 +2048,7 @@ def _visualize_dax_test(
     border: 1px solid var(--ui-accent);
     border-radius: 6px;
     background: var(--ui-accent);
-    color: #fff;
+    color: var(--ui-on-accent);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -2071,6 +2073,16 @@ def _visualize_dax_test(
     caret_icon = _UI_ICONS["caret_right"].replace("`", "\\`")
     folder_icon = _UI_ICONS["folder"].replace("`", "\\`")
     level_icon = _UI_ICONS["level"].replace("`", "\\`")
+    play_icon = _UI_ICONS["play"].replace("`", "\\`")
+    stop_icon = _UI_ICONS["stop"].replace("`", "\\`")
+    refresh_icon = _UI_ICONS["refresh"].replace("`", "\\`")
+    swap_icon = _UI_ICONS["swap"].replace("`", "\\`")
+    sort_asc_icon = _UI_ICONS["sort_asc"].replace("`", "\\`")
+    sort_desc_icon = _UI_ICONS["sort_desc"].replace("`", "\\`")
+    panel_collapse_icon = _UI_ICONS["panel_collapse"].replace("`", "\\`")
+    panel_expand_icon = _UI_ICONS["panel_expand"].replace("`", "\\`")
+    builder_icon = _UI_ICONS["builder"].replace("`", "\\`")
+    close_icon = _UI_ICONS["close"].replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -2082,8 +2094,8 @@ function escapeHtml(s) {
 function render({ model, el }) {
     const SUN_SVG = `__DTX_SUN__`;
     const MOON_SVG = `__DTX_MOON__`;
-    const PLAY_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
-    const STOP_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1.2"/></svg>';
+    const PLAY_SVG = `__DTX_PLAY__`;
+    const STOP_SVG = `__DTX_STOP__`;
     const TABLE_SVG = `__DTX_TABLE__`;
     const CALC_GROUP_SVG = `__DTX_CALC_GROUP__`;
     const CALC_ITEM_SVG = `__DTX_CALC_ITEM__`;
@@ -2093,35 +2105,14 @@ function render({ model, el }) {
     const CARET_SVG = `__DTX_CARET__`;
     const FOLDER_SVG = `__DTX_FOLDER__`;
     const LEVEL_SVG = `__DTX_LEVEL__`;
-    const REFRESH_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89"/><path d="M13.5 2.5v3h-3"/></svg>';
-    const SWAP_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M2.5 5.5h9"/><path d="M9 3l2.5 2.5L9 8"/>'
-        + '<path d="M13.5 10.5h-9"/><path d="M7 8l-2.5 2.5L7 13"/></svg>';
-    const SORT_ASC_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M5 12.5V3.5"/><path d="M2.5 6L5 3.5L7.5 6"/></svg>';
-    const SORT_DESC_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M5 3.5v9"/><path d="M2.5 10L5 12.5L7.5 10"/></svg>';
-    const PANEL_COLLAPSE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6.5 3v10"/>'
-        + '<path d="M10.5 6.5L8.5 8l2 1.5"/></svg>';
-    const PANEL_EXPAND_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6.5 3v10"/>'
-        + '<path d="M8.5 6.5L10.5 8l-2 1.5"/></svg>';
-    const BUILDER_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/>'
-        + '<path d="M2 6h12"/><path d="M4.5 9h4"/><path d="M4.5 11h2"/>'
-        + '<path d="M11.5 9.2v3.2M9.9 10.8h3.2"/></svg>';
-    const CLOSE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M4 4l8 8M12 4l-8 8"/></svg>';
+    const REFRESH_SVG = `__DTX_REFRESH__`;
+    const SWAP_SVG = `__DTX_SWAP__`;
+    const SORT_ASC_SVG = `__DTX_SORT_ASC__`;
+    const SORT_DESC_SVG = `__DTX_SORT_DESC__`;
+    const PANEL_COLLAPSE_SVG = `__DTX_PANEL_COLLAPSE__`;
+    const PANEL_EXPAND_SVG = `__DTX_PANEL_EXPAND__`;
+    const BUILDER_SVG = `__DTX_BUILDER__`;
+    const CLOSE_SVG = `__DTX_CLOSE__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3982,6 +3973,16 @@ export default { render };
         .replace("__DTX_CARET__", caret_icon)
         .replace("__DTX_FOLDER__", folder_icon)
         .replace("__DTX_LEVEL__", level_icon)
+        .replace("__DTX_PLAY__", play_icon)
+        .replace("__DTX_STOP__", stop_icon)
+        .replace("__DTX_REFRESH__", refresh_icon)
+        .replace("__DTX_SWAP__", swap_icon)
+        .replace("__DTX_SORT_ASC__", sort_asc_icon)
+        .replace("__DTX_SORT_DESC__", sort_desc_icon)
+        .replace("__DTX_PANEL_COLLAPSE__", panel_collapse_icon)
+        .replace("__DTX_PANEL_EXPAND__", panel_expand_icon)
+        .replace("__DTX_BUILDER__", builder_icon)
+        .replace("__DTX_CLOSE__", close_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
