@@ -39,8 +39,9 @@ Semantic Link Labs has exactly two supported patterns for interactive UI tools. 
 
 | Export | Purpose |
 |--------|---------|
-| `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `column`, `column_chunk`, `measure`, `hierarchy`, `partition`, `relationship`) and UI icons (`sun`, `moon`, `search`, `plus`, `caret_right`). |
-| `LIGHT_THEME_VARS`, `DARK_THEME_VARS` | CSS custom-property blocks defining the Apple-inspired light and dark palettes. Always reference colors via these `--ui-*` tokens, never hard-coded hex values. |
+| `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `calculation_group`, `column`, `column_chunk`, `measure`, `hierarchy`, `calculation_item`, `partition`, `relationship`), tree/navigation icons (`caret_right`, `folder`, `level`), and UI/action icons (`sun`, `moon`, `search`, `plus`, `play`, `stop`, `refresh`, `swap`, `sort_asc`, `sort_desc`, `panel_collapse`, `panel_expand`, `builder`, `close`). |
+| `LIGHT_THEME_VARS`, `DARK_THEME_VARS` | CSS custom-property blocks defining the Apple-inspired light and dark palettes. Always reference colors via these `--ui-*` tokens, never hard-coded hex values. Includes semantic tokens for hover backgrounds (`--ui-bg-hover`), on-accent text (`--ui-on-accent`), and destructive/error states (`--ui-danger*`). |
+| `SYNTAX_HIGHLIGHT_VARS` | Theme-independent `--ui-syntax-*` token block for colorizing DAX/code in an editor. Inject once into the widget's base scope (it is the same in light and dark). |
 | `HEADER_CSS`, `scoped_header_css(root_selector)` | Standard widget header styles (title + dataset/workspace subtitle + theme toggle button). `scoped_header_css` prefixes every rule with the root selector so the styles win against notebook host CSS (e.g. Jupyter's `.jp-RenderedHTMLCommon button`). |
 | `render_header_html(title, dataset_name, workspace_name, theme_btn_id, dark_mode)` | Renders the standard header markup. |
 | `theme_toggle_script(btn_id, root_selector, dark_class)` | Returns a `<script>` block that wires the theme toggle button to flip a `dark_class` on the root element and swap the sun/moon icon. |
@@ -68,11 +69,38 @@ All interactive UIs share one visual language. Stick to these tokens — do not 
 | Token | Use for |
 |-------|---------|
 | `--ui-bg`, `--ui-bg-secondary`, `--ui-bg-tertiary`, `--ui-bg-solid` | Surfaces, in increasing emphasis levels |
+| `--ui-bg-hover` | Solid hover background for controls/buttons whose base is `--ui-bg` |
 | `--ui-surface`, `--ui-surface-2` | Translucent overlays / hover backgrounds |
 | `--ui-border`, `--ui-border-strong` | Subtle and strong borders |
 | `--ui-text`, `--ui-text-secondary`, `--ui-text-tertiary` | Primary, secondary, tertiary text |
 | `--ui-accent`, `--ui-accent-hover`, `--ui-accent-soft` | Brand accent (links, focus rings, active tab indicator, primary buttons, data bars) |
+| `--ui-on-accent` | Text/icon color placed on top of an `--ui-accent` (or `--ui-danger`) fill — i.e. "white" |
+| `--ui-danger`, `--ui-danger-hover` | Destructive button fill + hover (e.g. a Stop button) |
+| `--ui-danger-bg`, `--ui-danger-border`, `--ui-danger-text` | Inline error/alert box background, border, and text (themed for light + dark) |
 | `--ui-shadow-sm`, `--ui-shadow-md`, `--ui-shadow-lg` | Elevation |
+
+Never hard-code `#fff`, red error colors, or any other literal — always go through a token. If a destructive action, error banner, or white-on-accent label is needed, use the danger / on-accent tokens above rather than inlining hex values.
+
+### Code / DAX syntax-highlight palette (`SYNTAX_HIGHLIGHT_VARS`)
+
+For colorizing DAX (or similar code) inside an editor/highlighter, inject the
+theme-independent `SYNTAX_HIGHLIGHT_VARS` block once into the widget's **base**
+scope (it intentionally renders the same in light and dark, so do not override
+it in the dark block). Reference these `--ui-syntax-*` tokens — never the raw
+hex values.
+
+| Token | Token class it colors |
+|-------|-----------------------|
+| `--ui-syntax-keyword`, `--ui-syntax-function` | Keywords and function names |
+| `--ui-syntax-variable` | Variables |
+| `--ui-syntax-number` | Numeric literals |
+| `--ui-syntax-virtual-column` | Virtual / measure-ref columns |
+| `--ui-syntax-string` | String literals |
+| `--ui-syntax-operator`, `--ui-syntax-punctuation` | Operators and punctuation |
+
+See `sempy_labs.semantic_model._test_dax.test` for the reference usage (it
+injects `SYNTAX_HIGHLIGHT_VARS` into its `.dtx` base block alongside
+`LIGHT_THEME_VARS`).
 
 If a tool needs its own derived names (e.g. `--vpx-text`), alias them to the `--ui-*` tokens inside the tool's scoped block — see `_vertipaq_analyzer.py` for the pattern. This keeps the palette centralized while letting tools use short, local names.
 
