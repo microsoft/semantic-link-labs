@@ -312,6 +312,7 @@ def deploy_semantic_model(
             "Sales": "SaleKey > 100",
         }
     """
+    from datetime import datetime
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
