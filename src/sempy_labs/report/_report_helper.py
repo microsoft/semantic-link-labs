@@ -1,5 +1,6 @@
 import requests
 import sempy_labs._icons as icons
+from typing import Optional, List
 
 
 vis_type_mapping = {
@@ -148,11 +149,7 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
             entity = source_ref.get("Entity", "")
             property_value = data.get("Property", "")
 
-            object_type = (
-                keys_path[-1].replace("HierarchyLevel", "Hierarchy")
-                if keys_path
-                else "Unknown"
-            )
+            object_type = _resolve_object_type(keys_path=keys_path)
             result[property_value] = (entity, object_type)
             if keys_path:
                 keys_path.pop()
@@ -167,6 +164,26 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
             find_entity_property_pairs(item, result, keys_path)
 
     return result
+
+
+def _resolve_object_type(keys_path: Optional[List[str]]) -> str:
+    """
+    Resolves the report object type based on the json traversal path.
+
+    Parameters
+    ----------
+    keys_path : typing.List[str] | None
+        The list of parent json keys captured while traversing the report definition payload.
+
+    Returns
+    -------
+    str
+        The resolved object type.
+    """
+
+    if not keys_path:
+        return "Unknown"
+    return "Column" if keys_path[-1] == "HierarchyLevel" else keys_path[-1]
 
 
 def _get_agg_type_mapping() -> dict:
