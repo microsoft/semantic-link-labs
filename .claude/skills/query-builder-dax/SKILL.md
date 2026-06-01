@@ -119,11 +119,20 @@ Value literals:
 
 - The `ORDER BY` clause is the final part of the query, placed **after** the
   (possibly `FILTER`-wrapped) `SUMMARIZECOLUMNS` table expression.
-- By default the query orders by all attribute columns, ascending, in pane
-  order. Append `DESC` after a column for descending order.
-- Measures can also be used in `ORDER BY` because each measure is projected as
-  a column in the result.
-- `ORDER BY` is only emitted when there is at least one attribute column.
+- It is driven by the builder's *Order By* pane, which mirrors the
+  columns/measures from the *Columns & Measures* pane. Each Order By item has:
+  - a **toggle** (on/off, default **off**) — only enabled items appear in
+    `ORDER BY`;
+  - a **direction** icon — A-Z = ascending (`ASC`), Z-A = descending (`DESC`);
+  - independent **reorder** support (the pane order = clause order).
+- The serialized state carries an `order_by` list of items
+  (`ref`, `kind`, `name`, `table`, `enabled`, `dir`). `_build_summarize_dax`
+  emits `ORDER BY <ref> ASC|DESC, ...` for the enabled items, in pane order.
+- Measures can be used in `ORDER BY` because each measure is projected as a
+  column in the result.
+- If the `order_by` key is **absent** (legacy state), the builder falls back to
+  ordering by all attribute columns ascending. If present but no item is
+  enabled, no `ORDER BY` is emitted.
 
 ---
 
@@ -149,3 +158,4 @@ metadata, update BOTH:
 
 Field objects use keys: `kind`, `table`, `name`, `data_type`, `ref`.
 Filter objects additionally: `op`, `value`, `value2`.
+Order By objects additionally: `enabled` (bool), `dir` (`"asc"`/`"desc"`).

@@ -410,9 +410,7 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
                     ),
                     key=lambda x: x["name"].lower(),
                 )
-                is_calc_group = (
-                    getattr(table, "CalculationGroup", None) is not None
-                )
+                is_calc_group = getattr(table, "CalculationGroup", None) is not None
                 calculation_items: list = []
                 if is_calc_group:
                     calculation_items = sorted(
@@ -494,9 +492,7 @@ def _list_datasets_for_picker(workspace_id: str) -> list:
     except Exception:
         return []
     for _, r in dfD.iterrows():
-        out.append(
-            {"id": str(r["Dataset Id"]), "name": str(r["Dataset Name"])}
-        )
+        out.append({"id": str(r["Dataset Id"]), "name": str(r["Dataset Name"])})
     out.sort(key=lambda x: x["name"].lower())
     return out
 
@@ -618,12 +614,7 @@ def _generate_sample_dax(dataset_id: str, workspace_id: str) -> str:
             ")"
         )
     # No usable column: emit a measure-only query.
-    return (
-        "EVALUATE\n"
-        "ROW(\n"
-        f'    "{measure_name}", {_mea_ref(measure_name)}\n'
-        ")"
-    )
+    return "EVALUATE\n" "ROW(\n" f'    "{measure_name}", {_mea_ref(measure_name)}\n' ")"
 
 
 def _classify_filter_type(kind: str, data_type: str) -> str:
@@ -684,9 +675,7 @@ def _qb_build_predicate(item: dict) -> Optional[str]:
     ref = item.get("ref") or ""
     if not ref:
         return None
-    ftype = _classify_filter_type(
-        item.get("kind", "column"), item.get("data_type", "")
-    )
+    ftype = _classify_filter_type(item.get("kind", "column"), item.get("data_type", ""))
     op = (item.get("op") or "").strip()
     value = item.get("value", "")
     value2 = item.get("value2", "")
@@ -751,7 +740,8 @@ def _build_summarize_dax(state: dict, dataset_id: str, workspace_id: str) -> str
        b. filters (column filters via ``FILTER(KEEPFILTERS(VALUES(col)), ...)``),
        c. measures (``"Name", [Measure]``),
     3. measure filters wrap the table via ``FILTER(SUMMARIZECOLUMNS(...), ...)``,
-    4. ``ORDER BY`` the attribute columns.
+    4. ``ORDER BY`` the enabled Order By items (``ASC``/``DESC``), or all
+       attribute columns ascending when no ``order_by`` is supplied.
 
     Returns an empty string if there is nothing usable to build.
     """
@@ -788,9 +778,7 @@ def _build_summarize_dax(state: dict, dataset_id: str, workspace_id: str) -> str
         if item.get("kind") == "measure":
             meas_preds.append(pred)
         else:
-            col_filters.append(
-                f"FILTER(KEEPFILTERS(VALUES({_col_ref(item)})), {pred})"
-            )
+            col_filters.append(f"FILTER(KEEPFILTERS(VALUES({_col_ref(item)})), {pred})")
 
     # SUMMARIZECOLUMNS elements: attributes, then column filters, then
     # measures (in that exact order, as required by the engine).
@@ -810,10 +798,28 @@ def _build_summarize_dax(state: dict, dataset_id: str, workspace_id: str) -> str
 
     dax = "EVALUATE\n" + inner
 
-    # ORDER BY the attribute columns (ascending), per the canonical pattern.
-    if group_cols:
-        order_cols = ", ".join(_col_ref(c) for c in group_cols)
-        dax += "\nORDER BY " + order_cols
+    # ORDER BY clause. When the builder supplies an explicit "order_by" list
+    # (from the Order By pane), only the enabled items contribute, each with
+    # its chosen direction (ASC for A-Z, DESC for Z-A), in pane order. When
+    # no "order_by" key is present (backward compatibility), fall back to
+    # ordering by all attribute columns ascending.
+    order_by = state.get("order_by")
+    if order_by is None:
+        if group_cols:
+            order_cols = ", ".join(_col_ref(c) for c in group_cols)
+            dax += "\nORDER BY " + order_cols
+    else:
+        order_parts: list = []
+        for item in order_by:
+            if not item.get("enabled"):
+                continue
+            ref = _col_ref(item)
+            if not ref:
+                continue
+            direction = "DESC" if str(item.get("dir", "")).lower() == "desc" else "ASC"
+            order_parts.append(f"{ref} {direction}")
+        if order_parts:
+            dax += "\nORDER BY " + ", ".join(order_parts)
 
     return dax
 
@@ -831,6 +837,7 @@ def _classify_dax_spans(dax_expression: str) -> list:
         return []
     try:
         from sempy_labs.dax._format import _classify_tokens
+
         classified = _classify_tokens(dax_expression)
     except Exception:
         return [{"text": dax_expression, "kind": ""}]
@@ -839,7 +846,7 @@ def _classify_dax_spans(dax_expression: str) -> list:
     cursor = 0
     for token, kind in classified:
         if token.position > cursor:
-            spans.append({"text": dax_expression[cursor:token.position], "kind": ""})
+            spans.append({"text": dax_expression[cursor : token.position], "kind": ""})
         spans.append({"text": token.text, "kind": kind or ""})
         cursor = token.position + len(token.text)
     if cursor < len(dax_expression):
@@ -1958,6 +1965,61 @@ def _visualize_dax_test(
     font-size: 10px;
     color: var(--ui-text-tertiary);
 }}
+.dtx .dtx-builder-chip-order {{ flex-wrap: nowrap; }}
+.dtx .dtx-builder-chip-order.dtx-chip-off .dtx-chip-label,
+.dtx .dtx-builder-chip-order.dtx-chip-off .dtx-chip-icon {{
+    opacity: 0.45;
+}}
+.dtx .dtx-order-toggle {{
+    flex: 0 0 auto;
+    width: 28px;
+    height: 16px;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+    background: var(--ui-bg);
+    position: relative;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+}}
+.dtx .dtx-order-toggle::after {{
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--ui-text-tertiary);
+    transition: transform 120ms ease, background 120ms ease;
+}}
+.dtx .dtx-order-toggle.dtx-on {{
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+}}
+.dtx .dtx-order-toggle.dtx-on::after {{
+    transform: translateX(12px);
+    background: #fff;
+}}
+.dtx .dtx-order-dir {{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-order-dir svg {{ width: 12px; height: 12px; }}
+.dtx .dtx-order-dir:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
 .dtx .dtx-builder-footer {{
     display: flex;
     align-items: center;
@@ -2038,6 +2100,12 @@ function render({ model, el }) {
         + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<path d="M2.5 5.5h9"/><path d="M9 3l2.5 2.5L9 8"/>'
         + '<path d="M13.5 10.5h-9"/><path d="M7 8l-2.5 2.5L7 13"/></svg>';
+    const SORT_ASC_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M5 12.5V3.5"/><path d="M2.5 6L5 3.5L7.5 6"/></svg>';
+    const SORT_DESC_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M5 3.5v9"/><path d="M2.5 10L5 12.5L7.5 10"/></svg>';
     const PANEL_COLLAPSE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"'
         + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6.5 3v10"/>'
@@ -2509,6 +2577,7 @@ function render({ model, el }) {
     let builderCollapsed = false;
     let builderFields = [];
     let builderFilters = [];
+    let builderOrderBy = [];
     let qbSeq = 0;
 
     const QB_OPS = {
@@ -2612,6 +2681,17 @@ function render({ model, el }) {
     filtersSection.appendChild(filtersZone);
     builderContent.appendChild(filtersSection);
 
+    const orderBySection = document.createElement("div");
+    orderBySection.className = "dtx-builder-section";
+    const orderByLabel = document.createElement("div");
+    orderByLabel.className = "dtx-builder-section-label";
+    orderByLabel.textContent = "Order By";
+    const orderByZone = document.createElement("div");
+    orderByZone.className = "dtx-builder-zone dtx-builder-orderby";
+    orderBySection.appendChild(orderByLabel);
+    orderBySection.appendChild(orderByZone);
+    builderContent.appendChild(orderBySection);
+
     const builderFooter = document.createElement("div");
     builderFooter.className = "dtx-builder-footer";
     const clearBtn = document.createElement("button");
@@ -2621,6 +2701,7 @@ function render({ model, el }) {
     clearBtn.addEventListener("click", () => {
         builderFields = [];
         builderFilters = [];
+        builderOrderBy = [];
         renderBuilderZones();
     });
     const buildBtn = document.createElement("button");
@@ -2709,6 +2790,37 @@ function render({ model, el }) {
     }
     setupZone(fieldsZone, false);
     setupZone(filtersZone, true);
+
+    // The Order By zone only allows reordering its existing chips (its items
+    // are synced from the Columns & Measures pane, not dropped from outside).
+    function setupReorderOnlyZone(zone, getList, zoneName) {
+        zone.addEventListener("dragover", (e) => {
+            if (!builderReorder || builderReorder.zone !== zoneName) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            zone.classList.add("dtx-drop-over");
+        });
+        zone.addEventListener("dragleave", (e) => {
+            if (!zone.contains(e.relatedTarget)) {
+                zone.classList.remove("dtx-drop-over");
+            }
+        });
+        zone.addEventListener("drop", (e) => {
+            zone.classList.remove("dtx-drop-over");
+            if (!builderReorder || builderReorder.zone !== zoneName) return;
+            e.preventDefault();
+            const list = getList();
+            const idx = zoneIndexFromEvent(zone, e);
+            const from = list.findIndex(x => x.id === builderReorder.id);
+            if (from === -1) return;
+            const moved = list.splice(from, 1)[0];
+            let insert = idx;
+            if (from < idx) insert = idx - 1;
+            list.splice(insert, 0, moved);
+            renderBuilderZones();
+        });
+    }
+    setupReorderOnlyZone(orderByZone, () => builderOrderBy, "orderby");
 
     function attachChipReorder(chip, f, zoneName) {
         chip.setAttribute("draggable", "true");
@@ -2824,6 +2936,83 @@ function render({ model, el }) {
         return chip;
     }
 
+    // Keep the Order By pane in sync with the Columns & Measures pane:
+    // drop entries whose field was removed, and append newly added fields
+    // (defaulting to off/ascending) while preserving the user's order and
+    // per-item toggle/direction state.
+    function syncOrderBy() {
+        builderOrderBy = builderOrderBy.filter(o =>
+            builderFields.some(f => f.kind === o.kind && f.ref === o.ref));
+        for (const f of builderFields) {
+            const exists = builderOrderBy.some(
+                o => o.kind === f.kind && o.ref === f.ref);
+            if (!exists) {
+                builderOrderBy.push({
+                    id: "ob" + (++qbSeq),
+                    kind: f.kind, table: f.table, name: f.name,
+                    data_type: f.data_type, ref: f.ref,
+                    enabled: false, dir: "asc",
+                });
+            }
+        }
+    }
+
+    function makeOrderByChip(f) {
+        const chip = document.createElement("div");
+        chip.className = "dtx-builder-chip dtx-builder-chip-order";
+        if (!f.enabled) chip.classList.add("dtx-chip-off");
+
+        const tog = document.createElement("button");
+        tog.type = "button";
+        tog.className = "dtx-order-toggle";
+        function renderTog() {
+            tog.classList.toggle("dtx-on", !!f.enabled);
+            chip.classList.toggle("dtx-chip-off", !f.enabled);
+            tog.title = f.enabled
+                ? "Included in ORDER BY (click to exclude)"
+                : "Excluded from ORDER BY (click to include)";
+            tog.setAttribute("aria-label", tog.title);
+        }
+        tog.addEventListener("click", () => {
+            f.enabled = !f.enabled;
+            renderTog();
+        });
+        renderTog();
+
+        const ic = document.createElement("span");
+        ic.className = "dtx-chip-icon";
+        ic.innerHTML = qbIcon(f.kind);
+        const label = document.createElement("span");
+        label.className = "dtx-chip-label";
+        label.textContent = qbDisplayName(f);
+        label.title = qbDisplayName(f);
+
+        const dir = document.createElement("button");
+        dir.type = "button";
+        dir.className = "dtx-order-dir";
+        function renderDir() {
+            const asc = f.dir !== "desc";
+            dir.innerHTML = (asc ? SORT_ASC_SVG : SORT_DESC_SVG)
+                + '<span>' + (asc ? "A-Z" : "Z-A") + '</span>';
+            dir.title = asc
+                ? "Ascending (A-Z) \u2014 click for descending"
+                : "Descending (Z-A) \u2014 click for ascending";
+            dir.setAttribute("aria-label", dir.title);
+        }
+        dir.addEventListener("click", () => {
+            f.dir = (f.dir === "desc") ? "asc" : "desc";
+            renderDir();
+        });
+        renderDir();
+
+        chip.appendChild(tog);
+        chip.appendChild(ic);
+        chip.appendChild(label);
+        chip.appendChild(dir);
+        attachChipReorder(chip, f, "orderby");
+        return chip;
+    }
+
     function renderBuilderZones() {
         fieldsZone.innerHTML = "";
         if (!builderFields.length) {
@@ -2847,6 +3036,19 @@ function render({ model, el }) {
                 filtersZone.appendChild(makeFilterChip(f));
             }
         }
+        syncOrderBy();
+        orderByZone.innerHTML = "";
+        if (!builderOrderBy.length) {
+            const ph = document.createElement("div");
+            ph.className = "dtx-builder-placeholder";
+            ph.textContent =
+                "Add columns or measures above to set the sort order";
+            orderByZone.appendChild(ph);
+        } else {
+            for (const f of builderOrderBy) {
+                orderByZone.appendChild(makeOrderByChip(f));
+            }
+        }
     }
 
     function onBuildClick() {
@@ -2860,6 +3062,11 @@ function render({ model, el }) {
                 kind: f.kind, table: f.table, name: f.name,
                 data_type: f.data_type, ref: f.ref,
                 op: f.op, value: f.value, value2: f.value2,
+            })),
+            order_by: builderOrderBy.map(o => ({
+                kind: o.kind, table: o.table, name: o.name,
+                data_type: o.data_type, ref: o.ref,
+                enabled: !!o.enabled, dir: o.dir || "asc",
             })),
         };
         model.set("query_builder_state", JSON.stringify(state));
