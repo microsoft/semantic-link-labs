@@ -4973,13 +4973,50 @@ export default { render };
                 )
                 trace = conn.create_trace(_TEST_EVENT_SCHEMA)
                 trace.start()
+                # Prime the trace: a freshly started trace does not begin
+                # capturing server-side events instantly, so the very first
+                # real query's events can be missed. Run the throwaway warm-up
+                # query now and wait until it actually shows up in the trace
+                # logs, which confirms the trace is live. The baseline is then
+                # advanced past these warm-up rows so the first real query is
+                # captured from a known-good state.
+                baseline = 0
+                warmed = False
+                try:
+                    fabric.evaluate_dax(
+                        dataset=ds_id,
+                        workspace=ws_id,
+                        dax_string="EVALUATE {1}",
+                    )
+                    _deadline = time.monotonic() + 5.0
+                    while time.monotonic() < _deadline:
+                        time.sleep(0.1)
+                        try:
+                            _logs = trace.get_trace_logs()
+                        except Exception:
+                            continue
+                        if _logs is None or _logs.empty:
+                            continue
+                        _ec = (
+                            "Event Class"
+                            if "Event Class" in _logs.columns
+                            else "EventClass"
+                        )
+                        if _ec not in _logs.columns:
+                            continue
+                        if not _logs[_logs[_ec] == "QueryEnd"].empty:
+                            baseline = len(_logs)
+                            warmed = True
+                            break
+                except Exception:
+                    pass
                 trace_ctx["connection"] = conn
                 trace_ctx["trace"] = trace
                 trace_ctx["dataset_id"] = ds_id
                 trace_ctx["workspace_id"] = ws_id
-                trace_ctx["baseline"] = 0
+                trace_ctx["baseline"] = baseline
                 trace_ctx["started"] = True
-                trace_ctx["warmed_up"] = False
+                trace_ctx["warmed_up"] = warmed
             except Exception:
                 # Tracing could not be started; queries fall back to a
                 # one-shot trace via ``_run_dax_trace``.
