@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 from sempy._utils._log import log
 from uuid import UUID
 import time
+from datetime import datetime
 
 
 @log
@@ -205,15 +206,21 @@ def _execute_and_capture(
     effective_user_name: Optional[str],
     role: Optional[str],
     baseline_count: int,
+    run_warmup: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
-    """Run a warm-up evaluation and the real DAX query against an
-    already-started ``trace`` and capture the trace rows produced by this
-    execution.
+    """Run the real DAX query (optionally preceded by a one-time warm-up
+    evaluation) against an already-started ``trace`` and capture the trace
+    rows produced by this execution.
 
     The trace is *not* stopped: events are read live via
     :meth:`Trace.get_trace_logs`, which lets a single long-running trace serve
     many queries. ``baseline_count`` is the number of log rows already consumed
     by previous executions; only rows beyond it belong to this query.
+
+    ``run_warmup`` controls whether the throwaway ``EVALUATE {1}`` warm-up
+    query is executed first. This is only needed for the very first query run
+    against a semantic model (to prime caches/connection); subsequent queries
+    against the same model skip it.
 
     Returns
     -------
@@ -224,12 +231,14 @@ def _execute_and_capture(
         (the next baseline).
     """
 
-    # Warm-up evaluation; filtered out of results below.
-    fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
-        dax_string="EVALUATE {1}",
-    )
+    if run_warmup:
+        # Warm-up evaluation; filtered out of results below. Only run for the
+        # first query against the model.
+        fabric.evaluate_dax(
+            dataset=dataset_id,
+            workspace=workspace_id,
+            dax_string="EVALUATE {1}",
+        )
     # Run the actual DAX query.
     result_df = fabric.evaluate_dax(
         dataset=dataset_id,
@@ -266,8 +275,9 @@ def _execute_and_capture(
             _real = _qe[~_qe[_td].astype(str).str.startswith("EVALUATE {1}")]
             if not _real.empty:
                 break
-        elif len(_qe) >= 2:
-            # No text available: warm-up + real query == 2 QueryEnd.
+        elif len(_qe) >= (2 if run_warmup else 1):
+            # No text available: warm-up + real query == 2 QueryEnd, or just
+            # the real query when the warm-up was skipped.
             break
 
     if logs is None:
@@ -1706,6 +1716,13 @@ def _visualize_dax_test(
 .dtx tbody tr:nth-child(even) td {{ background: var(--ui-bg-tertiary); }}
 .dtx tbody tr:hover td {{ background: var(--ui-surface-2); }}
 .dtx td.dtx-num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+.dtx td.dtx-hist-query {{
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    color: var(--ui-text-secondary);
+}}
 .dtx td.dtx-empty {{
     text-align: center;
     color: var(--ui-text-tertiary);
@@ -4074,9 +4091,14 @@ function render({ model, el }) {
     segChart.type = "button";
     segChart.className = "dtx-seg-btn";
     segChart.textContent = "Chart";
+    const segHistory = document.createElement("button");
+    segHistory.type = "button";
+    segHistory.className = "dtx-seg-btn";
+    segHistory.textContent = "Trace history";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
     seg.appendChild(segChart);
+    seg.appendChild(segHistory);
     viewToolbar.appendChild(seg);
     segTrace.addEventListener("click", () => {
         model.set("view_mode", "trace");
@@ -4089,6 +4111,10 @@ function render({ model, el }) {
     segChart.addEventListener("click", () => {
         if (segChart.disabled) return;
         model.set("view_mode", "chart");
+        model.save_changes();
+    });
+    segHistory.addEventListener("click", () => {
+        model.set("view_mode", "history");
         model.save_changes();
     });
 
@@ -4125,6 +4151,7 @@ function render({ model, el }) {
         segTrace.classList.toggle("dtx-seg-btn-on", mode === "trace");
         segResult.classList.toggle("dtx-seg-btn-on", mode === "result");
         segChart.classList.toggle("dtx-seg-btn-on", mode === "chart");
+        segHistory.classList.toggle("dtx-seg-btn-on", mode === "history");
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
@@ -4205,6 +4232,48 @@ function render({ model, el }) {
         } else {
             resultMeta.textContent = `${total.toLocaleString()} row${total === 1 ? "" : "s"}.`;
         }
+    }
+
+    function renderHistoryTable() {
+        const hist = model.get("trace_history") || [];
+        const fmt = (n) => Number(n).toLocaleString();
+        if (!hist.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No queries have been executed in this session yet.</td></tr></tbody></table>`;
+            return;
+        }
+        const body = hist.map(h => {
+            const q = String(h.dax_query || "");
+            const qOne = q.replace(/\s+/g, " ").trim();
+            const qShort = qOne.length > 60 ? qOne.slice(0, 59) + "\u2026" : qOne;
+            return `<tr>
+                <td class="dtx-hist-query" title="${escapeHtml(q)}">${escapeHtml(qShort)}</td>
+                <td>${escapeHtml(String(h.start_time || ""))}</td>
+                <td>${escapeHtml(String(h.end_time || ""))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.rows))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.duration))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.cpu))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.fe_duration))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.se_duration))}</td>
+                <td>${escapeHtml(String(h.dataset_name || ""))}</td>
+                <td>${escapeHtml(String(h.workspace_name || ""))}</td>
+            </tr>`;
+        }).join("");
+        tableWrap.innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>DAX Query</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th style="text-align:right">Rows</th>
+                    <th style="text-align:right">Duration (ms)</th>
+                    <th style="text-align:right">CPU (ms)</th>
+                    <th style="text-align:right">FE (ms)</th>
+                    <th style="text-align:right">SE (ms)</th>
+                    <th>Semantic Model</th>
+                    <th>Workspace</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
     }
 
     function renderChart() {
@@ -4370,6 +4439,9 @@ function render({ model, el }) {
         } else if (mode === "result") {
             renderResultTable();
             resultMeta.style.display = (model.get("result_columns") || []).length ? "" : "none";
+        } else if (mode === "history") {
+            renderHistoryTable();
+            resultMeta.style.display = "none";
         } else {
             renderTraceTable();
             resultMeta.style.display = "none";
@@ -4397,6 +4469,7 @@ function render({ model, el }) {
     model.on("change:result_total_rows", renderTable);
     model.on("change:result_truncated", renderTable);
     model.on("change:view_mode", renderTable);
+    model.on("change:trace_history", renderTable);
     model.on("change:is_running", () => {
         root.classList.toggle("dtx-running", model.get("is_running") === true);
         renderRunBtn();
@@ -4512,6 +4585,7 @@ export default { render };
         result_total_rows = traitlets.Int(0).tag(sync=True)
         result_truncated = traitlets.Bool(False).tag(sync=True)
         view_mode = traitlets.Unicode("trace").tag(sync=True)
+        trace_history = traitlets.List([]).tag(sync=True)
         is_running = traitlets.Bool(False).tag(sync=True)
         error_message = traitlets.Unicode("").tag(sync=True)
         run_trigger = traitlets.Int(0).tag(sync=True)
@@ -4662,6 +4736,7 @@ export default { render };
         "workspace_id": None,
         "baseline": 0,
         "started": False,
+        "warmed_up": False,
     }
     trace_lock = threading.Lock()
 
@@ -4686,6 +4761,7 @@ export default { render };
         trace_ctx["baseline"] = 0
         trace_ctx["dataset_id"] = None
         trace_ctx["workspace_id"] = None
+        trace_ctx["warmed_up"] = False
 
     def _ensure_trace(ds_id: Optional[str], ws_id: Optional[str]) -> None:
         """Ensure a long-running trace is active for the given model. Starts a
@@ -4714,6 +4790,7 @@ export default { render };
                 trace_ctx["workspace_id"] = ws_id
                 trace_ctx["baseline"] = 0
                 trace_ctx["started"] = True
+                trace_ctx["warmed_up"] = False
             except Exception:
                 # Tracing could not be started; queries fall back to a
                 # one-shot trace via ``_run_dax_trace``.
@@ -4741,6 +4818,7 @@ export default { render };
         with trace_lock:
             trace = trace_ctx["trace"] if trace_ctx["started"] else None
             baseline = trace_ctx["baseline"]
+            run_warmup = not trace_ctx["warmed_up"]
         if trace is None:
             # Persistent tracing unavailable: one-shot fallback.
             return _run_dax_trace(
@@ -4761,11 +4839,13 @@ export default { render };
             effective_user,
             role_name,
             baseline,
+            run_warmup=run_warmup,
         )
         with trace_lock:
             # Only advance the baseline if the trace wasn't rebound meanwhile.
             if trace_ctx["trace"] is trace:
                 trace_ctx["baseline"] = new_count
+                trace_ctx["warmed_up"] = True
         df, total, fe, se, cpu = _compute_trace_stats(new_logs)
         return df, total, fe, se, cpu, result_df
 
@@ -4780,6 +4860,7 @@ export default { render };
         effective_user: Optional[str],
         role_name: Optional[str],
     ) -> None:
+        _start_dt = datetime.now()
         try:
             (
                 new_df,
@@ -4824,6 +4905,25 @@ export default { render };
         widget.result_truncated = bool(payload["truncated"])
         widget.error_message = ""
         widget.is_running = False
+
+        # Append to the session trace history (newest first).
+        _end_dt = datetime.now()
+        try:
+            _entry = {
+                "dax_query": query,
+                "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "rows": int(payload["total_rows"]),
+                "duration": int(new_total),
+                "cpu": int(new_cpu),
+                "fe_duration": int(new_fe),
+                "se_duration": int(new_se),
+                "dataset_name": str(widget.dataset_name or ""),
+                "workspace_name": str(widget.workspace_name or ""),
+            }
+            widget.trace_history = [_entry] + list(widget.trace_history)
+        except Exception:
+            pass
 
     def _on_run(change):
         if change["new"] == change["old"]:
