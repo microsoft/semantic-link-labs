@@ -4666,7 +4666,13 @@ function render({ model, el }) {
     model.on("change:selected_workspace_id", renderPicker);
     model.on("change:selected_dataset_id", renderPicker);
     model.on("change:active_workspace_id", renderPicker);
-    model.on("change:active_dataset_id", renderPicker);
+    model.on("change:active_dataset_id", () => {
+        // A new model finished activating — close the picker. This covers
+        // switching between two already-chosen models, where dataset_chosen
+        // does not change and so would not otherwise close the picker.
+        pickerOpen = false;
+        renderPicker();
+    });
     model.on("change:picker_loading", renderPicker);
 
     applyTheme();
