@@ -1555,6 +1555,25 @@ def _visualize_dax_test(
 .dtx .dtx-chart-axis line, .dtx .dtx-chart-axis path {{ stroke: var(--ui-border-strong); fill: none; }}
 .dtx .dtx-chart-axis text {{ fill: var(--ui-text-secondary); font-size: 10px; font-family: inherit; }}
 .dtx .dtx-chart-grid line {{ stroke: var(--ui-border); stroke-dasharray: 2 3; }}
+.dtx .dtx-chart-legend {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 12px 16px 4px 56px;
+}}
+.dtx .dtx-legend-item {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-legend-swatch {{
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+}}
 .dtx .dtx-result-meta {{
     padding: 0 24px 8px 24px;
     font-size: 11px;
@@ -4353,68 +4372,109 @@ function render({ model, el }) {
         }
         const numericCols = elig.numericCols;
         const numericIdxs = numericCols.map((b, i) => b ? i : -1).filter(i => i >= 0);
-        // Default y = first numeric col; x = first non-numeric col or row index.
-        if (chartState.yIdx == null || !numericIdxs.includes(chartState.yIdx)) {
-            chartState.yIdx = numericIdxs[0];
+
+        // Modern, clean qualitative color palette for multi-series / stacked bars.
+        const PALETTE = [
+            "#4f8cff", "#34d399", "#fbbf24", "#f472b6", "#a78bfa",
+            "#22d3ee", "#fb7185", "#84cc16", "#f59e0b", "#38bdf8",
+        ];
+
+        // A "category" column is one whose values are strings (not numbers/bools).
+        const isCategoryCol = (i) =>
+            rows.some(r => typeof r[i] === "string") &&
+            rows.every(r => r[i] === null || typeof r[i] === "string");
+
+        // Single result row: numeric columns become the values to chart. If a
+        // string column exists, its value is used as the X-axis category label;
+        // multiple numeric columns are drawn as a stacked bar with a legend.
+        const singleRow = rows.length === 1 && numericIdxs.length >= 1;
+        const stackedMode = singleRow && numericIdxs.length >= 2;
+
+        let data;
+        let legendSegments = null;
+        if (singleRow) {
+            chartControls.style.display = "none";
+            const catIdx = cols.findIndex((_, i) => isCategoryCol(i));
+            const catLabel = catIdx >= 0 ? String(rows[0][catIdx] ?? "") : "";
+            if (stackedMode) {
+                const segments = numericIdxs.map((i, k) => ({
+                    name: cols[i],
+                    value: typeof rows[0][i] === "number" ? rows[0][i] : 0,
+                    color: PALETTE[k % PALETTE.length],
+                }));
+                legendSegments = segments;
+                data = [{ label: catLabel || "Total", segments }];
+            } else {
+                const i = numericIdxs[0];
+                data = [{
+                    label: catLabel || cols[i],
+                    value: typeof rows[0][i] === "number" ? rows[0][i] : 0,
+                }];
+            }
+        } else {
+            // Default y = first numeric col; x = first non-numeric col or row index.
+            if (chartState.yIdx == null || !numericIdxs.includes(chartState.yIdx)) {
+                chartState.yIdx = numericIdxs[0];
+            }
+            const nonNumIdxs = cols.map((_, i) => numericCols[i] ? -1 : i).filter(i => i >= 0);
+            if (chartState.xIdx == null || (chartState.xIdx !== -1 &&
+                (chartState.xIdx >= cols.length || chartState.xIdx === chartState.yIdx))) {
+                chartState.xIdx = nonNumIdxs.length ? nonNumIdxs[0] : -1;
+            }
+
+            // Axis selectors.
+            const xLabel = document.createElement("label");
+            xLabel.innerHTML = "<span>X</span>";
+            const xSel = document.createElement("select");
+            const idxOpt = document.createElement("option");
+            idxOpt.value = "-1";
+            idxOpt.textContent = "(row index)";
+            xSel.appendChild(idxOpt);
+            cols.forEach((c, i) => {
+                if (i === chartState.yIdx) return;
+                const o = document.createElement("option");
+                o.value = String(i);
+                o.textContent = c;
+                xSel.appendChild(o);
+            });
+            xSel.value = String(chartState.xIdx);
+            xSel.addEventListener("change", () => {
+                chartState.xIdx = parseInt(xSel.value, 10);
+                renderChart();
+            });
+            xLabel.appendChild(xSel);
+            chartControls.appendChild(xLabel);
+
+            const yLabel = document.createElement("label");
+            yLabel.innerHTML = "<span>Y</span>";
+            const ySel = document.createElement("select");
+            numericIdxs.forEach(i => {
+                const o = document.createElement("option");
+                o.value = String(i);
+                o.textContent = cols[i];
+                ySel.appendChild(o);
+            });
+            ySel.value = String(chartState.yIdx);
+            ySel.addEventListener("change", () => {
+                chartState.yIdx = parseInt(ySel.value, 10);
+                renderChart();
+            });
+            yLabel.appendChild(ySel);
+            chartControls.appendChild(yLabel);
+            chartControls.style.display = "";
+
+            // Build data.
+            const yIdx = chartState.yIdx;
+            const xIdx = chartState.xIdx;
+            data = rows.map((r, i) => ({
+                label: xIdx === -1 ? String(i + 1) : (r[xIdx] == null ? "" : String(r[xIdx])),
+                value: typeof r[yIdx] === "number" ? r[yIdx] : 0,
+            }));
         }
-        const nonNumIdxs = cols.map((_, i) => numericCols[i] ? -1 : i).filter(i => i >= 0);
-        if (chartState.xIdx == null || (chartState.xIdx !== -1 &&
-            (chartState.xIdx >= cols.length || chartState.xIdx === chartState.yIdx))) {
-            chartState.xIdx = nonNumIdxs.length ? nonNumIdxs[0] : -1;
-        }
-
-        // Axis selectors.
-        const xLabel = document.createElement("label");
-        xLabel.innerHTML = "<span>X</span>";
-        const xSel = document.createElement("select");
-        const idxOpt = document.createElement("option");
-        idxOpt.value = "-1";
-        idxOpt.textContent = "(row index)";
-        xSel.appendChild(idxOpt);
-        cols.forEach((c, i) => {
-            if (i === chartState.yIdx) return;
-            const o = document.createElement("option");
-            o.value = String(i);
-            o.textContent = c;
-            xSel.appendChild(o);
-        });
-        xSel.value = String(chartState.xIdx);
-        xSel.addEventListener("change", () => {
-            chartState.xIdx = parseInt(xSel.value, 10);
-            renderChart();
-        });
-        xLabel.appendChild(xSel);
-        chartControls.appendChild(xLabel);
-
-        const yLabel = document.createElement("label");
-        yLabel.innerHTML = "<span>Y</span>";
-        const ySel = document.createElement("select");
-        numericIdxs.forEach(i => {
-            const o = document.createElement("option");
-            o.value = String(i);
-            o.textContent = cols[i];
-            ySel.appendChild(o);
-        });
-        ySel.value = String(chartState.yIdx);
-        ySel.addEventListener("change", () => {
-            chartState.yIdx = parseInt(ySel.value, 10);
-            renderChart();
-        });
-        yLabel.appendChild(ySel);
-        chartControls.appendChild(yLabel);
-        chartControls.style.display = "";
-
-        // Build data.
-        const yIdx = chartState.yIdx;
-        const xIdx = chartState.xIdx;
-        const data = rows.map((r, i) => ({
-            label: xIdx === -1 ? String(i + 1) : (r[xIdx] == null ? "" : String(r[xIdx])),
-            value: typeof r[yIdx] === "number" ? r[yIdx] : 0,
-        }));
 
         // SVG bar chart.
         const n = data.length;
-        const barWidth = 28;
+        const barWidth = data.length === 1 ? 64 : 28;
         const barGap = 8;
         const leftPad = 56;
         const rightPad = 16;
@@ -4424,7 +4484,8 @@ function render({ model, el }) {
         const width = leftPad + plotWidth + rightPad;
         const height = 280;
         const plotHeight = height - topPad - bottomPad;
-        const values = data.map(d => d.value);
+        const totalOf = d => d.segments ? d.segments.reduce((s, sg) => s + sg.value, 0) : d.value;
+        const values = data.map(totalOf);
         const dataMin = Math.min(0, ...values);
         const dataMax = Math.max(0, ...values);
 
@@ -4448,6 +4509,22 @@ function render({ model, el }) {
         const span = (axisMax - axisMin) || 1;
         const yScale = v => topPad + plotHeight - ((v - axisMin) / span) * plotHeight;
         const fmtNum = v => Number(v).toLocaleString();
+        // Compact axis labels: abbreviate large magnitudes (e.g. 1B, 10M, 100K).
+        const fmtAxis = v => {
+            const n = Number(v);
+            const abs = Math.abs(n);
+            const sign = n < 0 ? "-" : "";
+            const compact = (val, suffix) => {
+                let s = val.toFixed(1);
+                if (s.endsWith(".0")) s = s.slice(0, -2);
+                return sign + s + suffix;
+            };
+            if (abs >= 1e12) return compact(abs / 1e12, "T");
+            if (abs >= 1e9) return compact(abs / 1e9, "B");
+            if (abs >= 1e6) return compact(abs / 1e6, "M");
+            if (abs >= 1e3) return compact(abs / 1e3, "K");
+            return n.toLocaleString();
+        };
 
         let gridLines = "";
         let yTicks = "";
@@ -4455,7 +4532,7 @@ function render({ model, el }) {
             const iv = Math.round(v);
             const y = yScale(iv);
             gridLines += `<line x1="${leftPad}" x2="${leftPad + plotWidth}" y1="${y}" y2="${y}"/>`;
-            yTicks += `<text x="${leftPad - 6}" y="${y + 3}" text-anchor="end">${escapeHtml(fmtNum(iv))}</text>`;
+            yTicks += `<text x="${leftPad - 6}" y="${y + 3}" text-anchor="end">${escapeHtml(fmtAxis(iv))}</text>`;
         }
         const baselineY = yScale(Math.max(axisMin, Math.min(0, axisMax)));
 
@@ -4463,10 +4540,23 @@ function render({ model, el }) {
         let xLabels = "";
         data.forEach((d, i) => {
             const x = leftPad + i * (barWidth + barGap) + barGap / 2;
-            const y = d.value >= 0 ? yScale(d.value) : baselineY;
-            const h = Math.max(1, Math.abs(yScale(d.value) - baselineY));
-            const tip = `${d.label}: ${fmtNum(d.value)}`;
-            bars += `<rect class="dtx-chart-bar" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="2"><title>${escapeHtml(tip)}</title></rect>`;
+            if (d.segments) {
+                let cum = 0;
+                d.segments.forEach((sg) => {
+                    const y0 = yScale(cum);
+                    const y1 = yScale(cum + sg.value);
+                    const top = Math.min(y0, y1);
+                    const h = Math.max(1, Math.abs(y1 - y0));
+                    const tip = `${sg.name}: ${fmtNum(sg.value)}`;
+                    bars += `<rect class="dtx-chart-bar" x="${x}" y="${top}" width="${barWidth}" height="${h}" rx="2" style="fill:${sg.color}"><title>${escapeHtml(tip)}</title></rect>`;
+                    cum += sg.value;
+                });
+            } else {
+                const y = d.value >= 0 ? yScale(d.value) : baselineY;
+                const h = Math.max(1, Math.abs(yScale(d.value) - baselineY));
+                const tip = `${d.label}: ${fmtNum(d.value)}`;
+                bars += `<rect class="dtx-chart-bar" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="2"><title>${escapeHtml(tip)}</title></rect>`;
+            }
             const cx = x + barWidth / 2;
             const labelTxt = d.label.length > 16 ? d.label.slice(0, 15) + "\u2026" : d.label;
             const ly = height - bottomPad + 14;
@@ -4483,7 +4573,17 @@ function render({ model, el }) {
             + `</g>`
             + `<g>${bars}</g>`
             + `</svg>`;
-        chartWrap.innerHTML = svg;
+        let legendHtml = "";
+        if (legendSegments) {
+            legendHtml = `<div class="dtx-chart-legend">`
+                + legendSegments.map(sg =>
+                    `<span class="dtx-legend-item">`
+                    + `<span class="dtx-legend-swatch" style="background:${sg.color}"></span>`
+                    + `${escapeHtml(sg.name)}</span>`
+                ).join("")
+                + `</div>`;
+        }
+        chartWrap.innerHTML = svg + legendHtml;
     }
 
     function renderTable() {
