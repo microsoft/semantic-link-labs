@@ -2289,6 +2289,35 @@ def _visualize_dax_test(
         '<path d="M4 20 h16"/>'
         '</svg>'
     ).replace("`", "\\`")
+    cut_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<circle cx="6" cy="6" r="3"/>'
+        '<circle cx="6" cy="18" r="3"/>'
+        '<line x1="20" y1="4" x2="8.12" y2="15.88"/>'
+        '<line x1="14.47" y1="14.48" x2="20" y2="20"/>'
+        '<line x1="8.12" y1="8.12" x2="12" y2="12"/>'
+        '</svg>'
+    ).replace("`", "\\`")
+    copy_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>'
+        '<path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 '
+        'a2 2 0 0 1 2 2 v1"/>'
+        '</svg>'
+    ).replace("`", "\\`")
+    paste_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M16 4 h2 a2 2 0 0 1 2 2 v14 a2 2 0 0 1 -2 2 H6 '
+        'a2 2 0 0 1 -2 -2 V6 a2 2 0 0 1 2 -2 h2"/>'
+        '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'
+        '</svg>'
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -2323,6 +2352,9 @@ function render({ model, el }) {
     const UNDO_SVG = `__DTX_UNDO__`;
     const REDO_SVG = `__DTX_REDO__`;
     const DOWNLOAD_SVG = `__DTX_DOWNLOAD__`;
+    const CUT_SVG = `__DTX_CUT__`;
+    const COPY_SVG = `__DTX_COPY__`;
+    const PASTE_SVG = `__DTX_PASTE__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3547,12 +3579,106 @@ function render({ model, el }) {
     redoBtn.setAttribute("aria-label", "Redo");
     qTitleGroup.appendChild(redoBtn);
 
+    const cutBtn = document.createElement("button");
+    cutBtn.type = "button";
+    cutBtn.className = "dtx-hist-btn";
+    cutBtn.innerHTML = CUT_SVG;
+    cutBtn.title = "Cut selected DAX text (Ctrl/Cmd+X)";
+    cutBtn.setAttribute("aria-label", "Cut");
+    qTitleGroup.appendChild(cutBtn);
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "dtx-hist-btn";
+    copyBtn.innerHTML = COPY_SVG;
+    copyBtn.title = "Copy selected DAX text (Ctrl/Cmd+C)";
+    copyBtn.setAttribute("aria-label", "Copy");
+    qTitleGroup.appendChild(copyBtn);
+
+    const pasteBtn = document.createElement("button");
+    pasteBtn.type = "button";
+    pasteBtn.className = "dtx-hist-btn";
+    pasteBtn.innerHTML = PASTE_SVG;
+    pasteBtn.title = "Paste text at the cursor (Ctrl/Cmd+V)";
+    pasteBtn.setAttribute("aria-label", "Paste");
+    qTitleGroup.appendChild(pasteBtn);
+
+    // Cut/copy/paste operate on the DAX query textarea's current selection.
+    function writeClipboard(text) {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+        } catch (e) {}
+        // Fallback: use execCommand via the textarea itself.
+        try {
+            textarea.focus();
+            document.execCommand("copy");
+        } catch (e) {}
+        return Promise.resolve();
+    }
+    function doCopy() {
+        const s = textarea.selectionStart || 0;
+        const e = textarea.selectionEnd || 0;
+        if (e <= s) return;
+        writeClipboard(textarea.value.slice(s, e));
+        textarea.focus();
+    }
+    function doCut() {
+        const s = textarea.selectionStart || 0;
+        const e = textarea.selectionEnd || 0;
+        if (e <= s) return;
+        const sel = textarea.value.slice(s, e);
+        writeClipboard(sel);
+        textarea.value = textarea.value.slice(0, s) + textarea.value.slice(e);
+        textarea.selectionStart = textarea.selectionEnd = s;
+        textarea.focus();
+        commitHistory(textarea.value, false);
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        renderFmtBtn();
+    }
+    function doPaste() {
+        const insert = (text) => {
+            if (text == null || text === "") { textarea.focus(); return; }
+            insertAtCursor(String(text));
+            renderFmtBtn();
+        };
+        try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(insert).catch(() => {
+                    textarea.focus();
+                });
+                return;
+            }
+        } catch (e) {}
+        // Fallback: rely on the textarea's native paste.
+        textarea.focus();
+        document.execCommand("paste");
+    }
+    cutBtn.addEventListener("click", () => doCut());
+    copyBtn.addEventListener("click", () => doCopy());
+    pasteBtn.addEventListener("click", () => doPaste());
+
     undoBtn.addEventListener("click", () => doUndo());
     redoBtn.addEventListener("click", () => doRedo());
+
+    // Cut/Copy require a non-empty selection in the DAX query textarea.
+    function renderClipBtns() {
+        let hasSelection = false;
+        try {
+            hasSelection = (textarea.selectionEnd || 0)
+                > (textarea.selectionStart || 0);
+        } catch (e) {}
+        cutBtn.disabled = !hasSelection;
+        copyBtn.disabled = !hasSelection;
+    }
 
     function renderHistBtns() {
         undoBtn.disabled = undoStack.length === 0;
         redoBtn.disabled = redoStack.length === 0;
+        renderClipBtns();
     }
 
     const cacheLabel = document.createElement("label");
@@ -3853,6 +3979,13 @@ function render({ model, el }) {
         model.save_changes();
         renderHighlight();
         renderFmtBtn();
+    });
+    // Keep the Cut/Copy buttons in sync with the current text selection.
+    ["select", "keyup", "mouseup", "focus", "blur", "input"].forEach((evt) => {
+        textarea.addEventListener(evt, renderClipBtns);
+    });
+    document.addEventListener("selectionchange", () => {
+        if (document.activeElement === textarea) renderClipBtns();
     });
     textarea.addEventListener("scroll", () => {
         hl.scrollTop = textarea.scrollTop;
@@ -4175,6 +4308,8 @@ function render({ model, el }) {
                 <td class="dtx-num">${escapeHtml(fmt(h.se_duration))}</td>
                 <td>${escapeHtml(String(h.dataset_name || ""))}</td>
                 <td>${escapeHtml(String(h.workspace_name || ""))}</td>
+                <td>${escapeHtml(String(h.impersonation_type || "None"))}</td>
+                <td>${escapeHtml(String(h.impersonation || "None"))}</td>
             </tr>`;
         }).join("");
         tableWrap.innerHTML = `
@@ -4190,6 +4325,8 @@ function render({ model, el }) {
                     <th style="text-align:right">SE (ms)</th>
                     <th>Semantic Model</th>
                     <th>Workspace</th>
+                    <th>Impersonation Type</th>
+                    <th>Impersonation</th>
                 </tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
@@ -4587,6 +4724,9 @@ export default { render };
         .replace("__DTX_UNDO__", undo_icon)
         .replace("__DTX_REDO__", redo_icon)
         .replace("__DTX_DOWNLOAD__", download_icon)
+        .replace("__DTX_CUT__", cut_icon)
+        .replace("__DTX_COPY__", copy_icon)
+        .replace("__DTX_PASTE__", paste_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -4977,6 +5117,15 @@ export default { render };
                 _row_count = int(len(new_result)) if new_result is not None else 0
             except Exception:
                 _row_count = int(payload["total_rows"])
+            if role_name:
+                _imp_type = "Role"
+                _imp_value = str(role_name)
+            elif effective_user:
+                _imp_type = "User"
+                _imp_value = str(effective_user)
+            else:
+                _imp_type = "None"
+                _imp_value = "None"
             _entry = {
                 "dax_query": query,
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -4988,6 +5137,8 @@ export default { render };
                 "se_duration": int(new_se),
                 "dataset_name": str(widget.dataset_name or ""),
                 "workspace_name": str(widget.workspace_name or ""),
+                "impersonation_type": _imp_type,
+                "impersonation": _imp_value,
             }
             widget.trace_history = [_entry] + list(widget.trace_history)
         except Exception:
@@ -5063,6 +5214,8 @@ export default { render };
             ("se_duration", "SE Duration (ms)"),
             ("dataset_name", "Semantic Model"),
             ("workspace_name", "Workspace"),
+            ("impersonation_type", "Impersonation Type"),
+            ("impersonation", "Impersonation"),
         ]
         rows = [
             {label: entry.get(key, "") for key, label in cols}
