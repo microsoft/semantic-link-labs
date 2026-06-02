@@ -197,87 +197,116 @@ _TEST_EVENT_SCHEMA: dict = {
 }
 
 
-def _run_dax_trace(
+def _execute_and_capture(
+    trace,
     dataset_id: str,
     workspace_id: str,
     dax_string: str,
-    clear_cache: bool,
-    effective_user_name: Optional[str] = None,
-    role: Optional[str] = None,
-) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame]:
-    """Run a DAX query with a server-side trace and compute DAX Studio style
-    aggregate stats.
+    effective_user_name: Optional[str],
+    role: Optional[str],
+    baseline_count: int,
+) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
+    """Run a warm-up evaluation and the real DAX query against an
+    already-started ``trace`` and capture the trace rows produced by this
+    execution.
+
+    The trace is *not* stopped: events are read live via
+    :meth:`Trace.get_trace_logs`, which lets a single long-running trace serve
+    many queries. ``baseline_count`` is the number of log rows already consumed
+    by previous executions; only rows beyond it belong to this query.
 
     Returns
     -------
     tuple
-        ``(df, total_duration, fe_duration, se_duration, cpu_time, result_df)``
+        ``(result_df, new_logs, new_total_count)`` where ``new_logs`` are the
+        trace rows for this execution (rows after ``baseline_count``) and
+        ``new_total_count`` is the total log row count after this execution
+        (the next baseline).
     """
-    from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
 
-    if clear_cache:
-        _clear_cache_fn(dataset=dataset_id, workspace=workspace_id)
+    # Warm-up evaluation; filtered out of results below.
+    fabric.evaluate_dax(
+        dataset=dataset_id,
+        workspace=workspace_id,
+        dax_string="EVALUATE {1}",
+    )
+    # Run the actual DAX query.
+    result_df = fabric.evaluate_dax(
+        dataset=dataset_id,
+        workspace=workspace_id,
+        dax_string=dax_string,
+        effective_user_name=effective_user_name,
+        role=role,
+    )
+    # Wait for the trace to flush the real query's QueryEnd event. Poll the
+    # running trace rather than sleeping a fixed interval so the common case
+    # returns quickly, while keeping a 2s cap so a missed event can never hang
+    # the run (matching the prior behavior as an upper bound).
+    logs: Optional[pd.DataFrame] = None
+    _deadline = time.monotonic() + 2.0
+    while time.monotonic() < _deadline:
+        time.sleep(0.1)
+        try:
+            logs = trace.get_trace_logs()
+        except Exception:
+            continue
+        if logs is None or logs.empty:
+            continue
+        _new = logs.iloc[baseline_count:] if len(logs) > baseline_count else logs.iloc[0:0]
+        _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
+        _td = "Text Data" if "Text Data" in _new.columns else "TextData"
+        if _ec not in _new.columns:
+            continue
+        _qe = _new[_new[_ec] == "QueryEnd"]
+        if _qe.empty:
+            continue
+        if _td in _new.columns:
+            # Break once a QueryEnd for the real query (not the warm-up
+            # EVALUATE {1}) has been captured.
+            _real = _qe[~_qe[_td].astype(str).str.startswith("EVALUATE {1}")]
+            if not _real.empty:
+                break
+        elif len(_qe) >= 2:
+            # No text available: warm-up + real query == 2 QueryEnd.
+            break
 
-    result_df: pd.DataFrame = pd.DataFrame()
-    with fabric.create_trace_connection(
-        dataset=dataset_id, workspace=workspace_id
-    ) as trace_connection:
-        with trace_connection.create_trace(_TEST_EVENT_SCHEMA) as trace:
-            trace.start()
-            # Warm-up evaluation; filtered out of results below.
-            fabric.evaluate_dax(
-                dataset=dataset_id,
-                workspace=workspace_id,
-                dax_string="EVALUATE {1}",
-            )
-            # Run the actual DAX query.
-            result_df = fabric.evaluate_dax(
-                dataset=dataset_id,
-                workspace=workspace_id,
-                dax_string=dax_string,
-                effective_user_name=effective_user_name,
-                role=role,
-            )
-            # Wait for the trace to flush the real query's QueryEnd event.
-            # Poll the running trace rather than sleeping a fixed interval so
-            # the common case returns quickly, while keeping a 2s cap so a
-            # missed event can never hang the run (matching the prior behavior
-            # as an upper bound).
-            _deadline = time.monotonic() + 2.0
-            while time.monotonic() < _deadline:
-                time.sleep(0.1)
-                try:
-                    _logs = trace.get_trace_logs()
-                except Exception:
-                    continue
-                if _logs is None or _logs.empty:
-                    continue
-                _ec = "Event Class" if "Event Class" in _logs.columns else "EventClass"
-                _td = "Text Data" if "Text Data" in _logs.columns else "TextData"
-                if _ec not in _logs.columns:
-                    continue
-                _qe = _logs[_logs[_ec] == "QueryEnd"]
-                if _qe.empty:
-                    continue
-                if _td in _logs.columns:
-                    # Break once a QueryEnd for the real query (not the
-                    # warm-up EVALUATE {1}) has been captured.
-                    _real = _qe[
-                        ~_qe[_td].astype(str).str.startswith("EVALUATE {1}")
-                    ]
-                    if not _real.empty:
-                        break
-                elif len(_qe) >= 2:
-                    # No text available: warm-up + real query == 2 QueryEnd.
-                    break
-            df = trace.stop()
+    if logs is None:
+        try:
+            logs = trace.get_trace_logs()
+        except Exception:
+            logs = pd.DataFrame()
+    if logs is None:
+        logs = pd.DataFrame()
 
+    if len(logs) > baseline_count:
+        new_logs = logs.iloc[baseline_count:].reset_index(drop=True)
+    else:
+        new_logs = logs.iloc[0:0].reset_index(drop=True)
+    return result_df, new_logs, len(logs)
+
+
+def _compute_trace_stats(
+    df: pd.DataFrame,
+) -> Tuple[pd.DataFrame, int, int, int, int]:
+    """Filter trace rows and compute DAX Studio style aggregate stats.
+
+    Returns
+    -------
+    tuple
+        ``(df, total_duration, fe_duration, se_duration, cpu_time)``
+    """
+
+    if df is None:
+        df = pd.DataFrame()
     # Drop events from other sessions / warm-up evaluation.
     if "Application Name" in df.columns:
         df = df[~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])]
     if "Text Data" in df.columns:
         df = df[~df["Text Data"].astype(str).str.startswith("EVALUATE {1}")]
     df = df.reset_index(drop=True)
+
+    if "Event Class" not in df.columns:
+        return df, 0, 0, 0, 0
 
     # Compute aggregate stats using DAX Studio conventions:
     #   Total Duration = QueryEnd.Duration
@@ -302,6 +331,63 @@ def _run_dax_trace(
     else:
         se_duration = 0
     fe_duration = max(total_duration - se_duration, 0)
+
+    return df, total_duration, fe_duration, se_duration, cpu_time
+
+
+def _run_dax_trace(
+    dataset_id: str,
+    workspace_id: str,
+    dax_string: str,
+    clear_cache: bool,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
+) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame]:
+    """Run a DAX query with a one-shot server-side trace and compute DAX
+    Studio style aggregate stats.
+
+    A fresh trace is created, started, used for this single query, and then
+    stopped. This is used for ``visualize=False`` and the initial query of the
+    interactive widget. The widget itself uses a single long-running trace for
+    subsequent queries (see ``_visualize_dax_test``).
+
+    Returns
+    -------
+    tuple
+        ``(df, total_duration, fe_duration, se_duration, cpu_time, result_df)``
+    """
+    from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+    if clear_cache:
+        _clear_cache_fn(dataset=dataset_id, workspace=workspace_id)
+
+    result_df: pd.DataFrame = pd.DataFrame()
+    df = pd.DataFrame()
+    with fabric.create_trace_connection(
+        dataset=dataset_id, workspace=workspace_id
+    ) as trace_connection:
+        with trace_connection.create_trace(_TEST_EVENT_SCHEMA) as trace:
+            trace.start()
+            result_df, df, _ = _execute_and_capture(
+                trace,
+                dataset_id,
+                workspace_id,
+                dax_string,
+                effective_user_name,
+                role,
+                0,
+            )
+            # Stop the one-shot trace; prefer its authoritative logs.
+            try:
+                stopped = trace.stop()
+                if stopped is not None and not stopped.empty:
+                    df = stopped
+            except Exception:
+                pass
+
+    df, total_duration, fe_duration, se_duration, cpu_time = _compute_trace_stats(
+        df
+    )
 
     return df, total_duration, fe_duration, se_duration, cpu_time, result_df
 
@@ -4367,6 +4453,15 @@ function render({ model, el }) {
     renderBuilderChrome();
     renderBuilderZones();
     renderBuildBtn();
+
+    // Notify Python to tear down the long-running trace when this view is
+    // disposed (cell re-run, widget removed, notebook closed).
+    return () => {
+        try {
+            model.set("close_trigger", (model.get("close_trigger") || 0) + 1);
+            model.save_changes();
+        } catch (e) {}
+    };
 }
 export default { render };
 """
@@ -4444,6 +4539,7 @@ export default { render };
         format_loading = traitlets.Bool(False).tag(sync=True)
         query_builder_state = traitlets.Unicode("").tag(sync=True)
         build_query_trigger = traitlets.Int(0).tag(sync=True)
+        close_trigger = traitlets.Int(0).tag(sync=True)
 
     initial_result = _result_payload_from_df(result_df)
 
@@ -4553,6 +4649,130 @@ export default { render };
     }
     state_lock = threading.Lock()
 
+    # ---- Persistent (long-running) trace shared by all queries in the UI ----
+    # Instead of creating a fresh trace per query, the widget keeps a single
+    # trace running for the active model. It is started when the model
+    # metadata is loaded and torn down when the UI is closed. Each query reads
+    # the rows it produced live via ``trace.get_trace_logs()`` (tracked with a
+    # baseline row count) without stopping the trace.
+    trace_ctx: dict = {
+        "connection": None,
+        "trace": None,
+        "dataset_id": None,
+        "workspace_id": None,
+        "baseline": 0,
+        "started": False,
+    }
+    trace_lock = threading.Lock()
+
+    def _teardown_trace_locked() -> None:
+        """Stop/drop the running trace and dispose its connection. Caller must
+        hold ``trace_lock``."""
+        tr = trace_ctx.get("trace")
+        conn = trace_ctx.get("connection")
+        if tr is not None:
+            try:
+                tr.drop()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.disconnect_and_dispose()
+            except Exception:
+                pass
+        trace_ctx["connection"] = None
+        trace_ctx["trace"] = None
+        trace_ctx["started"] = False
+        trace_ctx["baseline"] = 0
+        trace_ctx["dataset_id"] = None
+        trace_ctx["workspace_id"] = None
+
+    def _ensure_trace(ds_id: Optional[str], ws_id: Optional[str]) -> None:
+        """Ensure a long-running trace is active for the given model. Starts a
+        new trace (rebinding from any previous model) when needed. Safe to call
+        repeatedly; a no-op when already running for the same model."""
+        if not ds_id:
+            return
+        with trace_lock:
+            if (
+                trace_ctx["started"]
+                and trace_ctx["dataset_id"] == ds_id
+                and trace_ctx["workspace_id"] == ws_id
+            ):
+                return
+            # Switching models (or first start): tear down any existing trace.
+            _teardown_trace_locked()
+            try:
+                conn = fabric.create_trace_connection(
+                    dataset=ds_id, workspace=ws_id
+                )
+                trace = conn.create_trace(_TEST_EVENT_SCHEMA)
+                trace.start()
+                trace_ctx["connection"] = conn
+                trace_ctx["trace"] = trace
+                trace_ctx["dataset_id"] = ds_id
+                trace_ctx["workspace_id"] = ws_id
+                trace_ctx["baseline"] = 0
+                trace_ctx["started"] = True
+            except Exception:
+                # Tracing could not be started; queries fall back to a
+                # one-shot trace via ``_run_dax_trace``.
+                _teardown_trace_locked()
+
+    def _stop_persistent_trace(*_args) -> None:
+        """Tear down the long-running trace (called when the UI is closed)."""
+        with trace_lock:
+            _teardown_trace_locked()
+
+    def _run_query_persistent(
+        query: str,
+        clear_cache_flag: bool,
+        effective_user: Optional[str],
+        role_name: Optional[str],
+    ) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame]:
+        """Run a query against the long-running trace, capturing only the rows
+        it produced. Falls back to a one-shot trace if the persistent trace is
+        not available."""
+        from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+        ds_id = model_ctx["dataset_id"]
+        ws_id = model_ctx["workspace_id"]
+        _ensure_trace(ds_id, ws_id)
+        with trace_lock:
+            trace = trace_ctx["trace"] if trace_ctx["started"] else None
+            baseline = trace_ctx["baseline"]
+        if trace is None:
+            # Persistent tracing unavailable: one-shot fallback.
+            return _run_dax_trace(
+                dataset_id=ds_id,
+                workspace_id=ws_id,
+                dax_string=query,
+                clear_cache=clear_cache_flag,
+                effective_user_name=effective_user,
+                role=role_name,
+            )
+        if clear_cache_flag:
+            _clear_cache_fn(dataset=ds_id, workspace=ws_id)
+        result_df, new_logs, new_count = _execute_and_capture(
+            trace,
+            ds_id,
+            ws_id,
+            query,
+            effective_user,
+            role_name,
+            baseline,
+        )
+        with trace_lock:
+            # Only advance the baseline if the trace wasn't rebound meanwhile.
+            if trace_ctx["trace"] is trace:
+                trace_ctx["baseline"] = new_count
+        df, total, fe, se, cpu = _compute_trace_stats(new_logs)
+        return df, total, fe, se, cpu, result_df
+
+    import atexit
+
+    atexit.register(_stop_persistent_trace)
+
     def _worker(
         query: str,
         clear_cache_flag: bool,
@@ -4568,13 +4788,11 @@ export default { render };
                 new_se,
                 new_cpu,
                 new_result,
-            ) = _run_dax_trace(
-                dataset_id=model_ctx["dataset_id"],
-                workspace_id=model_ctx["workspace_id"],
-                dax_string=query,
-                clear_cache=clear_cache_flag,
-                effective_user_name=effective_user,
-                role=role_name,
+            ) = _run_query_persistent(
+                query=query,
+                clear_cache_flag=clear_cache_flag,
+                effective_user=effective_user,
+                role_name=role_name,
             )
         except Exception as exc:  # noqa: BLE001
             with state_lock:
@@ -4686,6 +4904,9 @@ export default { render };
         widget.model_tree = tree
         widget.model_roles = roles
         widget.metadata_loading = False
+        # Start (or keep) the long-running trace for this model now that its
+        # metadata has loaded.
+        _ensure_trace(model_ctx["dataset_id"], model_ctx["workspace_id"])
 
     def _on_refresh_metadata(change):
         if change["new"] == change["old"]:
@@ -4762,6 +4983,8 @@ export default { render };
         widget.dataset_chosen = True
         widget.error_message = ""
         widget.picker_loading = False
+        # Rebind the long-running trace to the newly selected model.
+        _ensure_trace(ds_id_resolved, ws_id_resolved)
 
     def _on_select_dataset(change):
         if change["new"] == change["old"]:
@@ -4915,4 +5138,28 @@ export default { render };
 
     widget.observe(_on_build_query, names="build_query_trigger")
 
+    def _on_close_trigger(change):
+        if change["new"] == change["old"]:
+            return
+        _stop_persistent_trace()
+
+    widget.observe(_on_close_trigger, names="close_trigger")
+
+    # Start the long-running trace for the initially selected model (if any)
+    # so it is ready by the time the first query runs.
+    if model_ctx["dataset_id"] is not None:
+        threading.Thread(
+            target=lambda: _ensure_trace(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            ),
+            daemon=True,
+        ).start()
+
     display(widget)
+
+    # Backstop for trace teardown if the comm is closed without the JS
+    # cleanup hook firing (e.g. kernel/cell disposal).
+    try:
+        widget.comm.on_close(lambda *_a: _stop_persistent_trace())
+    except Exception:
+        pass
