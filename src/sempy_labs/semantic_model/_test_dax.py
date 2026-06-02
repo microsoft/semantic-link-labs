@@ -671,126 +671,6 @@ def _list_datasets_for_picker(workspace_id: str) -> list:
     return out
 
 
-def _pick_groupby_column(table) -> Optional[str]:
-    """Pick a reasonable column to group by from a TOM table: prefer a
-    visible string/text column, otherwise the first visible non-RowNumber
-    column. Returns the column name or None."""
-
-    candidate = None
-    try:
-        columns = list(table.Columns)
-    except Exception:
-        return None
-    for c in columns:
-        try:
-            name = str(c.Name)
-            col_type = str(getattr(c, "Type", ""))
-            if col_type == "RowNumber" or name == "RowNumber":
-                continue
-            if getattr(c, "IsHidden", False):
-                continue
-        except Exception:
-            continue
-        if candidate is None:
-            candidate = name
-        if str(getattr(c, "DataType", "")) == "String":
-            return name
-    return candidate
-
-
-def _generate_sample_dax(dataset_id: str, workspace_id: str) -> str:
-    """Generate a simple ``EVALUATE SUMMARIZECOLUMNS(...)`` DAX query against
-    the model: a measure grouped by a column from a table related to the
-    measure's home table (falling back to a column from the measure's own
-    table when no relationship exists). Returns an empty string if the model
-    has no usable measure/column."""
-
-    try:
-        from sempy_labs.tom import connect_semantic_model
-    except Exception:
-        return ""
-
-    try:
-        with connect_semantic_model(
-            dataset=dataset_id, workspace=workspace_id, readonly=True
-        ) as tom:
-            # Pick a measure (prefer a visible one).
-            measure = None
-            for m in tom.all_measures():
-                if measure is None:
-                    measure = m
-                if not getattr(m, "IsHidden", False):
-                    measure = m
-                    break
-            if measure is None:
-                return ""
-            measure_name = str(measure.Name)
-            try:
-                measure_table = str(measure.Parent.Name)
-            except Exception:
-                measure_table = None
-
-            group_table = None
-            group_column = None
-
-            # Look for a table related to the measure's home table and pick a
-            # column from it.
-            if measure_table is not None:
-                for rel in tom.model.Relationships:
-                    try:
-                        from_table = str(rel.FromTable.Name)
-                        to_table = str(rel.ToTable.Name)
-                    except Exception:
-                        continue
-                    other = None
-                    if from_table == measure_table:
-                        other = to_table
-                    elif to_table == measure_table:
-                        other = from_table
-                    if other is None:
-                        continue
-                    try:
-                        other_tbl = tom.model.Tables[other]
-                    except Exception:
-                        continue
-                    col = _pick_groupby_column(other_tbl)
-                    if col:
-                        group_table = other
-                        group_column = col
-                        break
-
-            # Fall back to a column from the measure's own table.
-            if group_column is None and measure_table is not None:
-                try:
-                    own_tbl = tom.model.Tables[measure_table]
-                    col = _pick_groupby_column(own_tbl)
-                    if col:
-                        group_table = measure_table
-                        group_column = col
-                except Exception:
-                    pass
-    except Exception:
-        return ""
-
-    def _tbl_ref(name: str) -> str:
-        return "'" + name.replace("'", "''") + "'"
-
-    def _mea_ref(name: str) -> str:
-        return "[" + name.replace("]", "]]") + "]"
-
-    if group_table and group_column:
-        col_ref = _tbl_ref(group_table) + _mea_ref(group_column)
-        return (
-            "EVALUATE\n"
-            "SUMMARIZECOLUMNS(\n"
-            f"    {col_ref},\n"
-            f'    "{measure_name}", {_mea_ref(measure_name)}\n'
-            ")"
-        )
-    # No usable column: emit a measure-only query.
-    return "EVALUATE\n" "ROW(\n" f'    "{measure_name}", {_mea_ref(measure_name)}\n' ")"
-
-
 def _classify_filter_type(kind: str, data_type: str) -> str:
     """Classify a query-builder field into a filter family used to pick the
     available filter operators: ``measure``, ``numeric``, ``datetime``,
@@ -1174,28 +1054,6 @@ def _visualize_dax_test(
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ui-text-tertiary);
-}}
-.dtx .dtx-gen-btn {{
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1;
-    padding: 4px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--ui-border);
-    background: var(--ui-surface);
-    color: var(--ui-text-secondary);
-    cursor: pointer;
-}}
-.dtx .dtx-gen-btn:hover:not(:disabled) {{
-    border-color: var(--ui-accent);
-    color: var(--ui-accent);
-}}
-.dtx .dtx-gen-btn:disabled {{
-    opacity: 0.5;
-    cursor: default;
 }}
 .dtx .dtx-fmt-btn {{
     display: inline-flex;
@@ -3651,24 +3509,6 @@ function render({ model, el }) {
     qTitle.textContent = "DAX Query";
     qTitleGroup.appendChild(qTitle);
 
-    const genBtn = document.createElement("button");
-    genBtn.type = "button";
-    genBtn.className = "dtx-gen-btn";
-    genBtn.textContent = "Generate";
-    genBtn.title = "Generate a sample EVALUATE SUMMARIZECOLUMNS query "
-        + "from a measure and a related column in the model";
-    qTitleGroup.appendChild(genBtn);
-    genBtn.addEventListener("click", () => {
-        if (model.get("dataset_chosen") !== true) return;
-        model.set("error_message", "");
-        model.set("generate_query_trigger",
-            (model.get("generate_query_trigger") || 0) + 1);
-        model.save_changes();
-    });
-    function renderGenBtn() {
-        genBtn.disabled = model.get("dataset_chosen") !== true;
-    }
-
     const fmtBtn = document.createElement("button");
     fmtBtn.type = "button";
     fmtBtn.className = "dtx-fmt-btn";
@@ -3898,7 +3738,7 @@ function render({ model, el }) {
     // ---------- Undo / redo history (DAX query pane only) ----------
     // A dedicated history stack for the editor text. A custom stack is used
     // (instead of the textarea's native undo) so programmatic edits such as
-    // drag-and-drop, "Define", "Generate" and "Format" are also undoable.
+    // drag-and-drop, "Define" and "Format" are also undoable.
     const undoStack = [];
     const redoStack = [];
     const HISTORY_LIMIT = 200;
@@ -3983,8 +3823,7 @@ function render({ model, el }) {
             // disappears as soon as the user types anything.
             hl.innerHTML = '<span class="dtx-query-placeholder">'
                 + 'EVALUATE — type a DAX query here, drag model objects in '
-                + 'from the left, use the Query Builder, or click Generate '
-                + 'to create a sample query.'
+                + 'from the left, or use the Query Builder.'
                 + '</span>';
             hl.scrollTop = textarea.scrollTop;
             hl.scrollLeft = textarea.scrollLeft;
@@ -4664,7 +4503,7 @@ function render({ model, el }) {
         if (textarea.value !== model.get("dax_query")) {
             const newVal = model.get("dax_query") || "";
             textarea.value = newVal;
-            // External update (e.g. Format / Generate from Python) — record
+            // External update (e.g. Format from Python) — record
             // it as a discrete, undoable history entry.
             commitHistory(newVal, false);
         }
@@ -4682,7 +4521,7 @@ function render({ model, el }) {
     model.on("change:model_tree", renderTree);
     model.on("change:dataset_chosen", () => {
         if (model.get("dataset_chosen") === true) { pickerOpen = false; }
-        renderPicker(); renderRunBtn(); renderSubtitle(); renderGenBtn();
+        renderPicker(); renderRunBtn(); renderSubtitle();
         renderBuildBtn();
     });
     model.on("change:available_workspaces", renderPicker);
@@ -4703,7 +4542,6 @@ function render({ model, el }) {
     renderTable();
     renderSidebarChrome();
     renderPicker();
-    renderGenBtn();
     renderFmtBtn();
     renderHistBtns();
     renderTree();
@@ -4797,7 +4635,6 @@ export default { render };
         select_workspace_trigger = traitlets.Int(0).tag(sync=True)
         select_dataset_trigger = traitlets.Int(0).tag(sync=True)
         load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
-        generate_query_trigger = traitlets.Int(0).tag(sync=True)
         format_query_trigger = traitlets.Int(0).tag(sync=True)
         format_loading = traitlets.Bool(False).tag(sync=True)
         query_builder_state = traitlets.Unicode("").tag(sync=True)
@@ -4886,7 +4723,6 @@ export default { render };
         select_workspace_trigger=0,
         select_dataset_trigger=0,
         load_workspaces_trigger=0,
-        generate_query_trigger=0,
         format_query_trigger=0,
         format_loading=False,
         query_builder_state="",
@@ -5415,43 +5251,6 @@ export default { render };
         threading.Thread(target=_load_workspaces, daemon=True).start()
 
     widget.observe(_on_load_workspaces, names="load_workspaces_trigger")
-
-    def _generate_query() -> None:
-        if model_ctx["dataset_id"] is None:
-            widget.error_message = (
-                "No semantic model selected. Choose a workspace and a "
-                "semantic model first."
-            )
-            return
-        try:
-            dax = _generate_sample_dax(
-                model_ctx["dataset_id"], model_ctx["workspace_id"]
-            )
-        except Exception as exc:  # noqa: BLE001
-            widget.error_message = f"Failed to generate a DAX query: {exc}"
-            return
-        if not dax:
-            widget.error_message = (
-                "Could not generate a DAX query: the model has no usable "
-                "measure to summarize."
-            )
-            return
-        try:
-            formatted = _format_dax(dax)
-            dax_out = formatted[0] if formatted else dax
-        except Exception:
-            dax_out = dax
-        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
-        widget.dax_query = dax_out
-        widget.dax_tokens = _classify_dax_spans(dax_out)
-        widget.error_message = ""
-
-    def _on_generate_query(change):
-        if change["new"] == change["old"]:
-            return
-        threading.Thread(target=_generate_query, daemon=True).start()
-
-    widget.observe(_on_generate_query, names="generate_query_trigger")
 
     def _format_query() -> None:
         dax = widget.dax_query or ""
