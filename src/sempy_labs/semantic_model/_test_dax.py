@@ -238,8 +238,38 @@ def _run_dax_trace(
                 effective_user_name=effective_user_name,
                 role=role,
             )
-            # Allow the trace some time to flush events.
-            time.sleep(2)
+            # Wait for the trace to flush the real query's QueryEnd event.
+            # Poll the running trace rather than sleeping a fixed interval so
+            # the common case returns quickly, while keeping a 2s cap so a
+            # missed event can never hang the run (matching the prior behavior
+            # as an upper bound).
+            _deadline = time.monotonic() + 2.0
+            while time.monotonic() < _deadline:
+                time.sleep(0.1)
+                try:
+                    _logs = trace.get_trace_logs()
+                except Exception:
+                    continue
+                if _logs is None or _logs.empty:
+                    continue
+                _ec = "Event Class" if "Event Class" in _logs.columns else "EventClass"
+                _td = "Text Data" if "Text Data" in _logs.columns else "TextData"
+                if _ec not in _logs.columns:
+                    continue
+                _qe = _logs[_logs[_ec] == "QueryEnd"]
+                if _qe.empty:
+                    continue
+                if _td in _logs.columns:
+                    # Break once a QueryEnd for the real query (not the
+                    # warm-up EVALUATE {1}) has been captured.
+                    _real = _qe[
+                        ~_qe[_td].astype(str).str.startswith("EVALUATE {1}")
+                    ]
+                    if not _real.empty:
+                        break
+                elif len(_qe) >= 2:
+                    # No text available: warm-up + real query == 2 QueryEnd.
+                    break
             df = trace.stop()
 
     # Drop events from other sessions / warm-up evaluation.
@@ -347,101 +377,148 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
     except Exception:
         return []
 
-    tree: list = []
     try:
         with connect_semantic_model(
             dataset=dataset_id, workspace=workspace_id, readonly=True
         ) as tom:
-            for table in tom.model.Tables:
-                tname = str(table.Name)
-                columns = sorted(
-                    (
-                        {
-                            "name": str(c.Name),
-                            "hidden": bool(getattr(c, "IsHidden", False)),
-                            "data_type": str(getattr(c, "DataType", "") or ""),
-                            "description": str(getattr(c, "Description", "") or ""),
-                            "display_folder": str(
-                                getattr(c, "DisplayFolder", "") or ""
-                            ),
-                        }
-                        for c in table.Columns
-                        if str(getattr(c, "Type", "")) != "RowNumber"
-                    ),
-                    key=lambda x: x["name"].lower(),
-                )
-                measures = sorted(
-                    (
-                        {
-                            "name": str(m.Name),
-                            "hidden": bool(getattr(m, "IsHidden", False)),
-                            "description": str(getattr(m, "Description", "") or ""),
-                            "display_folder": str(
-                                getattr(m, "DisplayFolder", "") or ""
-                            ),
-                            "expression": str(getattr(m, "Expression", "") or ""),
-                        }
-                        for m in table.Measures
-                    ),
-                    key=lambda x: x["name"].lower(),
-                )
-                hierarchies = sorted(
-                    (
-                        {
-                            "name": str(h.Name),
-                            "hidden": bool(getattr(h, "IsHidden", False)),
-                            "description": str(getattr(h, "Description", "") or ""),
-                            "display_folder": str(
-                                getattr(h, "DisplayFolder", "") or ""
-                            ),
-                            "levels": [
-                                {
-                                    "name": str(lvl.Name),
-                                    "description": str(
-                                        getattr(lvl, "Description", "") or ""
-                                    ),
-                                }
-                                for lvl in sorted(
-                                    h.Levels,
-                                    key=lambda lvl: getattr(lvl, "Ordinal", 0),
-                                )
-                            ],
-                        }
-                        for h in table.Hierarchies
-                    ),
-                    key=lambda x: x["name"].lower(),
-                )
-                is_calc_group = getattr(table, "CalculationGroup", None) is not None
-                calculation_items: list = []
-                if is_calc_group:
-                    calculation_items = sorted(
-                        (
+            return _build_model_tree(tom)
+    except Exception:
+        return []
+
+
+def _build_model_tree(tom) -> list:
+    """Build the sidebar metadata tree from an already-open TOM connection."""
+
+    tree: list = []
+    try:
+        for table in tom.model.Tables:
+            tname = str(table.Name)
+            columns = sorted(
+                (
+                    {
+                        "name": str(c.Name),
+                        "hidden": bool(getattr(c, "IsHidden", False)),
+                        "data_type": str(getattr(c, "DataType", "") or ""),
+                        "description": str(getattr(c, "Description", "") or ""),
+                        "display_folder": str(
+                            getattr(c, "DisplayFolder", "") or ""
+                        ),
+                    }
+                    for c in table.Columns
+                    if str(getattr(c, "Type", "")) != "RowNumber"
+                ),
+                key=lambda x: x["name"].lower(),
+            )
+            measures = sorted(
+                (
+                    {
+                        "name": str(m.Name),
+                        "hidden": bool(getattr(m, "IsHidden", False)),
+                        "description": str(getattr(m, "Description", "") or ""),
+                        "display_folder": str(
+                            getattr(m, "DisplayFolder", "") or ""
+                        ),
+                        "expression": str(getattr(m, "Expression", "") or ""),
+                    }
+                    for m in table.Measures
+                ),
+                key=lambda x: x["name"].lower(),
+            )
+            hierarchies = sorted(
+                (
+                    {
+                        "name": str(h.Name),
+                        "hidden": bool(getattr(h, "IsHidden", False)),
+                        "description": str(getattr(h, "Description", "") or ""),
+                        "display_folder": str(
+                            getattr(h, "DisplayFolder", "") or ""
+                        ),
+                        "levels": [
                             {
-                                "name": str(ci.Name),
+                                "name": str(lvl.Name),
                                 "description": str(
-                                    getattr(ci, "Description", "") or ""
+                                    getattr(lvl, "Description", "") or ""
                                 ),
                             }
-                            for ci in table.CalculationGroup.CalculationItems
-                        ),
-                        key=lambda x: x["name"].lower(),
-                    )
-                tree.append(
-                    {
-                        "name": tname,
-                        "hidden": bool(getattr(table, "IsHidden", False)),
-                        "description": str(getattr(table, "Description", "") or ""),
-                        "calculation_group": bool(is_calc_group),
-                        "calculation_items": calculation_items,
-                        "columns": columns,
-                        "measures": measures,
-                        "hierarchies": hierarchies,
+                            for lvl in sorted(
+                                h.Levels,
+                                key=lambda lvl: getattr(lvl, "Ordinal", 0),
+                            )
+                        ],
                     }
+                    for h in table.Hierarchies
+                ),
+                key=lambda x: x["name"].lower(),
+            )
+            is_calc_group = getattr(table, "CalculationGroup", None) is not None
+            calculation_items: list = []
+            if is_calc_group:
+                calculation_items = sorted(
+                    (
+                        {
+                            "name": str(ci.Name),
+                            "description": str(
+                                getattr(ci, "Description", "") or ""
+                            ),
+                        }
+                        for ci in table.CalculationGroup.CalculationItems
+                    ),
+                    key=lambda x: x["name"].lower(),
                 )
+            tree.append(
+                {
+                    "name": tname,
+                    "hidden": bool(getattr(table, "IsHidden", False)),
+                    "description": str(getattr(table, "Description", "") or ""),
+                    "calculation_group": bool(is_calc_group),
+                    "calculation_items": calculation_items,
+                    "columns": columns,
+                    "measures": measures,
+                    "hierarchies": hierarchies,
+                }
+            )
     except Exception:
         return []
     tree.sort(key=lambda t: t["name"].lower())
     return tree
+
+
+def _build_model_roles(tom) -> list:
+    """Build the sorted list of security role names from an already-open TOM
+    connection."""
+
+    try:
+        roles = [str(r.Name) for r in tom.model.Roles]
+    except Exception:
+        return []
+    roles.sort(key=lambda x: x.lower())
+    return roles
+
+
+def _collect_model_metadata(dataset_id: str, workspace_id: str) -> tuple:
+    """Collect both the sidebar metadata tree and the security role names in a
+    single TOM connection (avoids opening the XMLA connection twice).
+
+    Returns
+    -------
+    tuple
+        ``(tree, roles)``. Either may be an empty list if metadata cannot be
+        read.
+    """
+
+    try:
+        from sempy_labs.tom import connect_semantic_model
+    except Exception:
+        return [], []
+
+    try:
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=True
+        ) as tom:
+            return _build_model_tree(tom), _build_model_roles(tom)
+    except Exception:
+        return [], []
+
 
 
 def _collect_model_roles(dataset_id: str, workspace_id: str) -> list:
@@ -4385,12 +4462,11 @@ export default { render };
     # both reliable and quick.
     if dataset_chosen:
         try:
-            initial_tree = _collect_model_tree(dataset_id, workspace_id)
+            initial_tree, initial_roles = _collect_model_metadata(
+                dataset_id, workspace_id
+            )
         except Exception:
             initial_tree = []
-        try:
-            initial_roles = _collect_model_roles(dataset_id, workspace_id)
-        except Exception:
             initial_roles = []
     else:
         initial_tree = []
@@ -4600,10 +4676,7 @@ export default { render };
             widget.metadata_loading = False
             return
         try:
-            tree = _collect_model_tree(
-                model_ctx["dataset_id"], model_ctx["workspace_id"]
-            )
-            roles = _collect_model_roles(
+            tree, roles = _collect_model_metadata(
                 model_ctx["dataset_id"], model_ctx["workspace_id"]
             )
         except Exception as exc:  # noqa: BLE001
@@ -4669,8 +4742,9 @@ export default { render };
             )
             model_ctx["workspace_id"] = ws_id_resolved
             model_ctx["dataset_id"] = ds_id_resolved
-            tree = _collect_model_tree(ds_id_resolved, ws_id_resolved)
-            roles = _collect_model_roles(ds_id_resolved, ws_id_resolved)
+            tree, roles = _collect_model_metadata(
+                ds_id_resolved, ws_id_resolved
+            )
         except Exception as exc:  # noqa: BLE001
             widget.picker_loading = False
             widget.error_message = f"Failed to load semantic model: {exc}"
