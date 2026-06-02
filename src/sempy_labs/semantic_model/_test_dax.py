@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from sempy._utils._log import log
 from uuid import UUID
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @log
@@ -1717,12 +1717,47 @@ def _visualize_dax_test(
 .dtx tbody tr:hover td {{ background: var(--ui-surface-2); }}
 .dtx td.dtx-num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 .dtx td.dtx-hist-query {{
-    max-width: 320px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    max-width: 420px;
     color: var(--ui-text-secondary);
+    vertical-align: top;
 }}
+.dtx td.dtx-hist-query pre {{
+    margin: 0;
+    max-height: 160px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 12px;
+    line-height: 1.45;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}}
+.dtx .dtx-hist-download {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    color: var(--ui-text-secondary);
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}}
+.dtx .dtx-hist-download svg {{
+    width: 17px;
+    height: 17px;
+}}
+.dtx .dtx-hist-download:hover:not(:disabled) {{
+    background: var(--ui-surface-2);
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-hist-download:disabled {{ opacity: 0.5; cursor: not-allowed; }}
 .dtx td.dtx-empty {{
     text-align: center;
     color: var(--ui-text-tertiary);
@@ -2368,6 +2403,15 @@ def _visualize_dax_test(
         '<path d="M20.5 12 a8 8 0 1 0 -1.5 5"/>'
         '</svg>'
     ).replace("`", "\\`")
+    download_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M12 3 v12"/>'
+        '<path d="M7 10 l5 5 5-5"/>'
+        '<path d="M4 20 h16"/>'
+        '</svg>'
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -2401,6 +2445,7 @@ function render({ model, el }) {
     const DAXFORMAT_SVG = `__DTX_DAXFORMAT__`;
     const UNDO_SVG = `__DTX_UNDO__`;
     const REDO_SVG = `__DTX_REDO__`;
+    const DOWNLOAD_SVG = `__DTX_DOWNLOAD__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -2901,8 +2946,8 @@ function render({ model, el }) {
     body.appendChild(main);
 
     // ---------- Query Builder pane (between sidebar and main) ----------
-    // Hidden by default; revealed via the header "Query Builder" button.
-    let builderVisible = false;
+    // Shown by default; can be hidden via the header "Query Builder" button.
+    let builderVisible = true;
     let builderCollapsed = false;
     let builderFields = [];
     let builderFilters = [];
@@ -4100,6 +4145,21 @@ function render({ model, el }) {
     seg.appendChild(segChart);
     seg.appendChild(segHistory);
     viewToolbar.appendChild(seg);
+
+    const histDownloadBtn = document.createElement("button");
+    histDownloadBtn.type = "button";
+    histDownloadBtn.className = "dtx-hist-download";
+    histDownloadBtn.innerHTML = DOWNLOAD_SVG;
+    histDownloadBtn.title = "Download the trace history as an Excel file";
+    histDownloadBtn.setAttribute("aria-label", "Download trace history as Excel");
+    histDownloadBtn.style.display = "none";
+    viewToolbar.appendChild(histDownloadBtn);
+    histDownloadBtn.addEventListener("click", () => {
+        const hist = model.get("trace_history") || [];
+        if (!hist.length) return;
+        model.set("download_history_trigger", (model.get("download_history_trigger") || 0) + 1);
+        model.save_changes();
+    });
     segTrace.addEventListener("click", () => {
         model.set("view_mode", "trace");
         model.save_changes();
@@ -4155,6 +4215,9 @@ function render({ model, el }) {
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
+        const hist = model.get("trace_history") || [];
+        histDownloadBtn.style.display = (mode === "history") ? "" : "none";
+        histDownloadBtn.disabled = !hist.length;
     }
 
     const resultMeta = document.createElement("div");
@@ -4243,10 +4306,8 @@ function render({ model, el }) {
         }
         const body = hist.map(h => {
             const q = String(h.dax_query || "");
-            const qOne = q.replace(/\s+/g, " ").trim();
-            const qShort = qOne.length > 60 ? qOne.slice(0, 59) + "\u2026" : qOne;
             return `<tr>
-                <td class="dtx-hist-query" title="${escapeHtml(q)}">${escapeHtml(qShort)}</td>
+                <td class="dtx-hist-query"><pre>${escapeHtml(q)}</pre></td>
                 <td>${escapeHtml(String(h.start_time || ""))}</td>
                 <td>${escapeHtml(String(h.end_time || ""))}</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.rows))}</td>
@@ -4262,8 +4323,8 @@ function render({ model, el }) {
             <table>
                 <thead><tr>
                     <th>DAX Query</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
+                    <th>Start Time (UTC)</th>
+                    <th>End Time (UTC)</th>
                     <th style="text-align:right">Rows</th>
                     <th style="text-align:right">Duration (ms)</th>
                     <th style="text-align:right">CPU (ms)</th>
@@ -4470,6 +4531,30 @@ function render({ model, el }) {
     model.on("change:result_truncated", renderTable);
     model.on("change:view_mode", renderTable);
     model.on("change:trace_history", renderTable);
+    model.on("change:history_excel_b64", () => {
+        const b64 = model.get("history_excel_b64") || "";
+        if (!b64) return;
+        try {
+            const bin = atob(b64);
+            const len = bin.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+            const blob = new Blob([bytes], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = model.get("history_excel_name") || "trace_history.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {}
+        // Clear so a subsequent identical download still fires a change.
+        model.set("history_excel_b64", "");
+        model.save_changes();
+    });
     model.on("change:is_running", () => {
         root.classList.toggle("dtx-running", model.get("is_running") === true);
         renderRunBtn();
@@ -4563,6 +4648,7 @@ export default { render };
         .replace("__DTX_DAXFORMAT__", daxformat_icon)
         .replace("__DTX_UNDO__", undo_icon)
         .replace("__DTX_REDO__", redo_icon)
+        .replace("__DTX_DOWNLOAD__", download_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -4586,6 +4672,9 @@ export default { render };
         result_truncated = traitlets.Bool(False).tag(sync=True)
         view_mode = traitlets.Unicode("trace").tag(sync=True)
         trace_history = traitlets.List([]).tag(sync=True)
+        download_history_trigger = traitlets.Int(0).tag(sync=True)
+        history_excel_b64 = traitlets.Unicode("").tag(sync=True)
+        history_excel_name = traitlets.Unicode("").tag(sync=True)
         is_running = traitlets.Bool(False).tag(sync=True)
         error_message = traitlets.Unicode("").tag(sync=True)
         run_trigger = traitlets.Int(0).tag(sync=True)
@@ -4860,7 +4949,7 @@ export default { render };
         effective_user: Optional[str],
         role_name: Optional[str],
     ) -> None:
-        _start_dt = datetime.now()
+        _start_dt = datetime.now(timezone.utc)
         try:
             (
                 new_df,
@@ -4907,13 +4996,19 @@ export default { render };
         widget.is_running = False
 
         # Append to the session trace history (newest first).
-        _end_dt = datetime.now()
+        _end_dt = datetime.now(timezone.utc)
         try:
+            # Row count is the true number of rows in the query's result
+            # dataframe (not the truncated display payload).
+            try:
+                _row_count = int(len(new_result)) if new_result is not None else 0
+            except Exception:
+                _row_count = int(payload["total_rows"])
             _entry = {
                 "dax_query": query,
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
-                "rows": int(payload["total_rows"]),
+                "rows": _row_count,
                 "duration": int(new_total),
                 "cpu": int(new_cpu),
                 "fe_duration": int(new_fe),
@@ -4978,6 +5073,67 @@ export default { render };
 
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
+
+    def _build_history_excel() -> None:
+        import base64
+        import io
+
+        history = list(widget.trace_history)
+        cols = [
+            ("dax_query", "DAX Query"),
+            ("start_time", "Start Time (UTC)"),
+            ("end_time", "End Time (UTC)"),
+            ("rows", "Rows"),
+            ("duration", "Duration (ms)"),
+            ("cpu", "CPU (ms)"),
+            ("fe_duration", "FE Duration (ms)"),
+            ("se_duration", "SE Duration (ms)"),
+            ("dataset_name", "Semantic Model"),
+            ("workspace_name", "Workspace"),
+        ]
+        rows = [
+            {label: entry.get(key, "") for key, label in cols}
+            for entry in history
+        ]
+        df_hist = pd.DataFrame(rows, columns=[label for _, label in cols])
+        buf = io.BytesIO()
+        # Use whichever Excel engine is available (openpyxl is standard in
+        # Fabric notebooks; xlsxwriter is an accepted fallback).
+        engine = None
+        for _eng in ("openpyxl", "xlsxwriter"):
+            try:
+                __import__(_eng)
+                engine = _eng
+                break
+            except Exception:
+                continue
+        if engine is None:
+            widget.error_message = (
+                "Could not export to Excel: no Excel engine is installed. "
+                "Install 'openpyxl' (pip install openpyxl) and try again."
+            )
+            return
+        try:
+            with pd.ExcelWriter(buf, engine=engine) as writer:
+                df_hist.to_excel(writer, index=False, sheet_name="Trace History")
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = (
+                f"Failed to build the Excel file: {exc}"
+            )
+            return
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        # Reset first so the front-end always observes a change event.
+        widget.history_excel_name = f"trace_history_{stamp}.xlsx"
+        widget.history_excel_b64 = ""
+        widget.history_excel_b64 = b64
+
+    def _on_download_history(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_build_history_excel, daemon=True).start()
+
+    widget.observe(_on_download_history, names="download_history_trigger")
 
     def _on_query_change(change):
         # Re-classify on every edit so the syntax-highlight overlay stays
