@@ -168,40 +168,88 @@ def create_shortcut_onelake(
     )
 
 
+@log
 def create_shortcut(
     shortcut_name: str,
     location: str,
     subpath: str,
     source: str,
-    connection_id: str,
-    lakehouse: Optional[str] = None,
-    workspace: Optional[str] = None,
+    connection_id: str | UUID,
+    bucket: Optional[str] = None,
+    shortcut_path: str = "Tables",
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+    shortcut_conflict_policy: Optional[str] = None,
 ):
     """
-    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to an ADLS Gen2 or Amazon S3 source.
+    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to an external data source.
+
+    This is a wrapper function for the following API: `OneLake Shortcuts - Create Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/create-shortcut>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
     shortcut_name : str
+        The name of the shortcut to be created.
     location : str
+        The HTTP URL that points to the target endpoint of the external data source.
+        Examples: https://accountname.dfs.core.windows.net (ADLS Gen2);
+        https://bucketname.s3.region.amazonaws.com (Amazon S3);
+        https://storage.googleapis.com (Google Cloud Storage);
+        https://s3.region.example.com (S3 compatible).
     subpath : str
+        The path that points to the target folder within the external data source location.
     source : str
-    connection_id: str
-    lakehouse : str
-        The Fabric lakehouse in which the shortcut will be created.
-    workspace : str, default=None
-        The name of the Fabric workspace in which the shortcut will be created.
+        The type of the external data source. Options are 'adlsGen2', 'amazonS3', 'googleCloudStorage', and 's3Compatible'.
+    connection_id : str | uuid.UUID
+        The ID of the connection that is bound with the shortcut. The connection holds the authentication used to connect to the external data source.
+    bucket : str, default=None
+        The name of the S3 compatible bucket. Required when 'source' is 's3Compatible' and not used otherwise.
+    shortcut_path : str, default="Tables"
+        A string representing the full path where the shortcut is created, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID in which the shortcut will be created.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the Fabric workspace in which the shortcut will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    shortcut_conflict_policy : str, default=None
+        When provided, it defines the action to take when a shortcut with the same name and path already exists.
+        Options are 'Abort' and 'GenerateUniqueName'. The default action is 'Abort'.
     """
 
-    source_titles = {"adlsGen2": "ADLS Gen2", "amazonS3": "Amazon S3"}
+    source_titles = {
+        "adlsGen2": "ADLS Gen2",
+        "amazonS3": "Amazon S3",
+        "googleCloudStorage": "Google Cloud Storage",
+        "s3Compatible": "S3 compatible",
+    }
 
     sourceValues = list(source_titles.keys())
 
     if source not in sourceValues:
         raise ValueError(
             f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}."
+        )
+
+    if not (shortcut_path.startswith("Files") or shortcut_path.startswith("Tables")):
+        raise ValueError(
+            f"{icons.red_dot} The 'shortcut_path' parameter must start with either 'Files' or 'Tables'."
+        )
+
+    if source == "s3Compatible" and bucket is None:
+        raise ValueError(
+            f"{icons.red_dot} The 'bucket' parameter must be provided when the 'source' parameter is 's3Compatible'."
+        )
+
+    if shortcut_conflict_policy and shortcut_conflict_policy not in [
+        "Abort",
+        "GenerateUniqueName",
+    ]:
+        raise ValueError(
+            f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be either 'Abort' or 'GenerateUniqueName'."
         )
 
     sourceTitle = source_titles[source]
@@ -213,20 +261,27 @@ def create_shortcut(
 
     shortcutActualName = shortcut_name.replace(" ", "")
 
+    target = {
+        "location": location,
+        "subpath": subpath,
+        "connectionId": str(connection_id),
+    }
+    if source == "s3Compatible":
+        target["bucket"] = bucket
+
     payload = {
-        "path": "Tables",
+        "path": shortcut_path,
         "name": shortcutActualName,
-        "target": {
-            source: {
-                "location": location,
-                "subpath": subpath,
-                "connectionId": connection_id,
-            }
-        },
+        "target": {source: target},
     }
 
+    url = f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
+
+    if shortcut_conflict_policy:
+        url += f"?shortcutConflictPolicy={shortcut_conflict_policy}"
+
     _base_api(
-        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
+        request=url,
         method="post",
         payload=payload,
         status_codes=201,
@@ -234,7 +289,7 @@ def create_shortcut(
     )
     print(
         f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse_name}' lakehouse within"
-        f" the '{workspace_name}' workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
+        f" the '{workspace_name}' workspace. It is based on the '{subpath}' path in '{sourceTitle}'."
     )
 
 
