@@ -19,6 +19,7 @@ def test(
     visualize: bool = True,
     effective_user_name: Optional[str] = None,
     role: Optional[str] = None,
+    dark_mode: bool = False,
 ) -> pd.DataFrame:
     """
     Runs a DAX query against a semantic model while capturing a server-side
@@ -57,6 +58,9 @@ def test(
         the ``role`` parameter of ``fabric.evaluate_dax``). Use this for
         role impersonation. Cannot be used together with
         ``effective_user_name``.
+    dark_mode : bool, default=False
+        If True, the interactive widget is initially displayed using its
+        dark color theme. Only applies when ``visualize=True``.
 
     Returns
     -------
@@ -139,6 +143,7 @@ def test(
             result_df=result_df,
             effective_user_name=effective_user_name,
             role=role,
+            dark_mode=dark_mode,
         )
 
     return df
@@ -285,6 +290,30 @@ def _execute_and_capture(
             # No text available: warm-up + real query == 2 QueryEnd, or just
             # the real query when the warm-up was skipped.
             break
+
+    # DAX Query Plan events (Logical/Physical) are serialized by the engine
+    # during query cleanup and are frequently flushed into the trace buffer
+    # *after* the QueryEnd event that ended the loop above. Poll a little
+    # longer (capped) so the captured logs include them; stop early as soon
+    # as a DAXQueryPlan row for this query is present.
+    if logs is not None and not logs.empty:
+        _plan_deadline = time.monotonic() + 1.5
+        while time.monotonic() < _plan_deadline:
+            _new = (
+                logs.iloc[baseline_count:]
+                if len(logs) > baseline_count
+                else logs.iloc[0:0]
+            )
+            _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
+            if _ec in _new.columns and not _new[_new[_ec] == "DAXQueryPlan"].empty:
+                break
+            time.sleep(0.1)
+            try:
+                _l = trace.get_trace_logs()
+            except Exception:
+                continue
+            if _l is not None and not _l.empty:
+                logs = _l
 
     if logs is None:
         try:
@@ -457,9 +486,9 @@ def _query_plan_rows_from_df(df: pd.DataFrame) -> list:
         text = row.get("Text Data", "")
         text = "" if not pd.notna(text) else str(text)
         low = sc.lower()
-        if "physical" in low:
+        if "physical" in low or sc.strip() == "2":
             plan_type = "Physical"
-        elif "logical" in low:
+        elif "logical" in low or sc.strip() == "1":
             plan_type = "Logical"
         else:
             plan_type = sc or "Unknown"
@@ -615,6 +644,159 @@ def _build_model_tree(tom) -> list:
         return []
     tree.sort(key=lambda t: t["name"].lower())
     return tree
+
+
+def _build_relationship_lookup(tom) -> dict:
+    """Build a mapping of relationship name -> a human-readable description of
+    the columns it joins (``'FromTable'[FromColumn] → 'ToTable'[ToColumn]``),
+    using an already-open TOM connection. Inactive relationships are flagged.
+    """
+
+    lookup: dict = {}
+    try:
+        for rel in tom.model.Relationships:
+            try:
+                detail = (
+                    f"'{rel.FromTable.Name}'[{rel.FromColumn.Name}]"
+                    f" → '{rel.ToTable.Name}'[{rel.ToColumn.Name}]"
+                )
+                if not bool(getattr(rel, "IsActive", True)):
+                    detail += " (inactive)"
+                lookup[str(rel.Name)] = detail
+            except Exception:
+                continue
+    except Exception:
+        return {}
+    return lookup
+
+
+def _build_dependency_tree(
+    rows: list, rel_lookup: dict, model_label: str
+) -> list:
+    """Organize flat ``INFO.CALCDEPENDENCY`` rows into a hierarchical tree.
+
+    The tree has a single ``Model`` root whose children are a ``Tables`` group
+    (each referenced table, with its referenced columns / measures /
+    hierarchies grouped beneath it) and a ``Relationships`` group (each
+    referenced relationship, labeled with the columns it joins, looked up via
+    TOM in ``rel_lookup``).
+    """
+
+    def _classify(obj_type: str) -> str:
+        t = (obj_type or "").upper()
+        if "RELATIONSHIP" in t:
+            return "relationship"
+        if "MEASURE" in t:
+            return "measure"
+        if "HIERARCHY" in t:
+            return "hierarchy"
+        if "COLUMN" in t:
+            return "column"
+        if "CALC_GROUP" in t or "CALCULATION_GROUP" in t:
+            return "calc_group"
+        if t == "TABLE":
+            return "table"
+        return "other"
+
+    tables: dict = {}
+    relationships: list = []
+    seen_rel: set = set()
+
+    def _ensure_table(name: str) -> dict:
+        if name not in tables:
+            tables[name] = {
+                "columns": [],
+                "measures": [],
+                "hierarchies": [],
+                "other": [],
+            }
+        return tables[name]
+
+    def _add(bucket: list, value: str) -> None:
+        if value and value not in bucket:
+            bucket.append(value)
+
+    for r in rows:
+        kind = _classify(r.get("object_type"))
+        table = (r.get("table") or "").strip()
+        obj = (r.get("object") or "").strip()
+        if kind == "relationship":
+            if obj and obj not in seen_rel:
+                seen_rel.add(obj)
+                relationships.append(obj)
+        elif kind == "measure":
+            if table:
+                _add(_ensure_table(table)["measures"], obj)
+        elif kind == "column":
+            if table:
+                _add(_ensure_table(table)["columns"], obj)
+        elif kind == "hierarchy":
+            if table:
+                _add(_ensure_table(table)["hierarchies"], obj)
+        elif kind == "table":
+            _ensure_table(obj or table)
+        else:
+            if table:
+                _add(_ensure_table(table)["other"], obj)
+
+    def _leaf_group(label: str, kind: str, names: list) -> dict:
+        return {
+            "label": label,
+            "kind": "group",
+            "children": [
+                {"label": n, "kind": kind}
+                for n in sorted(names, key=str.lower)
+            ],
+        }
+
+    table_nodes = []
+    for tname in sorted(tables, key=str.lower):
+        tdata = tables[tname]
+        tchildren = []
+        if tdata["columns"]:
+            tchildren.append(
+                _leaf_group("Columns", "column", tdata["columns"])
+            )
+        if tdata["measures"]:
+            tchildren.append(
+                _leaf_group("Measures", "measure", tdata["measures"])
+            )
+        if tdata["hierarchies"]:
+            tchildren.append(
+                _leaf_group("Hierarchies", "hierarchy", tdata["hierarchies"])
+            )
+        if tdata["other"]:
+            tchildren.append(_leaf_group("Other", "column", tdata["other"]))
+        table_nodes.append(
+            {"label": tname, "kind": "table", "children": tchildren}
+        )
+
+    children = []
+    if table_nodes:
+        children.append(
+            {"label": "Tables", "kind": "group", "children": table_nodes}
+        )
+    if relationships:
+        rel_nodes = []
+        for rname in relationships:
+            detail = rel_lookup.get(rname)
+            rel_nodes.append(
+                {"label": detail or rname, "kind": "relationship"}
+            )
+        rel_nodes.sort(key=lambda n: n["label"].lower())
+        children.append(
+            {"label": "Relationships", "kind": "group", "children": rel_nodes}
+        )
+
+    if not children:
+        return []
+    return [
+        {
+            "label": model_label or "Model",
+            "kind": "model",
+            "children": children,
+        }
+    ]
 
 
 def _build_model_roles(tom) -> list:
@@ -1667,6 +1849,55 @@ def _visualize_dax_test(
     -webkit-user-select: text;
     cursor: text;
 }}
+.dtx .dtx-dep-tree {{
+    padding: 6px 4px;
+    user-select: none;
+}}
+.dtx .dtx-dep-row {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding-right: 8px;
+    border-radius: 6px;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+}}
+.dtx .dtx-dep-row.dtx-dep-haschildren {{ cursor: pointer; }}
+.dtx .dtx-dep-row:hover {{
+    background: var(--ui-surface-2, rgba(127,127,127,0.10));
+    color: var(--ui-text);
+}}
+.dtx .dtx-dep-caret {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex: none;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-dep-caret.dtx-open {{ transform: rotate(90deg); }}
+.dtx .dtx-dep-caret svg {{ width: 12px; height: 12px; }}
+.dtx .dtx-dep-caret-spacer {{ width: 14px; height: 14px; flex: none; }}
+.dtx .dtx-dep-icon {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: none;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+}}
+.dtx .dtx-dep-icon svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-dep-label {{ font-size: 13px; }}
+.dtx .dtx-dep-detail {{
+    font-size: 12px;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+    margin-left: 6px;
+    opacity: 0.85;
+}}
 .dtx .dtx-hist-download {{
     display: inline-flex;
     align-items: center;
@@ -1704,8 +1935,9 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-sidebar {{
     flex: 0 0 260px;
-    max-width: 260px;
-    min-width: 260px;
+    width: 260px;
+    min-width: 180px;
+    max-width: 70%;
     border-right: 1px solid var(--ui-border);
     background: var(--ui-bg-secondary);
     display: flex;
@@ -1714,10 +1946,30 @@ def _visualize_dax_test(
         min-width 180ms ease;
     overflow: hidden;
 }}
+.dtx .dtx-sidebar.dtx-sidebar-resizing {{
+    transition: none;
+    user-select: none;
+}}
 .dtx .dtx-sidebar.dtx-sidebar-collapsed {{
     flex: 0 0 36px;
     min-width: 36px;
     max-width: 36px;
+}}
+.dtx .dtx-sidebar-resizer {{
+    flex: 0 0 5px;
+    cursor: col-resize;
+    background: transparent;
+    margin-left: -3px;
+    position: relative;
+    z-index: 2;
+    transition: background 120ms ease;
+}}
+.dtx .dtx-sidebar-resizer:hover,
+.dtx .dtx-sidebar-resizer.dtx-sidebar-resizing {{
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed + .dtx-sidebar-resizer {{
+    display: none;
 }}
 .dtx .dtx-sidebar-header {{
     display: flex;
@@ -1749,9 +2001,11 @@ def _visualize_dax_test(
     justify-content: center;
 }}
 .dtx .dtx-sidebar-toggle,
-.dtx .dtx-sidebar-refresh {{
+.dtx .dtx-sidebar-refresh,
+.dtx .dtx-builder-toggle {{
     appearance: none;
     -webkit-appearance: none;
+    flex: 0 0 auto;
     border: 1px solid transparent;
     background: transparent;
     color: var(--ui-text-secondary);
@@ -1766,12 +2020,14 @@ def _visualize_dax_test(
     transition: background 120ms ease, color 120ms ease;
 }}
 .dtx .dtx-sidebar-toggle:hover,
-.dtx .dtx-sidebar-refresh:hover {{
+.dtx .dtx-sidebar-refresh:hover,
+.dtx .dtx-builder-toggle:hover {{
     background: var(--ui-surface-2);
     color: var(--ui-text);
 }}
 .dtx .dtx-sidebar-toggle svg,
-.dtx .dtx-sidebar-refresh svg {{
+.dtx .dtx-sidebar-refresh svg,
+.dtx .dtx-builder-toggle svg {{
     width: 14px;
     height: 14px;
 }}
@@ -2002,21 +2258,45 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-builder {{
     flex: 0 0 260px;
-    max-width: 260px;
-    min-width: 260px;
+    width: 260px;
+    min-width: 180px;
+    max-width: 70%;
     border-right: 1px solid var(--ui-border);
     background: var(--ui-bg-secondary);
     display: flex;
     flex-direction: column;
+    transition: flex-basis 180ms ease, max-width 180ms ease,
+        min-width 180ms ease;
     overflow: hidden;
+}}
+.dtx .dtx-builder.dtx-builder-resizing {{
+    transition: none;
+    user-select: none;
 }}
 .dtx .dtx-builder.dtx-builder-hidden {{
     display: none;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed {{
-    flex: 0 0 38px;
-    max-width: 38px;
-    min-width: 38px;
+    flex: 0 0 36px;
+    max-width: 36px;
+    min-width: 36px;
+}}
+.dtx .dtx-builder-resizer {{
+    flex: 0 0 5px;
+    cursor: col-resize;
+    background: transparent;
+    margin-left: -3px;
+    position: relative;
+    z-index: 2;
+    transition: background 120ms ease;
+}}
+.dtx .dtx-builder-resizer:hover,
+.dtx .dtx-builder-resizer.dtx-builder-resizing {{
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-builder.dtx-builder-collapsed + .dtx-builder-resizer,
+.dtx .dtx-builder.dtx-builder-hidden + .dtx-builder-resizer {{
+    display: none;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-title,
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-content {{
@@ -2024,7 +2304,7 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-header {{
     justify-content: center;
-    padding: 10px 6px;
+    padding: 10px 4px;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle {{
     display: none;
@@ -2038,6 +2318,7 @@ def _visualize_dax_test(
     gap: 6px;
     padding: 10px 10px 10px 14px;
     border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
     min-height: 44px;
 }}
 .dtx .dtx-builder-title {{
@@ -2053,23 +2334,7 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-builder-toggle {{
     flex: 0 0 auto;
-    width: 26px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 1px solid var(--ui-border);
-    border-radius: 6px;
-    background: var(--ui-bg);
-    color: var(--ui-text-secondary);
-    cursor: pointer;
 }}
-.dtx .dtx-builder-toggle:hover {{
-    background: var(--ui-bg-hover);
-    color: var(--ui-text);
-}}
-.dtx .dtx-builder-toggle svg {{ width: 15px; height: 15px; }}
 .dtx .dtx-builder-content {{
     display: flex;
     flex-direction: column;
@@ -2568,6 +2833,67 @@ function render({ model, el }) {
     sidebarBody.className = "dtx-sidebar-body";
     sidebar.appendChild(sidebarBody);
 
+    // Drag handle that lets the user resize the model panel horizontally.
+    // Placed immediately after the sidebar so it sits on its right edge and is
+    // not clipped by the sidebar's own overflow:hidden.
+    const sidebarResizer = document.createElement("div");
+    sidebarResizer.className = "dtx-sidebar-resizer";
+    sidebarResizer.title = "Drag to resize the model panel";
+    sidebarResizer.setAttribute("aria-label", "Resize model panel");
+    body.appendChild(sidebarResizer);
+
+    // In-memory width of the model panel when expanded.
+    let sidebarWidth = 260;
+    const SIDEBAR_MIN_W = 180;
+
+    function applySidebarWidth() {
+        const collapsed = model.get("sidebar_collapsed") === true;
+        if (collapsed) {
+            // Let the collapsed CSS rule control the width.
+            sidebar.style.flexBasis = "";
+            sidebar.style.width = "";
+            sidebar.style.maxWidth = "";
+        } else {
+            sidebar.style.flexBasis = sidebarWidth + "px";
+            sidebar.style.width = sidebarWidth + "px";
+            sidebar.style.maxWidth = sidebarWidth + "px";
+        }
+    }
+
+    (function setupSidebarResize() {
+        let startX = 0;
+        let startW = 0;
+        function onMove(e) {
+            const maxW = Math.max(
+                SIDEBAR_MIN_W, Math.floor(body.clientWidth * 0.7));
+            let w = startW + (e.clientX - startX);
+            w = Math.max(SIDEBAR_MIN_W, Math.min(maxW, w));
+            sidebarWidth = w;
+            applySidebarWidth();
+        }
+        function onUp() {
+            sidebar.classList.remove("dtx-sidebar-resizing");
+            sidebarResizer.classList.remove("dtx-sidebar-resizing");
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+        }
+        sidebarResizer.addEventListener("mousedown", (e) => {
+            if (model.get("sidebar_collapsed") === true) return;
+            e.preventDefault();
+            startX = e.clientX;
+            startW = sidebar.getBoundingClientRect().width;
+            sidebar.classList.add("dtx-sidebar-resizing");
+            sidebarResizer.classList.add("dtx-sidebar-resizing");
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+        });
+        // Double-click the handle to reset to the default width.
+        sidebarResizer.addEventListener("dblclick", () => {
+            sidebarWidth = 260;
+            applySidebarWidth();
+        });
+    })();
+
     function renderSidebarChrome() {
         const collapsed = model.get("sidebar_collapsed") === true;
         sidebar.classList.toggle("dtx-sidebar-collapsed", collapsed);
@@ -2576,6 +2902,7 @@ function render({ model, el }) {
         sidebarToggle.title = label;
         sidebarToggle.setAttribute("aria-label", label);
         refreshBtn.classList.toggle("dtx-spinning", model.get("metadata_loading") === true);
+        applySidebarWidth();
     }
 
     // Shared drag payload for dropping model objects into the editor.
@@ -2998,6 +3325,68 @@ function render({ model, el }) {
     builderContent.className = "dtx-builder-content";
     builderPane.appendChild(builderContent);
 
+    // Drag handle that lets the user resize the query builder pane
+    // horizontally (to the right). Placed immediately after the builder pane
+    // so it sits on its right edge and is not clipped by overflow:hidden.
+    const builderResizer = document.createElement("div");
+    builderResizer.className = "dtx-builder-resizer";
+    builderResizer.title = "Drag to resize the query builder";
+    builderResizer.setAttribute("aria-label", "Resize query builder");
+    body.insertBefore(builderResizer, main);
+
+    // In-memory width of the query builder pane when expanded.
+    let builderWidth = 260;
+    const BUILDER_MIN_W = 180;
+
+    function applyBuilderWidth() {
+        const inactive = builderCollapsed || !builderVisible
+            || model.get("dataset_chosen") !== true;
+        if (inactive) {
+            // Let the collapsed/hidden CSS rules control the width.
+            builderPane.style.flexBasis = "";
+            builderPane.style.width = "";
+            builderPane.style.maxWidth = "";
+        } else {
+            builderPane.style.flexBasis = builderWidth + "px";
+            builderPane.style.width = builderWidth + "px";
+            builderPane.style.maxWidth = builderWidth + "px";
+        }
+    }
+
+    (function setupBuilderResize() {
+        let startX = 0;
+        let startW = 0;
+        function onMove(e) {
+            const maxW = Math.max(
+                BUILDER_MIN_W, Math.floor(body.clientWidth * 0.7));
+            let w = startW + (e.clientX - startX);
+            w = Math.max(BUILDER_MIN_W, Math.min(maxW, w));
+            builderWidth = w;
+            applyBuilderWidth();
+        }
+        function onUp() {
+            builderPane.classList.remove("dtx-builder-resizing");
+            builderResizer.classList.remove("dtx-builder-resizing");
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+        }
+        builderResizer.addEventListener("mousedown", (e) => {
+            if (builderCollapsed || !builderVisible) return;
+            e.preventDefault();
+            startX = e.clientX;
+            startW = builderPane.getBoundingClientRect().width;
+            builderPane.classList.add("dtx-builder-resizing");
+            builderResizer.classList.add("dtx-builder-resizing");
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+        });
+        // Double-click the handle to reset to the default width.
+        builderResizer.addEventListener("dblclick", () => {
+            builderWidth = 260;
+            applyBuilderWidth();
+        });
+    })();
+
     const fieldsSection = document.createElement("div");
     fieldsSection.className = "dtx-builder-section";
     const fieldsLabel = document.createElement("div");
@@ -3416,7 +3805,11 @@ function render({ model, el }) {
     }
 
     function renderBuilderChrome() {
-        builderPane.classList.toggle("dtx-builder-hidden", !builderVisible);
+        // The query builder is only meaningful once a semantic model is
+        // loaded; hide it (and its header toggle) entirely otherwise.
+        const chosen = model.get("dataset_chosen") === true;
+        builderShowBtn.style.display = chosen ? "" : "none";
+        builderPane.classList.toggle("dtx-builder-hidden", !chosen || !builderVisible);
         builderPane.classList.toggle("dtx-builder-collapsed", builderCollapsed);
         builderCollapseBtn.innerHTML = builderCollapsed
             ? PANEL_EXPAND_SVG : PANEL_COLLAPSE_SVG;
@@ -3429,6 +3822,7 @@ function render({ model, el }) {
             ? "Hide query builder" : "Show query builder";
         builderShowBtn.title = label;
         builderShowBtn.setAttribute("aria-label", label);
+        applyBuilderWidth();
     }
 
     function renderBuildBtn() {
@@ -4191,11 +4585,16 @@ function render({ model, el }) {
     segQueryPlan.type = "button";
     segQueryPlan.className = "dtx-seg-btn";
     segQueryPlan.textContent = "DAX query plan";
+    const segDependencies = document.createElement("button");
+    segDependencies.type = "button";
+    segDependencies.className = "dtx-seg-btn";
+    segDependencies.textContent = "Query dependencies";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
     seg.appendChild(segQueryPlan);
     seg.appendChild(segChart);
     seg.appendChild(segHistory);
+    seg.appendChild(segDependencies);
     viewToolbar.appendChild(seg);
 
     // ---------- DAX Query Plan toggle (Logical / Physical) ----------
@@ -4258,6 +4657,12 @@ function render({ model, el }) {
         model.set("view_mode", "queryplan");
         model.save_changes();
     });
+    segDependencies.addEventListener("click", () => {
+        model.set("view_mode", "dependencies");
+        // Recompute dependencies for the current query text each time.
+        model.set("dependencies_trigger", (model.get("dependencies_trigger") || 0) + 1);
+        model.save_changes();
+    });
 
     // Maximum number of rows for which we render an interactive chart.
     // Beyond this, the Chart option is disabled to keep the widget responsive.
@@ -4294,6 +4699,7 @@ function render({ model, el }) {
         segChart.classList.toggle("dtx-seg-btn-on", mode === "chart");
         segHistory.classList.toggle("dtx-seg-btn-on", mode === "history");
         segQueryPlan.classList.toggle("dtx-seg-btn-on", mode === "queryplan");
+        segDependencies.classList.toggle("dtx-seg-btn-on", mode === "dependencies");
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
@@ -4454,6 +4860,71 @@ function render({ model, el }) {
                 <thead><tr><th>${escapeHtml(planType)} Query Plan</th></tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
+    }
+
+    // Collapsed-state set for the query-dependencies tree (keyed by node path).
+    const depCollapsed = new Set();
+
+    function depIcon(kind) {
+        switch (kind) {
+            case "model": return TABLE_SVG;
+            case "group": return FOLDER_SVG;
+            case "table": return TABLE_SVG;
+            case "column": return COLUMN_SVG;
+            case "measure": return MEASURE_SVG;
+            case "hierarchy": return HIERARCHY_SVG;
+            case "calc_group": return CALC_GROUP_SVG;
+            case "relationship": return SWAP_SVG;
+            default: return COLUMN_SVG;
+        }
+    }
+
+    function renderDepNode(node, path, depth) {
+        const hasChildren = !!(node.children && node.children.length);
+        const collapsed = depCollapsed.has(path);
+        const caret = hasChildren
+            ? `<span class="dtx-dep-caret${collapsed ? "" : " dtx-open"}">${CARET_SVG}</span>`
+            : `<span class="dtx-dep-caret-spacer"></span>`;
+        const detail = node.detail
+            ? `<span class="dtx-dep-detail">${escapeHtml(String(node.detail))}</span>`
+            : "";
+        const pad = 8 + depth * 16;
+        let html = `<div class="dtx-dep-row${hasChildren ? " dtx-dep-haschildren" : ""}" `
+            + `data-path="${escapeHtml(path)}" data-haschildren="${hasChildren ? "1" : "0"}" `
+            + `style="padding-left:${pad}px">`
+            + caret
+            + `<span class="dtx-dep-icon">${depIcon(node.kind)}</span>`
+            + `<span class="dtx-dep-label">${escapeHtml(String(node.label || ""))}</span>`
+            + detail
+            + `</div>`;
+        if (hasChildren && !collapsed) {
+            html += node.children
+                .map((c, i) => renderDepNode(c, path + "/" + i, depth + 1))
+                .join("");
+        }
+        return html;
+    }
+
+    function renderDependenciesTable() {
+        if (model.get("dependencies_loading") === true) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Computing query dependencies&hellip;</div></div>`;
+            return;
+        }
+        const tree = model.get("dependency_tree") || [];
+        if (!tree.length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No dependencies found. Run this on a non-empty DAX query.</div></div>`;
+            return;
+        }
+        const html = tree.map((n, i) => renderDepNode(n, String(i), 0)).join("");
+        tableWrap.innerHTML = `<div class="dtx-dep-tree">${html}</div>`;
+        tableWrap.querySelectorAll(".dtx-dep-row[data-haschildren='1']").forEach(row => {
+            row.addEventListener("click", () => {
+                const p = row.getAttribute("data-path");
+                if (depCollapsed.has(p)) depCollapsed.delete(p);
+                else depCollapsed.add(p);
+                renderDependenciesTable();
+            });
+        });
     }
 
     function renderChart() {
@@ -4706,6 +5177,9 @@ function render({ model, el }) {
         } else if (mode === "queryplan") {
             renderQueryPlanTable();
             resultMeta.style.display = "none";
+        } else if (mode === "dependencies") {
+            renderDependenciesTable();
+            resultMeta.style.display = "none";
         } else {
             renderTraceTable();
             resultMeta.style.display = "none";
@@ -4736,6 +5210,8 @@ function render({ model, el }) {
     model.on("change:trace_history", renderTable);
     model.on("change:query_plan_rows", renderTable);
     model.on("change:query_plan_type", renderTable);
+    model.on("change:dependency_tree", renderTable);
+    model.on("change:dependencies_loading", renderTable);
     model.on("change:history_excel_b64", () => {
         const b64 = model.get("history_excel_b64") || "";
         if (!b64) return;
@@ -4788,7 +5264,7 @@ function render({ model, el }) {
     model.on("change:dataset_chosen", () => {
         if (model.get("dataset_chosen") === true) { pickerOpen = false; }
         renderPicker(); renderRunBtn(); renderSubtitle();
-        renderBuildBtn();
+        renderBuildBtn(); renderBuilderChrome();
     });
     model.on("change:available_workspaces", renderPicker);
     model.on("change:available_datasets", renderPicker);
@@ -4894,6 +5370,9 @@ export default { render };
         error_message = traitlets.Unicode("").tag(sync=True)
         run_trigger = traitlets.Int(0).tag(sync=True)
         cancel_trigger = traitlets.Int(0).tag(sync=True)
+        dependency_tree = traitlets.List([]).tag(sync=True)
+        dependencies_loading = traitlets.Bool(False).tag(sync=True)
+        dependencies_trigger = traitlets.Int(0).tag(sync=True)
         model_tree = traitlets.List([]).tag(sync=True)
         sidebar_collapsed = traitlets.Bool(False).tag(sync=True)
         refresh_metadata_trigger = traitlets.Int(0).tag(sync=True)
@@ -4987,6 +5466,9 @@ export default { render };
         error_message="",
         run_trigger=0,
         cancel_trigger=0,
+        dependency_tree=[],
+        dependencies_loading=False,
+        dependencies_trigger=0,
         model_tree=initial_tree,
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
@@ -5335,8 +5817,91 @@ export default { render };
             "query in the background; results have been discarded."
         )
 
+    def _compute_dependencies() -> None:
+        """Compute the model objects (tables, columns, measures,
+        relationships) referenced by the current DAX query via
+        ``INFO.CALCDEPENDENCY`` and push the resulting hierarchical tree to the
+        front-end. The trace data for this helper query is not captured."""
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.dependency_tree = []
+                return
+            dax_query = widget.dax_query or ""
+            if not dax_query.strip():
+                widget.dependency_tree = []
+                return
+            # Escape double quotes for embedding as a DAX string literal.
+            escaped_dax = dax_query.replace('"', '""')
+            query = (
+                "EVALUATE\n"
+                "SELECTCOLUMNS(\n"
+                "    INFO.CALCDEPENDENCY(\n"
+                '        "Query",\n'
+                f'        "{escaped_dax}"\n'
+                "    ),\n"
+                '    "Referenced Object Type", [REFERENCED_OBJECT_TYPE],\n'
+                '    "Referenced Table", [REFERENCED_TABLE],\n'
+                '    "Referenced Object", [REFERENCED_OBJECT]\n'
+                ")"
+            )
+            dep_df = fabric.evaluate_dax(
+                dataset=model_ctx["dataset_id"],
+                dax_string=query,
+                workspace=model_ctx["workspace_id"],
+            )
+            rows = []
+            for _, r in dep_df.iterrows():
+                rows.append(
+                    {
+                        "object_type": str(
+                            r.get("[Referenced Object Type]", "") or ""
+                        ),
+                        "table": str(r.get("[Referenced Table]", "") or ""),
+                        "object": str(r.get("[Referenced Object]", "") or ""),
+                    }
+                )
+            # Enrich relationships with the columns they join (read via TOM)
+            # only when the query actually depends on a relationship.
+            rel_lookup: dict = {}
+            needs_rel = any(
+                "RELATIONSHIP" in (row["object_type"] or "").upper()
+                for row in rows
+            )
+            if needs_rel:
+                try:
+                    from sempy_labs.tom import connect_semantic_model
+
+                    with connect_semantic_model(
+                        dataset=model_ctx["dataset_id"],
+                        workspace=model_ctx["workspace_id"],
+                        readonly=True,
+                    ) as tom:
+                        rel_lookup = _build_relationship_lookup(tom)
+                except Exception:
+                    rel_lookup = {}
+            widget.dependency_tree = _build_dependency_tree(
+                rows, rel_lookup, widget.dataset_name or "Model"
+            )
+            widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.dependency_tree = []
+            widget.error_message = (
+                f"Failed to compute query dependencies: {exc}"
+            )
+        finally:
+            widget.dependencies_loading = False
+
+    def _on_dependencies(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.dependencies_loading:
+            return
+        widget.dependencies_loading = True
+        threading.Thread(target=_compute_dependencies, daemon=True).start()
+
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
+    widget.observe(_on_dependencies, names="dependencies_trigger")
 
     def _build_history_excel() -> None:
         import base64
