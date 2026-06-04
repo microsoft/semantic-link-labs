@@ -14,7 +14,6 @@
         "~/.agents/skills": true,
         "~/.copilot/skills": true,
         "~/.claude/skills": true,
-        "~/.vscode-server/extensions/synapsevscode.synapse-1.23.0/copilot/skills": true,
-        "~/.vscode/extensions/synapsevscode.synapse-1.23.0/copilot/skills": true
+        "~/.vscode-server/extensions/synapsevscode.synapse-1.24.0/copilot/skills": true
     }
 }

@@ -506,7 +506,6 @@ function render({ model, el }) {
     });
     model.on("change:dark_mode", renderThemeBtn);
     renderThemeBtn();
-    header.appendChild(themeBtn);
 
     const select = document.createElement("select");
     select.className = "slls-pe-select";
@@ -540,6 +539,10 @@ function render({ model, el }) {
     createRow.appendChild(okBtn);
     createRow.appendChild(cancelBtn);
     header.appendChild(createRow);
+
+    // Theme toggle is always the right-most control in the header, so it
+    // stays put even when the create-perspective row is shown.
+    header.appendChild(themeBtn);
 
     // ----------- Toolbar -----------
     const toolbar = document.createElement("div");
