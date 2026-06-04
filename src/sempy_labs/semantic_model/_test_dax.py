@@ -19,6 +19,7 @@ def test(
     visualize: bool = True,
     effective_user_name: Optional[str] = None,
     role: Optional[str] = None,
+    dark_mode: bool = False,
 ) -> pd.DataFrame:
     """
     Runs a DAX query against a semantic model while capturing a server-side
@@ -57,6 +58,9 @@ def test(
         the ``role`` parameter of ``fabric.evaluate_dax``). Use this for
         role impersonation. Cannot be used together with
         ``effective_user_name``.
+    dark_mode : bool, default=False
+        If True, the interactive widget is rendered using its dark theme.
+        Only applies when ``visualize=True``.
 
     Returns
     -------
@@ -139,6 +143,7 @@ def test(
             result_df=result_df,
             effective_user_name=effective_user_name,
             role=role,
+            dark_mode=dark_mode,
         )
 
     return df
