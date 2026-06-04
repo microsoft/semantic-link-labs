@@ -195,6 +195,12 @@ _TEST_EVENT_SCHEMA: dict = {
         "NTUserName",
         "TextData",
     ],
+    "DAXQueryPlan": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "TextData",
+    ],
 }
 
 
@@ -430,6 +436,38 @@ def _trace_rows_from_df(df: pd.DataFrame) -> list:
                 "event_subclass": sc if sc else ec,
                 "duration": dur_v,
                 "cpu": cpu_v,
+            }
+        )
+    return out
+
+
+def _query_plan_rows_from_df(df: pd.DataFrame) -> list:
+    """Convert the captured trace dataframe to a list of DAX Query Plan rows
+    (``{plan_type, event_subclass, text}``) suitable for serialization to the
+    front-end. ``plan_type`` is ``"Logical"`` or ``"Physical"`` based on the
+    event subclass (e.g. ``DAXVertiPaqLogicalPlan`` /
+    ``DAXVertiPaqPhysicalPlan``)."""
+
+    if df is None or df.empty or "Event Class" not in df.columns:
+        return []
+    rows_df = df[df["Event Class"] == "DAXQueryPlan"]
+    out = []
+    for _, row in rows_df.iterrows():
+        sc = str(row.get("Event Subclass", "") or "")
+        text = row.get("Text Data", "")
+        text = "" if not pd.notna(text) else str(text)
+        low = sc.lower()
+        if "physical" in low:
+            plan_type = "Physical"
+        elif "logical" in low:
+            plan_type = "Logical"
+        else:
+            plan_type = sc or "Unknown"
+        out.append(
+            {
+                "plan_type": plan_type,
+                "event_subclass": sc,
+                "text": text,
             }
         )
     return out
@@ -956,6 +994,7 @@ def _visualize_dax_test(
     # uncolored rendering of the DAX).
     formatted_initial = (dax_string or "").replace("\r\n", "\n").replace("\r", "\n")
     initial_rows = _trace_rows_from_df(df)
+    initial_query_plan_rows = _query_plan_rows_from_df(df)
 
     widget_css = (
         _UI_HEADER_CSS
@@ -1607,6 +1646,23 @@ def _visualize_dax_test(
     font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
     font-size: 12px;
     line-height: 1.45;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}}
+.dtx .dtx-plan-seg {{ margin-right: 8px; }}
+.dtx table.dtx-plan-table td.dtx-plan-line {{
+    color: var(--ui-text-secondary);
+    vertical-align: top;
+    white-space: nowrap;
+}}
+.dtx table.dtx-plan-table td.dtx-plan-line pre {{
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 12px;
+    line-height: 1.5;
     user-select: text;
     -webkit-user-select: text;
     cursor: text;
@@ -4131,11 +4187,41 @@ function render({ model, el }) {
     segHistory.type = "button";
     segHistory.className = "dtx-seg-btn";
     segHistory.textContent = "Trace history";
+    const segQueryPlan = document.createElement("button");
+    segQueryPlan.type = "button";
+    segQueryPlan.className = "dtx-seg-btn";
+    segQueryPlan.textContent = "DAX query plan";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
+    seg.appendChild(segQueryPlan);
     seg.appendChild(segChart);
     seg.appendChild(segHistory);
     viewToolbar.appendChild(seg);
+
+    // ---------- DAX Query Plan toggle (Logical / Physical) ----------
+    const planSeg = document.createElement("div");
+    planSeg.className = "dtx-seg dtx-plan-seg";
+    planSeg.style.display = "none";
+    const planLogicalBtn = document.createElement("button");
+    planLogicalBtn.type = "button";
+    planLogicalBtn.className = "dtx-seg-btn";
+    planLogicalBtn.textContent = "Logical Query Plan";
+    const planPhysicalBtn = document.createElement("button");
+    planPhysicalBtn.type = "button";
+    planPhysicalBtn.className = "dtx-seg-btn";
+    planPhysicalBtn.textContent = "Physical Query Plan";
+    planSeg.appendChild(planLogicalBtn);
+    planSeg.appendChild(planPhysicalBtn);
+    // Show the Logical/Physical toggle to the left of the tab group.
+    viewToolbar.insertBefore(planSeg, seg);
+    planLogicalBtn.addEventListener("click", () => {
+        model.set("query_plan_type", "Logical");
+        model.save_changes();
+    });
+    planPhysicalBtn.addEventListener("click", () => {
+        model.set("query_plan_type", "Physical");
+        model.save_changes();
+    });
 
     const histDownloadBtn = document.createElement("button");
     histDownloadBtn.type = "button";
@@ -4166,6 +4252,10 @@ function render({ model, el }) {
     });
     segHistory.addEventListener("click", () => {
         model.set("view_mode", "history");
+        model.save_changes();
+    });
+    segQueryPlan.addEventListener("click", () => {
+        model.set("view_mode", "queryplan");
         model.save_changes();
     });
 
@@ -4203,12 +4293,18 @@ function render({ model, el }) {
         segResult.classList.toggle("dtx-seg-btn-on", mode === "result");
         segChart.classList.toggle("dtx-seg-btn-on", mode === "chart");
         segHistory.classList.toggle("dtx-seg-btn-on", mode === "history");
+        segQueryPlan.classList.toggle("dtx-seg-btn-on", mode === "queryplan");
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
         const hist = model.get("trace_history") || [];
         histDownloadBtn.style.display = (mode === "history") ? "" : "none";
         histDownloadBtn.disabled = !hist.length;
+        // Logical/Physical toggle is only relevant on the DAX Query Plan tab.
+        const planType = model.get("query_plan_type") || "Logical";
+        planSeg.style.display = (mode === "queryplan") ? "" : "none";
+        planLogicalBtn.classList.toggle("dtx-seg-btn-on", planType === "Logical");
+        planPhysicalBtn.classList.toggle("dtx-seg-btn-on", planType === "Physical");
     }
 
     const resultMeta = document.createElement("div");
@@ -4328,6 +4424,34 @@ function render({ model, el }) {
                     <th>Impersonation Type</th>
                     <th>Impersonation</th>
                 </tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+    }
+
+    function renderQueryPlanTable() {
+        const rows = model.get("query_plan_rows") || [];
+        const planType = model.get("query_plan_type") || "Logical";
+        const matching = rows.filter(r => String(r.plan_type || "") === planType);
+        if (!rows.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No DAX query plan captured. Run a query to capture its query plan.</td></tr></tbody></table>`;
+            return;
+        }
+        if (!matching.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No ${escapeHtml(planType)} Query Plan was captured for the last query.</td></tr></tbody></table>`;
+            return;
+        }
+        const body = matching.map(r => {
+            const lines = String(r.text || "").split(/\r?\n/);
+            return lines.map(line => {
+                // Preserve the plan's indentation while keeping it readable.
+                const indentMatch = line.match(/^(\s*)/);
+                const indent = indentMatch ? indentMatch[1].length : 0;
+                return `<tr><td class="dtx-plan-line" style="padding-left:${8 + indent * 8}px"><pre>${escapeHtml(line.trimStart())}</pre></td></tr>`;
+            }).join("");
+        }).join("");
+        tableWrap.innerHTML = `
+            <table class="dtx-plan-table">
+                <thead><tr><th>${escapeHtml(planType)} Query Plan</th></tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
     }
@@ -4579,6 +4703,9 @@ function render({ model, el }) {
         } else if (mode === "history") {
             renderHistoryTable();
             resultMeta.style.display = "none";
+        } else if (mode === "queryplan") {
+            renderQueryPlanTable();
+            resultMeta.style.display = "none";
         } else {
             renderTraceTable();
             resultMeta.style.display = "none";
@@ -4607,6 +4734,8 @@ function render({ model, el }) {
     model.on("change:result_truncated", renderTable);
     model.on("change:view_mode", renderTable);
     model.on("change:trace_history", renderTable);
+    model.on("change:query_plan_rows", renderTable);
+    model.on("change:query_plan_type", renderTable);
     model.on("change:history_excel_b64", () => {
         const b64 = model.get("history_excel_b64") || "";
         if (!b64) return;
@@ -4750,6 +4879,8 @@ export default { render };
         se_duration = traitlets.Int(0).tag(sync=True)
         cpu_time = traitlets.Int(0).tag(sync=True)
         trace_rows = traitlets.List([]).tag(sync=True)
+        query_plan_rows = traitlets.List([]).tag(sync=True)
+        query_plan_type = traitlets.Unicode("Logical").tag(sync=True)
         result_columns = traitlets.List([]).tag(sync=True)
         result_rows = traitlets.List([]).tag(sync=True)
         result_total_rows = traitlets.Int(0).tag(sync=True)
@@ -4845,6 +4976,8 @@ export default { render };
         se_duration=int(se_duration),
         cpu_time=int(cpu_time),
         trace_rows=initial_rows,
+        query_plan_rows=initial_query_plan_rows,
+        query_plan_type="Logical",
         result_columns=initial_result["columns"],
         result_rows=initial_result["rows"],
         result_total_rows=int(initial_result["total_rows"]),
@@ -5106,6 +5239,7 @@ export default { render };
         widget.se_duration = int(new_se)
         widget.cpu_time = int(new_cpu)
         widget.trace_rows = _trace_rows_from_df(new_df)
+        widget.query_plan_rows = _query_plan_rows_from_df(new_df)
         payload = _result_payload_from_df(new_result)
         widget.result_columns = payload["columns"]
         widget.result_rows = payload["rows"]
