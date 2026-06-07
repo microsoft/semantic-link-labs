@@ -4698,12 +4698,17 @@ function render({ model, el }) {
     segDependencies.type = "button";
     segDependencies.className = "dtx-seg-btn";
     segDependencies.textContent = "Query dependencies";
+    const segVertipaq = document.createElement("button");
+    segVertipaq.type = "button";
+    segVertipaq.className = "dtx-seg-btn";
+    segVertipaq.textContent = "Vertipaq Analyzer";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
     seg.appendChild(segQueryPlan);
     seg.appendChild(segChart);
     seg.appendChild(segHistory);
     seg.appendChild(segDependencies);
+    seg.appendChild(segVertipaq);
     viewToolbar.appendChild(seg);
 
     // ---------- DAX Query Plan toggle (Logical / Physical) ----------
@@ -4756,6 +4761,37 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    // ---------- Vertipaq Analyzer section toggle ----------
+    // The Vertipaq Analyzer returns several dataframes (Model Summary,
+    // Tables, Partitions, Columns, Relationships, Hierarchies). This
+    // segmented control (built dynamically from the returned sections) lets
+    // the user switch between them. It is shown only on the Vertipaq tab.
+    const vpSeg = document.createElement("div");
+    vpSeg.className = "dtx-seg dtx-vp-seg";
+    vpSeg.style.display = "none";
+    viewToolbar.insertBefore(vpSeg, seg);
+
+    function buildVertipaqSeg() {
+        const sections = model.get("vertipaq_sections") || [];
+        let active = model.get("vertipaq_section") || "";
+        if (!sections.some(s => s.name === active)) {
+            active = sections.length ? sections[0].name : "";
+        }
+        vpSeg.innerHTML = "";
+        sections.forEach(s => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "dtx-seg-btn";
+            b.textContent = s.name;
+            b.classList.toggle("dtx-seg-btn-on", s.name === active);
+            b.addEventListener("click", () => {
+                model.set("vertipaq_section", s.name);
+                model.save_changes();
+            });
+            vpSeg.appendChild(b);
+        });
+    }
+
     const histDownloadBtn = document.createElement("button");
     histDownloadBtn.type = "button";
     histDownloadBtn.className = "dtx-hist-download";
@@ -4806,6 +4842,21 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    // Tracks the dataset id the displayed Vertipaq Analyzer results were
+    // computed for, so they are only recomputed when the active model changes.
+    let lastVertipaqDataset = null;
+    segVertipaq.addEventListener("click", () => {
+        model.set("view_mode", "vertipaq");
+        // Vertipaq stats are model-level: only (re)compute when the active
+        // model changes since the last run, otherwise reuse the results.
+        const curDs = model.get("active_dataset_id") || "";
+        if (curDs && curDs !== lastVertipaqDataset) {
+            lastVertipaqDataset = curDs;
+            model.set("vertipaq_trigger", (model.get("vertipaq_trigger") || 0) + 1);
+        }
+        model.save_changes();
+    });
+
     // Maximum number of rows for which we render an interactive chart.
     // Beyond this, the Chart option is disabled to keep the widget responsive.
     const CHART_MAX_ROWS = 200;
@@ -4842,6 +4893,7 @@ function render({ model, el }) {
         segHistory.classList.toggle("dtx-seg-btn-on", mode === "history");
         segQueryPlan.classList.toggle("dtx-seg-btn-on", mode === "queryplan");
         segDependencies.classList.toggle("dtx-seg-btn-on", mode === "dependencies");
+        segVertipaq.classList.toggle("dtx-seg-btn-on", mode === "vertipaq");
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
@@ -4858,6 +4910,10 @@ function render({ model, el }) {
         depSeg.style.display = (mode === "dependencies") ? "" : "none";
         depTreeBtn.classList.toggle("dtx-seg-btn-on", depView === "tree");
         depColumnsBtn.classList.toggle("dtx-seg-btn-on", depView === "columns");
+        // Section toggle is only relevant on the Vertipaq Analyzer tab.
+        const vpVisible = (mode === "vertipaq");
+        vpSeg.style.display = vpVisible ? "" : "none";
+        if (vpVisible) buildVertipaqSeg();
     }
 
     const resultMeta = document.createElement("div");
@@ -5096,6 +5152,36 @@ function render({ model, el }) {
                 renderDependenciesTable();
             });
         });
+    }
+
+    function renderVertipaqTable() {
+        if (model.get("vertipaq_loading") === true) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
+            return;
+        }
+        const sections = model.get("vertipaq_sections") || [];
+        if (!sections.length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No Vertipaq Analyzer results available.</div></div>`;
+            return;
+        }
+        let section = sections.find(s => s.name === (model.get("vertipaq_section") || ""));
+        if (!section) section = sections[0];
+        const cols = section.columns || [];
+        const rows = section.rows || [];
+        const head = cols.map(c => `<th>${escapeHtml(String(c))}</th>`).join("");
+        let body;
+        if (!rows.length) {
+            body = `<tr><td colspan="${Math.max(cols.length, 1)}" class="dtx-empty">No rows.</td></tr>`;
+        } else {
+            body = rows.map(r => `<tr>`
+                + r.map(v => `<td>${escapeHtml(v === null || v === undefined ? "" : String(v))}</td>`).join("")
+                + `</tr>`).join("");
+        }
+        tableWrap.innerHTML = `
+            <table class="dtx-dep-col-table">
+                <thead><tr>${head}</tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
     }
 
     function renderChart() {
@@ -5351,6 +5437,9 @@ function render({ model, el }) {
         } else if (mode === "dependencies") {
             renderDependenciesTable();
             resultMeta.style.display = "none";
+        } else if (mode === "vertipaq") {
+            renderVertipaqTable();
+            resultMeta.style.display = "none";
         } else {
             renderTraceTable();
             resultMeta.style.display = "none";
@@ -5385,6 +5474,9 @@ function render({ model, el }) {
     model.on("change:dependencies_loading", renderTable);
     model.on("change:dependency_columns", renderTable);
     model.on("change:dependency_view", renderTable);
+    model.on("change:vertipaq_sections", renderTable);
+    model.on("change:vertipaq_section", renderTable);
+    model.on("change:vertipaq_loading", renderTable);
     model.on("change:history_excel_b64", () => {
         const b64 = model.get("history_excel_b64") || "";
         if (!b64) return;
@@ -5550,6 +5642,10 @@ export default { render };
         dependencies_trigger = traitlets.Int(0).tag(sync=True)
         dependency_columns = traitlets.List([]).tag(sync=True)
         dependency_view = traitlets.Unicode("tree").tag(sync=True)
+        vertipaq_sections = traitlets.List([]).tag(sync=True)
+        vertipaq_section = traitlets.Unicode("").tag(sync=True)
+        vertipaq_loading = traitlets.Bool(False).tag(sync=True)
+        vertipaq_trigger = traitlets.Int(0).tag(sync=True)
         model_tree = traitlets.List([]).tag(sync=True)
         sidebar_collapsed = traitlets.Bool(False).tag(sync=True)
         refresh_metadata_trigger = traitlets.Int(0).tag(sync=True)
@@ -5648,6 +5744,10 @@ export default { render };
         dependencies_trigger=0,
         dependency_columns=[],
         dependency_view="tree",
+        vertipaq_sections=[],
+        vertipaq_section="",
+        vertipaq_loading=False,
+        vertipaq_trigger=0,
         model_tree=initial_tree,
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
@@ -5677,6 +5777,9 @@ export default { render };
     # Expose the most recent dataframes for programmatic access.
     widget.last_df = df  # type: ignore[attr-defined]
     widget.last_result_df = result_df  # type: ignore[attr-defined]
+    # Most recent Vertipaq Analyzer result (dict of dataframes), populated
+    # when the user opens the Vertipaq Analyzer tab. Stored for later use.
+    widget.last_vertipaq = {}  # type: ignore[attr-defined]
 
     # State shared between the run/cancel observers.
     import threading
@@ -6097,9 +6200,63 @@ export default { render };
         widget.dependencies_loading = True
         threading.Thread(target=_compute_dependencies, daemon=True).start()
 
+    def _compute_vertipaq() -> None:
+        """Run the Vertipaq Analyzer against the active semantic model and push
+        its result tables (Model Summary, Tables, Partitions, Columns,
+        Relationships, Hierarchies) to the front-end. The full result dict is
+        also stored on ``widget.last_vertipaq`` for later programmatic use."""
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.vertipaq_sections = []
+                return
+            from sempy_labs.semantic_model._vertipaq_analyzer import (
+                vertipaq_analyzer,
+            )
+            from IPython.utils.capture import capture_output
+
+            # vertipaq_analyzer renders its own HTML visualization via
+            # display(); capture (and discard) it so it does not appear as a
+            # separate output below this widget. The returned dataframes are
+            # rendered inside the Vertipaq Analyzer tab instead.
+            with capture_output():
+                result = vertipaq_analyzer(
+                    dataset=model_ctx["dataset_id"],
+                    workspace=model_ctx["workspace_id"],
+                )
+            # Store the raw result for later programmatic access.
+            widget.last_vertipaq = result  # type: ignore[attr-defined]
+            sections = []
+            for name, sdf in (result or {}).items():
+                payload = _result_payload_from_df(sdf)
+                sections.append(
+                    {
+                        "name": str(name),
+                        "columns": payload["columns"],
+                        "rows": payload["rows"],
+                    }
+                )
+            widget.vertipaq_sections = sections
+            if sections and not (widget.vertipaq_section or "").strip():
+                widget.vertipaq_section = sections[0]["name"]
+            widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.vertipaq_sections = []
+            widget.error_message = f"Failed to run Vertipaq Analyzer: {exc}"
+        finally:
+            widget.vertipaq_loading = False
+
+    def _on_vertipaq(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.vertipaq_loading:
+            return
+        widget.vertipaq_loading = True
+        threading.Thread(target=_compute_vertipaq, daemon=True).start()
+
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
     widget.observe(_on_dependencies, names="dependencies_trigger")
+    widget.observe(_on_vertipaq, names="vertipaq_trigger")
 
     def _build_history_excel() -> None:
         import base64
@@ -6261,6 +6418,11 @@ export default { render };
         widget.active_dataset_id = str(ds_id_resolved)
         widget.model_tree = tree
         widget.model_roles = roles
+        # Clear Vertipaq Analyzer results from any previously selected model so
+        # stale stats aren't shown; they are recomputed on the next tab open.
+        widget.vertipaq_sections = []
+        widget.vertipaq_section = ""
+        widget.last_vertipaq = {}  # type: ignore[attr-defined]
         # Reset impersonation so a stale role/user from a prior model isn't
         # reused against a model that may not define it.
         widget.impersonation_mode = "none"
