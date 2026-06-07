@@ -1983,7 +1983,9 @@ def _visualize_dax_test(
     border-color: var(--ui-accent);
     box-shadow: 0 0 0 3px var(--ui-accent-soft);
 }}
+.dtx .dtx-expand-btn {{ color: var(--ui-text-secondary); }}
 .dtx .dtx-expand-btn svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-expand-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
 .dtx .dtx-editor-overlay {{
     position: fixed;
     inset: 0;
