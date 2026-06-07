@@ -19,6 +19,7 @@ _COLORS = {
     "number": "#FF9F45",  # soft orange - numeric literals
     "virtual_column": "#FF7A8A",  # soft pink   - ADDCOLUMNS/SELECTCOLUMNS cols
     "string": "#9BB87A",  # muted green - string literals (default)
+    "comment": "#6A9955",  # green       - // , -- and /* */ comments
     "operator": "#A6A6A6",  # neutral gray
     "punctuation": "#A6A6A6",
     "default": "inherit",
@@ -62,9 +63,22 @@ def _classify_tokens(dax_expression: str):
 
         if tt in (TokenType.VAR, TokenType.RETURN):
             kind = "keyword"
+        elif tt == TokenType.COMMENT:
+            kind = "comment"
         elif tt == TokenType.IDENTIFIER:
-            # Function call if the next non-EOF token is '('.
-            next_token = tokens[i + 1] if i + 1 < len(tokens) else None
+            # Function call if the next significant token (skipping comments)
+            # is '('.
+            next_token = None
+            for j in range(i + 1, len(tokens)):
+                if tokens[j].token_type in (
+                    TokenType.COMMENT,
+                    TokenType.EOF,
+                ):
+                    if tokens[j].token_type == TokenType.EOF:
+                        break
+                    continue
+                next_token = tokens[j]
+                break
             if next_token is not None and next_token.token_type == TokenType.LPAREN:
                 kind = "function"
             elif token.text in var_names:

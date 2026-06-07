@@ -24,4 +24,6 @@ class TokenType(Enum):
     VAR = auto()
     RETURN = auto()
 
+    COMMENT = auto()
+
     EOF = auto()

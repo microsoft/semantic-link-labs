@@ -11,6 +11,10 @@ class Token:
 
 
 TOKEN_REGEX = [
+    # Comments (DAX): single-line `//...` / `--...` and block `/* ... */`.
+    # Listed before OPERATOR so `//`, `--` and `/*` win over the single-char
+    # `/` and `-` operators. Block comments may span multiple lines.
+    (TokenType.COMMENT, r"//[^\n]*|--[^\n]*|/\*[\s\S]*?\*/"),
     # Table[Column] reference: table may be quoted ('Sales') or unquoted (Sales)
     (TokenType.TABLE_COLUMN, r"(?:'[^']+'|[A-Za-z_][A-Za-z0-9_]*)\[[^\]]+\]"),
     # NEW

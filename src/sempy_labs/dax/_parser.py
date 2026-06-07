@@ -63,6 +63,8 @@ class Parser:
         "DEFINE",
         "ORDER",
         "BY",
+        "START",
+        "AT",
         "EVALUATE",
         "EVALUATEANDLOG",
         "OFFSET",
@@ -449,7 +451,9 @@ class Parser:
 
     def __init__(self, text, tom=None):
 
-        self.tokens = list(tokenize(text))
+        # Comments are kept by the tokenizer (for the syntax highlighter) but
+        # are not meaningful to the grammar, so drop them before parsing.
+        self.tokens = [t for t in tokenize(text) if t.token_type != TokenType.COMMENT]
         self.index = 0
         # Stack of sets of variable names currently in scope. Used to
         # distinguish references to VAR-declared names from table refs.
@@ -483,7 +487,231 @@ class Parser:
         return any(name in scope for scope in self.scopes)
 
     def parse(self):
+        # Full DAX query form: an optional DEFINE block followed by one or
+        # more EVALUATE statements (e.g. `DEFINE MEASURE ... EVALUATE ...`).
+        # Detected when the input starts with DEFINE or EVALUATE. Anything
+        # else is parsed as a single expression/statement (backward
+        # compatible with passing a bare measure/column expression).
+        if self._at_keyword("DEFINE") or self._at_keyword("EVALUATE", "EVALUATEANDLOG"):
+            return self.query()
+
         return self.statement()
+
+    def _at_keyword(self, *words):
+        """Return True if the current token is a bare identifier matching any
+        of ``words`` (case-insensitive). Used for the statement-level query
+        keywords (DEFINE, EVALUATE, ORDER, BY, START, AT) which the tokenizer
+        emits as plain identifiers."""
+        token = self.current
+        return token.token_type == TokenType.IDENTIFIER and token.text.upper() in words
+
+    def _expect_equals(self):
+        if not (
+            self.current.token_type == TokenType.OPERATOR and self.current.text == "="
+        ):
+            raise SyntaxError(f"Expected '=' in DEFINE block, got: {self.current}")
+        self.advance()
+
+    def _consume_definition_target(self):
+        """Consume a ``Table[Name]`` target of a MEASURE/COLUMN definition and
+        return ``(table, name)``."""
+        token = self.current
+        if token.token_type != TokenType.TABLE_COLUMN:
+            raise SyntaxError(
+                "Expected Table[Name] in MEASURE/COLUMN definition, " f"got: {token}"
+            )
+        self.advance()
+        table, column = token.text.split("[")
+        table = table.strip("'")
+        column = column[:-1]
+        return table, column
+
+    def query(self):
+        """Parse a full DAX query: an optional DEFINE block followed by one or
+        more EVALUATE statements."""
+
+        # Query-level scope so DEFINE VAR names resolve to VariableReference
+        # in subsequent definitions and in the EVALUATE expression(s).
+        self.scopes.append(set())
+
+        definitions = []
+        if self._at_keyword("DEFINE"):
+            self.advance()
+            definitions = self._parse_definitions()
+
+        evaluations = []
+        while self._at_keyword("EVALUATE", "EVALUATEANDLOG"):
+            evaluations.append(self._parse_evaluate())
+
+        return Query(
+            args={
+                "definitions": definitions,
+                "expressions": evaluations,
+            }
+        )
+
+    def _parse_definitions(self):
+        """Parse the body of a DEFINE block: zero or more MEASURE, COLUMN,
+        TABLE and VAR definitions, in any order, until EVALUATE is reached."""
+
+        definitions = []
+
+        while True:
+            token = self.current
+
+            if token.token_type == TokenType.VAR:
+                definitions.append(self._parse_define_var())
+            elif self._at_keyword("MEASURE"):
+                definitions.append(self._parse_define_measure())
+            elif self._at_keyword("COLUMN"):
+                definitions.append(self._parse_define_column())
+            elif self._at_keyword("TABLE"):
+                definitions.append(self._parse_define_table())
+            else:
+                break
+
+        return definitions
+
+    def _parse_define_measure(self):
+        self.advance()  # consume MEASURE
+        table, name = self._consume_definition_target()
+        self._expect_equals()
+        expression = self.statement()
+        # Register the defined measure so later bracketed references (`[Name]`)
+        # resolve to a Measure even when a TOM model is supplied.
+        self._measure_names.add(name)
+        return MeasureDefinition(
+            args={
+                "table": table,
+                "this": name,
+                "expression": expression,
+            }
+        )
+
+    def _parse_define_column(self):
+        self.advance()  # consume COLUMN
+        table, name = self._consume_definition_target()
+        self._expect_equals()
+        expression = self.statement()
+        self._column_names.add(name)
+        return ColumnDefinition(
+            args={
+                "table": table,
+                "this": name,
+                "expression": expression,
+            }
+        )
+
+    def _parse_define_table(self):
+        self.advance()  # consume TABLE
+        token = self.current
+        if token.token_type == TokenType.QUOTED_IDENTIFIER:
+            name = token.text.strip("'")
+        elif token.token_type == TokenType.IDENTIFIER:
+            name = token.text
+        else:
+            raise SyntaxError(f"Expected table name in TABLE definition, got: {token}")
+        self.advance()
+        self._expect_equals()
+        expression = self.statement()
+        return TableDefinition(
+            args={
+                "this": name,
+                "expression": expression,
+            }
+        )
+
+    def _parse_define_var(self):
+        self.advance()  # consume VAR
+        if self.current.token_type != TokenType.IDENTIFIER:
+            raise SyntaxError(f"Expected variable name after VAR, got: {self.current}")
+        name = self.current.text
+        self.advance()
+        self._expect_equals()
+        value = self.statement()
+        # Make the query-scoped variable visible to later definitions and to
+        # the EVALUATE expression(s).
+        self.scopes[-1].add(name)
+        return Var(
+            args={
+                "this": name,
+                "expression": value,
+            }
+        )
+
+    def _parse_evaluate(self):
+        self.advance()  # consume EVALUATE / EVALUATEANDLOG
+
+        expression = self.statement()
+
+        order_by = []
+        if self._at_keyword("ORDER"):
+            self.advance()
+            if not self._at_keyword("BY"):
+                raise SyntaxError(f"Expected BY after ORDER, got: {self.current}")
+            self.advance()
+            order_by = self._parse_order_by()
+
+        start_at = []
+        if self._at_keyword("START"):
+            self.advance()
+            if not self._at_keyword("AT"):
+                raise SyntaxError(f"Expected AT after START, got: {self.current}")
+            self.advance()
+            start_at = self._parse_value_list()
+
+        return Evaluate(
+            args={
+                "this": expression,
+                "order_by": order_by,
+                "start_at": start_at,
+            }
+        )
+
+    def _parse_order_by(self):
+        """Parse the comma-separated ORDER BY terms, each an expression with an
+        optional ASC/DESC direction."""
+
+        items = []
+
+        while True:
+            expr = self.expression()
+
+            direction = None
+            if self._at_keyword("ASC", "DESC"):
+                direction = self.current.text.upper()
+                self.advance()
+
+            items.append(
+                OrderBy(
+                    args={
+                        "this": expr,
+                        "direction": direction,
+                    }
+                )
+            )
+
+            if self.current.token_type == TokenType.COMMA:
+                self.advance()
+                continue
+            break
+
+        return items
+
+    def _parse_value_list(self):
+        """Parse a comma-separated list of expressions (used by START AT)."""
+
+        values = []
+
+        while True:
+            values.append(self.expression())
+
+            if self.current.token_type == TokenType.COMMA:
+                self.advance()
+                continue
+            break
+
+        return values
 
     def statement(self):
 
@@ -561,10 +789,7 @@ class Parser:
             # IN membership operator: `<expr> IN { ... }`. Tokenized as a
             # bare identifier, so handle it before the generic operator
             # branch. Uses comparison-level precedence.
-            if (
-                token.token_type == TokenType.IDENTIFIER
-                and token.text.upper() == "IN"
-            ):
+            if token.token_type == TokenType.IDENTIFIER and token.text.upper() == "IN":
                 in_precedence = 5
                 if in_precedence < precedence:
                     break

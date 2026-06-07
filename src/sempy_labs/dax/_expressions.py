@@ -136,3 +136,69 @@ class VirtualColumn(Expression):
 
 class Return(Expression):
     pass
+
+
+class Query(Expression):
+    """A full DAX query: an optional ``DEFINE`` block of definitions followed
+    by one or more ``EVALUATE`` statements.
+
+    ``args`` keys:
+
+    * ``definitions`` - list of definition nodes (``MeasureDefinition``,
+      ``ColumnDefinition``, ``TableDefinition`` and/or ``Var``) declared in the
+      ``DEFINE`` block (empty when there is no ``DEFINE`` block).
+    * ``expressions`` - list of ``Evaluate`` nodes.
+    """
+
+    pass
+
+
+class MeasureDefinition(Expression):
+    """A measure declared in a ``DEFINE`` block:
+    ``MEASURE Table[Name] = <expression>``.
+
+    ``args`` keys: ``table`` (str), ``this`` (the measure name) and
+    ``expression``.
+    """
+
+    pass
+
+
+class ColumnDefinition(Expression):
+    """A calculated column declared in a ``DEFINE`` block:
+    ``COLUMN Table[Name] = <expression>``.
+
+    ``args`` keys: ``table`` (str), ``this`` (the column name) and
+    ``expression``.
+    """
+
+    pass
+
+
+class TableDefinition(Expression):
+    """A table declared in a ``DEFINE`` block: ``TABLE Name = <expression>``.
+
+    ``args`` keys: ``this`` (the table name) and ``expression``.
+    """
+
+    pass
+
+
+class Evaluate(Expression):
+    """An ``EVALUATE`` statement with an optional ``ORDER BY`` / ``START AT``.
+
+    ``args`` keys: ``this`` (the table expression), ``order_by`` (list of
+    ``OrderBy`` nodes) and ``start_at`` (list of expressions).
+    """
+
+    pass
+
+
+class OrderBy(Expression):
+    """A single ``ORDER BY`` term: ``<expression> [ASC|DESC]``.
+
+    ``args`` keys: ``this`` (the expression) and ``direction`` (``"ASC"``,
+    ``"DESC"`` or ``None``).
+    """
+
+    pass
