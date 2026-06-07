@@ -293,27 +293,46 @@ def _execute_and_capture(
 
     # DAX Query Plan events (Logical/Physical) are serialized by the engine
     # during query cleanup and are frequently flushed into the trace buffer
-    # *after* the QueryEnd event that ended the loop above. Poll a little
-    # longer (capped) so the captured logs include them; stop early as soon
-    # as a DAXQueryPlan row for this query is present.
-    if logs is not None and not logs.empty:
-        _plan_deadline = time.monotonic() + 1.5
-        while time.monotonic() < _plan_deadline:
-            _new = (
-                logs.iloc[baseline_count:]
-                if len(logs) > baseline_count
-                else logs.iloc[0:0]
-            )
-            _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
-            if _ec in _new.columns and not _new[_new[_ec] == "DAXQueryPlan"].empty:
+    # *after* the QueryEnd event that ended the loop above. A single query
+    # normally emits two plan events (a logical and a physical plan), and they
+    # can arrive in separate trace flushes, so breaking as soon as the first
+    # plan row appears risks dropping the second one. Poll (always re-reading
+    # the live trace, even if ``logs`` is currently empty) until the number of
+    # captured DAXQueryPlan rows stops growing for a short grace period, or a
+    # cap is reached.
+    _plan_deadline = time.monotonic() + 5.0
+    _plan_count = -1
+    _stable_since: Optional[float] = None
+    while time.monotonic() < _plan_deadline:
+        try:
+            _l = trace.get_trace_logs()
+        except Exception:
+            _l = None
+        if _l is not None and not _l.empty:
+            logs = _l
+        if logs is not None and len(logs) > baseline_count:
+            _new = logs.iloc[baseline_count:]
+        elif logs is not None:
+            _new = logs.iloc[0:0]
+        else:
+            _new = pd.DataFrame()
+        _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
+        _cur = (
+            int((_new[_ec] == "DAXQueryPlan").sum()) if _ec in _new.columns else 0
+        )
+        if _cur > 0:
+            if _cur != _plan_count:
+                # New plan row(s) arrived; reset the stability timer so we keep
+                # waiting for any further plan events still being flushed.
+                _plan_count = _cur
+                _stable_since = time.monotonic()
+            elif _stable_since is not None and (
+                time.monotonic() - _stable_since >= 0.5
+            ):
+                # Plan count held steady long enough: assume all DAX query plan
+                # events for this query have been captured.
                 break
-            time.sleep(0.1)
-            try:
-                _l = trace.get_trace_logs()
-            except Exception:
-                continue
-            if _l is not None and not _l.empty:
-                logs = _l
+        time.sleep(0.1)
 
     if logs is None:
         try:
