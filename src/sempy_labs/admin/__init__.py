@@ -7,6 +7,8 @@ from ._workspaces import (
     delete_user_from_workspace,
     restore_deleted_workspace,
     list_orphaned_workspaces,
+    grant_admin_temporary_access,
+    remove_admin_temporary_access,
 )
 from ._artifacts import (
     list_unused_artifacts,
@@ -157,6 +159,8 @@ __all__ = [
     "delete_user_from_workspace",
     "restore_deleted_workspace",
     "list_orphaned_workspaces",
+    "grant_admin_temporary_access",
+    "remove_admin_temporary_access",
     "list_capacity_users",
     "list_user_subscriptions",
     "list_report_subscriptions",

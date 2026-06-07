@@ -128,6 +128,58 @@ def delete_user_from_workspace(
 
 
 @log
+def grant_admin_temporary_access(workspace_id: str | UUID):
+    """
+    Grants admin temporary (24h) access to a user's 'My Workspace'.
+
+    This is a wrapper function for the following API: `Workspaces - Grant Admin Temporary Access <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/grant-admin-temporary-access>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace_id : uuid.UUID
+        The ID of the 'My Workspace' to which to grant temporary access.
+    """
+
+    _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/grantAdminTemporaryAccess",
+        method="post",
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} Admin temporary access has been granted to the '{workspace_id}' workspace."
+    )
+
+
+@log
+def remove_admin_temporary_access(workspace_id: str | UUID):
+    """
+    Removes admin temporary access from a user's 'My Workspace'.
+
+    This is a wrapper function for the following API: `Workspaces - Remove Admin Temporary Access <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/remove-admin-temporary-access>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace_id : uuid.UUID
+        The ID of the 'My Workspace' from which to remove temporary access.
+    """
+
+    _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/removeAdminTemporaryAccess",
+        method="post",
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} Admin temporary access has been removed from the '{workspace_id}' workspace."
+    )
+
+
+@log
 def restore_deleted_workspace(workspace_id: UUID, name: str, email_address: str):
     """
     Restores a deleted workspace.
