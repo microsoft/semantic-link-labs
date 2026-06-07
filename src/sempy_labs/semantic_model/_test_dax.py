@@ -1957,7 +1957,7 @@ def _visualize_dax_test(
 .dtx .dtx-query {{
     width: 100%;
     min-height: 120px;
-    max-height: 320px;
+    max-height: 386px;
     padding: 12px 14px;
     background: var(--ui-bg-tertiary);
     border: 1px solid var(--ui-border);
@@ -1982,6 +1982,62 @@ def _visualize_dax_test(
 .dtx .dtx-query:focus {{
     border-color: var(--ui-accent);
     box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-expand-btn svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-editor-overlay {{
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    padding: 24px;
+}}
+.dtx .dtx-editor-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-editor-modal {{
+    width: 95vw;
+    height: 90vh;
+    max-width: 1400px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: var(--ui-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}}
+.dtx .dtx-editor-head {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ui-border);
+}}
+.dtx .dtx-editor-title {{
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-editor-body {{
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    padding: 16px 18px;
+}}
+.dtx .dtx-editor-overlay .dtx-query-wrap {{
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}}
+.dtx .dtx-editor-overlay .dtx-query {{
+    height: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    resize: none;
 }}
 .dtx .dtx-error {{
     margin: 0 24px 16px 24px;
@@ -3014,6 +3070,18 @@ def _visualize_dax_test(
         '-0.8 -2.2 -2.2 -0.8 2.2 -0.8 z"/>'
         "</svg>"
     ).replace("`", "\\`")
+    # A "maximize / full-screen" mark (four outward corner arrows) used to
+    # open the DAX editor in a large pop-out window.
+    expand_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M8 3 H5 a2 2 0 0 0 -2 2 v3"/>'
+        '<path d="M16 3 h3 a2 2 0 0 1 2 2 v3"/>'
+        '<path d="M21 16 v3 a2 2 0 0 1 -2 2 h-3"/>'
+        '<path d="M3 16 v3 a2 2 0 0 0 2 2 h3"/>'
+        "</svg>"
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -3053,6 +3121,7 @@ function render({ model, el }) {
     const PASTE_SVG = `__DTX_PASTE__`;
     const ANALYZE_SVG = `__DTX_ANALYZE__`;
     const NLDAX_SVG = `__DTX_NLDAX__`;
+    const EXPAND_SVG = `__DTX_EXPAND__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -4530,6 +4599,15 @@ function render({ model, el }) {
     pasteBtn.setAttribute("aria-label", "Paste");
     qTitleGroup.appendChild(pasteBtn);
 
+    const expandBtn = document.createElement("button");
+    expandBtn.type = "button";
+    expandBtn.className = "dtx-fmt-btn dtx-expand-btn";
+    expandBtn.innerHTML = EXPAND_SVG;
+    expandBtn.title = "Open the DAX editor in a large pop-out window";
+    expandBtn.setAttribute("aria-label", "Expand DAX editor to full screen");
+    qTitleGroup.appendChild(expandBtn);
+    expandBtn.addEventListener("click", () => openEditorPop());
+
     // Cut/copy/paste operate on the DAX query textarea's current selection.
     function writeClipboard(text) {
         try {
@@ -4858,6 +4936,7 @@ function render({ model, el }) {
         renderHighlight();
         renderFmtBtn();
         renderHistBtns();
+        autoGrowEditor();
         textarea.focus();
     }
 
@@ -4889,6 +4968,96 @@ function render({ model, el }) {
     queryWrap.appendChild(hl);
     queryWrap.appendChild(textarea);
     queryBlock.appendChild(queryWrap);
+
+    // ---------- Auto-grow ----------
+    // Grow the editor vertically to fit its content, up to EDITOR_MAX_ROWS
+    // rows, so generated queries (Query Builder / natural language) are fully
+    // visible without scrolling. Grow-only, so a manual resize is preserved.
+    const EDITOR_MAX_ROWS = 20;
+    function autoGrowEditor() {
+        // The pop-out editor manages its own full-height layout.
+        if (root.classList.contains("dtx-editor-pop")) return;
+        const lineH = 18;   // 12px font-size * 1.5 line-height
+        const chrome = 26;  // 12+12 padding + 2 border (border-box)
+        const maxH = lineH * EDITOR_MAX_ROWS + chrome;
+        const prevH = textarea.getBoundingClientRect().height;
+        textarea.style.height = "auto";
+        const needed = Math.min(textarea.scrollHeight + 2, maxH);
+        textarea.style.height = Math.max(needed, prevH) + "px";
+        hl.scrollTop = textarea.scrollTop;
+        hl.scrollLeft = textarea.scrollLeft;
+    }
+
+    // ---------- Pop-out (full-screen) editor ----------
+    const editorOverlay = document.createElement("div");
+    editorOverlay.className = "dtx-editor-overlay";
+    const editorModal = document.createElement("div");
+    editorModal.className = "dtx-editor-modal";
+    const editorHead = document.createElement("div");
+    editorHead.className = "dtx-editor-head";
+    const editorTitle = document.createElement("div");
+    editorTitle.className = "dtx-editor-title";
+    editorTitle.textContent = "DAX Query";
+    const editorClose = document.createElement("button");
+    editorClose.type = "button";
+    editorClose.className = "dtx-hist-btn";
+    editorClose.innerHTML = CLOSE_SVG;
+    editorClose.title = "Close the full-screen editor (Esc)";
+    editorClose.setAttribute("aria-label", "Close the full-screen editor");
+    editorHead.appendChild(editorTitle);
+    editorHead.appendChild(editorClose);
+    const editorBody = document.createElement("div");
+    editorBody.className = "dtx-editor-body";
+    editorModal.appendChild(editorHead);
+    editorModal.appendChild(editorBody);
+    editorOverlay.appendChild(editorModal);
+    root.appendChild(editorOverlay);
+
+    // A placeholder marking the editor's home so it can be returned exactly
+    // where it was when the pop-out closes. Relocating the same DOM nodes
+    // keeps all existing wiring (history, drag-drop, highlight) intact.
+    const editorHome = document.createComment("dtx-editor-home");
+    let editorPopped = false;
+
+    function openEditorPop() {
+        if (editorPopped) return;
+        editorPopped = true;
+        queryWrap.parentNode.insertBefore(editorHome, queryWrap);
+        editorBody.appendChild(queryWrap);
+        root.classList.add("dtx-editor-pop");
+        editorOverlay.classList.add("dtx-open");
+        // Hand height control to the full-height layout.
+        textarea.style.height = "";
+        renderHighlight();
+        setTimeout(() => { try { textarea.focus(); } catch (e) {} }, 0);
+    }
+
+    function closeEditorPop() {
+        if (!editorPopped) return;
+        editorPopped = false;
+        editorOverlay.classList.remove("dtx-open");
+        root.classList.remove("dtx-editor-pop");
+        if (editorHome.parentNode) {
+            editorHome.parentNode.insertBefore(queryWrap, editorHome);
+            editorHome.parentNode.removeChild(editorHome);
+        } else {
+            queryBlock.appendChild(queryWrap);
+        }
+        renderHighlight();
+        autoGrowEditor();
+        try { textarea.focus(); } catch (e) {}
+    }
+
+    editorClose.addEventListener("click", closeEditorPop);
+    editorOverlay.addEventListener("click", (e) => {
+        if (e.target === editorOverlay) closeEditorPop();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && editorPopped) {
+            e.preventDefault();
+            closeEditorPop();
+        }
+    });
 
     function renderHighlight() {
         const tokens = model.get("dax_tokens") || [];
@@ -4980,6 +5149,7 @@ function render({ model, el }) {
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
+        autoGrowEditor();
     }
 
     // Prepend a `DEFINE MEASURE` block for the given measure above the
@@ -5007,6 +5177,7 @@ function render({ model, el }) {
         model.set("dax_query", textarea.value);
         model.save_changes();
         renderHighlight();
+        autoGrowEditor();
         textarea.focus();
     }
     textarea.addEventListener("dragover", (e) => {
@@ -6020,6 +6191,9 @@ function render({ model, el }) {
         }
         renderHighlight();
         renderFmtBtn();
+        // Generated/programmatic query (Query Builder, natural language,
+        // Format) — grow the editor to fit it (up to 20 rows).
+        autoGrowEditor();
     });
     model.on("change:dax_tokens", renderHighlight);
     model.on("change:format_loading", renderFmtBtn);
@@ -6083,6 +6257,7 @@ function render({ model, el }) {
     renderHistBtns();
     renderTree();
     renderHighlight();
+    autoGrowEditor();
     renderBuilderChrome();
     renderBuilderZones();
     renderBuildBtn();
@@ -6129,6 +6304,7 @@ export default { render };
         .replace("__DTX_PASTE__", paste_icon)
         .replace("__DTX_ANALYZE__", analyze_icon)
         .replace("__DTX_NLDAX__", nldax_icon)
+        .replace("__DTX_EXPAND__", expand_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
