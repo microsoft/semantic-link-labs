@@ -158,6 +158,7 @@ from ._capacities import (
     list_resource_groups,
     get_resource_group,
     list_capacities,
+    get_capacity,
 )
 from ._spark import (
     get_spark_settings,
@@ -450,6 +451,7 @@ __all__ = [
     "list_workspace_users",
     "assign_workspace_to_dataflow_storage",
     "list_capacities",
+    "get_capacity",
     "is_default_semantic_model",
     "resolve_item_type",
     "get_notebook_definition",

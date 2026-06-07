@@ -14,6 +14,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    resolve_capacity_id,
 )
 import sempy_labs._authentication as auth
 
@@ -1194,5 +1195,51 @@ def list_capacities() -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=columns.keys())
+
+    return df
+
+
+@log
+def get_capacity(capacity: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows the properties of a specified capacity.
+
+    This is a wrapper function for the following API: `Capacities - Get Capacity <https://learn.microsoft.com/rest/api/fabric/core/capacities/get-capacity>`_.
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
+        Defaults to None which resolves to the capacity of the attached lakehouse
+        or if no lakehouse attached, resolves to the capacity of the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the properties of the specified capacity.
+    """
+
+    capacity_id = resolve_capacity_id(capacity)
+
+    columns = {
+        "Capacity Id": "string",
+        "Display Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request=f"/v1/capacities/{capacity_id}")
+    v = response.json()
+
+    new_data = {
+        "Capacity Id": v.get("id"),
+        "Display Name": v.get("displayName"),
+        "Sku": v.get("sku"),
+        "Region": v.get("region"),
+        "State": v.get("state"),
+    }
+    df = pd.DataFrame([new_data], columns=list(columns.keys()))
 
     return df
