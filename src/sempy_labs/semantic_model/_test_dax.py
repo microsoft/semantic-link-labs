@@ -670,8 +670,50 @@ def _build_relationship_lookup(tom) -> dict:
     return lookup
 
 
+def _build_relationship_columns(tom) -> dict:
+    """Build a mapping of relationship name -> the list of ``(table, column)``
+    tuples it joins (the From and To columns), using an already-open TOM
+    connection. Used to include relationship columns in the unique list of
+    referenced columns."""
+
+    lookup: dict = {}
+    try:
+        for rel in tom.model.Relationships:
+            try:
+                lookup[str(rel.Name)] = [
+                    (str(rel.FromTable.Name), str(rel.FromColumn.Name)),
+                    (str(rel.ToTable.Name), str(rel.ToColumn.Name)),
+                ]
+            except Exception:
+                continue
+    except Exception:
+        return {}
+    return lookup
+
+
+def _build_rownumber_columns(tom) -> set:
+    """Build a set of ``(table_name, column_name)`` tuples for every column
+    whose TOM ``ColumnType`` is ``RowNumber``, using an already-open TOM
+    connection. These internal columns are excluded from the query
+    dependencies output."""
+
+    rownumber: set = set()
+    try:
+        for table in tom.model.Tables:
+            tname = str(table.Name)
+            for c in table.Columns:
+                try:
+                    if str(getattr(c, "Type", "")) == "RowNumber":
+                        rownumber.add((tname, str(c.Name)))
+                except Exception:
+                    continue
+    except Exception:
+        return set()
+    return rownumber
+
+
 def _build_dependency_tree(
-    rows: list, rel_lookup: dict, model_label: str
+    rows: list, rel_lookup: dict, model_label: str, rownumber_cols: Optional[set] = None
 ) -> list:
     """Organize flat ``INFO.CALCDEPENDENCY`` rows into a hierarchical tree.
 
@@ -679,8 +721,11 @@ def _build_dependency_tree(
     (each referenced table, with its referenced columns / measures /
     hierarchies grouped beneath it) and a ``Relationships`` group (each
     referenced relationship, labeled with the columns it joins, looked up via
-    TOM in ``rel_lookup``).
+    TOM in ``rel_lookup``). Columns whose TOM ``ColumnType`` is ``RowNumber``
+    (provided in ``rownumber_cols`` as ``(table, column)`` tuples) are omitted.
     """
+
+    rownumber_cols = rownumber_cols or set()
 
     def _classify(obj_type: str) -> str:
         t = (obj_type or "").upper()
@@ -728,7 +773,7 @@ def _build_dependency_tree(
             if table:
                 _add(_ensure_table(table)["measures"], obj)
         elif kind == "column":
-            if table:
+            if table and (table, obj) not in rownumber_cols:
                 _add(_ensure_table(table)["columns"], obj)
         elif kind == "hierarchy":
             if table:
@@ -797,6 +842,50 @@ def _build_dependency_tree(
             "children": children,
         }
     ]
+
+
+def _build_dependency_columns(
+    rows: list,
+    rel_columns: Optional[dict] = None,
+    rownumber_cols: Optional[set] = None,
+) -> list:
+    """Build a unique, sorted list of the columns referenced by the query.
+
+    Each entry is a ``{"table": ..., "column": ...}`` dict. Columns directly
+    referenced by the query (``REFERENCED_OBJECT_TYPE`` containing ``COLUMN``)
+    as well as the columns participating in any referenced relationship (looked
+    up via TOM in ``rel_columns`` keyed by relationship name) are included.
+    Columns whose TOM ``ColumnType`` is ``RowNumber`` (provided in
+    ``rownumber_cols`` as ``(table, column)`` tuples) are omitted.
+    """
+
+    rel_columns = rel_columns or {}
+    rownumber_cols = rownumber_cols or set()
+    seen: set = set()
+    out: list = []
+
+    def _add(table: str, column: str) -> None:
+        table = (table or "").strip()
+        column = (column or "").strip()
+        if not table or not column:
+            return
+        key = (table, column)
+        if key in rownumber_cols or key in seen:
+            return
+        seen.add(key)
+        out.append({"table": table, "column": column})
+
+    for r in rows:
+        otype = (r.get("object_type") or "").upper()
+        if "RELATIONSHIP" in otype:
+            obj = (r.get("object") or "").strip()
+            for tbl, col in rel_columns.get(obj, []):
+                _add(tbl, col)
+        elif "COLUMN" in otype:
+            _add(r.get("table"), r.get("object"))
+
+    out.sort(key=lambda x: (x["table"].lower(), x["column"].lower()))
+    return out
 
 
 def _build_model_roles(tom) -> list:
@@ -1833,6 +1922,7 @@ def _visualize_dax_test(
     cursor: text;
 }}
 .dtx .dtx-plan-seg {{ margin-right: 8px; }}
+.dtx .dtx-dep-seg {{ margin-right: 8px; }}
 .dtx table.dtx-plan-table td.dtx-plan-line {{
     color: var(--ui-text-secondary);
     vertical-align: top;
@@ -4622,6 +4712,31 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    // ---------- Query Dependencies toggle (Tree / Columns) ----------
+    const depSeg = document.createElement("div");
+    depSeg.className = "dtx-seg dtx-dep-seg";
+    depSeg.style.display = "none";
+    const depTreeBtn = document.createElement("button");
+    depTreeBtn.type = "button";
+    depTreeBtn.className = "dtx-seg-btn";
+    depTreeBtn.textContent = "Tree";
+    const depColumnsBtn = document.createElement("button");
+    depColumnsBtn.type = "button";
+    depColumnsBtn.className = "dtx-seg-btn";
+    depColumnsBtn.textContent = "Columns";
+    depSeg.appendChild(depTreeBtn);
+    depSeg.appendChild(depColumnsBtn);
+    // Show the Tree/Columns toggle to the left of the tab group.
+    viewToolbar.insertBefore(depSeg, seg);
+    depTreeBtn.addEventListener("click", () => {
+        model.set("dependency_view", "tree");
+        model.save_changes();
+    });
+    depColumnsBtn.addEventListener("click", () => {
+        model.set("dependency_view", "columns");
+        model.save_changes();
+    });
+
     const histDownloadBtn = document.createElement("button");
     histDownloadBtn.type = "button";
     histDownloadBtn.className = "dtx-hist-download";
@@ -4636,6 +4751,9 @@ function render({ model, el }) {
         model.set("download_history_trigger", (model.get("download_history_trigger") || 0) + 1);
         model.save_changes();
     });
+    // Tracks the DAX query text that the currently displayed dependency tree
+    // was computed for, so dependencies are only recomputed when it changes.
+    let lastDepQuery = null;
     segTrace.addEventListener("click", () => {
         model.set("view_mode", "trace");
         model.save_changes();
@@ -4659,8 +4777,13 @@ function render({ model, el }) {
     });
     segDependencies.addEventListener("click", () => {
         model.set("view_mode", "dependencies");
-        // Recompute dependencies for the current query text each time.
-        model.set("dependencies_trigger", (model.get("dependencies_trigger") || 0) + 1);
+        // Only recompute dependencies when the DAX query text has changed
+        // since the last computation; otherwise reuse the existing tree.
+        const curQuery = model.get("dax_query") || "";
+        if (curQuery !== lastDepQuery) {
+            lastDepQuery = curQuery;
+            model.set("dependencies_trigger", (model.get("dependencies_trigger") || 0) + 1);
+        }
         model.save_changes();
     });
 
@@ -4711,6 +4834,11 @@ function render({ model, el }) {
         planSeg.style.display = (mode === "queryplan") ? "" : "none";
         planLogicalBtn.classList.toggle("dtx-seg-btn-on", planType === "Logical");
         planPhysicalBtn.classList.toggle("dtx-seg-btn-on", planType === "Physical");
+        // Tree/Columns toggle is only relevant on the Query Dependencies tab.
+        const depView = model.get("dependency_view") || "tree";
+        depSeg.style.display = (mode === "dependencies") ? "" : "none";
+        depTreeBtn.classList.toggle("dtx-seg-btn-on", depView === "tree");
+        depColumnsBtn.classList.toggle("dtx-seg-btn-on", depView === "columns");
     }
 
     const resultMeta = document.createElement("div");
@@ -4905,9 +5033,33 @@ function render({ model, el }) {
         return html;
     }
 
+    function renderDependencyColumns() {
+        const cols = model.get("dependency_columns") || [];
+        if (!cols.length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No columns referenced. Run this on a non-empty DAX query.</div></div>`;
+            return;
+        }
+        const body = cols.map(c => {
+            return `<tr>`
+                + `<td>${escapeHtml(String(c.table || ""))}</td>`
+                + `<td>${escapeHtml(String(c.column || ""))}</td>`
+                + `</tr>`;
+        }).join("");
+        tableWrap.innerHTML = `
+            <table class="dtx-dep-col-table">
+                <thead><tr><th>Table Name</th><th>Column Name</th></tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+    }
+
     function renderDependenciesTable() {
         if (model.get("dependencies_loading") === true) {
             tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Computing query dependencies&hellip;</div></div>`;
+            return;
+        }
+        const view = model.get("dependency_view") || "tree";
+        if (view === "columns") {
+            renderDependencyColumns();
             return;
         }
         const tree = model.get("dependency_tree") || [];
@@ -5212,6 +5364,8 @@ function render({ model, el }) {
     model.on("change:query_plan_type", renderTable);
     model.on("change:dependency_tree", renderTable);
     model.on("change:dependencies_loading", renderTable);
+    model.on("change:dependency_columns", renderTable);
+    model.on("change:dependency_view", renderTable);
     model.on("change:history_excel_b64", () => {
         const b64 = model.get("history_excel_b64") || "";
         if (!b64) return;
@@ -5276,6 +5430,8 @@ function render({ model, el }) {
         // switching between two already-chosen models, where dataset_chosen
         // does not change and so would not otherwise close the picker.
         pickerOpen = false;
+        // Force a fresh dependency computation for the newly activated model.
+        lastDepQuery = null;
         renderPicker();
     });
     model.on("change:picker_loading", renderPicker);
@@ -5373,6 +5529,8 @@ export default { render };
         dependency_tree = traitlets.List([]).tag(sync=True)
         dependencies_loading = traitlets.Bool(False).tag(sync=True)
         dependencies_trigger = traitlets.Int(0).tag(sync=True)
+        dependency_columns = traitlets.List([]).tag(sync=True)
+        dependency_view = traitlets.Unicode("tree").tag(sync=True)
         model_tree = traitlets.List([]).tag(sync=True)
         sidebar_collapsed = traitlets.Bool(False).tag(sync=True)
         refresh_metadata_trigger = traitlets.Int(0).tag(sync=True)
@@ -5469,6 +5627,8 @@ export default { render };
         dependency_tree=[],
         dependencies_loading=False,
         dependencies_trigger=0,
+        dependency_columns=[],
+        dependency_view="tree",
         model_tree=initial_tree,
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
@@ -5825,10 +5985,12 @@ export default { render };
         try:
             if model_ctx["dataset_id"] is None:
                 widget.dependency_tree = []
+                widget.dependency_columns = []
                 return
             dax_query = widget.dax_query or ""
             if not dax_query.strip():
                 widget.dependency_tree = []
+                widget.dependency_columns = []
                 return
             # Escape double quotes for embedding as a DAX string literal.
             escaped_dax = dax_query.replace('"', '""')
@@ -5861,13 +6023,21 @@ export default { render };
                     }
                 )
             # Enrich relationships with the columns they join (read via TOM)
-            # only when the query actually depends on a relationship.
+            # only when the query actually depends on a relationship. Also read
+            # the model's RowNumber columns (also via TOM) so they can be
+            # excluded from the output whenever the query references columns.
             rel_lookup: dict = {}
+            rel_columns: dict = {}
+            rownumber_cols: set = set()
             needs_rel = any(
                 "RELATIONSHIP" in (row["object_type"] or "").upper()
                 for row in rows
             )
-            if needs_rel:
+            needs_cols = any(
+                "COLUMN" in (row["object_type"] or "").upper()
+                for row in rows
+            )
+            if needs_rel or needs_cols:
                 try:
                     from sempy_labs.tom import connect_semantic_model
 
@@ -5876,15 +6046,24 @@ export default { render };
                         workspace=model_ctx["workspace_id"],
                         readonly=True,
                     ) as tom:
-                        rel_lookup = _build_relationship_lookup(tom)
+                        if needs_rel:
+                            rel_lookup = _build_relationship_lookup(tom)
+                            rel_columns = _build_relationship_columns(tom)
+                        rownumber_cols = _build_rownumber_columns(tom)
                 except Exception:
                     rel_lookup = {}
+                    rel_columns = {}
+                    rownumber_cols = set()
             widget.dependency_tree = _build_dependency_tree(
-                rows, rel_lookup, widget.dataset_name or "Model"
+                rows, rel_lookup, widget.dataset_name or "Model", rownumber_cols
+            )
+            widget.dependency_columns = _build_dependency_columns(
+                rows, rel_columns, rownumber_cols
             )
             widget.error_message = ""
         except Exception as exc:  # noqa: BLE001
             widget.dependency_tree = []
+            widget.dependency_columns = []
             widget.error_message = (
                 f"Failed to compute query dependencies: {exc}"
             )
