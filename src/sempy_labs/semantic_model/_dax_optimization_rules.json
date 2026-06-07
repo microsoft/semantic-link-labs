@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "description": "Declarative DAX performance optimization rules executed by sempy_labs.semantic_model._dax_optimization. Each rule is evaluated against a flat 'metrics' dictionary (scalar rules) or a named 'collection' of items (for_each rules) derived from the DAX query, semantic model metadata (TOM), query dependencies, trace details, the DAX query plan and (optionally) Vertipaq Analyzer statistics. See the dax-optimization skill for the methodology behind these rules.",
+  "severity_order": ["high", "medium", "low", "info"],
+  "rules": [
+    {
+      "id": "SE_BOUND",
+      "title": "Query is Storage Engine bound",
+      "category": "Engine balance",
+      "severity": "medium",
+      "requires": ["trace"],
+      "kind": "scalar",
+      "condition": {
+        "all": [
+          {"metric": "total_duration_ms", "op": ">=", "value": 50},
+          {"metric": "se_pct", "op": ">=", "value": 0.7}
+        ]
+      },
+      "message": "The Storage Engine accounts for {se_pct_display} of the {total_duration_ms} ms total duration. The query spends most of its time scanning data.",
+      "recommendation": "Reduce the amount of data scanned by the Storage Engine: lower column cardinality, filter earlier, avoid scanning high-cardinality columns, and ensure relationships allow VertiPaq to prune partitions. Confirm the slow xmSQL scans in the trace correspond to large or high-cardinality tables.",
+      "references": [
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/",
+        "https://learn.microsoft.com/power-bi/guidance/dax-variables"
+      ]
+    },
+    {
+      "id": "FE_BOUND",
+      "title": "Query is Formula Engine bound",
+      "category": "Engine balance",
+      "severity": "medium",
+      "requires": ["trace"],
+      "kind": "scalar",
+      "condition": {
+        "all": [
+          {"metric": "total_duration_ms", "op": ">=", "value": 50},
+          {"metric": "fe_pct", "op": ">=", "value": 0.7}
+        ]
+      },
+      "message": "The Formula Engine accounts for {fe_pct_display} of the {total_duration_ms} ms total duration. The query spends most of its time in single-threaded Formula Engine work.",
+      "recommendation": "The Formula Engine is single-threaded and cannot be parallelized. Push more work to the Storage Engine: replace row-by-row logic with set-based DAX, avoid forcing CallbackDataID (e.g. IF/IFERROR inside iterators), reduce large intermediate materializations, and prefer aggregations that the Storage Engine can resolve directly.",
+      "references": [
+        "https://www.sqlbi.com/articles/optimizing-the-use-of-variables-in-dax/",
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/"
+      ]
+    },
+    {
+      "id": "MANY_SE_QUERIES",
+      "title": "High number of Storage Engine queries",
+      "category": "Storage Engine",
+      "severity": "medium",
+      "requires": ["trace"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "se_query_count", "op": ">=", "value": 10
+      },
+      "message": "The query generated {se_query_count} Storage Engine queries (excluding internal sub-queries). A large number of separate scans usually means the engine could not fuse them into fewer, larger scans.",
+      "recommendation": "Aim for fewer Storage Engine queries. Multiple scans of the same table often indicate complex filter context transitions, non-foldable logic, or iterators producing one SE query per row group. Simplify measure logic, use variables to compute a base value once, and avoid patterns that defeat VertiPaq fusion.",
+      "references": [
+        "https://www.sqlbi.com/articles/introducing-vertipaq-fusion/"
+      ]
+    },
+    {
+      "id": "CALLBACK_DATA_ID",
+      "title": "CallbackDataID detected in the physical query plan",
+      "category": "Query plan",
+      "severity": "high",
+      "requires": ["query_plan"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "callback_dataid_count", "op": ">=", "value": 1
+      },
+      "message": "The physical query plan contains {callback_dataid_count} CallbackDataID operation(s). CallbackDataID means the Storage Engine had to call back into the Formula Engine during a scan, which is slow and disables many VertiPaq optimizations.",
+      "recommendation": "Remove the constructs that force CallbackDataID. Common causes: IF / IFERROR / DIVIDE-with-alternate / complex conditional logic, error handling, date/time arithmetic, and rounding inside an iterator that runs in the Storage Engine. Move conditional logic out of the row context, precompute values with variables, or use calculated columns where appropriate.",
+      "references": [
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/",
+        "https://www.sqlbi.com/tv/callbackdataid-in-dax/"
+      ]
+    },
+    {
+      "id": "LOW_SE_PARALLELISM",
+      "title": "Low Storage Engine parallelism",
+      "category": "Storage Engine",
+      "severity": "low",
+      "requires": ["trace"],
+      "kind": "scalar",
+      "condition": {
+        "all": [
+          {"metric": "se_duration_ms", "op": ">=", "value": 100},
+          {"metric": "se_parallelism", "op": "<", "value": 1.2}
+        ]
+      },
+      "message": "Storage Engine parallelism is {se_parallelism_display} (SE CPU {se_cpu_ms} ms over {se_duration_ms} ms of SE duration). The Storage Engine scans are running mostly single-threaded.",
+      "recommendation": "Low parallelism limits the benefit of VertiPaq's multi-threaded engine. This often happens with many small sequential scans or scans serialized behind Formula Engine callbacks. Reduce CallbackDataID, consolidate scans, and ensure tables are large enough to benefit from segment-level parallelism.",
+      "references": [
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/"
+      ]
+    },
+    {
+      "id": "LARGE_SPOOL",
+      "title": "Large intermediate spools in the physical plan",
+      "category": "Query plan",
+      "severity": "medium",
+      "requires": ["query_plan"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "spool_count", "op": ">=", "value": 4
+      },
+      "message": "The physical query plan contains {spool_count} Spool operations. Spools materialize intermediate results in the Formula Engine and can consume significant memory and time when they are large.",
+      "recommendation": "Reduce the number and size of materialized intermediate results. Use variables to avoid recomputing the same sub-expression, filter before joining, and avoid producing large datacaches that the Formula Engine must iterate over.",
+      "references": [
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/"
+      ]
+    },
+    {
+      "id": "USES_IFERROR",
+      "title": "IFERROR / ISERROR forces row-by-row evaluation",
+      "category": "DAX syntax",
+      "severity": "high",
+      "requires": ["query"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "uses_iferror", "op": "==", "value": true
+      },
+      "message": "The query uses IFERROR or ISERROR. These functions force the engine to evaluate the wrapped expression row by row and almost always introduce CallbackDataID, preventing Storage Engine optimization.",
+      "recommendation": "Avoid IFERROR/ISERROR for performance-sensitive logic. For division use DIVIDE(numerator, denominator) which safely handles divide-by-zero without error trapping. Validate inputs with explicit conditions instead of catching errors.",
+      "references": [
+        "https://www.sqlbi.com/articles/error-handling-in-dax-measures/",
+        "https://learn.microsoft.com/dax/divide-function-dax"
+      ]
+    },
+    {
+      "id": "DIVISION_WITHOUT_DIVIDE",
+      "title": "Division operator used without DIVIDE",
+      "category": "DAX syntax",
+      "severity": "low",
+      "requires": ["query"],
+      "kind": "scalar",
+      "condition": {
+        "all": [
+          {"metric": "uses_division_operator", "op": "==", "value": true},
+          {"metric": "uses_divide_function", "op": "==", "value": false}
+        ]
+      },
+      "message": "The query uses the '/' division operator but does not use the DIVIDE function. A raw '/' can raise errors on divide-by-zero, which then tend to be wrapped in IFERROR and slow the query.",
+      "recommendation": "Replace 'a / b' with DIVIDE(a, b). DIVIDE returns BLANK (or a supplied alternate) on divide-by-zero without the overhead of error handling.",
+      "references": [
+        "https://learn.microsoft.com/dax/divide-function-dax"
+      ]
+    },
+    {
+      "id": "FILTER_FULL_TABLE",
+      "title": "FILTER applied over an entire table",
+      "category": "DAX syntax",
+      "severity": "medium",
+      "requires": ["query"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "filter_full_table_count", "op": ">=", "value": 1
+      },
+      "message": "The query applies FILTER over a full table {filter_full_table_count} time(s) (e.g. FILTER(Table, ...)). Filtering an entire table forces the engine to scan and evaluate every row.",
+      "recommendation": "Filter on the smallest set of columns needed instead of the whole table. Prefer FILTER(VALUES(Table[Column]), ...) or boolean column predicates inside CALCULATE which the Storage Engine can evaluate directly. Use KEEPFILTERS only when you specifically need to intersect with the existing filter context.",
+      "references": [
+        "https://www.sqlbi.com/articles/filter-arguments-in-calculate/",
+        "https://learn.microsoft.com/dax/best-practices/dax-avoid-converting-blank"
+      ]
+    },
+    {
+      "id": "NESTED_ITERATORS",
+      "title": "Nested iterators over potentially large tables",
+      "category": "DAX syntax",
+      "severity": "medium",
+      "requires": ["query"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "nested_iterator", "op": "==", "value": true
+      },
+      "message": "The query contains nested iterator functions (e.g. SUMX inside SUMX). Nested iteration multiplies the number of rows evaluated and is a common cause of slow, Formula-Engine-bound queries.",
+      "recommendation": "Flatten nested iterators where possible. Compute inner aggregations once with variables, push aggregation into the Storage Engine with simple SUMX/AVERAGEX over a single table, and avoid iterating one large table inside another.",
+      "references": [
+        "https://www.sqlbi.com/articles/nested-iterators-in-dax/"
+      ]
+    },
+    {
+      "id": "MANY_ITERATORS",
+      "title": "Many iterator functions in the query",
+      "category": "DAX syntax",
+      "severity": "low",
+      "requires": ["query"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "iterator_count", "op": ">=", "value": 5
+      },
+      "message": "The query uses {iterator_count} iterator functions (SUMX, AVERAGEX, FILTER, etc.). A high count of iterators increases the chance of row-by-row Formula Engine work.",
+      "recommendation": "Review each iterator and replace those that can be expressed as set-based aggregations. Where an iterator only sums a single column, a simple SUM over the column is faster and Storage-Engine friendly.",
+      "references": [
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/"
+      ]
+    },
+    {
+      "id": "MANY_REFERENCED_COLUMNS",
+      "title": "Query references a large number of columns",
+      "category": "Model design",
+      "severity": "low",
+      "requires": ["dependencies"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "referenced_column_count", "op": ">=", "value": 15
+      },
+      "message": "The query depends on {referenced_column_count} columns across {referenced_table_count} table(s). Wide queries scan more dictionaries and produce larger datacaches.",
+      "recommendation": "Confirm every referenced column is required. Removing unused columns from the query (and from SUMMARIZECOLUMNS/SELECTCOLUMNS projections) reduces the data the Storage Engine must materialize.",
+      "references": [
+        "https://www.sqlbi.com/articles/using-summarizecolumns-and-addmissingitems/"
+      ]
+    },
+    {
+      "id": "HIGH_CARDINALITY_COLUMN",
+      "title": "High-cardinality column referenced by the query",
+      "category": "Cardinality",
+      "severity": "medium",
+      "requires": ["vertipaq"],
+      "kind": "for_each",
+      "collection": "high_cardinality_columns",
+      "max_findings": 8,
+      "where": {
+        "field": "cardinality", "op": ">=", "value": 1000000
+      },
+      "message": "Column '{table}'[{column}] has {cardinality_display} unique values ({data_type}). High-cardinality columns produce large dictionaries and slow scans, joins, and DISTINCTCOUNT operations.",
+      "recommendation": "Reduce cardinality where possible: split a datetime column into separate date and time columns, round or bucket numeric values that do not need full precision, remove unused high-cardinality keys, and avoid grouping or DISTINCTCOUNT on the highest-cardinality columns in hot queries.",
+      "references": [
+        "https://www.sqlbi.com/articles/optimizing-high-cardinality-columns-in-vertipaq/",
+        "https://learn.microsoft.com/power-bi/guidance/import-modeling-data-reduction"
+      ]
+    },
+    {
+      "id": "FLOAT_HIGH_CARDINALITY_COLUMN",
+      "title": "High-cardinality floating point column",
+      "category": "Cardinality",
+      "severity": "medium",
+      "requires": ["vertipaq"],
+      "kind": "for_each",
+      "collection": "high_cardinality_columns",
+      "max_findings": 8,
+      "where": {
+        "all": [
+          {"field": "cardinality", "op": ">=", "value": 100000},
+          {"field": "is_floating_point", "op": "==", "value": true}
+        ]
+      },
+      "message": "Floating point column '{table}'[{column}] has {cardinality_display} unique values. Floating point (Double) columns with high cardinality are expensive to store and scan and can cause subtle rounding in grouping.",
+      "recommendation": "If the column does not need full floating point precision, convert it to a fixed decimal (Currency) or integer, or round it to fewer decimal places to dramatically reduce cardinality and size.",
+      "references": [
+        "https://www.sqlbi.com/articles/data-types-in-dax-and-data-modeling/"
+      ]
+    },
+    {
+      "id": "SLOW_SE_SCAN",
+      "title": "Slow Storage Engine scan",
+      "category": "Storage Engine",
+      "severity": "medium",
+      "requires": ["trace"],
+      "kind": "for_each",
+      "collection": "slow_se_queries",
+      "max_findings": 5,
+      "where": {
+        "field": "duration", "op": ">=", "value": 50
+      },
+      "message": "A Storage Engine scan ran for {duration} ms (CPU {cpu} ms). This single scan is a significant contributor to the total duration.",
+      "recommendation": "Inspect the xmSQL text of this scan in the DAX query plan. Long scans usually target large or high-cardinality tables, apply complex filters, or include a CallbackDataID. Reduce the rows scanned, simplify the filter, or remove the callback.",
+      "references": [
+        "https://www.sqlbi.com/articles/understanding-dax-query-plans/"
+      ]
+    },
+    {
+      "id": "NO_TRACE_CAPTURED",
+      "title": "No trace details were captured",
+      "category": "Diagnostics",
+      "severity": "info",
+      "requires": [],
+      "kind": "scalar",
+      "condition": {
+        "all": [
+          {"metric": "has_trace", "op": "==", "value": false},
+          {"metric": "has_query", "op": "==", "value": true}
+        ]
+      },
+      "message": "No trace details were captured for the current query, so engine-timing rules could not be evaluated.",
+      "recommendation": "Run the DAX query first (so trace events and the query plan are captured), then generate the performance analysis again for complete results.",
+      "references": []
+    },
+    {
+      "id": "NO_QUERY_PLAN_CAPTURED",
+      "title": "No DAX query plan was captured",
+      "category": "Diagnostics",
+      "severity": "info",
+      "requires": ["trace"],
+      "kind": "scalar",
+      "condition": {
+        "all": [
+          {"metric": "has_query_plan", "op": "==", "value": false},
+          {"metric": "has_trace", "op": "==", "value": true}
+        ]
+      },
+      "message": "Trace details are available but no DAX query plan (logical/physical) was captured, so plan-based rules (CallbackDataID, spools) could not be evaluated.",
+      "recommendation": "Re-run the query to capture the query plan. CallbackDataID and spool analysis require the physical plan.",
+      "references": []
+    }
+  ]
+}

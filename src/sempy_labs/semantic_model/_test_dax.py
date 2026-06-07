@@ -1429,6 +1429,9 @@ def _visualize_dax_test(
 .dtx .dtx-fmt-btn.dtx-fmt-loading {{
     cursor: progress;
 }}
+.dtx .dtx-analyze-btn {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-analyze-btn svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-analyze-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
 .dtx .dtx-fmt-btn.dtx-fmt-loading svg {{
     animation: dtx-fmt-pulse 0.9s ease-in-out infinite;
 }}
@@ -1979,6 +1982,131 @@ def _visualize_dax_test(
     padding: 6px 4px;
     user-select: none;
 }}
+.dtx .dtx-perf {{ padding: 8px 6px 14px; }}
+.dtx .dtx-perf-summary {{
+    border: 1px solid var(--ui-border, rgba(127,127,127,0.25));
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: var(--ui-surface-2, rgba(127,127,127,0.06));
+}}
+.dtx .dtx-perf-summary-top {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}}
+.dtx .dtx-perf-chip {{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--ui-surface, rgba(127,127,127,0.12));
+    color: var(--ui-text-secondary);
+    border: 1px solid var(--ui-border, rgba(127,127,127,0.20));
+}}
+.dtx .dtx-perf-chip strong {{ color: var(--ui-text); font-weight: 600; }}
+.dtx .dtx-perf-chip-high {{ background: rgba(220,38,38,0.14); border-color: rgba(220,38,38,0.45); }}
+.dtx .dtx-perf-chip-medium {{ background: rgba(217,119,6,0.14); border-color: rgba(217,119,6,0.45); }}
+.dtx .dtx-perf-chip-low {{ background: rgba(202,138,4,0.12); border-color: rgba(202,138,4,0.40); }}
+.dtx .dtx-perf-chip-info {{ background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.40); }}
+.dtx .dtx-perf-balance {{
+    display: flex;
+    height: 9px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 10px;
+    background: var(--ui-surface, rgba(127,127,127,0.18));
+}}
+.dtx .dtx-perf-balance-fe {{ background: #4f8cff; }}
+.dtx .dtx-perf-balance-se {{ background: #f59e0b; }}
+.dtx .dtx-perf-balance-legend {{
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-perf-balance-legend i {{
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+}}
+.dtx .dtx-perf-sw-fe {{ background: #4f8cff; }}
+.dtx .dtx-perf-sw-se {{ background: #f59e0b; }}
+.dtx .dtx-perf-cards {{ display: flex; flex-direction: column; gap: 8px; }}
+.dtx .dtx-perf-card {{
+    border: 1px solid var(--ui-border, rgba(127,127,127,0.25));
+    border-left-width: 4px;
+    border-radius: 8px;
+    padding: 9px 12px;
+    background: var(--ui-surface, rgba(127,127,127,0.05));
+}}
+.dtx .dtx-perf-card-high {{ border-left-color: #dc2626; }}
+.dtx .dtx-perf-card-medium {{ border-left-color: #d97706; }}
+.dtx .dtx-perf-card-low {{ border-left-color: #ca8a04; }}
+.dtx .dtx-perf-card-info {{ border-left-color: #3b82f6; }}
+.dtx .dtx-perf-card-head {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}}
+.dtx .dtx-perf-sev {{
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #fff;
+}}
+.dtx .dtx-perf-card-high .dtx-perf-sev {{ background: #dc2626; }}
+.dtx .dtx-perf-card-medium .dtx-perf-sev {{ background: #d97706; }}
+.dtx .dtx-perf-card-low .dtx-perf-sev {{ background: #ca8a04; }}
+.dtx .dtx-perf-card-info .dtx-perf-sev {{ background: #3b82f6; }}
+.dtx .dtx-perf-title {{ font-weight: 600; color: var(--ui-text); font-size: 13px; }}
+.dtx .dtx-perf-cat {{
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}}
+.dtx .dtx-perf-msg {{
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ui-text-secondary);
+    line-height: 1.45;
+}}
+.dtx .dtx-perf-rec {{
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ui-text);
+    line-height: 1.45;
+}}
+.dtx .dtx-perf-rec-label {{
+    font-weight: 600;
+    color: var(--ui-accent, #4f8cff);
+    margin-right: 4px;
+}}
+.dtx .dtx-perf-refs {{
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}}
+.dtx .dtx-perf-refs a {{
+    font-size: 11.5px;
+    color: var(--ui-accent, #4f8cff);
+    text-decoration: none;
+    word-break: break-all;
+}}
+.dtx .dtx-perf-refs a:hover {{ text-decoration: underline; }}
 .dtx .dtx-dep-row {{
     display: flex;
     align-items: center;
@@ -2765,6 +2893,15 @@ def _visualize_dax_test(
         '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'
         '</svg>'
     ).replace("`", "\\`")
+    # A "gauge / insights" mark used for the performance-analysis action.
+    analyze_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 3 v18 h18"/>'
+        '<path d="M7 15 l4 -5 3 3 4 -6"/>'
+        '</svg>'
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -2802,6 +2939,7 @@ function render({ model, el }) {
     const CUT_SVG = `__DTX_CUT__`;
     const COPY_SVG = `__DTX_COPY__`;
     const PASTE_SVG = `__DTX_PASTE__`;
+    const ANALYZE_SVG = `__DTX_ANALYZE__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -4432,6 +4570,29 @@ function render({ model, el }) {
     });
     toolbar.appendChild(runBtn);
 
+    // ---------- Analyze (DAX performance analysis) ----------
+    const analyzeBtn = document.createElement("button");
+    analyzeBtn.type = "button";
+    analyzeBtn.className = "dtx-fmt-btn dtx-analyze-btn";
+    analyzeBtn.innerHTML = ANALYZE_SVG;
+    analyzeBtn.title =
+        "Generate a DAX performance analysis (query, model metadata, " +
+        "dependencies, trace, query plan, Vertipaq Analyzer)";
+    analyzeBtn.setAttribute("aria-label", "Generate DAX performance analysis");
+    function renderAnalyzeBtn() {
+        const chosen = model.get("dataset_chosen") === true;
+        const loading = model.get("performance_loading") === true;
+        analyzeBtn.disabled = !chosen || loading;
+        analyzeBtn.classList.toggle("dtx-fmt-loading", loading);
+    }
+    analyzeBtn.addEventListener("click", () => {
+        if (analyzeBtn.disabled) return;
+        // Persist the current editor text so the analysis reflects it.
+        model.set("dax_query", textarea.value);
+        triggerPerformanceAnalysis(true);
+    });
+    toolbar.appendChild(analyzeBtn);
+
     const textarea = document.createElement("textarea");
     textarea.className = "dtx-query";
     textarea.spellcheck = false;
@@ -4719,6 +4880,10 @@ function render({ model, el }) {
     segVertipaq.type = "button";
     segVertipaq.className = "dtx-seg-btn";
     segVertipaq.textContent = "Vertipaq Analyzer";
+    const segPerf = document.createElement("button");
+    segPerf.type = "button";
+    segPerf.className = "dtx-seg-btn";
+    segPerf.textContent = "Performance analysis";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
     seg.appendChild(segQueryPlan);
@@ -4726,6 +4891,7 @@ function render({ model, el }) {
     seg.appendChild(segHistory);
     seg.appendChild(segDependencies);
     seg.appendChild(segVertipaq);
+    seg.appendChild(segPerf);
     viewToolbar.appendChild(seg);
 
     // ---------- DAX Query Plan toggle (Logical / Physical) ----------
@@ -4874,6 +5040,27 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    // Trigger a fresh DAX performance analysis and switch to its tab. The
+    // analysis combines the DAX query, model metadata, query dependencies,
+    // trace details, the DAX query plan and (when meaningful) Vertipaq
+    // Analyzer statistics. When ``force`` is false the analysis is only run if
+    // no results exist yet (used when simply switching to the tab); the
+    // Analyze button passes ``force = true`` to always recompute.
+    function triggerPerformanceAnalysis(force) {
+        model.set("view_mode", "performance");
+        const hasResults =
+            Object.keys(model.get("performance_summary") || {}).length > 0;
+        if (model.get("dataset_chosen") === true &&
+            model.get("performance_loading") !== true &&
+            (force === true || !hasResults)) {
+            model.set("performance_loading", true);
+            model.set("performance_trigger",
+                (model.get("performance_trigger") || 0) + 1);
+        }
+        model.save_changes();
+    }
+    segPerf.addEventListener("click", () => triggerPerformanceAnalysis(false));
+
     // Maximum number of rows for which we render an interactive chart.
     // Beyond this, the Chart option is disabled to keep the widget responsive.
     const CHART_MAX_ROWS = 200;
@@ -4911,6 +5098,7 @@ function render({ model, el }) {
         segQueryPlan.classList.toggle("dtx-seg-btn-on", mode === "queryplan");
         segDependencies.classList.toggle("dtx-seg-btn-on", mode === "dependencies");
         segVertipaq.classList.toggle("dtx-seg-btn-on", mode === "vertipaq");
+        segPerf.classList.toggle("dtx-seg-btn-on", mode === "performance");
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
@@ -5431,6 +5619,85 @@ function render({ model, el }) {
         chartWrap.innerHTML = svg + legendHtml;
     }
 
+    function renderPerformance() {
+        if (model.get("performance_loading") === true) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Generating DAX performance analysis&hellip;</div></div>`;
+            return;
+        }
+        const findings = model.get("performance_findings") || [];
+        const summary = model.get("performance_summary") || {};
+        if (!summary || !Object.keys(summary).length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No performance analysis yet. Click <strong>Analyze</strong> to generate one.</div></div>`;
+            return;
+        }
+        const sev = summary.severity_counts || {};
+        const fmtMs = v => (v == null ? "&mdash;" : Number(v).toLocaleString() + " ms");
+        const fmtPct = v => (v == null ? "" : Number(v).toFixed(1) + "%");
+        const chip = (label, val, cls) =>
+            `<span class="dtx-perf-chip ${cls || ""}">${escapeHtml(label)}: <strong>${val}</strong></span>`;
+
+        // Engine-balance bar (FE vs SE). fe_pct/se_pct are fractions (0-1).
+        const fePct = Number(summary.fe_pct || 0) * 100;
+        const sePct = Number(summary.se_pct || 0) * 100;
+        const balanceBar = `
+            <div class="dtx-perf-balance" title="Formula Engine vs Storage Engine">
+                <div class="dtx-perf-balance-fe" style="width:${Math.max(0, Math.min(100, fePct))}%"></div>
+                <div class="dtx-perf-balance-se" style="width:${Math.max(0, Math.min(100, sePct))}%"></div>
+            </div>
+            <div class="dtx-perf-balance-legend">
+                <span><i class="dtx-perf-sw-fe"></i> FE ${fmtPct(fePct)}</span>
+                <span><i class="dtx-perf-sw-se"></i> SE ${fmtPct(sePct)}</span>
+            </div>`;
+
+        const sevChips = [
+            sev.high ? chip("High", sev.high, "dtx-perf-chip-high") : "",
+            sev.medium ? chip("Medium", sev.medium, "dtx-perf-chip-medium") : "",
+            sev.low ? chip("Low", sev.low, "dtx-perf-chip-low") : "",
+            sev.info ? chip("Info", sev.info, "dtx-perf-chip-info") : "",
+        ].filter(Boolean).join("");
+
+        const header = `
+            <div class="dtx-perf-summary">
+                <div class="dtx-perf-summary-top">
+                    ${chip("Total", fmtMs(summary.total_duration_ms))}
+                    ${chip("FE", fmtMs(summary.fe_duration_ms))}
+                    ${chip("SE", fmtMs(summary.se_duration_ms))}
+                    ${chip("Findings", summary.total_findings != null ? summary.total_findings : 0)}
+                    ${sevChips}
+                </div>
+                ${balanceBar}
+            </div>`;
+
+        let cards;
+        if (!findings.length) {
+            cards = `<div class="dtx-empty">No optimization findings &mdash; this query looks healthy based on the available signals.</div>`;
+        } else {
+            cards = findings.map(f => {
+                const sevCls = "dtx-perf-card-" + escapeHtml(String(f.severity || "info"));
+                const refs = (f.references || []).map(r =>
+                    `<a href="${escapeHtml(String(r))}" target="_blank" rel="noopener">${escapeHtml(String(r))}</a>`
+                ).join("");
+                const refsHtml = refs
+                    ? `<div class="dtx-perf-refs">${refs}</div>` : "";
+                const rec = f.recommendation
+                    ? `<div class="dtx-perf-rec"><span class="dtx-perf-rec-label">Recommendation</span> ${escapeHtml(String(f.recommendation))}</div>`
+                    : "";
+                return `
+                    <div class="dtx-perf-card ${sevCls}">
+                        <div class="dtx-perf-card-head">
+                            <span class="dtx-perf-sev">${escapeHtml(String(f.severity || "info").toUpperCase())}</span>
+                            <span class="dtx-perf-title">${escapeHtml(String(f.title || f.id || ""))}</span>
+                            <span class="dtx-perf-cat">${escapeHtml(String(f.category || ""))}</span>
+                        </div>
+                        <div class="dtx-perf-msg">${escapeHtml(String(f.message || ""))}</div>
+                        ${rec}
+                        ${refsHtml}
+                    </div>`;
+            }).join("");
+        }
+        tableWrap.innerHTML = `<div class="dtx-perf">${header}<div class="dtx-perf-cards">${cards}</div></div>`;
+    }
+
     function renderTable() {
         const mode = model.get("view_mode") || "trace";
         // Default visibility — chart/table swap below.
@@ -5456,6 +5723,9 @@ function render({ model, el }) {
             resultMeta.style.display = "none";
         } else if (mode === "vertipaq") {
             renderVertipaqTable();
+            resultMeta.style.display = "none";
+        } else if (mode === "performance") {
+            renderPerformance();
             resultMeta.style.display = "none";
         } else {
             renderTraceTable();
@@ -5494,6 +5764,10 @@ function render({ model, el }) {
     model.on("change:vertipaq_sections", renderTable);
     model.on("change:vertipaq_section", renderTable);
     model.on("change:vertipaq_loading", renderTable);
+    model.on("change:performance_findings", renderTable);
+    model.on("change:performance_summary", renderTable);
+    model.on("change:performance_loading", () => { renderAnalyzeBtn(); renderTable(); });
+    model.on("change:dataset_chosen", renderAnalyzeBtn);
     model.on("change:history_excel_b64", () => {
         const b64 = model.get("history_excel_b64") || "";
         if (!b64) return;
@@ -5572,6 +5846,7 @@ function render({ model, el }) {
     renderImpersonation();
     renderError();
     renderTable();
+    renderAnalyzeBtn();
     renderSidebarChrome();
     renderPicker();
     renderFmtBtn();
@@ -5622,6 +5897,7 @@ export default { render };
         .replace("__DTX_CUT__", cut_icon)
         .replace("__DTX_COPY__", copy_icon)
         .replace("__DTX_PASTE__", paste_icon)
+        .replace("__DTX_ANALYZE__", analyze_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -5663,6 +5939,10 @@ export default { render };
         vertipaq_section = traitlets.Unicode("").tag(sync=True)
         vertipaq_loading = traitlets.Bool(False).tag(sync=True)
         vertipaq_trigger = traitlets.Int(0).tag(sync=True)
+        performance_findings = traitlets.List([]).tag(sync=True)
+        performance_summary = traitlets.Dict({}).tag(sync=True)
+        performance_loading = traitlets.Bool(False).tag(sync=True)
+        performance_trigger = traitlets.Int(0).tag(sync=True)
         model_tree = traitlets.List([]).tag(sync=True)
         sidebar_collapsed = traitlets.Bool(False).tag(sync=True)
         refresh_metadata_trigger = traitlets.Int(0).tag(sync=True)
@@ -5765,6 +6045,10 @@ export default { render };
         vertipaq_section="",
         vertipaq_loading=False,
         vertipaq_trigger=0,
+        performance_findings=[],
+        performance_summary={},
+        performance_loading=False,
+        performance_trigger=0,
         model_tree=initial_tree,
         sidebar_collapsed=False,
         refresh_metadata_trigger=0,
@@ -6270,10 +6554,90 @@ export default { render };
         widget.vertipaq_loading = True
         threading.Thread(target=_compute_vertipaq, daemon=True).start()
 
+    def _compute_performance() -> None:
+        """Generate a DAX performance analysis for the current query and push
+        the resulting findings (and a summary) to the front-end.
+
+        The analysis combines the DAX query, the semantic model metadata
+        (``model_tree``), the query dependencies, the captured trace details,
+        the DAX query plan and -- when the Data column cardinalities are not
+        all trivial -- Vertipaq Analyzer statistics. Dependencies and Vertipaq
+        stats are computed on demand (and cached) when they have not already
+        been produced by their respective tabs."""
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.performance_findings = []
+                widget.performance_summary = {}
+                return
+            from sempy_labs.semantic_model._dax_optimization import (
+                analyze_dax_performance,
+            )
+
+            # Reuse query dependencies if already computed, otherwise compute
+            # them now (synchronously) so the analysis can reason about the
+            # columns the query touches.
+            dep_cols = list(widget.dependency_columns or [])
+            if not dep_cols and (widget.dax_query or "").strip():
+                try:
+                    _compute_dependencies()
+                    dep_cols = list(widget.dependency_columns or [])
+                except Exception:  # noqa: BLE001
+                    dep_cols = []
+
+            # Reuse Vertipaq Analyzer results if the tab has been opened,
+            # otherwise compute them now (capturing the analyzer's own HTML).
+            vertipaq = getattr(widget, "last_vertipaq", None) or {}
+            if not vertipaq:
+                try:
+                    from sempy_labs.semantic_model._vertipaq_analyzer import (
+                        vertipaq_analyzer,
+                    )
+                    from IPython.utils.capture import capture_output
+
+                    with capture_output():
+                        vertipaq = vertipaq_analyzer(
+                            dataset=model_ctx["dataset_id"],
+                            workspace=model_ctx["workspace_id"],
+                        )
+                    widget.last_vertipaq = vertipaq  # type: ignore[attr-defined]
+                except Exception:  # noqa: BLE001
+                    vertipaq = {}
+
+            result = analyze_dax_performance(
+                dax_query=widget.dax_query or "",
+                trace_rows=list(widget.trace_rows or []),
+                total_duration_ms=int(widget.total_duration or 0),
+                fe_duration_ms=int(widget.fe_duration or 0),
+                se_duration_ms=int(widget.se_duration or 0),
+                cpu_time_ms=int(widget.cpu_time or 0),
+                query_plan_rows=list(widget.query_plan_rows or []),
+                dependency_columns=dep_cols,
+                model_tree=list(widget.model_tree or []),
+                vertipaq=vertipaq,
+                cold_cache=bool(widget.clear_cache),
+            )
+            widget.performance_findings = result["findings"]
+            widget.performance_summary = result["summary"]
+            widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.performance_findings = []
+            widget.performance_summary = {}
+            widget.error_message = (
+                f"Failed to generate performance analysis: {exc}"
+            )
+        finally:
+            widget.performance_loading = False
+
+    def _on_performance(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_compute_performance, daemon=True).start()
+
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
     widget.observe(_on_dependencies, names="dependencies_trigger")
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
+    widget.observe(_on_performance, names="performance_trigger")
 
     def _build_history_excel() -> None:
         import base64
@@ -6440,6 +6804,9 @@ export default { render };
         widget.vertipaq_sections = []
         widget.vertipaq_section = ""
         widget.last_vertipaq = {}  # type: ignore[attr-defined]
+        # Clear any performance analysis produced for the previous model.
+        widget.performance_findings = []
+        widget.performance_summary = {}
         # Reset impersonation so a stale role/user from a prior model isn't
         # reused against a model that may not define it.
         widget.impersonation_mode = "none"
