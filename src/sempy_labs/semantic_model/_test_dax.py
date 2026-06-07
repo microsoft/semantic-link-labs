@@ -275,23 +275,41 @@ def _execute_and_capture(
         effective_user_name=effective_user_name,
         role=role,
     )
-    # Wait for the trace to flush the real query's QueryEnd event. Poll the
-    # running trace rather than sleeping a fixed interval so the common case
-    # returns quickly, while keeping a 2s cap so a missed event can never hang
-    # the run (matching the prior behavior as an upper bound).
+    # Wait for the trace to flush this query's events. ``fabric.evaluate_dax``
+    # has already returned, which means the engine has finished the query and
+    # *will* emit a QueryEnd event plus the query's DAX query plan events — we
+    # only need to wait for the trace buffer to flush them. Events frequently
+    # arrive across several separate flushes (and the logical/physical plan
+    # rows usually land *after* QueryEnd), so capture happens in two phases:
+    #   1. wait for the real query's QueryEnd, then
+    #   2. wait for the DAX query plan rows to stop growing.
+    # The common case breaks out of each phase in a fraction of a second; the
+    # generous caps only matter on a slow capacity / slow trace flush, where
+    # the previous short caps (2s / 5s) silently dropped the query plan and
+    # zeroed the trace timings.
     logs: Optional[pd.DataFrame] = None
-    _deadline = time.monotonic() + 2.0
-    while time.monotonic() < _deadline:
+
+    def _new_rows(_logs: Optional[pd.DataFrame]) -> pd.DataFrame:
+        if _logs is None:
+            return pd.DataFrame()
+        if len(_logs) > baseline_count:
+            return _logs.iloc[baseline_count:]
+        return _logs.iloc[0:0]
+
+    # Phase 1: wait for the real query's QueryEnd event (not the warm-up
+    # ``EVALUATE {1}``). Since the query has already completed, this is
+    # essentially guaranteed to arrive; break the instant it does.
+    qe_seen = False
+    _qe_deadline = time.monotonic() + 30.0
+    while time.monotonic() < _qe_deadline:
         time.sleep(0.1)
         try:
-            logs = _get_trace_logs(trace)
+            _l = _get_trace_logs(trace)
         except Exception:
             continue
-        if logs is None or logs.empty:
-            continue
-        _new = (
-            logs.iloc[baseline_count:] if len(logs) > baseline_count else logs.iloc[0:0]
-        )
+        if _l is not None and not _l.empty:
+            logs = _l
+        _new = _new_rows(logs)
         _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
         _td = "Text Data" if "Text Data" in _new.columns else "TextData"
         if _ec not in _new.columns:
@@ -304,24 +322,52 @@ def _execute_and_capture(
             # EVALUATE {1}) has been captured.
             _real = _qe[~_qe[_td].astype(str).str.startswith("EVALUATE {1}")]
             if not _real.empty:
+                qe_seen = True
                 break
         elif len(_qe) >= (2 if run_warmup else 1):
             # No text available: warm-up + real query == 2 QueryEnd, or just
             # the real query when the warm-up was skipped.
+            qe_seen = True
             break
 
-    # DAX Query Plan events (Logical/Physical) are serialized by the engine
-    # during query cleanup and are frequently flushed into the trace buffer
-    # *after* the QueryEnd event that ended the loop above. A single query
-    # normally emits two plan events (a logical and a physical plan), and they
-    # can arrive in separate trace flushes, so breaking as soon as the first
-    # plan row appears risks dropping the second one. Poll (always re-reading
-    # the live trace, even if ``logs`` is currently empty) until the number of
-    # captured DAXQueryPlan rows stops growing for a short grace period, or a
-    # cap is reached.
-    _plan_deadline = time.monotonic() + 5.0
+    # Phase 2: wait for the DAX Query Plan events. The engine serializes these
+    # during query cleanup and almost always flushes them into the trace buffer
+    # *after* the QueryEnd captured above (often in a separate flush a second or
+    # more later). A normal ``EVALUATE`` query emits exactly two plan events — a
+    # logical plan and a physical plan — which can arrive in separate flushes,
+    # so this phase keeps polling until BOTH have been captured (the fast path),
+    # falling back to a "row count held steady" heuristic for the rare query
+    # whose plan shape differs.
+    #
+    # Because essentially every real DAX query produces a plan, the loop biases
+    # heavily toward waiting: it keeps polling for a generous window after
+    # QueryEnd rather than declaring "no plan" the moment the buffer is briefly
+    # quiet. Only a query that truly emits no plan (e.g. a trivial constant
+    # evaluation) pays the longer wait, and that is rare in practice.
+    def _plan_types(_n: pd.DataFrame, _ecol: str) -> set:
+        if _ecol not in _n.columns or "Event Subclass" not in _n.columns:
+            return set()
+        _pl = _n[_n[_ecol] == "DAXQueryPlan"]
+        _types: set = set()
+        for _sc in _pl["Event Subclass"].astype(str):
+            _low = _sc.lower()
+            if "physical" in _low or _sc.strip() == "2":
+                _types.add("physical")
+            elif "logical" in _low or _sc.strip() == "1":
+                _types.add("logical")
+            else:
+                _types.add(_sc)
+        return _types
+
+    # The inline wait here is deliberately short so the result grid is not held
+    # up: when the plan flushes promptly (the common case) it is captured and
+    # shown together with the results, and when it flushes late the caller's
+    # background back-fill (``_backfill_query_plan``) keeps watching the trace
+    # and populates the Query Plan tab as soon as the events arrive.
+    _plan_deadline = time.monotonic() + 6.0
     _plan_count = -1
     _stable_since: Optional[float] = None
+    _qe_at: Optional[float] = time.monotonic() if qe_seen else None
     while time.monotonic() < _plan_deadline:
         try:
             _l = _get_trace_logs(trace)
@@ -329,25 +375,34 @@ def _execute_and_capture(
             _l = None
         if _l is not None and not _l.empty:
             logs = _l
-        if logs is not None and len(logs) > baseline_count:
-            _new = logs.iloc[baseline_count:]
-        elif logs is not None:
-            _new = logs.iloc[0:0]
-        else:
-            _new = pd.DataFrame()
+        _new = _new_rows(logs)
         _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
+        if not qe_seen and _ec in _new.columns:
+            # QueryEnd may still be in flight if phase 1 timed out; keep an eye
+            # out for it so the trace timings are not lost.
+            _qe = _new[_new[_ec] == "QueryEnd"]
+            if not _qe.empty:
+                qe_seen = True
+                _qe_at = time.monotonic()
         _cur = int((_new[_ec] == "DAXQueryPlan").sum()) if _ec in _new.columns else 0
-        if _cur > 0:
-            if _cur != _plan_count:
-                # New plan row(s) arrived; reset the stability timer so we keep
-                # waiting for any further plan events still being flushed.
-                _plan_count = _cur
-                _stable_since = time.monotonic()
-            elif _stable_since is not None and (
-                time.monotonic() - _stable_since >= 0.5
-            ):
-                # Plan count held steady long enough: assume all DAX query plan
-                # events for this query have been captured.
+        # Fast path: both a logical and a physical plan have been captured —
+        # this is the complete plan for a normal query, so stop immediately.
+        if {"logical", "physical"}.issubset(_plan_types(_new, _ec)):
+            break
+        if _cur != _plan_count:
+            # New plan row(s) arrived; reset the stability timer so we keep
+            # waiting for any further plan events still being flushed.
+            _plan_count = _cur
+            _stable_since = time.monotonic()
+        elif _stable_since is not None and (time.monotonic() - _stable_since >= 1.0):
+            # Plan count held steady long enough.
+            if _cur > 0:
+                # At least one plan row captured and no more are arriving.
+                break
+            # No plan row yet. Give it a brief grace period past QueryEnd, then
+            # stop and let the background back-fill catch a late-arriving plan
+            # rather than blocking the result grid.
+            if _qe_at is not None and (time.monotonic() - _qe_at >= 3.0):
                 break
         time.sleep(0.1)
 
@@ -2121,15 +2176,17 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-plan-seg {{ margin-right: 8px; }}
 .dtx .dtx-dep-seg {{ margin-right: 8px; }}
-.dtx table.dtx-plan-table td.dtx-plan-line {{
+.dtx table.dtx-plan-table td.dtx-plan-pane {{
     color: var(--ui-text-secondary);
     vertical-align: top;
     white-space: nowrap;
+    background: var(--ui-bg) !important;
+    padding: 10px 16px;
 }}
-.dtx table.dtx-plan-table td.dtx-plan-line pre {{
+.dtx table.dtx-plan-table td.dtx-plan-pane pre {{
     margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
+    white-space: pre;
+    overflow-x: auto;
     font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
     font-size: 12px;
     line-height: 1.5;
@@ -5265,7 +5322,7 @@ function render({ model, el }) {
     const segVertipaq = document.createElement("button");
     segVertipaq.type = "button";
     segVertipaq.className = "dtx-seg-btn";
-    segVertipaq.textContent = "Vertipaq Analyzer";
+    segVertipaq.textContent = "Vertipaq analyzer";
     const segPerf = document.createElement("button");
     segPerf.type = "button";
     segPerf.className = "dtx-seg-btn";
@@ -5640,19 +5697,13 @@ function render({ model, el }) {
             tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No ${escapeHtml(planType)} Query Plan was captured for the last query.</td></tr></tbody></table>`;
             return;
         }
-        const body = matching.map(r => {
-            const lines = String(r.text || "").split(/\r?\n/);
-            return lines.map(line => {
-                // Preserve the plan's indentation while keeping it readable.
-                const indentMatch = line.match(/^(\s*)/);
-                const indent = indentMatch ? indentMatch[1].length : 0;
-                return `<tr><td class="dtx-plan-line" style="padding-left:${8 + indent * 8}px"><pre>${escapeHtml(line.trimStart())}</pre></td></tr>`;
-            }).join("");
-        }).join("");
+        // Render the whole plan as a single pane. A <pre> preserves the plan's
+        // own indentation, so there is no per-line row striping.
+        const planText = matching.map(r => String(r.text || "")).join("\n");
         tableWrap.innerHTML = `
             <table class="dtx-plan-table">
                 <thead><tr><th>${escapeHtml(planType)} Query Plan</th></tr></thead>
-                <tbody>${body}</tbody>
+                <tbody><tr><td class="dtx-plan-pane"><pre>${escapeHtml(planText)}</pre></td></tr></tbody>
             </table>`;
     }
 
@@ -6584,6 +6635,9 @@ export default { render };
                         dax_string="EVALUATE {1}",
                     )
                     _deadline = time.monotonic() + 5.0
+                    _qe_seen_at: Optional[float] = None
+                    _last_len = -1
+                    _stable_at: Optional[float] = None
                     while time.monotonic() < _deadline:
                         time.sleep(0.1)
                         try:
@@ -6599,9 +6653,27 @@ export default { render };
                         )
                         if _ec not in _logs.columns:
                             continue
-                        if not _logs[_logs[_ec] == "QueryEnd"].empty:
-                            baseline = len(_logs)
+                        if (
+                            _qe_seen_at is None
+                            and not _logs[_logs[_ec] == "QueryEnd"].empty
+                        ):
+                            _qe_seen_at = time.monotonic()
                             warmed = True
+                        if _qe_seen_at is None:
+                            continue
+                        # The warm-up's QueryEnd has been seen. Let any of its
+                        # trailing rows (e.g. a late DAXQueryPlan) settle before
+                        # fixing the baseline, so the warm-up's plan is never
+                        # mis-attributed to the first real query.
+                        if len(_logs) != _last_len:
+                            _last_len = len(_logs)
+                            _stable_at = time.monotonic()
+                        baseline = len(_logs)
+                        if _stable_at is not None and (
+                            time.monotonic() - _stable_at >= 0.6
+                        ):
+                            break
+                        if time.monotonic() - _qe_seen_at >= 2.0:
                             break
                 except Exception:
                     pass
@@ -6627,10 +6699,15 @@ export default { render };
         clear_cache_flag: bool,
         effective_user: Optional[str],
         role_name: Optional[str],
-    ) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame, Optional[int]]:
         """Run a query against the long-running trace, capturing only the rows
         it produced. Falls back to a one-shot trace if the persistent trace is
-        not available."""
+        not available.
+
+        The final tuple element is the trace-log baseline (row count) at which
+        this query started, or ``None`` for the one-shot fallback. The caller
+        uses it to back-fill a late-arriving DAX query plan from the persistent
+        trace after the results have already been shown."""
         from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
 
         ds_id = model_ctx["dataset_id"]
@@ -6641,7 +6718,7 @@ export default { render };
             baseline = trace_ctx["baseline"]
             run_warmup = not trace_ctx["warmed_up"]
         if trace is None:
-            # Persistent tracing unavailable: one-shot fallback.
+            # Persistent tracing unavailable: one-shot fallback (no back-fill).
             return _run_dax_trace(
                 dataset_id=ds_id,
                 workspace_id=ws_id,
@@ -6649,7 +6726,7 @@ export default { render };
                 clear_cache=clear_cache_flag,
                 effective_user_name=effective_user,
                 role=role_name,
-            )
+            ) + (None,)
         if clear_cache_flag:
             _clear_cache_fn(dataset=ds_id, workspace=ws_id)
         result_df, new_logs, new_count = _execute_and_capture(
@@ -6668,11 +6745,50 @@ export default { render };
                 trace_ctx["baseline"] = new_count
                 trace_ctx["warmed_up"] = True
         df, total, fe, se, cpu = _compute_trace_stats(new_logs)
-        return df, total, fe, se, cpu, result_df
+        return df, total, fe, se, cpu, result_df, baseline
 
     import atexit
 
     atexit.register(_stop_persistent_trace)
+
+    def _backfill_query_plan(run_id: int, start_baseline: int) -> None:
+        """Watch the persistent trace after a query has returned and back-fill
+        the DAX query plan if it flushes late.
+
+        A query's ``DAXQueryPlan`` events are delivered to the trace buffer
+        asynchronously and, on a busy capacity, can arrive a few seconds after
+        the query itself completed — i.e. after the inline capture in
+        ``_execute_and_capture`` has already returned the results. This keeps
+        polling the trace (slicing from this query's start baseline) and sets
+        ``query_plan_rows`` the moment the plan appears, so the Query Plan tab
+        is populated reliably without ever delaying the result grid.
+
+        The poll stops as soon as a newer run starts (or this run is canceled):
+        the trace rows between this query's start baseline and the next query's
+        events belong exclusively to this query, so stopping there prevents
+        attributing a later query's plan to this one."""
+        _deadline = time.monotonic() + 25.0
+        while time.monotonic() < _deadline:
+            time.sleep(0.3)
+            with state_lock:
+                superseded = run_state["current_run_id"] != run_id
+                canceled = run_id in run_state["canceled_run_ids"]
+            if superseded or canceled:
+                return
+            with trace_lock:
+                trace = trace_ctx["trace"] if trace_ctx["started"] else None
+            if trace is None:
+                return
+            try:
+                logs = _get_trace_logs(trace)
+            except Exception:
+                continue
+            if logs is None or logs.empty or len(logs) <= start_baseline:
+                continue
+            plan_rows = _query_plan_rows_from_df(logs.iloc[start_baseline:])
+            if plan_rows:
+                widget.query_plan_rows = plan_rows
+                return
 
     def _worker(
         query: str,
@@ -6690,6 +6806,7 @@ export default { render };
                 new_se,
                 new_cpu,
                 new_result,
+                start_baseline,
             ) = _run_query_persistent(
                 query=query,
                 clear_cache_flag=clear_cache_flag,
@@ -6763,6 +6880,15 @@ export default { render };
             widget.trace_history = [_entry] + list(widget.trace_history)
         except Exception:
             pass
+
+        # If the DAX query plan was not captured inline (it can flush into the
+        # trace a few seconds after the query completes), keep watching the
+        # persistent trace and back-fill the Query Plan tab once it arrives.
+        if start_baseline is not None and not (widget.query_plan_rows or []):
+            try:
+                _backfill_query_plan(run_id, int(start_baseline))
+            except Exception:
+                pass
 
     def _on_run(change):
         if change["new"] == change["old"]:
