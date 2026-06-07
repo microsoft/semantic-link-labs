@@ -1553,8 +1553,8 @@ def _visualize_dax_test(
     cursor: pointer;
 }}
 .dtx .dtx-hist-btn svg {{
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
 }}
 .dtx .dtx-hist-btn:hover:not(:disabled) {{
     border-color: var(--ui-accent);
