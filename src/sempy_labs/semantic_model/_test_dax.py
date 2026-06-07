@@ -1951,6 +1951,7 @@ def _visualize_dax_test(
 .dtx .dtx-query-hl .dtx-tk-number {{ color: var(--ui-syntax-number) !important; }}
 .dtx .dtx-query-hl .dtx-tk-virtual_column {{ color: var(--ui-syntax-virtual-column) !important; }}
 .dtx .dtx-query-hl .dtx-tk-string {{ color: var(--ui-syntax-string) !important; }}
+.dtx .dtx-query-hl .dtx-tk-comment {{ color: var(--ui-syntax-comment) !important; font-style: italic; }}
 .dtx .dtx-query-hl .dtx-tk-operator,
 .dtx .dtx-query-hl .dtx-tk-punctuation {{ color: var(--ui-syntax-operator) !important; }}
 .dtx .dtx-query {{

@@ -272,6 +272,7 @@ SYNTAX_HIGHLIGHT_VARS: str = """\
 --ui-syntax-number: #FF9F45;
 --ui-syntax-virtual-column: #FF7A8A;
 --ui-syntax-string: #9BB87A;
+--ui-syntax-comment: #6A9955;
 --ui-syntax-operator: #A6A6A6;
 --ui-syntax-punctuation: #A6A6A6;
 """
