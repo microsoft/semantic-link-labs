@@ -1206,6 +1206,8 @@ def get_capacity(capacity: Optional[str | UUID] = None) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Capacities - Get Capacity <https://learn.microsoft.com/rest/api/fabric/core/capacities/get-capacity>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity : str | uuid.UUID, default=None
@@ -1230,7 +1232,7 @@ def get_capacity(capacity: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    response = _base_api(request=f"/v1/capacities/{capacity_id}")
+    response = _base_api(request=f"/v1/capacities/{capacity_id}", client="fabric_sp")
     v = response.json()
 
     new_data = {
