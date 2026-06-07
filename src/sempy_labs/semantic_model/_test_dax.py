@@ -7,7 +7,24 @@ from typing import Optional, Tuple
 from sempy._utils._log import log
 from uuid import UUID
 import time
+import warnings
 from datetime import datetime, timezone
+
+
+def _get_trace_logs(trace) -> Optional[pd.DataFrame]:
+    """Return ``trace.get_trace_logs()`` while suppressing the noisy
+    ``"No trace logs have been recorded..."`` ``UserWarning`` that sempy emits
+    when the call happens before the engine has flushed any events. The polling
+    loops in this module call ``get_trace_logs`` repeatedly (often before logs
+    exist), so this warning is expected and not actionable for the user."""
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="No trace logs have been recorded",
+            category=UserWarning,
+        )
+        return trace.get_trace_logs()
 
 
 @log
@@ -267,7 +284,7 @@ def _execute_and_capture(
     while time.monotonic() < _deadline:
         time.sleep(0.1)
         try:
-            logs = trace.get_trace_logs()
+            logs = _get_trace_logs(trace)
         except Exception:
             continue
         if logs is None or logs.empty:
@@ -305,7 +322,7 @@ def _execute_and_capture(
     _stable_since: Optional[float] = None
     while time.monotonic() < _plan_deadline:
         try:
-            _l = trace.get_trace_logs()
+            _l = _get_trace_logs(trace)
         except Exception:
             _l = None
         if _l is not None and not _l.empty:
@@ -336,7 +353,7 @@ def _execute_and_capture(
 
     if logs is None:
         try:
-            logs = trace.get_trace_logs()
+            logs = _get_trace_logs(trace)
         except Exception:
             logs = pd.DataFrame()
     if logs is None:
@@ -5871,7 +5888,7 @@ export default { render };
                     while time.monotonic() < _deadline:
                         time.sleep(0.1)
                         try:
-                            _logs = trace.get_trace_logs()
+                            _logs = _get_trace_logs(trace)
                         except Exception:
                             continue
                         if _logs is None or _logs.empty:
