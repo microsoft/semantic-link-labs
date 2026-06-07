@@ -8,6 +8,7 @@ from sempy._utils._log import log
 from uuid import UUID
 import time
 import warnings
+import re
 from datetime import datetime, timezone
 
 
@@ -176,6 +177,7 @@ _TEST_EVENT_SCHEMA: dict = {
         "TextData",
         "StartTime",
         "ApplicationName",
+        "RequestID",
     ],
     "QueryEnd": [
         "EventClass",
@@ -189,6 +191,7 @@ _TEST_EVENT_SCHEMA: dict = {
         "CpuTime",
         "Success",
         "ApplicationName",
+        "RequestID",
     ],
     "VertiPaqSEQueryBegin": [
         "EventClass",
@@ -197,6 +200,7 @@ _TEST_EVENT_SCHEMA: dict = {
         "NTUserName",
         "TextData",
         "StartTime",
+        "RequestID",
     ],
     "VertiPaqSEQueryEnd": [
         "EventClass",
@@ -209,6 +213,7 @@ _TEST_EVENT_SCHEMA: dict = {
         "Duration",
         "CpuTime",
         "Success",
+        "RequestID",
     ],
     "VertiPaqSEQueryCacheMatch": [
         "EventClass",
@@ -216,14 +221,110 @@ _TEST_EVENT_SCHEMA: dict = {
         "CurrentTime",
         "NTUserName",
         "TextData",
+        "RequestID",
     ],
     "DAXQueryPlan": [
         "EventClass",
         "EventSubclass",
         "CurrentTime",
         "TextData",
+        "RequestID",
     ],
 }
+
+
+def _normalize_dax_text(text) -> str:
+    """Normalize a DAX query string for matching a trace event's TextData to
+    the query typed in the DAX query pane (collapse all whitespace runs to a
+    single space and strip)."""
+
+    if text is None:
+        return ""
+    return re.sub(r"\s+", " ", str(text)).strip()
+
+
+def _trace_col(df: pd.DataFrame, *names: str) -> Optional[str]:
+    """Return the first of ``names`` that is a column of ``df`` (the trace
+    column naming differs between the space-delimited logs and the raw schema,
+    e.g. ``"Event Class"`` vs ``"EventClass"``)."""
+
+    for n in names:
+        if n in df.columns:
+            return n
+    return None
+
+
+def _resolve_query_request_id(new_logs: pd.DataFrame, dax_string: str) -> Optional[str]:
+    """Find the RequestID of the ``QueryBegin`` event that corresponds to the
+    DAX query executed from the query pane.
+
+    The interactive widget runs several auxiliary DAX queries against the same
+    model/trace (Vertipaq Analyzer, query dependencies, performance analysis).
+    Those events accumulate in the long-running trace between user runs, so
+    slicing the logs by row count alone is not enough to isolate the user's
+    query. Instead we match the executed query text against the ``QueryBegin``
+    ``TextData`` (preferring events from the SemPy application) and capture
+    that event's RequestID; every event for the user's query shares that same
+    RequestID.
+
+    Returns the RequestID as a string, or ``None`` if it cannot be determined
+    (in which case the caller keeps the unfiltered rows)."""
+
+    if new_logs is None or new_logs.empty:
+        return None
+    ec = _trace_col(new_logs, "Event Class", "EventClass")
+    td = _trace_col(new_logs, "Text Data", "TextData")
+    req_col = _trace_col(new_logs, "Request ID", "RequestID")
+    app = _trace_col(new_logs, "Application Name", "ApplicationName")
+    if ec is None or td is None or req_col is None:
+        return None
+
+    qb = new_logs[new_logs[ec] == "QueryBegin"]
+    if qb.empty:
+        return None
+
+    # Prefer QueryBegin events emitted by the SemPy application (the client used
+    # to run the query pane's query); fall back to all QueryBegin events.
+    candidates = qb
+    if app is not None:
+        sem = qb[qb[app].astype(str).str.contains("SemPy", case=False, na=False)]
+        if not sem.empty:
+            candidates = sem
+
+    target = _normalize_dax_text(dax_string)
+    matches = candidates[candidates[td].astype(str).map(_normalize_dax_text) == target]
+    if matches.empty:
+        # No exact text match (e.g. the engine reformatted the text): fall back
+        # to the most recent non-warm-up QueryBegin among the candidates.
+        matches = candidates[~candidates[td].astype(str).str.startswith("EVALUATE {1}")]
+    if matches.empty:
+        return None
+
+    val = matches[req_col].iloc[-1]
+    if pd.isna(val):
+        return None
+    return str(val).strip()
+
+
+def _filter_logs_to_request_id(
+    df: pd.DataFrame, request_id: Optional[str]
+) -> pd.DataFrame:
+    """Return only the rows of ``df`` whose RequestID matches ``request_id``.
+    If ``request_id`` is ``None`` or no RequestID column is present, ``df`` is
+    returned unchanged."""
+
+    if df is None or df.empty or request_id is None:
+        return df
+    req_col = _trace_col(df, "Request ID", "RequestID")
+    if req_col is None:
+        return df
+
+    def _norm(v) -> str:
+        if pd.isna(v):
+            return ""
+        return str(v).strip()
+
+    return df[df[req_col].map(_norm) == str(request_id).strip()].reset_index(drop=True)
 
 
 def _execute_and_capture(
@@ -418,6 +519,12 @@ def _execute_and_capture(
         new_logs = logs.iloc[baseline_count:].reset_index(drop=True)
     else:
         new_logs = logs.iloc[0:0].reset_index(drop=True)
+    # Restrict the captured rows to the request that ran the query pane's query
+    # so that events from auxiliary queries (Vertipaq Analyzer, dependencies,
+    # performance analysis) accumulated in the long-running trace are excluded.
+    _req_id = _resolve_query_request_id(new_logs, dax_string)
+    if _req_id is not None:
+        new_logs = _filter_logs_to_request_id(new_logs, _req_id)
     return result_df, new_logs, len(logs)
 
 
@@ -6751,7 +6858,7 @@ export default { render };
 
     atexit.register(_stop_persistent_trace)
 
-    def _backfill_query_plan(run_id: int, start_baseline: int) -> None:
+    def _backfill_query_plan(run_id: int, start_baseline: int, query: str = "") -> None:
         """Watch the persistent trace after a query has returned and back-fill
         the DAX query plan if it flushes late.
 
@@ -6785,7 +6892,13 @@ export default { render };
                 continue
             if logs is None or logs.empty or len(logs) <= start_baseline:
                 continue
-            plan_rows = _query_plan_rows_from_df(logs.iloc[start_baseline:])
+            _new = logs.iloc[start_baseline:]
+            # Restrict to the request that ran the query pane's query so a late
+            # plan from an auxiliary query is never shown for the user's query.
+            _req_id = _resolve_query_request_id(_new, query)
+            if _req_id is not None:
+                _new = _filter_logs_to_request_id(_new, _req_id)
+            plan_rows = _query_plan_rows_from_df(_new)
             if plan_rows:
                 widget.query_plan_rows = plan_rows
                 return
@@ -6886,7 +6999,7 @@ export default { render };
         # persistent trace and back-fill the Query Plan tab once it arrives.
         if start_baseline is not None and not (widget.query_plan_rows or []):
             try:
-                _backfill_query_plan(run_id, int(start_baseline))
+                _backfill_query_plan(run_id, int(start_baseline), query)
             except Exception:
                 pass
 
