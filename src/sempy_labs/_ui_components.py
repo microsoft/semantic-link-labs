@@ -124,7 +124,7 @@ ICONS: dict[str, str] = {
         'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M2 4.25c0-.7.55-1.25 1.25-1.25h3l1.5 1.75h4.75c.7 0 '
-        '1.25.55 1.25 1.25v6c0 .7-.55 1.25-1.25 1.25H3.25C2.55 13.25 2 '
+        "1.25.55 1.25 1.25v6c0 .7-.55 1.25-1.25 1.25H3.25C2.55 13.25 2 "
         '12.7 2 12V4.25z"/></svg>'
     ),
     "level": (

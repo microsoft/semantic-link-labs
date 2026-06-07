@@ -289,7 +289,9 @@ def _execute_and_capture(
             continue
         if logs is None or logs.empty:
             continue
-        _new = logs.iloc[baseline_count:] if len(logs) > baseline_count else logs.iloc[0:0]
+        _new = (
+            logs.iloc[baseline_count:] if len(logs) > baseline_count else logs.iloc[0:0]
+        )
         _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
         _td = "Text Data" if "Text Data" in _new.columns else "TextData"
         if _ec not in _new.columns:
@@ -334,9 +336,7 @@ def _execute_and_capture(
         else:
             _new = pd.DataFrame()
         _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
-        _cur = (
-            int((_new[_ec] == "DAXQueryPlan").sum()) if _ec in _new.columns else 0
-        )
+        _cur = int((_new[_ec] == "DAXQueryPlan").sum()) if _ec in _new.columns else 0
         if _cur > 0:
             if _cur != _plan_count:
                 # New plan row(s) arrived; reset the stability timer so we keep
@@ -466,9 +466,7 @@ def _run_dax_trace(
             except Exception:
                 pass
 
-    df, total_duration, fe_duration, se_duration, cpu_time = _compute_trace_stats(
-        df
-    )
+    df, total_duration, fe_duration, se_duration, cpu_time = _compute_trace_stats(df)
 
     return df, total_duration, fe_duration, se_duration, cpu_time, result_df
 
@@ -599,9 +597,7 @@ def _build_model_tree(tom) -> list:
                         "hidden": bool(getattr(c, "IsHidden", False)),
                         "data_type": str(getattr(c, "DataType", "") or ""),
                         "description": str(getattr(c, "Description", "") or ""),
-                        "display_folder": str(
-                            getattr(c, "DisplayFolder", "") or ""
-                        ),
+                        "display_folder": str(getattr(c, "DisplayFolder", "") or ""),
                     }
                     for c in table.Columns
                     if str(getattr(c, "Type", "")) != "RowNumber"
@@ -614,9 +610,7 @@ def _build_model_tree(tom) -> list:
                         "name": str(m.Name),
                         "hidden": bool(getattr(m, "IsHidden", False)),
                         "description": str(getattr(m, "Description", "") or ""),
-                        "display_folder": str(
-                            getattr(m, "DisplayFolder", "") or ""
-                        ),
+                        "display_folder": str(getattr(m, "DisplayFolder", "") or ""),
                         "expression": str(getattr(m, "Expression", "") or ""),
                     }
                     for m in table.Measures
@@ -629,9 +623,7 @@ def _build_model_tree(tom) -> list:
                         "name": str(h.Name),
                         "hidden": bool(getattr(h, "IsHidden", False)),
                         "description": str(getattr(h, "Description", "") or ""),
-                        "display_folder": str(
-                            getattr(h, "DisplayFolder", "") or ""
-                        ),
+                        "display_folder": str(getattr(h, "DisplayFolder", "") or ""),
                         "levels": [
                             {
                                 "name": str(lvl.Name),
@@ -656,9 +648,7 @@ def _build_model_tree(tom) -> list:
                     (
                         {
                             "name": str(ci.Name),
-                            "description": str(
-                                getattr(ci, "Description", "") or ""
-                            ),
+                            "description": str(getattr(ci, "Description", "") or ""),
                         }
                         for ci in table.CalculationGroup.CalculationItems
                     ),
@@ -825,8 +815,7 @@ def _build_dependency_tree(
             "label": label,
             "kind": "group",
             "children": [
-                {"label": n, "kind": kind}
-                for n in sorted(names, key=str.lower)
+                {"label": n, "kind": kind} for n in sorted(names, key=str.lower)
             ],
         }
 
@@ -835,35 +824,25 @@ def _build_dependency_tree(
         tdata = tables[tname]
         tchildren = []
         if tdata["columns"]:
-            tchildren.append(
-                _leaf_group("Columns", "column", tdata["columns"])
-            )
+            tchildren.append(_leaf_group("Columns", "column", tdata["columns"]))
         if tdata["measures"]:
-            tchildren.append(
-                _leaf_group("Measures", "measure", tdata["measures"])
-            )
+            tchildren.append(_leaf_group("Measures", "measure", tdata["measures"]))
         if tdata["hierarchies"]:
             tchildren.append(
                 _leaf_group("Hierarchies", "hierarchy", tdata["hierarchies"])
             )
         if tdata["other"]:
             tchildren.append(_leaf_group("Other", "column", tdata["other"]))
-        table_nodes.append(
-            {"label": tname, "kind": "table", "children": tchildren}
-        )
+        table_nodes.append({"label": tname, "kind": "table", "children": tchildren})
 
     children = []
     if table_nodes:
-        children.append(
-            {"label": "Tables", "kind": "group", "children": table_nodes}
-        )
+        children.append({"label": "Tables", "kind": "group", "children": table_nodes})
     if relationships:
         rel_nodes = []
         for rname in relationships:
             detail = rel_lookup.get(rname)
-            rel_nodes.append(
-                {"label": detail or rname, "kind": "relationship"}
-            )
+            rel_nodes.append({"label": detail or rname, "kind": "relationship"})
         rel_nodes.sort(key=lambda n: n["label"].lower())
         children.append(
             {"label": "Relationships", "kind": "group", "children": rel_nodes}
@@ -959,7 +938,6 @@ def _collect_model_metadata(dataset_id: str, workspace_id: str) -> tuple:
             return _build_model_tree(tom), _build_model_roles(tom)
     except Exception:
         return [], []
-
 
 
 def _collect_model_roles(dataset_id: str, workspace_id: str) -> list:
@@ -1320,6 +1298,7 @@ def _visualize_dax_test(
     max-width: 100%;
     margin: 0;
     padding: 0;
+    position: relative;
 }}
 .dtx.dtx-dark {{
     {_UI_DARK_VARS}
@@ -1432,6 +1411,127 @@ def _visualize_dax_test(
 .dtx .dtx-analyze-btn {{ color: var(--ui-text-secondary); }}
 .dtx .dtx-analyze-btn svg {{ width: 15px; height: 15px; }}
 .dtx .dtx-analyze-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
+.dtx .dtx-nl-btn {{ color: var(--ui-accent); }}
+.dtx .dtx-nl-btn svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-nl-btn:hover:not(:disabled) {{ color: var(--ui-accent-hover, var(--ui-accent)); }}
+.dtx .dtx-nl-overlay {{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 50;
+    padding: 16px;
+}}
+.dtx .dtx-nl-modal {{
+    width: 480px;
+    max-width: 100%;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: var(--ui-shadow-lg, 0 12px 32px rgba(0, 0, 0, 0.35));
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}}
+.dtx .dtx-nl-head {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}}
+.dtx .dtx-nl-title {{
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ui-text);
+}}
+.dtx .dtx-nl-close {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-nl-close svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-nl-close:hover {{
+    border-color: var(--ui-border);
+    color: var(--ui-text);
+}}
+.dtx .dtx-nl-desc {{
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-nl-input {{
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+}}
+.dtx .dtx-nl-input:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+}}
+.dtx .dtx-nl-input:disabled {{
+    opacity: 0.6;
+    cursor: progress;
+}}
+.dtx .dtx-nl-error {{
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ui-danger, #d13438);
+}}
+.dtx .dtx-nl-actions {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}}
+.dtx .dtx-nl-cancel,
+.dtx .dtx-nl-submit {{
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--ui-border);
+}}
+.dtx .dtx-nl-cancel {{
+    background: transparent;
+    color: var(--ui-text);
+}}
+.dtx .dtx-nl-cancel:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-nl-submit {{
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-nl-submit:hover:not(:disabled) {{
+    background: var(--ui-accent-hover, var(--ui-accent));
+}}
+.dtx .dtx-nl-submit:disabled {{
+    opacity: 0.6;
+    cursor: progress;
+}}
 .dtx .dtx-fmt-btn.dtx-fmt-loading svg {{
     animation: dtx-fmt-pulse 0.9s ease-in-out infinite;
 }}
@@ -2837,7 +2937,7 @@ def _visualize_dax_test(
         '<rect x="11.6" y="12.2" width="16.5" height="7.2" fill="#E14E37"/>'
         '<rect x="30.1" y="12.2" width="4.9" height="7.2" fill="#E14E37"/>'
         '<rect x="6.2" y="22.2" width="10.5" height="7.2" fill="#E14E37"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     undo_icon = (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2845,7 +2945,7 @@ def _visualize_dax_test(
         'aria-hidden="true">'
         '<path d="M3 7 v5 h5"/>'
         '<path d="M3.5 12 a8 8 0 1 1 1.5 5"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     redo_icon = (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2853,7 +2953,7 @@ def _visualize_dax_test(
         'aria-hidden="true">'
         '<path d="M21 7 v5 h-5"/>'
         '<path d="M20.5 12 a8 8 0 1 0 -1.5 5"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     download_icon = (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2862,7 +2962,7 @@ def _visualize_dax_test(
         '<path d="M12 3 v12"/>'
         '<path d="M7 10 l5 5 5-5"/>'
         '<path d="M4 20 h16"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     cut_icon = (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2873,7 +2973,7 @@ def _visualize_dax_test(
         '<line x1="20" y1="4" x2="8.12" y2="15.88"/>'
         '<line x1="14.47" y1="14.48" x2="20" y2="20"/>'
         '<line x1="8.12" y1="8.12" x2="12" y2="12"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     copy_icon = (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2882,7 +2982,7 @@ def _visualize_dax_test(
         '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>'
         '<path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 '
         'a2 2 0 0 1 2 2 v1"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     paste_icon = (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2891,7 +2991,7 @@ def _visualize_dax_test(
         '<path d="M16 4 h2 a2 2 0 0 1 2 2 v14 a2 2 0 0 1 -2 2 H6 '
         'a2 2 0 0 1 -2 -2 V6 a2 2 0 0 1 2 -2 h2"/>'
         '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'
-        '</svg>'
+        "</svg>"
     ).replace("`", "\\`")
     # A "gauge / insights" mark used for the performance-analysis action.
     analyze_icon = (
@@ -2900,7 +3000,18 @@ def _visualize_dax_test(
         'aria-hidden="true">'
         '<path d="M3 3 v18 h18"/>'
         '<path d="M7 15 l4 -5 3 3 4 -6"/>'
-        '</svg>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # A "sparkles" mark used for generating DAX from natural language.
+    nldax_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M12 3 l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 '
+        '-1.6 -4.4 -4.4 -1.6 4.4 -1.6 z"/>'
+        '<path d="M19 14 l0.8 2.2 2.2 0.8 -2.2 0.8 -0.8 2.2 '
+        '-0.8 -2.2 -2.2 -0.8 2.2 -0.8 z"/>'
+        "</svg>"
     ).replace("`", "\\`")
 
     widget_js = r"""
@@ -2940,6 +3051,7 @@ function render({ model, el }) {
     const COPY_SVG = `__DTX_COPY__`;
     const PASTE_SVG = `__DTX_PASTE__`;
     const ANALYZE_SVG = `__DTX_ANALYZE__`;
+    const NLDAX_SVG = `__DTX_NLDAX__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -4276,6 +4388,106 @@ function render({ model, el }) {
         fmtBtn.disabled = loading || !hasText;
         fmtBtn.classList.toggle("dtx-fmt-loading", loading);
     }
+
+    // ---------- Natural language -> DAX ----------
+    const nlBtn = document.createElement("button");
+    nlBtn.type = "button";
+    nlBtn.className = "dtx-fmt-btn dtx-nl-btn";
+    nlBtn.innerHTML = NLDAX_SVG;
+    nlBtn.title = "Generate a DAX query from natural language";
+    nlBtn.setAttribute("aria-label", "Generate DAX from natural language");
+    qTitleGroup.appendChild(nlBtn);
+
+    const nlOverlay = document.createElement("div");
+    nlOverlay.className = "dtx-nl-overlay";
+    nlOverlay.style.display = "none";
+    const nlModal = document.createElement("div");
+    nlModal.className = "dtx-nl-modal";
+    nlModal.innerHTML =
+        '<div class="dtx-nl-head">'
+        + '<div class="dtx-nl-title">Generate DAX from natural language</div>'
+        + '<button type="button" class="dtx-nl-close" aria-label="Close">'
+        + CLOSE_SVG + '</button>'
+        + '</div>'
+        + '<div class="dtx-nl-desc">Describe the query you want in plain '
+        + 'English. The semantic model\'s metadata is used to generate a DAX '
+        + 'query, which is placed into the DAX query pane.</div>'
+        + '<textarea class="dtx-nl-input" rows="4" '
+        + 'placeholder="e.g. Top 10 products by total sales amount"></textarea>'
+        + '<div class="dtx-nl-error" style="display:none;"></div>'
+        + '<div class="dtx-nl-actions">'
+        + '<button type="button" class="dtx-nl-cancel">Cancel</button>'
+        + '<button type="button" class="dtx-nl-submit">Submit</button>'
+        + '</div>';
+    nlOverlay.appendChild(nlModal);
+    root.appendChild(nlOverlay);
+
+    const nlInput = nlModal.querySelector(".dtx-nl-input");
+    const nlError = nlModal.querySelector(".dtx-nl-error");
+    const nlSubmit = nlModal.querySelector(".dtx-nl-submit");
+    const nlCancel = nlModal.querySelector(".dtx-nl-cancel");
+    const nlClose = nlModal.querySelector(".dtx-nl-close");
+
+    function renderNlBtn() {
+        nlBtn.disabled = model.get("dataset_chosen") !== true;
+    }
+
+    function renderNlModal() {
+        const loading = model.get("nl_to_dax_loading") === true;
+        nlSubmit.disabled = loading;
+        nlSubmit.textContent = loading ? "Generating\u2026" : "Submit";
+        nlInput.disabled = loading;
+    }
+
+    function openNlModal() {
+        if (model.get("dataset_chosen") !== true) return;
+        nlError.textContent = "";
+        nlError.style.display = "none";
+        nlOverlay.style.display = "flex";
+        renderNlModal();
+        setTimeout(() => { try { nlInput.focus(); } catch (e) {} }, 0);
+    }
+
+    function closeNlModal() {
+        nlOverlay.style.display = "none";
+    }
+
+    function submitNl() {
+        if (model.get("nl_to_dax_loading") === true) return;
+        const text = String(nlInput.value || "").trim();
+        if (!text) { try { nlInput.focus(); } catch (e) {} return; }
+        nlError.textContent = "";
+        nlError.style.display = "none";
+        model.set("nl_to_dax_error", "");
+        model.set("nl_to_dax_text", text);
+        model.set("nl_to_dax_loading", true);
+        model.set("nl_to_dax_trigger",
+            (model.get("nl_to_dax_trigger") || 0) + 1);
+        model.save_changes();
+        renderNlModal();
+    }
+
+    nlBtn.addEventListener("click", () => {
+        if (nlBtn.disabled) return;
+        openNlModal();
+    });
+    nlSubmit.addEventListener("click", submitNl);
+    nlCancel.addEventListener("click", closeNlModal);
+    nlClose.addEventListener("click", closeNlModal);
+    nlOverlay.addEventListener("click", (e) => {
+        if (e.target === nlOverlay
+            && model.get("nl_to_dax_loading") !== true) closeNlModal();
+    });
+    nlInput.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            submitNl();
+        } else if (e.key === "Escape"
+            && model.get("nl_to_dax_loading") !== true) {
+            e.preventDefault();
+            closeNlModal();
+        }
+    });
 
     const undoBtn = document.createElement("button");
     undoBtn.type = "button";
@@ -5810,6 +6022,22 @@ function render({ model, el }) {
     });
     model.on("change:dax_tokens", renderHighlight);
     model.on("change:format_loading", renderFmtBtn);
+    model.on("change:nl_to_dax_loading", () => {
+        renderNlModal();
+        const loading = model.get("nl_to_dax_loading") === true;
+        const err = String(model.get("nl_to_dax_error") || "").trim();
+        // Generation finished without an error -> close the modal.
+        if (!loading && !err && nlOverlay.style.display !== "none") {
+            nlInput.value = "";
+            closeNlModal();
+        }
+    });
+    model.on("change:nl_to_dax_error", () => {
+        const err = String(model.get("nl_to_dax_error") || "");
+        nlError.textContent = err;
+        nlError.style.display = err ? "" : "none";
+    });
+    model.on("change:dataset_chosen", renderNlBtn);
     model.on("change:clear_cache", renderCacheBtn);
     model.on("change:impersonation_mode", renderImpersonation);
     model.on("change:impersonation_value", renderImpersonation);
@@ -5850,6 +6078,7 @@ function render({ model, el }) {
     renderSidebarChrome();
     renderPicker();
     renderFmtBtn();
+    renderNlBtn();
     renderHistBtns();
     renderTree();
     renderHighlight();
@@ -5898,6 +6127,7 @@ export default { render };
         .replace("__DTX_COPY__", copy_icon)
         .replace("__DTX_PASTE__", paste_icon)
         .replace("__DTX_ANALYZE__", analyze_icon)
+        .replace("__DTX_NLDAX__", nldax_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -5963,6 +6193,10 @@ export default { render };
         load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
         format_query_trigger = traitlets.Int(0).tag(sync=True)
         format_loading = traitlets.Bool(False).tag(sync=True)
+        nl_to_dax_text = traitlets.Unicode("").tag(sync=True)
+        nl_to_dax_trigger = traitlets.Int(0).tag(sync=True)
+        nl_to_dax_loading = traitlets.Bool(False).tag(sync=True)
+        nl_to_dax_error = traitlets.Unicode("").tag(sync=True)
         query_builder_state = traitlets.Unicode("").tag(sync=True)
         build_query_trigger = traitlets.Int(0).tag(sync=True)
         close_trigger = traitlets.Int(0).tag(sync=True)
@@ -6066,6 +6300,10 @@ export default { render };
         load_workspaces_trigger=0,
         format_query_trigger=0,
         format_loading=False,
+        nl_to_dax_text="",
+        nl_to_dax_trigger=0,
+        nl_to_dax_loading=False,
+        nl_to_dax_error="",
         query_builder_state="",
         build_query_trigger=0,
         impersonation_mode=(
@@ -6148,9 +6386,7 @@ export default { render };
             # Switching models (or first start): tear down any existing trace.
             _teardown_trace_locked()
             try:
-                conn = fabric.create_trace_connection(
-                    dataset=ds_id, workspace=ws_id
-                )
+                conn = fabric.create_trace_connection(dataset=ds_id, workspace=ws_id)
                 trace = conn.create_trace(_TEST_EVENT_SCHEMA)
                 trace.start()
                 # Prime the trace: a freshly started trace does not begin
@@ -6438,9 +6674,7 @@ export default { render };
             for _, r in dep_df.iterrows():
                 rows.append(
                     {
-                        "object_type": str(
-                            r.get("[Referenced Object Type]", "") or ""
-                        ),
+                        "object_type": str(r.get("[Referenced Object Type]", "") or ""),
                         "table": str(r.get("[Referenced Table]", "") or ""),
                         "object": str(r.get("[Referenced Object]", "") or ""),
                     }
@@ -6453,12 +6687,10 @@ export default { render };
             rel_columns: dict = {}
             rownumber_cols: set = set()
             needs_rel = any(
-                "RELATIONSHIP" in (row["object_type"] or "").upper()
-                for row in rows
+                "RELATIONSHIP" in (row["object_type"] or "").upper() for row in rows
             )
             needs_cols = any(
-                "COLUMN" in (row["object_type"] or "").upper()
-                for row in rows
+                "COLUMN" in (row["object_type"] or "").upper() for row in rows
             )
             if needs_rel or needs_cols:
                 try:
@@ -6487,9 +6719,7 @@ export default { render };
         except Exception as exc:  # noqa: BLE001
             widget.dependency_tree = []
             widget.dependency_columns = []
-            widget.error_message = (
-                f"Failed to compute query dependencies: {exc}"
-            )
+            widget.error_message = f"Failed to compute query dependencies: {exc}"
         finally:
             widget.dependencies_loading = False
 
@@ -6622,9 +6852,7 @@ export default { render };
         except Exception as exc:  # noqa: BLE001
             widget.performance_findings = []
             widget.performance_summary = {}
-            widget.error_message = (
-                f"Failed to generate performance analysis: {exc}"
-            )
+            widget.error_message = f"Failed to generate performance analysis: {exc}"
         finally:
             widget.performance_loading = False
 
@@ -6658,10 +6886,7 @@ export default { render };
             ("impersonation_type", "Impersonation Type"),
             ("impersonation", "Impersonation"),
         ]
-        rows = [
-            {label: entry.get(key, "") for key, label in cols}
-            for entry in history
-        ]
+        rows = [{label: entry.get(key, "") for key, label in cols} for entry in history]
         df_hist = pd.DataFrame(rows, columns=[label for _, label in cols])
         buf = io.BytesIO()
         # Use whichever Excel engine is available (openpyxl is standard in
@@ -6684,9 +6909,7 @@ export default { render };
             with pd.ExcelWriter(buf, engine=engine) as writer:
                 df_hist.to_excel(writer, index=False, sheet_name="Trace History")
         except Exception as exc:  # noqa: BLE001
-            widget.error_message = (
-                f"Failed to build the Excel file: {exc}"
-            )
+            widget.error_message = f"Failed to build the Excel file: {exc}"
             return
         b64 = base64.b64encode(buf.getvalue()).decode("ascii")
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -6786,9 +7009,7 @@ export default { render };
             )
             model_ctx["workspace_id"] = ws_id_resolved
             model_ctx["dataset_id"] = ds_id_resolved
-            tree, roles = _collect_model_metadata(
-                ds_id_resolved, ws_id_resolved
-            )
+            tree, roles = _collect_model_metadata(ds_id_resolved, ws_id_resolved)
         except Exception as exc:  # noqa: BLE001
             widget.picker_loading = False
             widget.error_message = f"Failed to load semantic model: {exc}"
@@ -6881,6 +7102,62 @@ export default { render };
         threading.Thread(target=_format_query, daemon=True).start()
 
     widget.observe(_on_format_query, names="format_query_trigger")
+
+    def _nl_to_dax_run() -> None:
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.nl_to_dax_error = (
+                    "No semantic model selected. Choose a workspace and a "
+                    "semantic model first."
+                )
+                return
+            question = (widget.nl_to_dax_text or "").strip()
+            if not question:
+                widget.nl_to_dax_error = "Enter a question first."
+                return
+            import asyncio
+            from sempy_labs.semantic_model._nl_to_dax import nl_to_dax
+
+            result = asyncio.run(
+                nl_to_dax(
+                    dataset=model_ctx["dataset_id"],
+                    question=question,
+                    workspace=model_ctx["workspace_id"],
+                )
+            )
+            if isinstance(result, str) and result.strip():
+                dax_out = result.replace("\r\n", "\n").replace("\r", "\n")
+                widget.dax_query = dax_out
+                widget.dax_tokens = _classify_dax_spans(dax_out)
+                widget.error_message = ""
+                widget.nl_to_dax_error = ""
+            elif isinstance(result, dict):
+                err = result.get("error")
+                if isinstance(err, dict):
+                    msg = err.get("message") or str(err)
+                else:
+                    msg = (
+                        err
+                        or result.get("message")
+                        or "Failed to generate a DAX query from the question."
+                    )
+                widget.nl_to_dax_error = str(msg)
+            else:
+                widget.nl_to_dax_error = (
+                    "Could not generate a DAX query from the question. "
+                    "Try rephrasing it."
+                )
+        except Exception as exc:  # noqa: BLE001
+            widget.nl_to_dax_error = f"Failed to generate the DAX query: {exc}"
+        finally:
+            widget.nl_to_dax_loading = False
+
+    def _on_nl_to_dax(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_nl_to_dax_run, daemon=True).start()
+
+    widget.observe(_on_nl_to_dax, names="nl_to_dax_trigger")
 
     def _build_query() -> None:
         if model_ctx["dataset_id"] is None:

@@ -81,9 +81,7 @@ def find_numeric_aggregation_columns(
             yield fn_name, col.args["table"], col.args["this"]
 
 
-def uses_function(
-    expression: str, function_name: Union[str, List[str]]
-) -> bool:
+def uses_function(expression: str, function_name: Union[str, List[str]]) -> bool:
     """
     Returns True if the DAX expression contains a call to any of the given
     function(s) (case-insensitive). Built on the DAX parser so it ignores
@@ -172,9 +170,7 @@ def find_non_numeric_aggregations(
         table = next((t for t in tables if t.Name == table_name), None)
         if table is None:
             continue
-        column = next(
-            (c for c in table.Columns if c.Name == column_name), None
-        )
+        column = next((c for c in table.Columns if c.Name == column_name), None)
         if column is None:
             continue
         if column.DataType in numeric_types:
@@ -228,9 +224,7 @@ def find_unqualified_columns(expression: str, tom) -> Iterator[str]:
             yield col.args["this"]
 
 
-def find_fully_qualified_measures(
-    expression: str, tom
-) -> Iterator[Tuple[str, str]]:
+def find_fully_qualified_measures(expression: str, tom) -> Iterator[Tuple[str, str]]:
     """
     Yield every fully-qualified measure reference in a DAX expression —
     i.e. a bracketed reference like ``'Table'[MeasureName]`` whose
