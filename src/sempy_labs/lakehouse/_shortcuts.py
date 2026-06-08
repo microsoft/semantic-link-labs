@@ -149,9 +149,9 @@ def create_shortcut_onelake(
     url = f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts"
 
     if shortcut_conflict_policy:
-        if shortcut_conflict_policy not in ["Abort", "GenerateUniqueName"]:
+        if shortcut_conflict_policy not in ["Abort", "GenerateUniqueName", "CreateOrOverwrite", "OverwriteOnly"]:
             raise ValueError(
-                f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be either 'Abort' or 'GenerateUniqueName'."
+                f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be one of the following strings: ('Abort', 'GenerateUniqueName', 'CreateOrOverwrite', 'OverwriteOnly')."
             )
         url += f"?shortcutConflictPolicy={shortcut_conflict_policy}"
 
