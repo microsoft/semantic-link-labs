@@ -15,12 +15,12 @@ import sempy_labs._icons as icons
 from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
 
-SHORTCUT_CONFLICT_POLICIES = [
+SHORTCUT_CONFLICT_POLICIES = (
     "Abort",
     "GenerateUniqueName",
     "CreateOrOverwrite",
     "OverwriteOnly",
-]
+)
 
 
 @log
@@ -158,7 +158,7 @@ def create_shortcut_onelake(
     if shortcut_conflict_policy:
         if shortcut_conflict_policy not in SHORTCUT_CONFLICT_POLICIES:
             raise ValueError(
-                f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be one of the following strings: {tuple(SHORTCUT_CONFLICT_POLICIES)}."
+                f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be one of the following strings: {SHORTCUT_CONFLICT_POLICIES}."
             )
         url += f"?shortcutConflictPolicy={shortcut_conflict_policy}"
 
