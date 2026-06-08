@@ -136,6 +136,9 @@ from ._capacity_migration import (
     migrate_capacities,
     migrate_fabric_trial_capacity,
 )
+from ._capacity_migration_ui import (
+    capacity_migration,
+)
 from ._capacities import (
     create_fabric_capacity,
     resume_fabric_capacity,
@@ -482,6 +485,7 @@ __all__ = [
     "resolve_dataset_from_report",
     "migrate_workspaces",
     "migrate_capacities",
+    "capacity_migration",
     "create_fabric_capacity",
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
