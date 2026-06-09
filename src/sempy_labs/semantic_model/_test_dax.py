@@ -1522,6 +1522,32 @@ def _visualize_dax_test(
 .dtx.dtx-dark {{
     {_UI_DARK_VARS}
 }}
+.dtx.dtx-fullscreen {{
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: var(--ui-bg);
+    overflow: auto;
+}}
+.dtx.dtx-fullscreen .dtx-container {{
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+}}
+.dtx:fullscreen {{
+    overflow: auto;
+    background: var(--ui-bg);
+}}
+.dtx:fullscreen .dtx-container {{
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+}}
 .dtx *, .dtx *::before, .dtx *::after {{ box-sizing: border-box; }}
 .dtx .dtx-container {{
     background: var(--ui-bg);
@@ -3313,6 +3339,29 @@ def _visualize_dax_test(
         '<path d="M3 16 v3 a2 2 0 0 0 2 2 h3"/>'
         "</svg>"
     ).replace("`", "\\`")
+    # A "full-screen" mark (four outward corner arrows) used by the header
+    # button that expands the whole tool to fill the screen.
+    fullscreen_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 9 V5 a2 2 0 0 1 2 -2 h4"/>'
+        '<path d="M21 9 V5 a2 2 0 0 0 -2 -2 h-4"/>'
+        '<path d="M3 15 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M21 15 v4 a2 2 0 0 1 -2 2 h-4"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # An "exit full-screen" mark (four inward corner arrows).
+    fullscreen_exit_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M9 3 v4 a2 2 0 0 1 -2 2 H3"/>'
+        '<path d="M15 3 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M9 21 v-4 a2 2 0 0 0 -2 -2 H3"/>'
+        '<path d="M15 21 v-4 a2 2 0 0 1 2 -2 h4"/>'
+        "</svg>"
+    ).replace("`", "\\`")
 
     widget_js = r"""
 function escapeHtml(s) {
@@ -3353,6 +3402,8 @@ function render({ model, el }) {
     const ANALYZE_SVG = `__DTX_ANALYZE__`;
     const NLDAX_SVG = `__DTX_NLDAX__`;
     const EXPAND_SVG = `__DTX_EXPAND__`;
+    const FULLSCREEN_SVG = `__DTX_FULLSCREEN__`;
+    const FULLSCREEN_EXIT_SVG = `__DTX_FULLSCREEN_EXIT__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3436,6 +3487,56 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    // ---------- Full-screen toggle ----------
+    // Expands the whole tool to fill the screen. Uses the native Fullscreen
+    // API when available (and allowed by the host), otherwise falls back to a
+    // CSS overlay that fills the browser viewport — the latter works reliably
+    // inside notebook output iframes where the Fullscreen API is often
+    // blocked.
+    let cssFullscreen = false;
+    function isFullscreen() {
+        return cssFullscreen || document.fullscreenElement === root;
+    }
+    function renderFullscreenBtn() {
+        const on = isFullscreen();
+        fullscreenBtn.innerHTML = on ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
+        const label = on ? "Exit full screen" : "Full screen";
+        fullscreenBtn.title = label;
+        fullscreenBtn.setAttribute("aria-label", label);
+        root.classList.toggle("dtx-fullscreen", cssFullscreen);
+    }
+    function enterFullscreen() {
+        if (root.requestFullscreen) {
+            root.requestFullscreen().then(() => {
+                cssFullscreen = false;
+                renderFullscreenBtn();
+            }).catch(() => {
+                cssFullscreen = true;
+                renderFullscreenBtn();
+            });
+        } else {
+            cssFullscreen = true;
+            renderFullscreenBtn();
+        }
+    }
+    function exitFullscreen() {
+        if (document.fullscreenElement === root && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        }
+        cssFullscreen = false;
+        renderFullscreenBtn();
+    }
+    const fullscreenBtn = document.createElement("button");
+    fullscreenBtn.type = "button";
+    fullscreenBtn.className = "sl-theme-btn";
+    fullscreenBtn.addEventListener("click", () => {
+        if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
+    });
+    document.addEventListener("fullscreenchange", () => {
+        // Keep the button in sync when the user exits via the Esc key.
+        renderFullscreenBtn();
+    });
+
     const builderShowBtn = document.createElement("button");
     builderShowBtn.type = "button";
     builderShowBtn.className = "dtx-builder-show-btn";
@@ -3448,6 +3549,8 @@ function render({ model, el }) {
     });
     header.appendChild(builderShowBtn);
     header.appendChild(themeBtn);
+    header.appendChild(fullscreenBtn);
+    renderFullscreenBtn();
 
     // ---------- Body: sidebar + main ----------
     const body = document.createElement("div");
@@ -6566,6 +6669,8 @@ export default { render };
         .replace("__DTX_ANALYZE__", analyze_icon)
         .replace("__DTX_NLDAX__", nldax_icon)
         .replace("__DTX_EXPAND__", expand_icon)
+        .replace("__DTX_FULLSCREEN__", fullscreen_icon)
+        .replace("__DTX_FULLSCREEN_EXIT__", fullscreen_exit_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -6765,6 +6870,13 @@ export default { render };
         "thread": None,
         "current_run_id": 0,
         "canceled_run_ids": set(),
+        # The DAX query that the currently-populated trace artifacts (trace
+        # rows, durations, query plan, execution metrics) belong to, and the
+        # query the cached dependency columns belong to. Used by the
+        # performance analysis to decide whether those details can be reused or
+        # must be (re)captured for the query currently in the query pane.
+        "traced_query": None,
+        "deps_query": None,
     }
     state_lock = threading.Lock()
 
@@ -7063,6 +7175,8 @@ export default { render };
         widget.trace_rows = _trace_rows_from_df(new_df)
         widget.query_plan_rows = _query_plan_rows_from_df(new_df)
         widget.execution_metrics = _execution_metrics_from_df(new_df)
+        with state_lock:
+            run_state["traced_query"] = query
         payload = _result_payload_from_df(new_result)
         widget.result_columns = payload["columns"]
         widget.result_rows = payload["rows"]
@@ -7249,6 +7363,8 @@ export default { render };
             widget.dependency_columns = _build_dependency_columns(
                 rows, rel_columns, rownumber_cols
             )
+            with state_lock:
+                run_state["deps_query"] = dax_query
             widget.error_message = ""
         except Exception as exc:  # noqa: BLE001
             widget.dependency_tree = []
@@ -7318,6 +7434,132 @@ export default { render };
         widget.vertipaq_loading = True
         threading.Thread(target=_compute_vertipaq, daemon=True).start()
 
+    def _ensure_trace_captured(query: str) -> None:
+        """Ensure the trace artifacts for ``query`` are populated before a
+        performance analysis runs.
+
+        If the trace rows, durations, DAX query plan and execution metrics were
+        already captured for the same query currently in the query pane, they
+        are reused as-is. Otherwise the query is executed once against the
+        persistent trace (synchronously), the trace traitlets are populated, and
+        the method waits briefly for the DAX query plan and execution metrics to
+        flush into the trace (they can arrive a few seconds after the query
+        completes)."""
+
+        if not (query or "").strip():
+            return
+        with state_lock:
+            already_traced = run_state.get("traced_query") == query
+        if already_traced and (widget.trace_rows or []):
+            return
+
+        # Derive impersonation from the current UI state (mirrors _on_run).
+        mode = widget.impersonation_mode or "none"
+        imp_value = (widget.impersonation_value or "").strip()
+        effective_user = imp_value if mode == "user" else None
+        role_name = imp_value if mode == "role" else None
+
+        _start_dt = datetime.now(timezone.utc)
+        (
+            new_df,
+            new_total,
+            new_fe,
+            new_se,
+            new_cpu,
+            new_result,
+            start_baseline,
+        ) = _run_query_persistent(
+            query=query,
+            clear_cache_flag=bool(widget.clear_cache),
+            effective_user=effective_user,
+            role_name=role_name,
+        )
+
+        widget.last_df = new_df  # type: ignore[attr-defined]
+        widget.last_result_df = new_result  # type: ignore[attr-defined]
+        widget.total_duration = int(new_total)
+        widget.fe_duration = int(new_fe)
+        widget.se_duration = int(new_se)
+        widget.cpu_time = int(new_cpu)
+        widget.trace_rows = _trace_rows_from_df(new_df)
+        widget.query_plan_rows = _query_plan_rows_from_df(new_df)
+        widget.execution_metrics = _execution_metrics_from_df(new_df)
+        payload = _result_payload_from_df(new_result)
+        widget.result_columns = payload["columns"]
+        widget.result_rows = payload["rows"]
+        widget.result_total_rows = int(payload["total_rows"])
+        widget.result_truncated = bool(payload["truncated"])
+        with state_lock:
+            run_state["traced_query"] = query
+
+        # Append a row to the session trace history (newest first), exactly as a
+        # normal query run does.
+        _end_dt = datetime.now(timezone.utc)
+        try:
+            try:
+                _row_count = int(len(new_result)) if new_result is not None else 0
+            except Exception:
+                _row_count = int(payload["total_rows"])
+            if role_name:
+                _imp_type = "Role"
+                _imp_value = str(role_name)
+            elif effective_user:
+                _imp_type = "User"
+                _imp_value = str(effective_user)
+            else:
+                _imp_type = "None"
+                _imp_value = "None"
+            _entry = {
+                "dax_query": query,
+                "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "rows": _row_count,
+                "duration": int(new_total),
+                "cpu": int(new_cpu),
+                "fe_duration": int(new_fe),
+                "se_duration": int(new_se),
+                "dataset_name": str(widget.dataset_name or ""),
+                "workspace_name": str(widget.workspace_name or ""),
+                "impersonation_type": _imp_type,
+                "impersonation": _imp_value,
+            }
+            widget.trace_history = [_entry] + list(widget.trace_history)
+        except Exception:
+            pass
+
+        # Wait (briefly, synchronously) for a late-arriving DAX query plan and
+        # execution metrics so the analysis has the complete picture.
+        _need_plan = not (widget.query_plan_rows or [])
+        _need_metrics = not (widget.execution_metrics or [])
+        if start_baseline is not None and (_need_plan or _need_metrics):
+            _deadline = time.monotonic() + 25.0
+            while time.monotonic() < _deadline and (_need_plan or _need_metrics):
+                time.sleep(0.3)
+                with trace_lock:
+                    trace = trace_ctx["trace"] if trace_ctx["started"] else None
+                if trace is None:
+                    break
+                try:
+                    logs = _get_trace_logs(trace)
+                except Exception:
+                    continue
+                if logs is None or logs.empty or len(logs) <= int(start_baseline):
+                    continue
+                _new = logs.iloc[int(start_baseline):]
+                _req_id = _resolve_query_request_id(_new, query)
+                if _req_id is not None:
+                    _new = _filter_logs_to_request_id(_new, _req_id)
+                if _need_plan:
+                    plan_rows = _query_plan_rows_from_df(_new)
+                    if plan_rows:
+                        widget.query_plan_rows = plan_rows
+                        _need_plan = False
+                if _need_metrics:
+                    metric_rows = _execution_metrics_from_df(_new)
+                    if metric_rows:
+                        widget.execution_metrics = metric_rows
+                        _need_metrics = False
+
     def _compute_performance() -> None:
         """Generate a DAX performance analysis for the current query and push
         the resulting findings (and a summary) to the front-end.
@@ -7325,9 +7567,10 @@ export default { render };
         The analysis combines the DAX query, the semantic model metadata
         (``model_tree``), the query dependencies, the captured trace details,
         the DAX query plan and -- when the Data column cardinalities are not
-        all trivial -- Vertipaq Analyzer statistics. Dependencies and Vertipaq
-        stats are computed on demand (and cached) when they have not already
-        been produced by their respective tabs."""
+        all trivial -- Vertipaq Analyzer statistics. The trace (and its query
+        plan / execution metrics), query dependencies and Vertipaq stats are
+        captured on demand when they have not already been produced for the
+        query currently in the query pane, and reused otherwise."""
         try:
             if model_ctx["dataset_id"] is None:
                 widget.performance_findings = []
@@ -7337,11 +7580,24 @@ export default { render };
                 analyze_dax_performance,
             )
 
-            # Reuse query dependencies if already computed, otherwise compute
-            # them now (synchronously) so the analysis can reason about the
-            # columns the query touches.
+            query = widget.dax_query or ""
+
+            # Ensure the trace (rows, durations, DAX query plan and execution
+            # metrics) is captured for the current query. Reuses what was
+            # already captured for this query in the query pane, otherwise runs
+            # the query against the trace now.
+            try:
+                _ensure_trace_captured(query)
+            except Exception:  # noqa: BLE001
+                pass
+
+            # Reuse query dependencies when they were already computed for this
+            # exact query in the query pane; only (re)compute them when they are
+            # missing or were captured for a different query.
+            with state_lock:
+                deps_fresh = run_state.get("deps_query") == query
             dep_cols = list(widget.dependency_columns or [])
-            if not dep_cols and (widget.dax_query or "").strip():
+            if not deps_fresh and query.strip():
                 try:
                     _compute_dependencies()
                     dep_cols = list(widget.dependency_columns or [])
@@ -7350,6 +7606,8 @@ export default { render };
 
             # Reuse Vertipaq Analyzer results if the tab has been opened,
             # otherwise compute them now (capturing the analyzer's own HTML).
+            # Vertipaq stats describe the model, not the query, so they are
+            # always safe to reuse once computed.
             vertipaq = getattr(widget, "last_vertipaq", None) or {}
             if not vertipaq:
                 try:
