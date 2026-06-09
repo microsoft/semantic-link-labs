@@ -149,7 +149,7 @@
     },
     {
       "id": "FILTER_FULL_TABLE",
-      "title": "FILTER applied over an entire table",
+      "title": "FILTER over an entire table to evaluate a measure",
       "category": "DAX syntax",
       "severity": "medium",
       "requires": ["query"],
@@ -157,11 +157,28 @@
       "condition": {
         "metric": "filter_full_table_count", "op": ">=", "value": 1
       },
-      "message": "The query applies FILTER over a full table {filter_full_table_count} time(s) (e.g. FILTER(Table, ...)). Filtering an entire table forces the engine to scan and evaluate every row.",
-      "recommendation": "Filter on the smallest set of columns needed instead of the whole table. Prefer FILTER(VALUES(Table[Column]), ...) or boolean column predicates inside CALCULATE which the Storage Engine can evaluate directly. Use KEEPFILTERS only when you specifically need to intersect with the existing filter context.",
+      "message": "The query iterates a full table with FILTER to evaluate a measure {filter_full_table_count} time(s) (e.g. FILTER(Sales, [Total Qty] > 100)). Testing a measure for every row of an entire table forces a full scan and row-by-row Formula Engine evaluation of the measure.",
+      "recommendation": "Iterate the smallest set needed instead of the whole table. Filter on the distinct values that drive the measure (e.g. FILTER(VALUES(Sales[OrderId]), [Total Qty] > 100)), or restructure the logic so the measure is evaluated once per group rather than per row. When the predicate is a simple column comparison, use KEEPFILTERS(Table[Column] = value) instead of FILTER.",
       "references": [
         "https://www.sqlbi.com/articles/filter-arguments-in-calculate/",
         "https://learn.microsoft.com/dax/best-practices/dax-avoid-converting-blank"
+      ]
+    },
+    {
+      "id": "FILTER_COLUMN_USE_KEEPFILTERS",
+      "title": "FILTER over a table for a simple column predicate",
+      "category": "DAX syntax",
+      "severity": "medium",
+      "requires": ["query"],
+      "kind": "scalar",
+      "condition": {
+        "metric": "filter_column_predicate_count", "op": ">=", "value": 1
+      },
+      "message": "The query wraps a simple column predicate in FILTER(Table, ...) {filter_column_predicate_count} time(s) (e.g. CALCULATE([Qty], FILTER(Customer, Customer[Category] = \"A\"))). This materializes the entire table just to apply a single boolean condition.",
+      "recommendation": "Replace FILTER(Table, Table[Column] = value) with KEEPFILTERS(Table[Column] = value) so the engine pushes the predicate down to the Storage Engine instead of iterating the whole table. For example, rewrite CALCULATE([Qty], FILTER(Customer, Customer[Category] = \"A\")) as CALCULATE([Qty], KEEPFILTERS(Customer[Category] = \"A\")). A bare column predicate inside CALCULATE (without KEEPFILTERS) is also faster but replaces, rather than intersects, the existing filter context.",
+      "references": [
+        "https://www.sqlbi.com/articles/filter-arguments-in-calculate/",
+        "https://www.sqlbi.com/articles/using-keepfilters-in-dax/"
       ]
     },
     {

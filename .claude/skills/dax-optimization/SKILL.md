@@ -33,7 +33,7 @@ artifacts it `requires`; a rule is skipped if any required artifact is missing.
 
 | Input | Source | What it provides |
 |-------|--------|------------------|
-| **DAX query** | The editor text | Syntax-level patterns (IFERROR, FILTER over a full table, nested iterators, raw `/` division). |
+| **DAX query** | The editor text **plus the DAX expressions of every measure the query transitively depends on** | Syntax-level patterns (IFERROR, FILTER over a full table, nested iterators, raw `/` division). The query usually references a measure only by name, so the syntax rules also scan the DAX of dependent measures (resolved from model metadata) to catch issues that live inside those measures. |
 | **Model metadata** | TOM (`connect_semantic_model`) | Tables, columns, measures, relationships, data types. |
 | **Query dependencies** | `INFO.CALCDEPENDENCY` | The exact tables/columns the query references. |
 | **Trace details** | Server-side trace | `QueryEnd`, `VertiPaqSEQueryEnd`, cache matches → total/FE/SE duration, CPU, SE query count, parallelism. |
@@ -101,8 +101,18 @@ Focus on **columns the query actually references**:
 
 - **Nested iterators** multiply row evaluations (`NESTED_ITERATORS`).
 - **Many iterators** (`≥ 5`) raise the chance of row-by-row work (`MANY_ITERATORS`).
-- **FILTER over a whole table** scans every row — filter on columns instead
-  (`FILTER_FULL_TABLE`).
+- **FILTER over a whole table to evaluate a measure** (e.g. `FILTER(Sales,
+  [Total Qty] > 100)`) tests the measure on every row of the table — iterate the
+  smallest grouping instead, e.g. `FILTER(VALUES(Sales[OrderId]), [Total Qty] >
+  100)` (`FILTER_FULL_TABLE`). This rule fires only when the FILTER predicate
+  references a **measure**.
+- **FILTER wrapping a column predicate** (e.g. `FILTER(Customer,
+  Customer[Category] = "A")`) materializes the whole table for a condition over
+  its columns — rewrite as `KEEPFILTERS(Customer[Category] = "A")`
+  (`FILTER_COLUMN_USE_KEEPFILTERS`). This rule fires when the FILTER predicate
+  references **columns** (and no measure). Measure vs. column is resolved from
+  model metadata when available, otherwise inferred from whether the bracket
+  reference is table-qualified.
 - **Many referenced columns** (`≥ 15`) widen datacaches — project only what's
   needed (`MANY_REFERENCED_COLUMNS`).
 
@@ -153,7 +163,8 @@ so a malformed rule can never crash the analysis.
 
 `has_query`, `query_length`, `iterator_count`, `nested_iterator`,
 `uses_iferror`, `uses_divide_function`, `uses_division_operator`,
-`filter_full_table_count`, `cold_cache`, `has_trace`, `total_duration_ms`,
+`filter_full_table_count`, `filter_column_predicate_count`, `cold_cache`,
+`has_trace`, `total_duration_ms`,
 `se_duration_ms`, `fe_duration_ms`, `cpu_time_ms`, `se_pct`, `fe_pct`,
 `se_query_count`, `se_internal_count`, `se_cache_match_count`, `se_cpu_ms`,
 `se_parallelism`, `has_query_plan`, `callback_dataid_count`,

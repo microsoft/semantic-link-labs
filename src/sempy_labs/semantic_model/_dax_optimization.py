@@ -204,28 +204,223 @@ def _has_nested_iterator(dax_clean: str) -> bool:
     return False
 
 
-def _count_filter_full_table(dax_clean: str) -> int:
-    """Count ``FILTER(<table>, ...)`` occurrences where the first argument is a
-    whole-table reference (a bare or quoted table name) rather than a column,
-    a function call, or a table expression."""
+def _classify_filter_predicate(
+    predicate: str, measure_names: Optional[set]
+) -> Optional[str]:
+    """Classify the predicate (second argument) of a ``FILTER(<table>, ...)``
+    call as ``"measure"`` or ``"column"`` (or ``None`` when it references
+    neither).
 
-    count = 0
-    for m in re.finditer(r"\bFILTER\s*\(\s*", dax_clean, re.IGNORECASE):
-        pos = m.end()
-        rest = dax_clean[pos:]
-        # Quoted table name: 'Table Name' immediately followed by a comma.
-        q = re.match(r"'(?:[^']|'')+'\s*,", rest)
-        if q:
-            count += 1
+    A predicate is classified as ``"measure"`` when it references a measure
+    (resolved from ``measure_names`` when model metadata is available, otherwise
+    inferred from an unqualified ``[...]`` reference). Otherwise, when it
+    references a column it is classified as ``"column"``. Measure references take
+    precedence, so a FILTER that evaluates a measure is never reported as a
+    simple column predicate."""
+
+    measure_names = measure_names or set()
+    has_measure = False
+    has_column = False
+    for mm in re.finditer(r"\[([^\]]+)\]", predicate):
+        name = mm.group(1)
+        start = mm.start()
+        prev = predicate[start - 1] if start > 0 else ""
+        qualified = bool(re.match(r"[A-Za-z0-9_')\]]", prev))
+        if measure_names:
+            if name.lower() in measure_names:
+                has_measure = True
+            else:
+                has_column = True
+        else:
+            if qualified:
+                has_column = True
+            else:
+                has_measure = True
+    if has_measure:
+        return "measure"
+    if has_column:
+        return "column"
+    return None
+
+
+def _filter_table_predicate_kinds(
+    dax_clean: str, measure_names: Optional[set] = None
+) -> list:
+    """Return the classification (``"measure"`` / ``"column"``) of each
+    ``FILTER(<whole table>, <predicate>)`` call in ``dax_clean``.
+
+    Only FILTER calls whose first argument is a whole-table reference (a bare or
+    quoted table name) and that have exactly two arguments are considered; other
+    FILTER usages are ignored."""
+
+    measure_names = measure_names or set()
+    kinds: list = []
+    for m in re.finditer(r"\bFILTER\s*\(", dax_clean, re.IGNORECASE):
+        open_idx = m.end() - 1
+        close_idx = _match_paren(dax_clean, open_idx)
+        if close_idx == -1:
             continue
-        # Bare table identifier directly followed by a comma (not '[' column,
-        # not '(' function call).
-        b = re.match(r"[A-Za-z_][A-Za-z0-9_ ]*?\s*,", rest)
-        if b:
-            token = b.group(0)
-            if "[" not in token and "(" not in token:
-                count += 1
-    return count
+        inner = dax_clean[open_idx + 1 : close_idx]
+        args = _split_top_level_args(inner)
+        if len(args) != 2:
+            continue
+        arg1 = args[0].strip()
+        arg2 = args[1].strip()
+        is_table = bool(
+            re.fullmatch(r"'(?:[^']|'')+'", arg1)
+            or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_ ]*", arg1)
+        )
+        if not is_table:
+            continue
+        kind = _classify_filter_predicate(arg2, measure_names)
+        if kind:
+            kinds.append(kind)
+    return kinds
+
+
+def _count_filter_full_table(
+    dax_clean: str, measure_names: Optional[set] = None
+) -> int:
+    """Count ``FILTER(<whole table>, <predicate>)`` occurrences whose predicate
+    evaluates a **measure** (e.g. ``FILTER(Sales, [Total Qty] > 100)``).
+
+    Iterating an entire table only to test a measure forces a full scan and
+    row-by-row Formula Engine evaluation of that measure. FILTER calls whose
+    predicate is a simple column comparison are reported separately by
+    :func:`_count_filter_column_predicate` instead."""
+
+    return sum(
+        1
+        for k in _filter_table_predicate_kinds(dax_clean, measure_names)
+        if k == "measure"
+    )
+
+
+def _match_paren(s: str, open_idx: int) -> int:
+    """Return the index of the ``)`` matching the ``(`` at ``open_idx`` in
+    ``s``, or ``-1`` if it is unbalanced."""
+
+    depth = 0
+    for i in range(open_idx, len(s)):
+        c = s[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _split_top_level_args(s: str) -> list:
+    """Split a comma-separated argument list on top-level (depth-0) commas."""
+
+    args: list = []
+    depth = 0
+    cur: list = []
+    for c in s:
+        if c == "(":
+            depth += 1
+            cur.append(c)
+        elif c == ")":
+            depth -= 1
+            cur.append(c)
+        elif c == "," and depth == 0:
+            args.append("".join(cur))
+            cur = []
+        else:
+            cur.append(c)
+    args.append("".join(cur))
+    return args
+
+
+def _count_filter_column_predicate(
+    dax_clean: str, measure_names: Optional[set] = None
+) -> int:
+    """Count ``FILTER(<whole table>, <column predicate>)`` occurrences that
+    could be rewritten with ``KEEPFILTERS(<column predicate>)``.
+
+    Matches the inefficient pattern ``CALCULATE([M], FILTER(Customer,
+    Customer[Category] = "A"))`` where the FILTER iterates an entire table only
+    to apply a boolean predicate over its columns. The faster equivalent is
+    ``CALCULATE([M], KEEPFILTERS(Customer[Category] = "A"))``, which lets the
+    engine push the predicate down instead of materializing the whole table.
+    FILTER calls whose predicate evaluates a measure are reported by
+    :func:`_count_filter_full_table` instead."""
+
+    return sum(
+        1
+        for k in _filter_table_predicate_kinds(dax_clean, measure_names)
+        if k == "column"
+    )
+
+
+def _build_measure_expr_map(model_tree: Optional[list]) -> dict:
+    """Map ``measure name (lowercased) -> DAX expression`` from the model tree.
+
+    Used to expand the analysis to the DAX of dependent measures, so the
+    query-text heuristics also inspect logic that lives inside referenced
+    measures rather than only the outer query text."""
+
+    out: dict = {}
+    for table in model_tree or []:
+        for m in (table.get("measures") or []) if isinstance(table, dict) else []:
+            name = str(m.get("name", "") or "")
+            expr = str(m.get("expression", "") or "")
+            if name:
+                out[name.lower()] = expr
+    return out
+
+
+def _extract_bracket_names(text: str) -> set:
+    """Return the set of names inside ``[...]`` references in a DAX text (both
+    measure references like ``[Sales]`` and column references like
+    ``Table[Column]`` yield their bracketed name)."""
+
+    return set(re.findall(r"\[([^\]]+)\]", text or ""))
+
+
+def _collect_dependent_measure_expressions(
+    dax_query: str, model_tree: Optional[list]
+) -> str:
+    """Return the concatenated DAX expressions of every measure transitively
+    referenced by ``dax_query``.
+
+    Starting from the measures referenced directly in the query, this walks the
+    measure dependency graph (a measure's expression may reference further
+    measures) and gathers each expression exactly once. The result lets the
+    syntax-level rules (e.g. ``FILTER_COLUMN_USE_KEEPFILTERS``, ``USES_IFERROR``)
+    detect issues that live inside dependent measures used by the query rather
+    than in the query text itself. Returns an empty string when no model tree is
+    available or the query references no measures."""
+
+    measure_map = _build_measure_expr_map(model_tree)
+    if not measure_map:
+        return ""
+
+    seen: set = set()
+    collected: list = []
+    # Seed with measures referenced directly by the query text.
+    queue = [
+        name
+        for name in _extract_bracket_names(_strip_strings_and_comments(dax_query or ""))
+        if name.lower() in measure_map
+    ]
+    while queue:
+        name = queue.pop()
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        expr = measure_map.get(key, "")
+        if not expr:
+            continue
+        collected.append(expr)
+        # Expand any further measures referenced inside this expression.
+        for ref in _extract_bracket_names(_strip_strings_and_comments(expr)):
+            if ref.lower() in measure_map and ref.lower() not in seen:
+                queue.append(ref)
+    return "\n".join(collected)
 
 
 # --------------------------------------------------------------------------- #
@@ -278,21 +473,41 @@ def build_context(
 
     dax_clean = _strip_strings_and_comments(dax_query or "")
 
+    # Extend the syntax-level analysis to the DAX of dependent measures used by
+    # the query, so rules such as FILTER_COLUMN_USE_KEEPFILTERS / USES_IFERROR
+    # also flag problems that live inside referenced measures (the query itself
+    # often only references a measure by name). Falls back to the query text
+    # alone when no model tree is available.
+    measure_expr_text = _collect_dependent_measure_expressions(dax_query, model_tree)
+    analysis_clean = (
+        dax_clean
+        if not measure_expr_text
+        else dax_clean + "\n" + _strip_strings_and_comments(measure_expr_text)
+    )
+    # Known measure names (lowercased) used to tell whether a FILTER predicate
+    # evaluates a measure or a column.
+    measure_names = set(_build_measure_expr_map(model_tree).keys())
+
     # ---- Query text metrics ----
-    iterator_count = _count_iterators(dax_clean)
+    iterator_count = _count_iterators(analysis_clean)
     metrics: dict = {
         "has_query": bool((dax_query or "").strip()),
         "query_length": len(dax_query or ""),
         "iterator_count": iterator_count,
-        "nested_iterator": _has_nested_iterator(dax_clean),
+        "nested_iterator": _has_nested_iterator(analysis_clean),
         "uses_iferror": bool(
-            re.search(r"\b(IFERROR|ISERROR)\s*\(", dax_clean, re.IGNORECASE)
+            re.search(r"\b(IFERROR|ISERROR)\s*\(", analysis_clean, re.IGNORECASE)
         ),
         "uses_divide_function": bool(
-            re.search(r"\bDIVIDE\s*\(", dax_clean, re.IGNORECASE)
+            re.search(r"\bDIVIDE\s*\(", analysis_clean, re.IGNORECASE)
         ),
-        "uses_division_operator": bool(re.search(r"(?<![/])/(?![/])", dax_clean)),
-        "filter_full_table_count": _count_filter_full_table(dax_clean),
+        "uses_division_operator": bool(re.search(r"(?<![/])/(?![/])", analysis_clean)),
+        "filter_full_table_count": _count_filter_full_table(
+            analysis_clean, measure_names
+        ),
+        "filter_column_predicate_count": _count_filter_column_predicate(
+            analysis_clean, measure_names
+        ),
         "cold_cache": bool(cold_cache),
     }
 
