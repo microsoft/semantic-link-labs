@@ -47,8 +47,8 @@ def create_pqt_file(
             f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     folderPath = "/lakehouse/default/Files"
     subFolderPath = os.path.join(folderPath, "pqtnewfolder")

@@ -48,8 +48,8 @@ def download_report(
             f"{icons.red_dot} A lakehouse must be attached to the notebook."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id()
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id()
     lakehouse_workspace = resolve_workspace_name()
 
     dfI = fabric.list_items(workspace=workspace_id)

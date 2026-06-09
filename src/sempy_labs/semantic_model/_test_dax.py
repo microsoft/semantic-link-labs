@@ -116,8 +116,8 @@ def test(
     workspace_id = None
 
     if dataset is not None:
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        (dataset_name, dataset_id) = resolve_item_name_and_id(
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+        dataset_name, dataset_id = resolve_item_name_and_id(
             item=dataset, type="SemanticModel", workspace=workspace_id
         )
         if dax_string and dax_string.strip():
@@ -139,7 +139,7 @@ def test(
     elif workspace is not None:
         # No dataset chosen yet, but a workspace was provided: resolve it so
         # the widget's model picker can pre-select that workspace.
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if visualize:
         _visualize_dax_test(
@@ -1443,12 +1443,7 @@ def _visualize_dax_test(
     initial_rows = _trace_rows_from_df(df)
     initial_query_plan_rows = _query_plan_rows_from_df(df)
 
-    widget_css = (
-        _UI_HEADER_CSS
-        + "\n"
-        + _UI_ATTRIBUTION_CSS
-        + "\n"
-        + f"""
+    widget_css = _UI_HEADER_CSS + "\n" + _UI_ATTRIBUTION_CSS + "\n" + f"""
 .dtx {{
     {_UI_LIGHT_VARS}
     {_UI_SYNTAX_VARS}
@@ -3127,7 +3122,6 @@ def _visualize_dax_test(
     filter: none;
 }}
 """
-    )
 
     sun_icon = _UI_ICONS["sun"].replace("`", "\\`")
     moon_icon = _UI_ICONS["moon"].replace("`", "\\`")
@@ -7421,8 +7415,8 @@ export default { render };
                 resolve_workspace_name_and_id as _rwni,
             )
 
-            (ws_name, ws_id_resolved) = _rwni(ws_id)
-            (ds_name, ds_id_resolved) = resolve_item_name_and_id(
+            ws_name, ws_id_resolved = _rwni(ws_id)
+            ds_name, ds_id_resolved = resolve_item_name_and_id(
                 item=ds_id, type="SemanticModel", workspace=ws_id_resolved
             )
             model_ctx["workspace_id"] = ws_id_resolved

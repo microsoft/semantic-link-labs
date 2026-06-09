@@ -34,11 +34,9 @@ def infer_model_relationships(column_list, workspace):
             with ConnectMirroredAzureDatabricksCatalog(
                 mirrored_azure_databricks_catalog=source, workspace=workspace
             ) as sql:
-                df = sql.query(
-                    f"""SELECT COUNT(DISTINCT {column}) AS ct_col,
+                df = sql.query(f"""SELECT COUNT(DISTINCT {column}) AS ct_col,
                             COUNT({column}) AS ct_tbl
-                        FROM {schema}.{table}"""
-                )
+                        FROM {schema}.{table}""")
             ct_col, ct_tbl = df.iloc[0]
             cardinality_cache[key] = ct_col == ct_tbl
 

@@ -44,7 +44,7 @@ def list_item_job_instances(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_id
     )
 
@@ -284,8 +284,8 @@ def run_on_demand_item_job(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -341,8 +341,8 @@ def create_item_schedule_cron(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -411,8 +411,8 @@ def create_item_schedule_daily(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -487,7 +487,7 @@ def create_item_schedule_weekly(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -561,7 +561,7 @@ def cancel_item_job_instance(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 

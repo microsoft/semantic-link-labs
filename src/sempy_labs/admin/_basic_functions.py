@@ -325,7 +325,7 @@ def list_workspace_access_details(
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and Service Principals) that have access to the specified workspace.
     """
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "User Id": "string",
@@ -433,7 +433,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         A pandas dataframe showing a list of users that have access to the specified workspace.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "User Name": "string",

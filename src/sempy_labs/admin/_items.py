@@ -216,8 +216,8 @@ def list_item_access_details(
         A pandas dataframe showing a list of users (including groups and service principals) and lists their workspace roles.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = _resolve_item_name_and_id(
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    item_name, item_id = _resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_name
     )
 

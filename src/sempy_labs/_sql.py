@@ -47,16 +47,16 @@ class ConnectBase:
         # Resolve the appropriate ID and name (warehouse or lakehouse)
         if type == "SQLDatabase":
             # SQLDatabase is has special case for resolving the name and id
-            (resource_name, resource_id) = resolve_item_name_and_id(
+            resource_name, resource_id = resolve_item_name_and_id(
                 item=item, type=type, workspace=workspace_id
             )
         elif type == "Lakehouse":
-            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
+            resource_name, resource_id = resolve_lakehouse_name_and_id(
                 lakehouse=item,
                 workspace=workspace_id,
             )
         else:
-            (resource_name, resource_id) = resolve_item_name_and_id(
+            resource_name, resource_id = resolve_item_name_and_id(
                 item=item, workspace=workspace_id, type=type
             )
 

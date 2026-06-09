@@ -8,7 +8,6 @@ from ._parser import Parser
 from ._tokenizer import tokenize
 from ._tokens import TokenType
 
-
 # Soft, Apple-inspired palette tuned to read well on both light and dark
 # backgrounds (loosely based on Apple's "vivid" system colors, lightened
 # slightly so they don't burn on a light background).

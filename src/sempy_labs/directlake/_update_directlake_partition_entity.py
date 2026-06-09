@@ -41,8 +41,8 @@ def update_direct_lake_partition_entity(
     """
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     # Support both str & list types
     if isinstance(table_name, str):
@@ -163,8 +163,8 @@ def add_table_to_direct_lake_semantic_model(
     from sempy_labs.tom import connect_semantic_model
     from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)[0]
     if sources.get("itemType") != "Lakehouse":

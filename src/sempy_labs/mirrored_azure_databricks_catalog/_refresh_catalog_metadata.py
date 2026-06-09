@@ -29,8 +29,8 @@ def refresh_catalog_metadata(
         or if no lakehouse attached, resolves to the workspace of the notebook
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (catalog_name, catalog_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    catalog_name, catalog_id = resolve_item_name_and_id(
         item=mirrored_azure_databricks_catalog,
         type="MirroredAzureDatabricksCatalog",
         workspace=workspace_id,

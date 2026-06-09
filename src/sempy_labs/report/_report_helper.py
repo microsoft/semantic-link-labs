@@ -1,7 +1,6 @@
 import requests
 import sempy_labs._icons as icons
 
-
 vis_type_mapping = {
     "barChart": "Bar chart",
     "columnChart": "Column chart",

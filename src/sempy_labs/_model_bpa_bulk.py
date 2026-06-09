@@ -226,7 +226,7 @@ def create_model_bpa_semantic_model(
     from sempy_labs.tom import connect_semantic_model
 
     lakehouse_workspace_id = resolve_workspace_id(workspace=lakehouse_workspace)
-    (lakehouse_id, lakehouse_name) = resolve_lakehouse_name_and_id(
+    lakehouse_id, lakehouse_name = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
 

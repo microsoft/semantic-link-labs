@@ -79,7 +79,7 @@ def import_onelake_lifecycle_policy(
         and the ARM resource ``type``.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if not isinstance(policy, dict):
         raise ValueError(

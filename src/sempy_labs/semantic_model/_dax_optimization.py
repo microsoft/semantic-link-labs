@@ -27,7 +27,6 @@ from typing import Any, Optional
 
 import pandas as pd
 
-
 _RULES_FILE = os.path.join(os.path.dirname(__file__), "_dax_optimization_rules.json")
 
 # Iterator (row-by-row) DAX functions. Used to flag nested/expensive iteration.

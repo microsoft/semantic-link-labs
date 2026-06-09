@@ -129,8 +129,8 @@ def delete_restore_point(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    warehouse_name, warehouse_id = resolve_item_name_and_id(
         item=warehouse, type="Warehouse", workspace=workspace_id
     )
     restore_point_id = _resolve_restore_point_id(
@@ -176,8 +176,8 @@ def create_restore_point(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    warehouse_name, warehouse_id = resolve_item_name_and_id(
         item=warehouse, type="Warehouse", workspace=workspace_id
     )
 
@@ -229,8 +229,8 @@ def update_restore_point(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    warehouse_name, warehouse_id = resolve_item_name_and_id(
         item=warehouse, type="Warehouse", workspace=workspace_id
     )
     restore_point_id = _resolve_restore_point_id(
@@ -286,8 +286,8 @@ def restore_to_restore_point(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    warehouse_name, warehouse_id = resolve_item_name_and_id(
         item=warehouse, type="Warehouse", workspace=workspace_id
     )
     restore_point_id = _resolve_restore_point_id(

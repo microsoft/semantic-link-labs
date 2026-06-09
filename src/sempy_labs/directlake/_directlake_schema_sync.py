@@ -46,8 +46,8 @@ def direct_lake_schema_sync(
     import Microsoft.AnalysisServices.Tabular as TOM
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)[0]
     if sources.get("itemType") != "Lakehouse":

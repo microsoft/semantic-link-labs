@@ -37,7 +37,7 @@ def is_schema_enabled(
         Indicates whether the lakehouse has schemas enabled.
     """
     workspace_id = resolve_workspace_id(workspace)
-    (item_name, item_id) = resolve_lakehouse_name_and_id(lakehouse, workspace)
+    item_name, item_id = resolve_lakehouse_name_and_id(lakehouse, workspace)
     response = _base_api(f"/v1/workspaces/{workspace_id}/lakehouses/{item_id}")
     default_schema = response.json().get("properties", {}).get("defaultSchema", None)
     if default_schema:
@@ -100,8 +100,8 @@ def list_tables(
     schema: Optional[str | List[str]] = None,
 ) -> pd.DataFrame:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -245,8 +245,8 @@ def create_schema(
     """
     import notebookutils
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 

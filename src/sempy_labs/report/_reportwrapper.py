@@ -90,10 +90,10 @@ class ReportWrapper:
         readonly: bool = True,
         show_diffs: bool = True,
     ):
-        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(
+        self._workspace_name, self._workspace_id = resolve_workspace_name_and_id(
             workspace
         )
-        (self._report_name, self._report_id) = resolve_item_name_and_id(
+        self._report_name, self._report_id = resolve_item_name_and_id(
             item=report, type="Report", workspace=self._workspace_id
         )
         self._readonly = readonly
@@ -515,7 +515,7 @@ class ReportWrapper:
             The page name and display name.
         """
 
-        (_, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
+        _, page_id, page_name = self.__resolve_page_name_and_display_name_file_path(
             page,
             return_error=return_error,
         )
@@ -537,8 +537,8 @@ class ReportWrapper:
             The page name.
         """
 
-        (path, page_id, page_name) = (
-            self.__resolve_page_name_and_display_name_file_path(page_display_name)
+        path, page_id, page_name = self.__resolve_page_name_and_display_name_file_path(
+            page_display_name
         )
         return page_id
 
@@ -557,8 +557,8 @@ class ReportWrapper:
             The page display name.
         """
 
-        (path, page_id, page_name) = (
-            self.__resolve_page_name_and_display_name_file_path(page_name)
+        path, page_id, page_name = self.__resolve_page_name_and_display_name_file_path(
+            page_name
         )
         return page_name
 
@@ -1657,7 +1657,7 @@ class ReportWrapper:
         )
 
         if extended:
-            (dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name) = (
+            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
                 resolve_dataset_from_report(
                     report=self._report_id, workspace=self._workspace_id
                 )
@@ -1777,7 +1777,7 @@ class ReportWrapper:
             apply_only_to_target_visuals = payload.get("options", {}).get(
                 "applyOnlyToTargetVisuals", False
             )
-            (page_id, page_display) = self._resolve_page_name_and_display_name(
+            page_id, page_display = self._resolve_page_name_and_display_name(
                 page=rpt_page_id, return_error=False
             )
 
@@ -2059,9 +2059,7 @@ class ReportWrapper:
         """
         self._ensure_pbir()
 
-        (page_id, page_display_name) = self._resolve_page_name_and_display_name(
-            page_name
-        )
+        page_id, page_display_name = self._resolve_page_name_and_display_name(page_name)
         self.set_json(
             file_path=self._pages_file_path,
             json_path="$.activePageName",
@@ -2106,7 +2104,7 @@ class ReportWrapper:
                 f"{icons.red_dot} Invalid page_type parameter. Valid options: ['Tooltip', 'Letter', '4:3', '16:9']."
             )
 
-        (file_path, page_id, page_display_name) = (
+        file_path, page_id, page_display_name = (
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
 
@@ -2133,7 +2131,7 @@ class ReportWrapper:
             If set to False, makes the report page visible.
         """
         self._ensure_pbir()
-        (file_path, page_id, page_display_name) = (
+        file_path, page_id, page_display_name = (
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
 
@@ -2687,7 +2685,7 @@ class ReportWrapper:
             visual_file_copy["name"] = visual_id
         else:
             visual_id = visual_file_copy.get("name")
-        (page_file_path, page_id, page_name) = (
+        page_file_path, page_id, page_name = (
             self.__resolve_page_name_and_display_name_file_path(page)
         )
         visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
@@ -2707,7 +2705,7 @@ class ReportWrapper:
 
         type = helper.resolve_visual_type(type)
         visual_id = generate_hex()
-        (page_file_path, page_id, page_name) = (
+        page_file_path, page_id, page_name = (
             self.__resolve_page_name_and_display_name_file_path(page)
         )
         visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)

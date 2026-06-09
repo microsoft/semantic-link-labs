@@ -92,8 +92,8 @@ def execute_query(
         The response from the API.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=graph_model, type="GraphModel", workspace=workspace_id
     )
 

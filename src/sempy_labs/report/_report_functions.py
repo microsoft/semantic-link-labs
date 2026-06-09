@@ -55,8 +55,8 @@ def get_report_json(
         The report.json file for a given Power BI report.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    report_name, report_id = resolve_item_name_and_id(
         item=report, type="Report", workspace=workspace_id
     )
 
@@ -112,7 +112,7 @@ def report_dependency_tree(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfR = fabric.list_reports(workspace=workspace_id)
     dfD = fabric.list_datasets(workspace=workspace_id)
@@ -188,7 +188,7 @@ def clone_report(
         Defaults to None which resolves to the semantic model used by the initial report.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfI = fabric.list_items(workspace=workspace_id, type="Report")
     dfI_filt = dfI[(dfI["Display Name"] == report)]
@@ -254,7 +254,7 @@ def launch_report(report: str, workspace: Optional[str | UUID] = None):
 
     from sempy_labs import resolve_report_id
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     report_id = resolve_report_id(report, workspace_id)
     report = Report(group_id=workspace_id, report_id=report_id)
 
@@ -281,7 +281,7 @@ def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
         A pandas dataframe showing the pages within a Power BI report and their properties.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=["Page ID", "Page Name", "Hidden", "Width", "Height", "Visual Count"]
@@ -349,7 +349,7 @@ def list_report_visuals(report: str, workspace: Optional[str | UUID] = None):
         A pandas dataframe showing the visuals within a Power BI report and their properties.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     reportJson = get_report_json(report=report, workspace=workspace_id)
 
@@ -403,7 +403,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str | UUID] = None):
         A pandas dataframe showing the bookmarks within a Power BI report and their properties.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -492,7 +492,7 @@ def translate_report_titles(
     """
     from synapse.ml.services import Translate
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if isinstance(languages, str):
         languages = [languages]

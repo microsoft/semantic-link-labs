@@ -445,8 +445,8 @@ def resume_eventstream(eventstream: str | UUID, workspace: Optional[str | UUID] 
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (eventstream_name, eventstream_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    eventstream_name, eventstream_id = resolve_item_name_and_id(
         item=eventstream, type="Eventstream", workspace=workspace_id
     )
     _base_api(
@@ -485,8 +485,8 @@ def resume_eventstream_destination(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (eventstream_name, eventstream_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    eventstream_name, eventstream_id = resolve_item_name_and_id(
         item=eventstream, type="Eventstream", workspace=workspace_id
     )
     _base_api(
@@ -523,8 +523,8 @@ def resume_eventstream_source(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (eventstream_name, eventstream_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    eventstream_name, eventstream_id = resolve_item_name_and_id(
         item=eventstream, type="Eventstream", workspace=workspace_id
     )
     _base_api(
@@ -559,8 +559,8 @@ def pause_eventstream(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (eventstream_name, eventstream_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    eventstream_name, eventstream_id = resolve_item_name_and_id(
         item=eventstream, type="Eventstream", workspace=workspace_id
     )
     _base_api(
@@ -599,8 +599,8 @@ def pause_eventstream_destination(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (eventstream_name, eventstream_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    eventstream_name, eventstream_id = resolve_item_name_and_id(
         item=eventstream, type="Eventstream", workspace=workspace_id
     )
     _base_api(
@@ -637,8 +637,8 @@ def pause_eventstream_source(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (eventstream_name, eventstream_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    eventstream_name, eventstream_id = resolve_item_name_and_id(
         item=eventstream, type="Eventstream", workspace=workspace_id
     )
     _base_api(

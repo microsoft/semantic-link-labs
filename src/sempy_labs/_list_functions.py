@@ -102,8 +102,8 @@ def list_tables(
 
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     columns = {
         "Name": "string",
@@ -281,7 +281,7 @@ def list_annotations(
     from sempy_labs.tom import connect_semantic_model
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     columns = {
         "Object Name": "string",
@@ -510,7 +510,7 @@ def list_columns(
     )
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
@@ -726,7 +726,7 @@ def update_item(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_type = item_type.replace(" ", "").capitalize()
 
     if item_type not in icons.itemTypes.keys():
@@ -836,8 +836,8 @@ def list_relationships(
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
 
@@ -928,7 +928,7 @@ def list_kpis(
     from sempy_labs.tom import connect_semantic_model
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     columns = {
         "Table Name": "string",
@@ -1214,8 +1214,8 @@ def list_reports_using_semantic_model(
     #    ]
     # )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     dfR = fabric.list_reports(workspace=workspace_id)
     dfR_filt = dfR[
@@ -1291,8 +1291,8 @@ def list_report_semantic_model_objects(
     }
     dfRO = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     # Collect all reports which use the semantic model
     dfR = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
@@ -1379,7 +1379,7 @@ def list_semantic_model_object_report_usage(
     from sempy_labs._helper_functions import format_dax_object_name
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
 

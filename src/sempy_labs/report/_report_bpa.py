@@ -109,7 +109,7 @@ def run_report_bpa(
 
             for scope in scopes:
                 # common fields for each scope
-                (df, violation_cols_or_func) = scope_to_dataframe[scope]
+                df, violation_cols_or_func = scope_to_dataframe[scope]
 
                 # execute rule and subset df
                 df_violations = df[row["Expression"](df)]
@@ -200,8 +200,8 @@ def run_report_bpa(
             max_run_id = _get_column_aggregate(table_name=delta_table_name)
             runId = max_run_id + 1
 
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        (report_name, report_id) = resolve_item_name_and_id(
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+        report_name, report_id = resolve_item_name_and_id(
             item=report, type="Report", workspace=workspace_id
         )
 

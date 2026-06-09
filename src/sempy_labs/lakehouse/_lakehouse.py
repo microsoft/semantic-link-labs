@@ -314,8 +314,8 @@ def run_table_maintenance(
         A DataFrame containing the job instance details of the table maintenance operation.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 

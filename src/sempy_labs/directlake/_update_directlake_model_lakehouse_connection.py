@@ -95,8 +95,8 @@ def update_direct_lake_model_connection(
     if isinstance(tables, str):
         tables = [tables]
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     source_type = source_type.capitalize()
 
@@ -109,11 +109,11 @@ def update_direct_lake_model_connection(
         source_workspace = workspace_name
 
     if source_type == "Lakehouse":
-        (source_name, source_id) = resolve_lakehouse_name_and_id(
+        source_name, source_id = resolve_lakehouse_name_and_id(
             lakehouse=source, workspace=source_workspace
         )
     else:
-        (source_name, source_id) = resolve_item_name_and_id(
+        source_name, source_id = resolve_item_name_and_id(
             item=source, type=source_type, workspace=source_workspace
         )
 

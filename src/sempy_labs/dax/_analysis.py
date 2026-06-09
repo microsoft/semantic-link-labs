@@ -9,7 +9,6 @@ from typing import Iterator, List, Tuple, Union
 from ._expressions import Column, Function, Measure
 from ._parser import parse_dax
 
-
 # Functions that require their target column(s) to be numeric.
 # Value is the argument index that contains the column to aggregate:
 #   0 -> the first arg is the column itself (e.g. SUM(<column>))
