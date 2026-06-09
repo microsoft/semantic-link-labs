@@ -9,6 +9,7 @@ from uuid import UUID
 import time
 import warnings
 import re
+import json
 from datetime import datetime, timezone
 
 
@@ -230,6 +231,13 @@ _TEST_EVENT_SCHEMA: dict = {
         "TextData",
         "RequestID",
     ],
+    "ExecutionMetrics": [
+        "EventClass",
+        #"EventSubclass",
+        #"CurrentTime",
+        "TextData",
+        "RequestID",
+    ]
 }
 
 
@@ -697,6 +705,57 @@ def _query_plan_rows_from_df(df: pd.DataFrame) -> list:
                 "text": text,
             }
         )
+    return out
+
+
+# Subset of the ``ExecutionMetrics`` TextData JSON surfaced in the widget's
+# Execution Metrics tab, in display order: (json_key, label).
+_EXECUTION_METRIC_FIELDS: list = [
+    ("vertipaqJobCpuTimeMs", "VertiPaq Job CPU Time (ms)"),
+    ("queryProcessingCpuTimeMs", "Query Processing CPU Time (ms)"),
+    ("totalCpuTimeMs", "Total CPU Time (ms)"),
+    ("executionDelayMs", "Execution Delay (ms)"),
+    ("approximatePeakMemConsumptionKB", "Approximate Peak Memory Consumption (KB)"),
+]
+
+
+def _execution_metrics_from_df(df: pd.DataFrame) -> list:
+    """Convert the captured trace dataframe to a list of execution metric rows
+    (``{key, label, value}``) suitable for serialization to the front-end.
+
+    The ``ExecutionMetrics`` trace event carries a JSON document in its
+    ``TextData``; only the fields in :data:`_EXECUTION_METRIC_FIELDS` are
+    surfaced. Returns an empty list if no ``ExecutionMetrics`` event was
+    captured or its TextData cannot be parsed."""
+
+    if df is None or df.empty or "Event Class" not in df.columns:
+        return []
+    rows_df = df[df["Event Class"] == "ExecutionMetrics"]
+    if rows_df.empty:
+        return []
+    # Use the most recent ExecutionMetrics event for this query.
+    text = rows_df.iloc[-1].get("Text Data", "")
+    if not pd.notna(text):
+        return []
+    try:
+        data = json.loads(str(text))
+    except (ValueError, TypeError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    out = []
+    for key, label in _EXECUTION_METRIC_FIELDS:
+        if key not in data:
+            continue
+        val = data.get(key)
+        try:
+            val_v = int(val) if val is not None else 0
+        except (TypeError, ValueError):
+            try:
+                val_v = float(val)
+            except (TypeError, ValueError):
+                val_v = 0
+        out.append({"key": key, "label": label, "value": val_v})
     return out
 
 
@@ -1444,6 +1503,7 @@ def _visualize_dax_test(
     formatted_initial = (dax_string or "").replace("\r\n", "\n").replace("\r", "\n")
     initial_rows = _trace_rows_from_df(df)
     initial_query_plan_rows = _query_plan_rows_from_df(df)
+    initial_execution_metrics = _execution_metrics_from_df(df)
 
     widget_css = _UI_HEADER_CSS + "\n" + _UI_ATTRIBUTION_CSS + "\n" + f"""
 .dtx {{
@@ -5439,6 +5499,10 @@ function render({ model, el }) {
     segPerf.type = "button";
     segPerf.className = "dtx-seg-btn";
     segPerf.textContent = "Performance analysis";
+    const segExecMetrics = document.createElement("button");
+    segExecMetrics.type = "button";
+    segExecMetrics.className = "dtx-seg-btn";
+    segExecMetrics.textContent = "Execution metrics";
     seg.appendChild(segTrace);
     seg.appendChild(segResult);
     seg.appendChild(segQueryPlan);
@@ -5447,6 +5511,7 @@ function render({ model, el }) {
     seg.appendChild(segDependencies);
     seg.appendChild(segVertipaq);
     seg.appendChild(segPerf);
+    seg.appendChild(segExecMetrics);
     viewToolbar.appendChild(seg);
 
     // ---------- DAX Query Plan toggle (Logical / Physical) ----------
@@ -5615,7 +5680,10 @@ function render({ model, el }) {
         model.save_changes();
     }
     segPerf.addEventListener("click", () => triggerPerformanceAnalysis(false));
-
+    segExecMetrics.addEventListener("click", () => {
+        model.set("view_mode", "execmetrics");
+        model.save_changes();
+    });
     // Maximum number of rows for which we render an interactive chart.
     // Beyond this, the Chart option is disabled to keep the widget responsive.
     const CHART_MAX_ROWS = 200;
@@ -5654,6 +5722,7 @@ function render({ model, el }) {
         segDependencies.classList.toggle("dtx-seg-btn-on", mode === "dependencies");
         segVertipaq.classList.toggle("dtx-seg-btn-on", mode === "vertipaq");
         segPerf.classList.toggle("dtx-seg-btn-on", mode === "performance");
+        segExecMetrics.classList.toggle("dtx-seg-btn-on", mode === "execmetrics");
         const elig = chartEligibility();
         segChart.disabled = !elig.ok;
         segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
@@ -5816,6 +5885,29 @@ function render({ model, el }) {
             <table class="dtx-plan-table">
                 <thead><tr><th>${escapeHtml(planType)} Query Plan</th></tr></thead>
                 <tbody><tr><td class="dtx-plan-pane"><pre>${escapeHtml(planText)}</pre></td></tr></tbody>
+            </table>`;
+    }
+
+    function renderExecMetricsTable() {
+        const rows = model.get("execution_metrics") || [];
+        const fmt = (n) => Number(n).toLocaleString();
+        if (!rows.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No execution metrics captured. Run a query to capture its execution metrics.</td></tr></tbody></table>`;
+            return;
+        }
+        const body = rows.map(r => (
+            `<tr>
+                <td>${escapeHtml(String(r.label || r.key || ""))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(r.value))}</td>
+            </tr>`
+        )).join("");
+        tableWrap.innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Metric</th>
+                    <th style="text-align:right">Value</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
             </table>`;
     }
 
@@ -6276,6 +6368,9 @@ function render({ model, el }) {
         } else if (mode === "performance") {
             renderPerformance();
             resultMeta.style.display = "none";
+        } else if (mode === "execmetrics") {
+            renderExecMetricsTable();
+            resultMeta.style.display = "none";
         } else {
             renderTraceTable();
             resultMeta.style.display = "none";
@@ -6306,6 +6401,7 @@ function render({ model, el }) {
     model.on("change:trace_history", renderTable);
     model.on("change:query_plan_rows", renderTable);
     model.on("change:query_plan_type", renderTable);
+    model.on("change:execution_metrics", renderTable);
     model.on("change:dependency_tree", renderTable);
     model.on("change:dependencies_loading", renderTable);
     model.on("change:dependency_columns", renderTable);
@@ -6489,6 +6585,7 @@ export default { render };
         trace_rows = traitlets.List([]).tag(sync=True)
         query_plan_rows = traitlets.List([]).tag(sync=True)
         query_plan_type = traitlets.Unicode("Logical").tag(sync=True)
+        execution_metrics = traitlets.List([]).tag(sync=True)
         result_columns = traitlets.List([]).tag(sync=True)
         result_rows = traitlets.List([]).tag(sync=True)
         result_total_rows = traitlets.Int(0).tag(sync=True)
@@ -6603,6 +6700,7 @@ export default { render };
         trace_rows=initial_rows,
         query_plan_rows=initial_query_plan_rows,
         query_plan_type="Logical",
+        execution_metrics=initial_execution_metrics,
         result_columns=initial_result["columns"],
         result_rows=initial_result["rows"],
         result_total_rows=int(initial_result["total_rows"]),
@@ -6865,21 +6963,24 @@ export default { render };
 
     def _backfill_query_plan(run_id: int, start_baseline: int, query: str = "") -> None:
         """Watch the persistent trace after a query has returned and back-fill
-        the DAX query plan if it flushes late.
+        the DAX query plan (and execution metrics) if they flush late.
 
-        A query's ``DAXQueryPlan`` events are delivered to the trace buffer
-        asynchronously and, on a busy capacity, can arrive a few seconds after
-        the query itself completed — i.e. after the inline capture in
-        ``_execute_and_capture`` has already returned the results. This keeps
-        polling the trace (slicing from this query's start baseline) and sets
-        ``query_plan_rows`` the moment the plan appears, so the Query Plan tab
-        is populated reliably without ever delaying the result grid.
+        A query's ``DAXQueryPlan`` and ``ExecutionMetrics`` events are delivered
+        to the trace buffer asynchronously and, on a busy capacity, can arrive a
+        few seconds after the query itself completed — i.e. after the inline
+        capture in ``_execute_and_capture`` has already returned the results.
+        This keeps polling the trace (slicing from this query's start baseline)
+        and sets ``query_plan_rows`` / ``execution_metrics`` the moment they
+        appear, so those tabs are populated reliably without ever delaying the
+        result grid.
 
         The poll stops as soon as a newer run starts (or this run is canceled):
         the trace rows between this query's start baseline and the next query's
         events belong exclusively to this query, so stopping there prevents
         attributing a later query's plan to this one."""
         _deadline = time.monotonic() + 25.0
+        _need_plan = not (widget.query_plan_rows or [])
+        _need_metrics = not (widget.execution_metrics or [])
         while time.monotonic() < _deadline:
             time.sleep(0.3)
             with state_lock:
@@ -6903,9 +7004,17 @@ export default { render };
             _req_id = _resolve_query_request_id(_new, query)
             if _req_id is not None:
                 _new = _filter_logs_to_request_id(_new, _req_id)
-            plan_rows = _query_plan_rows_from_df(_new)
-            if plan_rows:
-                widget.query_plan_rows = plan_rows
+            if _need_plan:
+                plan_rows = _query_plan_rows_from_df(_new)
+                if plan_rows:
+                    widget.query_plan_rows = plan_rows
+                    _need_plan = False
+            if _need_metrics:
+                metric_rows = _execution_metrics_from_df(_new)
+                if metric_rows:
+                    widget.execution_metrics = metric_rows
+                    _need_metrics = False
+            if not _need_plan and not _need_metrics:
                 return
 
     def _worker(
@@ -6955,6 +7064,7 @@ export default { render };
         widget.cpu_time = int(new_cpu)
         widget.trace_rows = _trace_rows_from_df(new_df)
         widget.query_plan_rows = _query_plan_rows_from_df(new_df)
+        widget.execution_metrics = _execution_metrics_from_df(new_df)
         payload = _result_payload_from_df(new_result)
         widget.result_columns = payload["columns"]
         widget.result_rows = payload["rows"]
@@ -6999,10 +7109,13 @@ export default { render };
         except Exception:
             pass
 
-        # If the DAX query plan was not captured inline (it can flush into the
-        # trace a few seconds after the query completes), keep watching the
-        # persistent trace and back-fill the Query Plan tab once it arrives.
-        if start_baseline is not None and not (widget.query_plan_rows or []):
+        # If the DAX query plan or execution metrics were not captured inline
+        # (they can flush into the trace a few seconds after the query
+        # completes), keep watching the persistent trace and back-fill the
+        # Query Plan / Execution Metrics tabs once they arrive.
+        _missing_plan = not (widget.query_plan_rows or [])
+        _missing_metrics = not (widget.execution_metrics or [])
+        if start_baseline is not None and (_missing_plan or _missing_metrics):
             try:
                 _backfill_query_plan(run_id, int(start_baseline), query)
             except Exception:
