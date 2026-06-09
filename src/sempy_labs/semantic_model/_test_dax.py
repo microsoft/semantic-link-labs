@@ -460,12 +460,16 @@ def _execute_and_capture(
                 _types.add(_sc)
         return _types
 
-    # The inline wait here is deliberately short so the result grid is not held
-    # up: when the plan flushes promptly (the common case) it is captured and
-    # shown together with the results, and when it flushes late the caller's
-    # background back-fill (``_backfill_query_plan``) keeps watching the trace
-    # and populates the Query Plan tab as soon as the events arrive.
-    _plan_deadline = time.monotonic() + 6.0
+    # The inline wait below blocks until the DAX query plan has actually been
+    # captured: because essentially every real ``EVALUATE`` query emits both a
+    # logical and a physical plan, the loop keeps polling the trace until BOTH
+    # have arrived rather than giving up early and relying on the background
+    # back-fill. The plan rows are serialized during query cleanup and often
+    # flush into the trace buffer a second or more after QueryEnd (sometimes in
+    # several separate flushes), so a generous deadline is used. Only a query
+    # that genuinely produces no plan (e.g. a trivial constant evaluation) waits
+    # out the longer no-plan grace period below before giving up.
+    _plan_deadline = time.monotonic() + 30.0
     _plan_count = -1
     _stable_since: Optional[float] = None
     _qe_at: Optional[float] = time.monotonic() if qe_seen else None
@@ -495,15 +499,13 @@ def _execute_and_capture(
             # waiting for any further plan events still being flushed.
             _plan_count = _cur
             _stable_since = time.monotonic()
-        elif _stable_since is not None and (time.monotonic() - _stable_since >= 1.0):
-            # Plan count held steady long enough.
-            if _cur > 0:
-                # At least one plan row captured and no more are arriving.
-                break
-            # No plan row yet. Give it a brief grace period past QueryEnd, then
-            # stop and let the background back-fill catch a late-arriving plan
-            # rather than blocking the result grid.
-            if _qe_at is not None and (time.monotonic() - _qe_at >= 3.0):
+        elif _stable_since is not None and (time.monotonic() - _stable_since >= 2.0):
+            # Plan count held steady. Only stop early if at least one plan row
+            # was captured AND it has been quiet for a couple of seconds past
+            # QueryEnd (a partial plan that is not going to be completed). If no
+            # plan row has arrived yet, keep waiting for the full deadline so a
+            # late-flushing plan is never missed.
+            if _cur > 0 and _qe_at is not None and (time.monotonic() - _qe_at >= 2.0):
                 break
         time.sleep(0.1)
 
@@ -1809,6 +1811,8 @@ def _visualize_dax_test(
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
+    flex: 0 1 auto;
 }}
 .dtx .dtx-imp-select {{
     appearance: none;
@@ -1821,6 +1825,9 @@ def _visualize_dax_test(
     font-size: 12px;
     color: var(--ui-text);
     cursor: pointer;
+    min-width: 0;
+    flex: 0 1 auto;
+    text-overflow: ellipsis;
     background-image: linear-gradient(45deg, transparent 50%, var(--ui-text-tertiary) 50%),
         linear-gradient(135deg, var(--ui-text-tertiary) 50%, transparent 50%);
     background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
@@ -1841,6 +1848,8 @@ def _visualize_dax_test(
     font-size: 12px;
     color: var(--ui-text);
     width: 150px;
+    min-width: 0;
+    flex: 0 1 auto;
 }}
 .dtx .dtx-imp-input:focus {{
     outline: none;
@@ -2052,6 +2061,8 @@ def _visualize_dax_test(
     color: var(--ui-on-accent);
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    flex: none;
     padding: 0;
     border-radius: 50%;
     cursor: pointer;
