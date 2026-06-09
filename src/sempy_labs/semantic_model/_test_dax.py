@@ -6667,24 +6667,22 @@ export default { render };
         initial_tree = []
         initial_roles = []
 
-    # When no dataset was supplied, populate the workspace picker up-front so
-    # the user can immediately choose a workspace and then a semantic model.
-    if dataset_chosen:
+    # Populate the workspace picker up-front so the user can immediately choose
+    # a workspace and then a semantic model. When a workspace is known (from the
+    # ``workspace`` parameter or resolved from the supplied dataset), pre-load
+    # its semantic models too, so the dataset dropdown is populated the moment
+    # the picker is opened — even when a dataset was already supplied.
+    try:
+        initial_workspaces = _list_workspaces_for_picker()
+    except Exception:
         initial_workspaces = []
-        initial_datasets = []
-    else:
+    if workspace_id:
         try:
-            initial_workspaces = _list_workspaces_for_picker()
+            initial_datasets = _list_datasets_for_picker(workspace_id)
         except Exception:
-            initial_workspaces = []
-        # If a workspace was provided (but no dataset), pre-load its models.
-        if workspace_id:
-            try:
-                initial_datasets = _list_datasets_for_picker(workspace_id)
-            except Exception:
-                initial_datasets = []
-        else:
             initial_datasets = []
+    else:
+        initial_datasets = []
 
     widget = DaxTestWidget(
         dax_query=formatted_initial or "",
