@@ -5712,6 +5712,20 @@ function render({ model, el }) {
         model.set("download_history_trigger", (model.get("download_history_trigger") || 0) + 1);
         model.save_changes();
     });
+
+    const resultDownloadBtn = document.createElement("button");
+    resultDownloadBtn.type = "button";
+    resultDownloadBtn.className = "dtx-hist-download";
+    resultDownloadBtn.innerHTML = DOWNLOAD_SVG;
+    resultDownloadBtn.title = "Download the query result as an Excel file";
+    resultDownloadBtn.setAttribute("aria-label", "Download query result as Excel");
+    resultDownloadBtn.style.display = "none";
+    viewToolbar.appendChild(resultDownloadBtn);
+    resultDownloadBtn.addEventListener("click", () => {
+        if ((model.get("result_total_rows") || 0) <= 0) return;
+        model.set("download_result_trigger", (model.get("download_result_trigger") || 0) + 1);
+        model.save_changes();
+    });
     // Tracks the DAX query text that the currently displayed dependency tree
     // was computed for, so dependencies are only recomputed when it changes.
     let lastDepQuery = null;
@@ -5832,6 +5846,8 @@ function render({ model, el }) {
         const hist = model.get("trace_history") || [];
         histDownloadBtn.style.display = (mode === "history") ? "" : "none";
         histDownloadBtn.disabled = !hist.length;
+        resultDownloadBtn.style.display = (mode === "result") ? "" : "none";
+        resultDownloadBtn.disabled = (model.get("result_total_rows") || 0) <= 0;
         // Logical/Physical toggle is only relevant on the DAX Query Plan tab.
         const planType = model.get("query_plan_type") || "Logical";
         planSeg.style.display = (mode === "queryplan") ? "" : "none";
@@ -6540,6 +6556,30 @@ function render({ model, el }) {
         model.set("history_excel_b64", "");
         model.save_changes();
     });
+    model.on("change:result_excel_b64", () => {
+        const b64 = model.get("result_excel_b64") || "";
+        if (!b64) return;
+        try {
+            const bin = atob(b64);
+            const len = bin.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+            const blob = new Blob([bytes], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = model.get("result_excel_name") || "query_result.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {}
+        // Clear so a subsequent identical download still fires a change.
+        model.set("result_excel_b64", "");
+        model.save_changes();
+    });
     model.on("change:is_running", () => {
         root.classList.toggle("dtx-running", model.get("is_running") === true);
         renderRunBtn();
@@ -6700,6 +6740,9 @@ export default { render };
         download_history_trigger = traitlets.Int(0).tag(sync=True)
         history_excel_b64 = traitlets.Unicode("").tag(sync=True)
         history_excel_name = traitlets.Unicode("").tag(sync=True)
+        download_result_trigger = traitlets.Int(0).tag(sync=True)
+        result_excel_b64 = traitlets.Unicode("").tag(sync=True)
+        result_excel_name = traitlets.Unicode("").tag(sync=True)
         is_running = traitlets.Bool(False).tag(sync=True)
         error_message = traitlets.Unicode("").tag(sync=True)
         run_trigger = traitlets.Int(0).tag(sync=True)
@@ -7716,6 +7759,51 @@ export default { render };
         threading.Thread(target=_build_history_excel, daemon=True).start()
 
     widget.observe(_on_download_history, names="download_history_trigger")
+
+    def _build_result_excel() -> None:
+        import base64
+        import io
+
+        df_result = getattr(widget, "last_result_df", None)
+        if df_result is None or len(df_result) == 0:
+            widget.error_message = "There is no query result to download."
+            return
+        buf = io.BytesIO()
+        # Use whichever Excel engine is available (openpyxl is standard in
+        # Fabric notebooks; xlsxwriter is an accepted fallback).
+        engine = None
+        for _eng in ("openpyxl", "xlsxwriter"):
+            try:
+                __import__(_eng)
+                engine = _eng
+                break
+            except Exception:
+                continue
+        if engine is None:
+            widget.error_message = (
+                "Could not export to Excel: no Excel engine is installed. "
+                "Install 'openpyxl' (pip install openpyxl) and try again."
+            )
+            return
+        try:
+            with pd.ExcelWriter(buf, engine=engine) as writer:
+                df_result.to_excel(writer, index=False, sheet_name="Query Result")
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to build the Excel file: {exc}"
+            return
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        # Reset first so the front-end always observes a change event.
+        widget.result_excel_name = f"query_result_{stamp}.xlsx"
+        widget.result_excel_b64 = ""
+        widget.result_excel_b64 = b64
+
+    def _on_download_result(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_build_result_excel, daemon=True).start()
+
+    widget.observe(_on_download_result, names="download_result_trigger")
 
     def _on_query_change(change):
         # Re-classify on every edit so the syntax-highlight overlay stays
