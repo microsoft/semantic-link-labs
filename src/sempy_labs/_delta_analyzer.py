@@ -68,7 +68,7 @@ def get_parquet_file_infos(path):
 
 @log
 def delta_analyzer(
-    table_name: str,
+    table_name: Optional[str] = None,
     approx_distinct_count: bool = True,
     export: bool = False,
     lakehouse: Optional[str | UUID] = None,
@@ -94,8 +94,10 @@ def delta_analyzer(
 
     Parameters
     ----------
-    table_name : str
+    table_name : str, default=None
         The delta table name.
+        Defaults to None which launches an interactive picker (when ``visualize=True``)
+        that lets you choose a workspace, lakehouse and table to analyze.
     approx_distinct_count: bool, default=True
         If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
@@ -127,6 +129,26 @@ def delta_analyzer(
     # Must calculate column stats if calculating cardinality
     if not skip_cardinality:
         column_stats = True
+
+    # When no table is specified, launch the interactive picker so the user can
+    # choose a workspace, lakehouse and table to analyze.
+    if table_name is None:
+        if not visualize:
+            raise ValueError(
+                f"{icons.red_dot} The 'table_name' parameter is required when 'visualize=False'."
+            )
+        _visualize_delta_analyzer(
+            initial_dataframes=None,
+            table_name=None,
+            schema=None,
+            workspace=workspace,
+            lakehouse=lakehouse,
+            approx_distinct_count=approx_distinct_count,
+            column_stats=column_stats,
+            skip_cardinality=skip_cardinality,
+            dark_mode=dark_mode,
+        )
+        return {}
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
@@ -444,23 +466,30 @@ def delta_analyzer(
             )
 
     if visualize:
-        _display_delta_analyzer_ui(
-            dataframes=dataframes,
+        _visualize_delta_analyzer(
+            initial_dataframes=dataframes,
             table_name=table_name,
             schema=schema,
+            workspace=workspace,
+            lakehouse=lakehouse,
+            approx_distinct_count=approx_distinct_count,
+            column_stats=column_stats,
+            skip_cardinality=skip_cardinality,
             dark_mode=dark_mode,
         )
 
     return dataframes
 
 
-def _display_delta_analyzer_ui(
+def _build_delta_analyzer_html(
     dataframes: Dict[str, pd.DataFrame],
     table_name: str,
     schema: Optional[str] = None,
     dark_mode: bool = False,
-) -> None:
-    """Renders an interactive HTML dashboard for delta analyzer results."""
+    show_picker_button: bool = False,
+) -> str:
+    """Builds the self-contained HTML (styles + markup + scripts) for the
+    interactive delta analyzer dashboard and returns it as a string."""
 
     uid = uuid.uuid4().hex[:8]
     root_selector = f".da-{uid}-root"
@@ -702,6 +731,7 @@ def _display_delta_analyzer_ui(
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
         fullscreen_btn_id=fullscreen_btn_id,
+        picker_btn_id=(f"da-picker-{uid}" if show_picker_button else None),
     )
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
@@ -1187,12 +1217,836 @@ def _display_delta_analyzer_ui(
         fullscreen_class=fullscreen_class,
     )
 
+    return full_html + theme_script + fullscreen_script
+
+
+def _display_delta_analyzer_ui(
+    dataframes: Dict[str, pd.DataFrame],
+    table_name: str,
+    schema: Optional[str] = None,
+    dark_mode: bool = False,
+) -> None:
+    """Renders an interactive HTML dashboard for delta analyzer results."""
+
     # Render through a lightweight anywidget so the output lives in the
     # notebook webview's light DOM (not the nested sandbox iframe used for raw
     # HTML output). This lets the full-screen toggle use the native Fullscreen
     # API and expand edge-to-edge, matching ``test()`` and the other tools.
     # Falls back to plain HTML output if anywidget isn't installed.
-    _ui_display_html_widget(full_html + theme_script + fullscreen_script)
+    _ui_display_html_widget(
+        _build_delta_analyzer_html(dataframes, table_name, schema, dark_mode)
+    )
+
+
+def _list_workspaces_for_picker() -> list:
+    """Return a list of ``{"id", "name"}`` dicts for the workspaces the user
+    can access (used to populate the Delta Analyzer picker)."""
+
+    import sempy.fabric as fabric
+
+    out: list = []
+    try:
+        dfW = fabric.list_workspaces()
+    except Exception:
+        return []
+    for _, r in dfW.iterrows():
+        out.append({"id": str(r["Id"]), "name": str(r["Name"])})
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def _list_lakehouses_for_picker(workspace_id: str) -> list:
+    """Return a list of ``{"id", "name"}`` dicts for the lakehouses in the
+    given workspace (used to populate the Delta Analyzer picker)."""
+
+    from sempy_labs._list_functions import list_lakehouses
+
+    out: list = []
+    try:
+        dfL = list_lakehouses(workspace=workspace_id)
+    except Exception:
+        return []
+    for _, r in dfL.iterrows():
+        out.append({"id": str(r["Lakehouse ID"]), "name": str(r["Lakehouse Name"])})
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def _list_tables_for_picker(workspace_id: str, lakehouse_id: str) -> list:
+    """Return a list of ``{"table", "schema", "display"}`` dicts for the delta
+    tables in the given lakehouse. ``display`` is ``schema.table`` when the
+    table belongs to a schema, otherwise just ``table``."""
+
+    from sempy_labs.lakehouse._schemas import list_tables as _list_lakehouse_tables
+
+    out: list = []
+    try:
+        dfT = _list_lakehouse_tables(lakehouse=lakehouse_id, workspace=workspace_id)
+    except Exception:
+        return []
+    for _, r in dfT.iterrows():
+        fmt = str(r.get("Format") or "").lower()
+        # Delta Analyzer only supports delta tables.
+        if fmt and fmt != "delta":
+            continue
+        tbl = str(r["Table Name"])
+        sch = r.get("Schema Name")
+        if sch is None or str(sch) in ("", "None", "nan"):
+            sch = ""
+        else:
+            sch = str(sch)
+        display = f"{sch}.{tbl}" if sch else tbl
+        out.append({"table": tbl, "schema": sch, "display": display})
+    out.sort(key=lambda x: x["display"].lower())
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Interactive workspace → lakehouse → table picker (anywidget)
+# ---------------------------------------------------------------------------
+# A lightweight picker shell, modeled on the model picker in
+# ``sempy_labs.semantic_model._test_dax.test``. The picker lives in the widget
+# light DOM and, when the user selects a workspace → lakehouse → table and
+# clicks "Analyze", a background thread runs the analysis and injects the
+# self-contained Delta Analyzer dashboard (built by ``_build_delta_analyzer_html``)
+# into the content area below the picker.
+_DA_PICKER_CSS: str = ("""
+.slls-dapick {
+    __LIGHT_VARS__
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                 'Helvetica Neue', Arial, sans-serif;
+    color: var(--ui-text);
+    max-width: 1200px;
+    margin: 24px auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+.slls-dapick.slls-dapick-dark {
+    __DARK_VARS__
+}
+.slls-dapick *, .slls-dapick *::before, .slls-dapick *::after {
+    box-sizing: border-box;
+}
+.slls-dapick-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 14px 18px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg-secondary);
+    box-shadow: var(--ui-shadow-sm);
+}
+.slls-dapick-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-text-secondary);
+}
+.slls-dapick-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 26px 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    cursor: pointer;
+    min-width: 180px;
+    max-width: 320px;
+    text-overflow: ellipsis;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ui-text-tertiary) 50%),
+        linear-gradient(135deg, var(--ui-text-tertiary) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}
+.slls-dapick-select:focus {
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}
+.slls-dapick-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.slls-dapick-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--ui-accent);
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, opacity 120ms ease;
+}
+.slls-dapick-btn:hover {
+    background: var(--ui-accent-hover);
+}
+.slls-dapick-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.slls-dapick-cancel {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    line-height: 1;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+}
+.slls-dapick-cancel:hover {
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}
+.slls-dapick-spin {
+    font-size: 12px;
+    color: var(--ui-text-tertiary);
+}
+.slls-dapick-err {
+    width: 100%;
+    flex-basis: 100%;
+    color: var(--ui-danger-text);
+    font-size: 12px;
+    margin: 4px 2px 0;
+}
+.slls-dapick-card-inset {
+    margin: 2px 24px 18px;
+}
+.slls-dapick-content {
+    margin-top: 0;
+}
+/* Full screen is applied to the stable picker root so it survives the
+   dashboard being rebuilt when a different table is analyzed. */
+.slls-dapick.slls-dapick-fullscreen,
+.slls-dapick:fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: var(--ui-bg);
+    overflow: auto;
+}
+.slls-dapick.slls-dapick-fullscreen [class*="-root"],
+.slls-dapick:fullscreen [class*="-root"] {
+    max-width: none;
+    margin: 0;
+}
+.slls-dapick.slls-dapick-fullscreen [class*="-container"],
+.slls-dapick:fullscreen [class*="-container"] {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+}
+""").replace("__LIGHT_VARS__", _UI_LIGHT_VARS).replace("__DARK_VARS__", _UI_DARK_VARS)
+
+
+_DA_PICKER_JS: str = r"""
+function render({ model, el }) {
+    const root = document.createElement("div");
+    root.className = "slls-dapick";
+    if (model.get("dark_mode")) root.classList.add("slls-dapick-dark");
+
+    const card = document.createElement("div");
+    card.className = "slls-dapick-card";
+
+    const label = document.createElement("span");
+    label.className = "slls-dapick-label";
+    label.textContent = "Analyze a delta table:";
+
+    const wsSel = document.createElement("select");
+    wsSel.className = "slls-dapick-select";
+    wsSel.title = "Workspace";
+
+    const lhSel = document.createElement("select");
+    lhSel.className = "slls-dapick-select";
+    lhSel.title = "Lakehouse";
+
+    const tbSel = document.createElement("select");
+    tbSel.className = "slls-dapick-select";
+    tbSel.title = "Table";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slls-dapick-btn";
+    btn.textContent = "Analyze";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "slls-dapick-cancel";
+    cancelBtn.textContent = "Cancel";
+
+    const spin = document.createElement("span");
+    spin.className = "slls-dapick-spin";
+
+    const err = document.createElement("div");
+    err.className = "slls-dapick-err";
+    err.style.display = "none";
+
+    card.appendChild(label);
+    card.appendChild(wsSel);
+    card.appendChild(lhSel);
+    card.appendChild(tbSel);
+    card.appendChild(btn);
+    card.appendChild(cancelBtn);
+    card.appendChild(spin);
+    card.appendChild(err);
+
+    const content = document.createElement("div");
+    content.className = "slls-dapick-content";
+
+    root.appendChild(card);
+    root.appendChild(content);
+    el.appendChild(root);
+
+    // The picker starts open only when there's nothing analyzed yet. When an
+    // analysis is already shown, it stays hidden until the header "change"
+    // (swap) button reveals it.
+    let pickerOpen = !((model.get("content_html") || "").trim());
+
+    function fillSelect(sel, items, valueKey, textKey, placeholder, current) {
+        sel.innerHTML = "";
+        const ph = document.createElement("option");
+        ph.value = "";
+        ph.textContent = placeholder;
+        sel.appendChild(ph);
+        (items || []).forEach(function (it) {
+            const o = document.createElement("option");
+            o.value = it[valueKey];
+            o.textContent = it[textKey];
+            sel.appendChild(o);
+        });
+        sel.value = current || "";
+    }
+
+    function showLoading(sel) {
+        // Immediate local busy state for a dropdown while a synchronous
+        // kernel load runs (the "picker_loading" trait won't round-trip).
+        sel.innerHTML = "";
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "Loading…";
+        sel.appendChild(o);
+        sel.value = "";
+        sel.disabled = true;
+    }
+
+    function renderPicker() {
+        const loading = model.get("picker_loading") === true;
+        const analyzing = model.get("analyzing") === true;
+        const hasContent = !!((model.get("content_html") || "").trim());
+        const curWs = model.get("selected_workspace_id") || "";
+        const curLh = model.get("selected_lakehouse_id") || "";
+        const curTb = model.get("selected_table") || "";
+
+        // Show the picker when it's been opened (or nothing is analyzed yet).
+        const show = pickerOpen || !hasContent;
+        card.style.display = show ? "" : "none";
+        // Cancel is only meaningful when an analysis is already on screen.
+        cancelBtn.style.display = hasContent ? "" : "none";
+
+        const wss = model.get("available_workspaces") || [];
+        fillSelect(wsSel, wss, "id", "name",
+            wss.length ? "Select a workspace…" : "No workspaces", curWs);
+
+        const lhs = model.get("available_lakehouses") || [];
+        fillSelect(lhSel, lhs, "id", "name",
+            !curWs ? "Select a workspace first"
+                   : (loading && !lhs.length ? "Loading…"
+                       : (lhs.length ? "Select a lakehouse…" : "No lakehouses")),
+            curLh);
+        lhSel.disabled = !curWs || loading;
+
+        const tbs = model.get("available_tables") || [];
+        fillSelect(tbSel, tbs, "display", "display",
+            !curLh ? "Select a lakehouse first"
+                   : (loading && !tbs.length ? "Loading…"
+                       : (tbs.length ? "Select a table…" : "No delta tables")),
+            curTb);
+        tbSel.disabled = !curLh || loading;
+
+        btn.disabled = analyzing || !curTb;
+        spin.textContent = analyzing ? "Analyzing…" : (loading ? "Loading…" : "");
+
+        const e = model.get("error_message") || "";
+        err.textContent = e;
+        err.style.display = e ? "" : "none";
+    }
+
+    let darkObserver = null;
+    function syncDark() {
+        if (darkObserver) { darkObserver.disconnect(); darkObserver = null; }
+        const cr = content.querySelector('div[class*="-root"]');
+        if (!cr) return;
+        const apply = function () {
+            const isDark = Array.from(cr.classList).some(function (c) { return c === "da-dark"; });
+            root.classList.toggle("slls-dapick-dark", isDark);
+            // Mirror the dashboard's theme back into the widget so that
+            // re-analyzing a table rebuilds the dashboard in the same theme
+            // (otherwise the rebuilt HTML would revert to light mode).
+            if (model.get("dark_mode") !== isDark) {
+                model.set("dark_mode", isDark);
+                model.save_changes();
+            }
+        };
+        apply();
+        darkObserver = new MutationObserver(apply);
+        darkObserver.observe(cr, { attributes: true, attributeFilter: ["class"] });
+    }
+
+    // ----- Full screen on the stable picker root --------------------------
+    // Full screen is applied to the picker root (which is never replaced)
+    // rather than the dashboard container (which is rebuilt on every analysis).
+    // This keeps the view full screen when switching tables.
+    let cssFullscreen = false;
+    function pickerIsFullscreen() {
+        return cssFullscreen || document.fullscreenElement === root;
+    }
+    function updateFsButton() {
+        const on = pickerIsFullscreen();
+        const fsBtn = content.querySelector('[id^="da-fullscreen-"]');
+        if (fsBtn) {
+            fsBtn.innerHTML = on
+                ? (model.get("fs_exit_svg") || "")
+                : (model.get("fs_enter_svg") || "");
+            const label = on ? "Exit full screen" : "Full screen";
+            fsBtn.title = label;
+            fsBtn.setAttribute("aria-label", label);
+        }
+        root.classList.toggle("slls-dapick-fullscreen", cssFullscreen);
+    }
+    function enterPickerFullscreen() {
+        if (root.requestFullscreen) {
+            root.requestFullscreen().then(function () {
+                cssFullscreen = false;
+                updateFsButton();
+            }).catch(function () {
+                cssFullscreen = true;
+                updateFsButton();
+            });
+        } else {
+            cssFullscreen = true;
+            updateFsButton();
+        }
+    }
+    function exitPickerFullscreen() {
+        if (document.fullscreenElement === root && document.exitFullscreen) {
+            document.exitFullscreen().catch(function () {});
+        }
+        cssFullscreen = false;
+        updateFsButton();
+    }
+    function togglePickerFullscreen() {
+        if (pickerIsFullscreen()) { exitPickerFullscreen(); }
+        else { enterPickerFullscreen(); }
+    }
+    document.addEventListener("fullscreenchange", updateFsButton);
+
+    function wireFullscreenButton() {
+        // The rebuilt dashboard wires its own full-screen button to its own
+        // (soon-to-be-replaced) root. Replace that button with a clone to strip
+        // the dashboard's handler, then drive full screen on the picker root.
+        const fsBtn = content.querySelector('[id^="da-fullscreen-"]');
+        if (!fsBtn) return;
+        const clone = fsBtn.cloneNode(true);
+        fsBtn.parentNode.replaceChild(clone, fsBtn);
+        clone.addEventListener("click", togglePickerFullscreen);
+        updateFsButton();
+    }
+
+    function placeCard() {
+        // Position the picker card directly below the dashboard header (so it
+        // reads like the test() picker). When no analysis is shown yet, leave
+        // the card at the top of the widget.
+        const slHeader = content.querySelector(".sl-header");
+        if (slHeader) {
+            const headerBlock = slHeader.parentNode;
+            headerBlock.insertAdjacentElement("afterend", card);
+            card.classList.add("slls-dapick-card-inset");
+        } else {
+            root.insertBefore(card, content);
+            card.classList.remove("slls-dapick-card-inset");
+        }
+    }
+
+    function wireSwapButton() {
+        const swapBtn = content.querySelector(".sl-change-btn");
+        if (!swapBtn) return;
+        swapBtn.addEventListener("click", function () {
+            pickerOpen = true;
+            model.set("error_message", "");
+            model.save_changes();
+            renderPicker();
+        });
+    }
+
+    function renderContent() {
+        // Detach the picker card first so resetting innerHTML doesn't destroy it.
+        root.appendChild(card);
+        const html = model.get("content_html") || "";
+        content.innerHTML = html;
+        // <script> tags injected via innerHTML do not execute; recreate them.
+        content.querySelectorAll("script").forEach(function (old) {
+            const s = document.createElement("script");
+            for (let i = 0; i < old.attributes.length; i++) {
+                s.setAttribute(old.attributes[i].name, old.attributes[i].value);
+            }
+            s.textContent = old.textContent;
+            old.parentNode.replaceChild(s, old);
+        });
+        // A freshly rendered analysis collapses the picker back down.
+        if (html.trim()) pickerOpen = false;
+        placeCard();
+        wireSwapButton();
+        wireFullscreenButton();
+        syncDark();
+        renderPicker();
+    }
+
+    wsSel.addEventListener("change", function () {
+        model.set("selected_workspace_id", wsSel.value);
+        model.set("selected_lakehouse_id", "");
+        model.set("selected_table", "");
+        model.set("available_lakehouses", []);
+        model.set("available_tables", []);
+        if (wsSel.value) {
+            // The load runs synchronously on the kernel, so "picker_loading"
+            // won't round-trip — show local "Loading…" feedback right away.
+            showLoading(lhSel);
+            showLoading(tbSel);
+            model.set("select_workspace_trigger",
+                (model.get("select_workspace_trigger") || 0) + 1);
+        }
+        model.set("error_message", "");
+        model.save_changes();
+        renderPicker();
+    });
+
+    lhSel.addEventListener("change", function () {
+        model.set("selected_lakehouse_id", lhSel.value);
+        model.set("selected_table", "");
+        model.set("available_tables", []);
+        if (lhSel.value) {
+            // See note above: surface "Loading…" immediately while the
+            // (synchronous) table list is fetched.
+            showLoading(tbSel);
+            model.set("select_lakehouse_trigger",
+                (model.get("select_lakehouse_trigger") || 0) + 1);
+        }
+        model.set("error_message", "");
+        model.save_changes();
+        renderPicker();
+    });
+
+    tbSel.addEventListener("change", function () {
+        model.set("selected_table", tbSel.value);
+        model.save_changes();
+        renderPicker();
+    });
+
+    btn.addEventListener("click", function () {
+        if (!model.get("selected_table")) return;
+        // The analysis runs synchronously on the kernel (Spark), so the
+        // "analyzing" trait won't round-trip until it completes. Reflect the
+        // busy state locally right away so the user gets immediate feedback.
+        btn.disabled = true;
+        spin.textContent = "Analyzing…";
+        err.style.display = "none";
+        model.set("error_message", "");
+        model.set("run_analysis_trigger",
+            (model.get("run_analysis_trigger") || 0) + 1);
+        model.save_changes();
+    });
+
+    cancelBtn.addEventListener("click", function () {
+        pickerOpen = false;
+        model.set("error_message", "");
+        model.save_changes();
+        renderPicker();
+    });
+
+    model.on("change:available_workspaces", renderPicker);
+    model.on("change:available_lakehouses", renderPicker);
+    model.on("change:available_tables", renderPicker);
+    model.on("change:selected_workspace_id", renderPicker);
+    model.on("change:selected_lakehouse_id", renderPicker);
+    model.on("change:selected_table", renderPicker);
+    model.on("change:picker_loading", renderPicker);
+    model.on("change:analyzing", renderPicker);
+    model.on("change:error_message", renderPicker);
+    model.on("change:content_html", renderContent);
+
+    renderPicker();
+    renderContent();
+}
+export default { render };
+"""
+
+
+def _visualize_delta_analyzer(
+    initial_dataframes: Optional[Dict[str, pd.DataFrame]],
+    table_name: Optional[str],
+    schema: Optional[str],
+    workspace: Optional[str | UUID] = None,
+    lakehouse: Optional[str | UUID] = None,
+    approx_distinct_count: bool = True,
+    column_stats: bool = True,
+    skip_cardinality: bool = True,
+    dark_mode: bool = False,
+) -> None:
+    """Render the interactive Delta Analyzer with a workspace → lakehouse →
+    table picker. When ``initial_dataframes``/``table_name`` are provided, the
+    analysis for that table is shown immediately; the picker lets the user
+    switch to a different table."""
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError as e:
+        if initial_dataframes is not None and table_name is not None:
+            # No anywidget available, but we already have results: fall back to
+            # the static (picker-less) dashboard.
+            _display_delta_analyzer_ui(
+                initial_dataframes, table_name, schema, dark_mode
+            )
+            return
+        raise ImportError(
+            "The interactive Delta Analyzer picker requires the 'anywidget' "
+            "package. Install it with: pip install anywidget — or call "
+            "delta_analyzer(table_name=...) with an explicit table name."
+        ) from e
+
+    from IPython.display import display
+
+    # Best-effort resolve the initial workspace/lakehouse ids so the picker can
+    # pre-select them (e.g. when a table was analyzed up front).
+    init_ws_id = ""
+    init_lh_id = ""
+    try:
+        if workspace is not None or table_name is not None:
+            _, _ws_id = resolve_workspace_name_and_id(workspace=workspace)
+            init_ws_id = str(_ws_id)
+            if lakehouse is not None or table_name is not None:
+                _, _lh_id = resolve_lakehouse_name_and_id(
+                    lakehouse=lakehouse, workspace=_ws_id
+                )
+                init_lh_id = str(_lh_id)
+    except Exception:
+        pass
+
+    try:
+        initial_workspaces = _list_workspaces_for_picker()
+    except Exception:
+        initial_workspaces = []
+    initial_lakehouses = []
+    initial_tables = []
+    if init_ws_id:
+        try:
+            initial_lakehouses = _list_lakehouses_for_picker(init_ws_id)
+        except Exception:
+            initial_lakehouses = []
+    if init_ws_id and init_lh_id:
+        try:
+            initial_tables = _list_tables_for_picker(init_ws_id, init_lh_id)
+        except Exception:
+            initial_tables = []
+
+    initial_table_display = ""
+    if table_name is not None:
+        initial_table_display = f"{schema}.{table_name}" if schema else table_name
+
+    initial_content = ""
+    if initial_dataframes is not None and table_name is not None:
+        try:
+            initial_content = _build_delta_analyzer_html(
+                initial_dataframes,
+                table_name,
+                schema,
+                dark_mode,
+                show_picker_button=True,
+            )
+        except Exception:
+            initial_content = ""
+
+    class DeltaAnalyzerWidget(anywidget.AnyWidget):
+        _esm = _DA_PICKER_JS
+        _css = _DA_PICKER_CSS
+
+        available_workspaces = traitlets.List([]).tag(sync=True)
+        available_lakehouses = traitlets.List([]).tag(sync=True)
+        available_tables = traitlets.List([]).tag(sync=True)
+        selected_workspace_id = traitlets.Unicode("").tag(sync=True)
+        selected_lakehouse_id = traitlets.Unicode("").tag(sync=True)
+        selected_table = traitlets.Unicode("").tag(sync=True)
+        picker_loading = traitlets.Bool(False).tag(sync=True)
+        analyzing = traitlets.Bool(False).tag(sync=True)
+        content_html = traitlets.Unicode("").tag(sync=True)
+        error_message = traitlets.Unicode("").tag(sync=True)
+        dark_mode = traitlets.Bool(False).tag(sync=True)
+        fs_enter_svg = traitlets.Unicode("").tag(sync=True)
+        fs_exit_svg = traitlets.Unicode("").tag(sync=True)
+        select_workspace_trigger = traitlets.Int(0).tag(sync=True)
+        select_lakehouse_trigger = traitlets.Int(0).tag(sync=True)
+        run_analysis_trigger = traitlets.Int(0).tag(sync=True)
+
+    widget = DeltaAnalyzerWidget(
+        available_workspaces=initial_workspaces,
+        available_lakehouses=initial_lakehouses,
+        available_tables=initial_tables,
+        selected_workspace_id=init_ws_id,
+        selected_lakehouse_id=init_lh_id,
+        selected_table=initial_table_display,
+        picker_loading=False,
+        analyzing=False,
+        content_html=initial_content,
+        error_message="",
+        dark_mode=bool(dark_mode),
+        fs_enter_svg=_UI_ICONS.get("fullscreen", ""),
+        fs_exit_svg=_UI_ICONS.get("fullscreen_exit", ""),
+    )
+
+    # Analysis options reused for tables chosen through the picker.
+    widget._opt_approx = bool(approx_distinct_count)  # type: ignore[attr-defined]
+    widget._opt_column_stats = bool(column_stats)  # type: ignore[attr-defined]
+    widget._opt_skip_cardinality = bool(skip_cardinality)  # type: ignore[attr-defined]
+
+    def _load_lakehouses() -> None:
+        ws_id = (widget.selected_workspace_id or "").strip()
+        if not ws_id:
+            widget.available_lakehouses = []
+            widget.picker_loading = False
+            return
+        try:
+            lhs = _list_lakehouses_for_picker(ws_id)
+        except Exception as exc:  # noqa: BLE001
+            widget.available_lakehouses = []
+            widget.picker_loading = False
+            widget.error_message = f"Failed to list lakehouses: {exc}"
+            return
+        widget.available_lakehouses = lhs
+        widget.picker_loading = False
+
+    def _on_select_workspace(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        # Run synchronously on the kernel's main thread: setting traits from a
+        # background daemon thread does not reliably sync back to the frontend
+        # in Fabric/Synapse (the dropdown would be stuck on "Loading…"). The
+        # frontend shows local "Loading…" feedback while this (fast REST) call
+        # runs. See the matching note on the Analyze handler.
+        widget.picker_loading = True
+        try:
+            _load_lakehouses()
+        finally:
+            widget.picker_loading = False
+
+    widget.observe(_on_select_workspace, names="select_workspace_trigger")
+
+    def _load_tables() -> None:
+        ws_id = (widget.selected_workspace_id or "").strip()
+        lh_id = (widget.selected_lakehouse_id or "").strip()
+        if not ws_id or not lh_id:
+            widget.available_tables = []
+            widget.picker_loading = False
+            return
+        try:
+            tbls = _list_tables_for_picker(ws_id, lh_id)
+        except Exception as exc:  # noqa: BLE001
+            widget.available_tables = []
+            widget.picker_loading = False
+            widget.error_message = f"Failed to list tables: {exc}"
+            return
+        widget.available_tables = tbls
+        widget.picker_loading = False
+
+    def _on_select_lakehouse(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        # Run synchronously (see _on_select_workspace) so the table list is
+        # reliably delivered to the frontend instead of hanging on "Loading…".
+        widget.picker_loading = True
+        try:
+            _load_tables()
+        finally:
+            widget.picker_loading = False
+
+    widget.observe(_on_select_lakehouse, names="select_lakehouse_trigger")
+
+    def _run_analysis() -> None:
+        ws_id = (widget.selected_workspace_id or "").strip()
+        lh_id = (widget.selected_lakehouse_id or "").strip()
+        disp = (widget.selected_table or "").strip()
+        if not ws_id or not lh_id or not disp:
+            widget.analyzing = False
+            return
+        # Map the selected display value back to its table name + schema.
+        tbl = disp
+        sch = None
+        for t in widget.available_tables or []:
+            if t.get("display") == disp:
+                tbl = t.get("table") or disp
+                sch = t.get("schema") or None
+                break
+        try:
+            dfs = delta_analyzer(
+                table_name=tbl,
+                schema=sch,
+                lakehouse=lh_id,
+                workspace=ws_id,
+                approx_distinct_count=widget._opt_approx,  # type: ignore[attr-defined]
+                column_stats=widget._opt_column_stats,  # type: ignore[attr-defined]
+                skip_cardinality=widget._opt_skip_cardinality,  # type: ignore[attr-defined]
+                export=False,
+                visualize=False,
+            )
+            html = _build_delta_analyzer_html(
+                dfs, tbl, sch, widget.dark_mode, show_picker_button=True
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.analyzing = False
+            widget.error_message = f"Failed to analyze table: {exc}"
+            return
+        widget.content_html = html
+        widget.error_message = ""
+        widget.analyzing = False
+
+    def _on_run_analysis(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.analyzing:
+            return
+        # The analysis uses Spark (and may mount the lakehouse), which does not
+        # run reliably from a background daemon thread in Fabric/Synapse —
+        # doing so leaves the job hung and the picker stuck on "Analyzing…".
+        # Run it on the kernel's main thread instead. The frontend shows local
+        # busy feedback on the Analyze button while this (blocking) work runs.
+        widget.analyzing = True
+        try:
+            _run_analysis()
+        finally:
+            widget.analyzing = False
+
+    widget.observe(_on_run_analysis, names="run_analysis_trigger")
+
+    display(widget)
 
 
 @log

@@ -365,6 +365,25 @@ HEADER_CSS: str = """\
 }
 .sl-theme-btn:active { transform: scale(0.95); }
 .sl-theme-btn svg { display: block; width: 18px; height: 18px; }
+.sl-change-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    margin-top: 6px;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+}
+.sl-change-btn svg { display: block; width: 15px; height: 15px; }
+.sl-change-btn:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
 """
 
 
@@ -425,6 +444,7 @@ def render_header_html(
     theme_btn_id: Optional[str] = None,
     dark_mode: bool = False,
     fullscreen_btn_id: Optional[str] = None,
+    picker_btn_id: Optional[str] = None,
 ) -> str:
     """Render the standard widget header as HTML.
 
@@ -445,6 +465,9 @@ def render_header_html(
         If provided, includes a full-screen toggle button with this DOM id
         (placed after the theme toggle). Pair with
         :func:`fullscreen_toggle_script` to wire up behavior.
+    picker_btn_id : str, default=None
+        If provided, includes a small "change" (swap) button with this DOM id
+        in the title area. Used to reveal/toggle an interactive picker.
 
     Returns
     -------
@@ -465,6 +488,12 @@ def render_header_html(
         else:
             sub = f"<b>{ds}</b>" if ds else ws
         parts.append(f'<div class="sl-subtitle">{sub}</div>')
+
+    if picker_btn_id:
+        parts.append(
+            f'<button type="button" class="sl-change-btn" id="{picker_btn_id}" '
+            f'title="Change table" aria-label="Change table">{ICONS["swap"]}</button>'
+        )
 
     parts.append("</div>")  # titlewrap
 
