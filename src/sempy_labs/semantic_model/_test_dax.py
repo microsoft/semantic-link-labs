@@ -178,6 +178,7 @@ _TEST_EVENT_SCHEMA: dict = {
         "TextData",
         "StartTime",
         "ApplicationName",
+        "ApplicationContext",
         "RequestID",
     ],
     "QueryEnd": [
@@ -192,6 +193,7 @@ _TEST_EVENT_SCHEMA: dict = {
         "CpuTime",
         "Success",
         "ApplicationName",
+        "ApplicationContext",
         "RequestID",
     ],
     "VertiPaqSEQueryBegin": [
@@ -201,6 +203,8 @@ _TEST_EVENT_SCHEMA: dict = {
         "NTUserName",
         "TextData",
         "StartTime",
+        "ApplicationName",
+        "ApplicationContext",
         "RequestID",
     ],
     "VertiPaqSEQueryEnd": [
@@ -214,6 +218,8 @@ _TEST_EVENT_SCHEMA: dict = {
         "Duration",
         "CpuTime",
         "Success",
+        "ApplicationName",
+        "ApplicationContext",
         "RequestID",
     ],
     "VertiPaqSEQueryCacheMatch": [
@@ -229,6 +235,8 @@ _TEST_EVENT_SCHEMA: dict = {
         "EventSubclass",
         "CurrentTime",
         "TextData",
+        "ApplicationName",
+        "ApplicationContext",
         "RequestID",
     ],
     "ExecutionMetrics": [
@@ -236,6 +244,8 @@ _TEST_EVENT_SCHEMA: dict = {
         #"EventSubclass",
         #"CurrentTime",
         "TextData",
+        "ApplicationName",
+        "ApplicationContext",
         "RequestID",
     ]
 }

@@ -187,6 +187,9 @@ def capture_report_pages(
     report_name, report_id = resolve_item_name_and_id(
         item=report, type="Report", workspace=workspace_id
     )
+    """
+    {"DatasetId":"974a1e22-6f9c-410b-be9c-45fc53c78cfc","Sources":[{"ReportId":"9be18c55-2e33-4d4e-a88b-c8846c5dfc24","VisualId":"ae7fd3c0d2e25807e685","HostProperties":{"ConsumptionMethod":"Power BI Web App","UserSession":"ca7b502c-a2d8-4a84-92fb-37d7032cf8e2"}}]}
+    """
 
     # Retrieve the report's embed URL and underlying semantic model id.
     report_df = list_reports_base(report=report_id, workspace=workspace_id)
