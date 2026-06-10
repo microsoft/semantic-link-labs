@@ -39,12 +39,16 @@ Semantic Link Labs has exactly two supported patterns for interactive UI tools. 
 
 | Export | Purpose |
 |--------|---------|
-| `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `calculation_group`, `column`, `column_chunk`, `measure`, `hierarchy`, `calculation_item`, `partition`, `relationship`), tree/navigation icons (`caret_right`, `folder`, `level`), and UI/action icons (`sun`, `moon`, `search`, `plus`, `play`, `stop`, `refresh`, `swap`, `sort_asc`, `sort_desc`, `panel_collapse`, `panel_expand`, `builder`, `close`). |
+| `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `calculation_group`, `column`, `column_chunk`, `measure`, `hierarchy`, `calculation_item`, `partition`, `relationship`), tree/navigation icons (`caret_right`, `folder`, `level`), and UI/action icons (`sun`, `moon`, `search`, `plus`, `play`, `stop`, `refresh`, `swap`, `sort_asc`, `sort_desc`, `panel_collapse`, `panel_expand`, `builder`, `close`, `fullscreen`, `fullscreen_exit`). |
 | `LIGHT_THEME_VARS`, `DARK_THEME_VARS` | CSS custom-property blocks defining the Apple-inspired light and dark palettes. Always reference colors via these `--ui-*` tokens, never hard-coded hex values. Includes semantic tokens for hover backgrounds (`--ui-bg-hover`), on-accent text (`--ui-on-accent`), and destructive/error states (`--ui-danger*`). |
 | `SYNTAX_HIGHLIGHT_VARS` | Theme-independent `--ui-syntax-*` token block for colorizing DAX/code in an editor. Inject once into the widget's base scope (it is the same in light and dark). |
 | `HEADER_CSS`, `scoped_header_css(root_selector)` | Standard widget header styles (title + dataset/workspace subtitle + theme toggle button). `scoped_header_css` prefixes every rule with the root selector so the styles win against notebook host CSS (e.g. Jupyter's `.jp-RenderedHTMLCommon button`). |
-| `render_header_html(title, dataset_name, workspace_name, theme_btn_id, dark_mode)` | Renders the standard header markup. |
+| `render_header_html(title, dataset_name, workspace_name, theme_btn_id, dark_mode, fullscreen_btn_id)` | Renders the standard header markup. Pass `fullscreen_btn_id` to include a full-screen toggle button next to the theme toggle. |
 | `theme_toggle_script(btn_id, root_selector, dark_class)` | Returns a `<script>` block that wires the theme toggle button to flip a `dark_class` on the root element and swap the sun/moon icon. |
+| `fullscreen_css(root_selector, fullscreen_class, container_selector=None, bg_var)` | Returns the CSS for a widget's full-screen state (covers both the native `:fullscreen` pseudo-class and the `fullscreen_class` CSS-overlay fallback). Pass `container_selector` when an inner element carries the card styling; pass `bg_var` to match the widget's background token. |
+| `fullscreen_toggle_script(btn_id, root_selector, fullscreen_class)` | Returns a `<script>` block that wires a full-screen toggle button for **static-HTML** widgets. Pair with `render_header_html(..., fullscreen_btn_id=...)` and `fullscreen_css`. |
+| `fullscreen_setup_js(func_name="sllsSetupFullscreen")` | Returns a JS function definition that wires a full-screen toggle button for **anywidget** widgets. Embed once at the top of the ESM module, then call `func_name(root, btn, fullscreenClass, enterSvg, exitSvg)` after creating the button. |
+| `display_html_widget(html, fallback=True)` | Renders a self-contained HTML string (styles + markup + inline `<script>`) via a lightweight anywidget so it lives in the notebook **webview's light DOM** instead of the sandboxed `srcdoc` iframe used for raw `display(HTML)`. Use this for static-HTML widgets so the full-screen toggle gets the native Fullscreen API (matching the anywidget tools). Falls back to `display(HTML(html))` when `anywidget` is unavailable. |
 | `ATTRIBUTION_CSS`, `scoped_attribution_css(root_selector)`, `render_attribution_html(extra_links=None)` | "Powered by Semantic Link Labs" attribution shown at the bottom of every widget, with an optional list of extra `(label, url)` links. |
 
 ### When to extend `_ui_components`
@@ -263,6 +267,110 @@ The frontend `render({ model, el })` function should:
 
 ---
 
+## The Full-Screen Toggle
+
+Every interactive widget should offer a **full-screen button** in its header
+(next to the theme toggle) that expands the tool to fill the screen and toggles
+back. The behavior is centralized in `sempy_labs._ui_components` so all widgets
+stay in sync — never re-implement it.
+
+The toggle is host-aware because notebook hosts constrain what "full screen" can
+mean. The native [Fullscreen API](https://developer.mozilla.org/docs/Web/API/Fullscreen_API)
+only works for an element in the top-level document or in an `<iframe>` carrying
+`allowfullscreen`. Notebook output **webviews** (where `anywidget` content and
+anything rendered via `display_html_widget` live) permit it, so the toggle gets
+true edge-to-edge fullscreen there. By contrast, raw `display(HTML(...))` with a
+`<script>` is isolated in a nested, **sandboxed `srcdoc` iframe without
+`allowfullscreen`**, where `requestFullscreen()` is rejected and a `position:
+fixed` overlay collapses the content-sized iframe into an unreadable strip. This
+is exactly why static-HTML widgets should render via `display_html_widget`
+(see below) rather than `display(HTML(...))`.
+
+The shared logic in `_FULLSCREEN_BODY` is a faithful port of the reference
+implementation in `sempy_labs.semantic_model._test_dax.test`, and is intentionally
+simple — two states:
+
+1. **Native fullscreen** — try `root.requestFullscreen()`. This gives true
+   edge-to-edge fullscreen, and the native `:fullscreen` CSS rules style it. This
+   is the normal path for every tool, since they all render in the webview
+   (anywidget content directly, static-HTML widgets via `display_html_widget`).
+2. **CSS-overlay fallback** — if `requestFullscreen()` rejects or is unavailable,
+   apply the `fullscreenClass` fixed overlay (`position: fixed; inset: 0`), which
+   fills the viewport. This only matters in degraded hosts (e.g. the
+   `display(HTML(...))` fallback when `anywidget` isn't installed).
+
+The button stays in sync when the user leaves native full screen via the `Esc`
+key (a `fullscreenchange` listener re-renders it). The button icon swaps between
+`ICONS["fullscreen"]` (enter) and `ICONS["fullscreen_exit"]` (exit). The behavior
+is exposed via `fullscreen_setup_js` (anywidget) / `fullscreen_toggle_script`
+(static HTML) — never re-implement it.
+
+### Static-HTML widgets (Vertipaq / Delta style)
+
+1. Allocate a button id and a fullscreen class alongside the other per-instance ids:
+   ```python
+   fullscreen_btn_id = f"vpx-fullscreen-{uid}"
+   fullscreen_class = "vpx-fullscreen"   # scoped under the uid'd root
+   ```
+2. Include the full-screen CSS in your `<style>` block, pointing at the root, the
+   fullscreen class, the inner container (if any), and the widget's background token:
+   ```python
+   ui_fullscreen_css = fullscreen_css(
+       root_selector, fullscreen_class,
+       container_selector=".vpx-container", bg_var="var(--vpx-bg)",
+   )
+   ```
+3. Render the header with `fullscreen_btn_id=` so the button appears next to the theme toggle:
+   ```python
+   header_html = render_header_html(..., theme_btn_id=theme_btn_id,
+                                     fullscreen_btn_id=fullscreen_btn_id)
+   ```
+4. Append the wiring script alongside the theme script, and render through
+   `display_html_widget` (not `display(HTML(...))`). The helper hosts the markup
+   in a lightweight anywidget so it lives in the notebook **webview's light DOM**
+   rather than the nested, sandboxed `srcdoc` iframe used for raw HTML output.
+   That sandbox blocks the native Fullscreen API and collapses fixed overlays;
+   the webview permits real fullscreen, so the toggle expands edge-to-edge just
+   like the anywidget tools. It falls back to `display(HTML(...))` automatically
+   when `anywidget` isn't installed.
+   ```python
+   fullscreen_script = fullscreen_toggle_script(
+       btn_id=fullscreen_btn_id, root_selector=root_selector,
+       fullscreen_class=fullscreen_class,
+   )
+   display_html_widget(styles + html + script + theme_script + fullscreen_script)
+   ```
+
+### anywidget widgets (Perspective Editor / Direct Lake Manager style)
+
+1. Prepend the shared helper to the ESM module and append the full-screen CSS
+   (the root usually carries the card styling itself, so no `container_selector`):
+   ```python
+   _WIDGET_JS = fullscreen_setup_js() + _WIDGET_JS.replace(
+       "__SLLS_ICON_FULLSCREEN__", ICONS["fullscreen"]
+   ).replace("__SLLS_ICON_FULLSCREEN_EXIT__", ICONS["fullscreen_exit"])
+   _WIDGET_CSS = _WIDGET_CSS + "\n" + fullscreen_css(
+       ".slls-pe", "slls-pe-fullscreen", bg_var="var(--slls-bg-solid)"
+   )
+   ```
+2. In the JS `render`, create the button next to the theme button and call the helper:
+   ```js
+   const fullscreenBtn = document.createElement("button");
+   fullscreenBtn.className = "slls-pe-btn slls-pe-btn-icon";
+   fullscreenBtn.type = "button";
+   header.appendChild(fullscreenBtn);
+   sllsSetupFullscreen(root, fullscreenBtn, "slls-pe-fullscreen",
+                       `__SLLS_ICON_FULLSCREEN__`, `__SLLS_ICON_FULLSCREEN_EXIT__`);
+   ```
+
+### Reference
+
+- `src/sempy_labs/semantic_model/_test_dax.py` — original full-screen implementation.
+- `src/sempy_labs/semantic_model/_vertipaq_analyzer.py`, `src/sempy_labs/_delta_analyzer.py` — static-HTML usage.
+- `src/sempy_labs/semantic_model/_perspective_editor.py`, `src/sempy_labs/semantic_model/_direct_lake_manager.py` — anywidget usage.
+
+---
+
 ## Public API Conventions for Interactive Tools
 
 All interactive UI functions follow the same Python signature conventions as the rest of the library (see the [Add Function](../add-function/SKILL.md) skill), with these additions:
@@ -283,6 +391,7 @@ All interactive UI functions follow the same Python signature conventions as the
 - [ ] Standard header rendered via `render_header_html` (static) or built in JS using the same layout/tokens (anywidget).
 - [ ] Standard "Powered by Semantic Link Labs" attribution rendered at the bottom.
 - [ ] Theme toggle wired via `theme_toggle_script` (static) or via a synced `dark_mode` traitlet (anywidget).
+- [ ] Full-screen toggle wired via `render_header_html(..., fullscreen_btn_id=...)` + `fullscreen_css` + `fullscreen_toggle_script` (static) or `fullscreen_setup_js` + `fullscreen_css` (anywidget).
 - [ ] CSS is scoped under a per-instance `uid` (static) or under a stable namespace class (anywidget) so multiple instances on one page do not collide and notebook host styles do not bleed in.
 - [ ] Apple-inspired font stack and antialiasing are applied to the root.
 - [ ] Public function accepts `dark_mode: bool = False`, resolves workspace, has `@log` + numpydoc docstring, and calls `display(...)` (does not return the widget).

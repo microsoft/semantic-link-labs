@@ -412,6 +412,17 @@ function render({ model, el }) {
     renderThemeBtn();
     header.appendChild(themeBtn);
 
+    // Full-screen toggle button (expands the manager to fill the screen).
+    const FULLSCREEN_SVG = `__SLLS_ICON_FULLSCREEN__`;
+    const FULLSCREEN_EXIT_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
+    const fullscreenBtn = document.createElement("button");
+    fullscreenBtn.className = "slls-dle-btn slls-dle-btn-icon";
+    fullscreenBtn.type = "button";
+    header.appendChild(fullscreenBtn);
+    sllsSetupFullscreen(
+        root, fullscreenBtn, "slls-dle-fullscreen", FULLSCREEN_SVG, FULLSCREEN_EXIT_SVG
+    );
+
     // ----------- Status banner (shared) -----------
     const status = document.createElement("div");
     status.className = "slls-dle-status";
@@ -3215,6 +3226,28 @@ function render({ model, el }) {
 }
 export default { render };
 """
+
+
+# Inject the shared full-screen helper + CSS so the manager can expand to fill
+# the screen, staying in sync with the other Semantic Link Labs widgets. The
+# ``.slls-dle`` root carries the card styling itself, so no inner container
+# selector is needed.
+from sempy_labs._ui_components import (  # noqa: E402
+    ICONS as _UI_ICONS,
+    fullscreen_css as _ui_fullscreen_css,
+    fullscreen_setup_js as _ui_fullscreen_setup_js,
+)
+
+_WIDGET_JS = _ui_fullscreen_setup_js() + _WIDGET_JS.replace(
+    "__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"]
+).replace("__SLLS_ICON_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
+_WIDGET_CSS = (
+    _WIDGET_CSS
+    + "\n"
+    + _ui_fullscreen_css(
+        ".slls-dle", "slls-dle-fullscreen", bg_var="var(--slls-bg-solid)"
+    )
+)
 
 
 def _build_tables_payload(tom):

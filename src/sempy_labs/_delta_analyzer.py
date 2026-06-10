@@ -7,7 +7,6 @@ import uuid
 from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.parquet as pq
-from IPython.display import display, HTML
 from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
@@ -41,6 +40,9 @@ from sempy_labs._ui_components import (
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_css as _ui_fullscreen_css,
+    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
+    display_html_widget as _ui_display_html_widget,
 )
 from tqdm.auto import tqdm
 
@@ -463,6 +465,8 @@ def _display_delta_analyzer_ui(
     uid = uuid.uuid4().hex[:8]
     root_selector = f".da-{uid}-root"
     theme_btn_id = f"da-theme-{uid}"
+    fullscreen_btn_id = f"da-fullscreen-{uid}"
+    fullscreen_class = "da-fullscreen"
 
     _skip_cols = {
         "Workspace Name",
@@ -697,14 +701,22 @@ def _display_delta_analyzer_ui(
         workspace_name=subtitle_workspace or None,
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
+        fullscreen_btn_id=fullscreen_btn_id,
     )
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    ui_fullscreen_css = _ui_fullscreen_css(
+        root_selector,
+        fullscreen_class,
+        container_selector=f".da-{uid}-container",
+        bg_var="var(--da-bg)",
+    )
     attribution_html = _ui_render_attribution_html()
 
     full_html = f"""
     <style>
         {ui_header_css_scoped}
+        {ui_fullscreen_css}
         .da-{uid}-root {{
             {_UI_LIGHT_VARS}
             --da-accent: var(--ui-accent);
@@ -1169,7 +1181,18 @@ def _display_delta_analyzer_ui(
         dark_class="da-dark",
     )
 
-    display(HTML(full_html + theme_script))
+    fullscreen_script = _ui_fullscreen_toggle_script(
+        btn_id=fullscreen_btn_id,
+        root_selector=root_selector,
+        fullscreen_class=fullscreen_class,
+    )
+
+    # Render through a lightweight anywidget so the output lives in the
+    # notebook webview's light DOM (not the nested sandbox iframe used for raw
+    # HTML output). This lets the full-screen toggle use the native Fullscreen
+    # API and expand edge-to-edge, matching ``test()`` and the other tools.
+    # Falls back to plain HTML output if anywidget isn't installed.
+    _ui_display_html_widget(full_html + theme_script + fullscreen_script)
 
 
 @log

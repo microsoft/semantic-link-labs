@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-from IPython.display import display, HTML
 import zipfile
 import os
 import uuid
@@ -32,6 +31,9 @@ from sempy_labs._ui_components import (
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_css as _ui_fullscreen_css,
+    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
+    display_html_widget as _ui_display_html_widget,
 )
 
 
@@ -1189,6 +1191,8 @@ def visualize_vertipaq(
     uid = uuid.uuid4().hex[:8]
     root_selector = f".vpx-{uid}"
     theme_btn_id = f"vpx-theme-{uid}"
+    fullscreen_btn_id = f"vpx-fullscreen-{uid}"
+    fullscreen_class = "vpx-fullscreen"
     # Scope the shared header CSS under the root selector so its rules win
     # against notebook host styles (e.g. Jupyter's ``.jp-RenderedHTMLCommon
     # button`` rules that would otherwise override the theme toggle
@@ -1197,6 +1201,12 @@ def visualize_vertipaq(
     # are NOT subject to f-string escaping and don't need doubling.
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    ui_fullscreen_css = _ui_fullscreen_css(
+        root_selector,
+        fullscreen_class,
+        container_selector=".vpx-container",
+        bg_var="var(--vpx-bg)",
+    )
 
     # ── CSS ──────────────────────────────────────────────────────────────
     # Light theme is the default; the ``.vpx-dark`` modifier on the root
@@ -1206,6 +1216,7 @@ def visualize_vertipaq(
     styles = f"""
     <style>
     {ui_header_css_scoped}
+    {ui_fullscreen_css}
     .vpx-{uid} {{
         {_UI_LIGHT_VARS}
         --vpx-accent: var(--ui-accent);
@@ -1587,6 +1598,7 @@ def visualize_vertipaq(
         workspace_name=workspace_name,
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
+        fullscreen_btn_id=fullscreen_btn_id,
     )
 
     html_parts = []
@@ -1951,7 +1963,20 @@ def visualize_vertipaq(
         dark_class="vpx-dark",
     )
 
-    display(HTML(styles + "\n".join(html_parts) + script + theme_script))
+    fullscreen_script = _ui_fullscreen_toggle_script(
+        btn_id=fullscreen_btn_id,
+        root_selector=root_selector,
+        fullscreen_class=fullscreen_class,
+    )
+
+    # Render through a lightweight anywidget so the output lives in the
+    # notebook webview's light DOM (not the nested sandbox iframe used for raw
+    # HTML output). This lets the full-screen toggle use the native Fullscreen
+    # API and expand edge-to-edge, matching the other interactive tools. Falls
+    # back to plain HTML output if anywidget isn't installed.
+    _ui_display_html_widget(
+        styles + "\n".join(html_parts) + script + theme_script + fullscreen_script
+    )
 
 
 @log

@@ -195,6 +195,27 @@ ICONS: dict[str, str] = {
         'aria-hidden="true">'
         '<path d="M4 4l8 8M12 4l-8 8"/></svg>'
     ),
+    # A "maximize / full-screen" mark (four outward corner arrows) used by the
+    # header button that expands the whole tool to fill the screen.
+    "fullscreen": (
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 9 V5 a2 2 0 0 1 2 -2 h4"/>'
+        '<path d="M21 9 V5 a2 2 0 0 0 -2 -2 h-4"/>'
+        '<path d="M3 15 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M21 15 v4 a2 2 0 0 1 -2 2 h-4"/></svg>'
+    ),
+    # An "exit full-screen" mark (four inward corner arrows).
+    "fullscreen_exit": (
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9 3 v4 a2 2 0 0 1 -2 2 H3"/>'
+        '<path d="M15 3 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M9 21 v-4 a2 2 0 0 0 -2 -2 H3"/>'
+        '<path d="M15 21 v-4 a2 2 0 0 1 2 -2 h4"/></svg>'
+    ),
 }
 
 
@@ -403,6 +424,7 @@ def render_header_html(
     workspace_name: Optional[str] = None,
     theme_btn_id: Optional[str] = None,
     dark_mode: bool = False,
+    fullscreen_btn_id: Optional[str] = None,
 ) -> str:
     """Render the standard widget header as HTML.
 
@@ -419,6 +441,10 @@ def render_header_html(
         DOM id. Pair with :func:`theme_toggle_script` to wire up behavior.
     dark_mode : bool, default=False
         Controls the initial icon shown on the theme toggle button.
+    fullscreen_btn_id : str, default=None
+        If provided, includes a full-screen toggle button with this DOM id
+        (placed after the theme toggle). Pair with
+        :func:`fullscreen_toggle_script` to wire up behavior.
 
     Returns
     -------
@@ -448,6 +474,13 @@ def render_header_html(
         parts.append(
             f'<button type="button" class="sl-theme-btn" id="{theme_btn_id}" '
             f'title="{label}" aria-label="{label}">{icon}</button>'
+        )
+
+    if fullscreen_btn_id:
+        parts.append(
+            f'<button type="button" class="sl-theme-btn" id="{fullscreen_btn_id}" '
+            f'title="Full screen" aria-label="Full screen">'
+            f'{ICONS["fullscreen"]}</button>'
         )
 
     parts.append("</div>")
@@ -505,6 +538,270 @@ def theme_toggle_script(
 }})();
 </script>
 """
+
+
+# ---------------------------------------------------------------------------
+# Full-screen toggle (expand a widget to fill the screen)
+# ---------------------------------------------------------------------------
+# Shared JavaScript body that wires a full-screen toggle button. It assumes
+# the following identifiers are already in scope wherever it is embedded:
+#   - ``root``            : the widget's root DOM element (the element that
+#                           goes full screen).
+#   - ``btn``             : the toggle <button> element.
+#   - ``fullscreenClass`` : CSS class applied to ``root`` for the CSS-overlay
+#                           fallback (see :func:`fullscreen_css`).
+#   - ``enterSvg`` / ``exitSvg`` : button icon markup for the two states.
+#
+# This is a faithful port of the full-screen toggle in
+# ``sempy_labs.semantic_model._test_dax.test`` — the reference implementation
+# that behaves correctly across hosts. It uses the native Fullscreen API when
+# available (and allowed by the host), otherwise falls back to a fixed-position
+# CSS overlay (toggled via ``fullscreenClass``) that fills the viewport. For
+# this to deliver real, edge-to-edge full screen, the widget must render in the
+# notebook output *webview's* light DOM (i.e. as an ``anywidget`` or via
+# :func:`display_html_widget`) rather than the nested, sandboxed ``srcdoc``
+# iframe used for raw ``display(HTML)`` output — the webview permits the
+# Fullscreen API, the sandbox iframe does not.
+_FULLSCREEN_BODY: str = r"""
+    var cssFullscreen = false;
+    function isFullscreen() {
+        return cssFullscreen || document.fullscreenElement === root;
+    }
+    function renderFullscreenBtn() {
+        var on = isFullscreen();
+        btn.innerHTML = on ? exitSvg : enterSvg;
+        var label = on ? "Exit full screen" : "Full screen";
+        btn.title = label;
+        btn.setAttribute("aria-label", label);
+        root.classList.toggle(fullscreenClass, cssFullscreen);
+    }
+    function enterFullscreen() {
+        if (root.requestFullscreen) {
+            root.requestFullscreen().then(function () {
+                cssFullscreen = false;
+                renderFullscreenBtn();
+            }).catch(function () {
+                cssFullscreen = true;
+                renderFullscreenBtn();
+            });
+        } else {
+            cssFullscreen = true;
+            renderFullscreenBtn();
+        }
+    }
+    function exitFullscreen() {
+        if (document.fullscreenElement === root && document.exitFullscreen) {
+            document.exitFullscreen().catch(function () {});
+        }
+        cssFullscreen = false;
+        renderFullscreenBtn();
+    }
+    btn.addEventListener("click", function () {
+        if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
+    });
+    document.addEventListener("fullscreenchange", renderFullscreenBtn);
+    renderFullscreenBtn();
+"""
+
+
+def fullscreen_css(
+    root_selector: str,
+    fullscreen_class: str,
+    container_selector: Optional[str] = None,
+    bg_var: str = "var(--ui-bg)",
+) -> str:
+    """Return the CSS that powers the full-screen state of a widget.
+
+    The rules cover both full-screen mechanisms used by
+    :data:`_FULLSCREEN_BODY` / :func:`fullscreen_toggle_script`: the native
+    ``:fullscreen`` pseudo-class and the ``fullscreen_class`` CSS-overlay
+    fallback (applied to ``root_selector``).
+
+    Parameters
+    ----------
+    root_selector : str
+        A CSS selector for the widget's root element (the element that goes
+        full screen), e.g. ``".vpx-abc123"`` or ``".slls-pe"``.
+    fullscreen_class : str
+        The CSS class toggled on the root for the overlay fallback, e.g.
+        ``"vpx-fullscreen"``.
+    container_selector : str, default=None
+        Optional selector (relative to the root) for an inner container that
+        holds the visible "card" styling (border, radius, shadow). When the
+        widget draws that styling on the root itself, leave this as ``None``.
+    bg_var : str, default="var(--ui-bg)"
+        The CSS background value to paint behind the widget while full screen.
+
+    Returns
+    -------
+    str
+        The CSS as a single string.
+    """
+    fs = f"{root_selector}.{fullscreen_class}"
+    container_reset = (
+        "border: none; border-radius: 0; box-shadow: none; min-height: 100vh;"
+    )
+    base = (
+        "position: fixed; inset: 0; z-index: 99999; max-width: none; "
+        f"margin: 0; background: {bg_var}; overflow: auto;"
+    )
+    parts: list = []
+    if container_selector:
+        parts.append(f"{fs} {{ {base} padding: 0; }}")
+        parts.append(f"{fs} {container_selector} {{ {container_reset} }}")
+        parts.append(
+            f"{root_selector}:fullscreen {{ overflow: auto; background: {bg_var}; }}"
+        )
+        parts.append(
+            f"{root_selector}:fullscreen {container_selector} {{ {container_reset} }}"
+        )
+    else:
+        parts.append(f"{fs} {{ {base} {container_reset} }}")
+        parts.append(f"{root_selector}:fullscreen {{ {base} {container_reset} }}")
+    return "\n".join(parts)
+
+
+def fullscreen_setup_js(func_name: str = "sllsSetupFullscreen") -> str:
+    """Return a JS function definition that wires a full-screen toggle button.
+
+    Intended for ``anywidget``-style widgets that build their DOM in
+    JavaScript. Embed the returned source once at the top of the widget's
+    ESM module, then call ``func_name(root, btn, fullscreenClass, enterSvg,
+    exitSvg)`` after creating the toggle button.
+
+    Parameters
+    ----------
+    func_name : str, default="sllsSetupFullscreen"
+        The name of the generated JS function.
+
+    Returns
+    -------
+    str
+        The JS function definition (no ``<script>`` wrapper).
+    """
+    return (
+        f"function {func_name}(root, btn, fullscreenClass, enterSvg, exitSvg) {{"
+        + _FULLSCREEN_BODY
+        + "}\n"
+    )
+
+
+def fullscreen_toggle_script(
+    btn_id: str,
+    root_selector: str,
+    fullscreen_class: str,
+) -> str:
+    """Return a ``<script>`` block that wires a full-screen toggle button.
+
+    Intended for static-HTML widgets (the *Vertipaq* style). The button — see
+    :func:`render_header_html`'s ``fullscreen_btn_id`` parameter — toggles the
+    widget between its normal size and a full-screen view.
+
+    Parameters
+    ----------
+    btn_id : str
+        The DOM id of the full-screen toggle button.
+    root_selector : str
+        A CSS selector for the root element that should go full screen
+        (e.g. ``".vpx-abc123"``).
+    fullscreen_class : str
+        The CSS class toggled on the root for the overlay fallback (must match
+        the class passed to :func:`fullscreen_css`).
+
+    Returns
+    -------
+    str
+        A ``<script>`` block ready to be inserted into the rendered HTML.
+    """
+    enter = ICONS["fullscreen"].replace("`", "\\`")
+    exit_ = ICONS["fullscreen_exit"].replace("`", "\\`")
+    return (
+        "\n<script>\n(function() {\n"
+        f"    var btn = document.getElementById({btn_id!r});\n"
+        "    if (!btn) return;\n"
+        f"    var root = document.querySelector({root_selector!r});\n"
+        "    if (!root) return;\n"
+        f"    var fullscreenClass = {fullscreen_class!r};\n"
+        f"    var enterSvg = `{enter}`;\n"
+        f"    var exitSvg = `{exit_}`;\n" + _FULLSCREEN_BODY + "\n})();\n</script>\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rendering a self-contained HTML string as an anywidget
+# ---------------------------------------------------------------------------
+# ESM for a minimal anywidget that hosts a pre-built HTML string (styles +
+# markup + <script> blocks). It injects the HTML into the widget's light DOM
+# (which, in notebook hosts like VS Code, lives in the output *webview* rather
+# than the nested, sandboxed ``srcdoc`` iframe used for raw ``display(HTML)``
+# output). That matters for the full-screen toggle: the webview permits the
+# native Fullscreen API, so ``root.requestFullscreen()`` succeeds and the tool
+# expands edge-to-edge — exactly like the other anywidget-based tools — instead
+# of being blocked and collapsing inside a content-sized sandbox iframe.
+#
+# Scripts injected via ``innerHTML`` do not execute, so each ``<script>`` is
+# re-created as a fresh element (after the markup is attached to the document)
+# so the browser runs it and its DOM lookups resolve.
+_HTML_WIDGET_ESM: str = r"""
+function render({ model, el }) {
+    var html = model.get("html") || "";
+    var holder = document.createElement("div");
+    holder.innerHTML = html;
+    el.appendChild(holder);
+    var scripts = holder.querySelectorAll("script");
+    for (var i = 0; i < scripts.length; i++) {
+        var old = scripts[i];
+        var s = document.createElement("script");
+        for (var j = 0; j < old.attributes.length; j++) {
+            s.setAttribute(old.attributes[j].name, old.attributes[j].value);
+        }
+        s.textContent = old.textContent;
+        old.parentNode.replaceChild(s, old);
+    }
+}
+export default { render };
+"""
+
+
+def display_html_widget(html: str, fallback: bool = True) -> None:
+    """Display a self-contained HTML string via a lightweight anywidget.
+
+    The HTML (styles + markup + inline ``<script>`` blocks) is rendered into the
+    notebook output **webview's light DOM** instead of the nested, sandboxed
+    ``srcdoc`` iframe that hosts raw ``IPython.display.HTML`` output. This gives
+    script-driven widgets — e.g. the *Vertipaq* analyzer — the same full-screen
+    behavior as the other anywidget-based tools (the native Fullscreen API is
+    permitted in the webview but blocked in the sandbox iframe).
+
+    Parameters
+    ----------
+    html : str
+        A complete HTML fragment: any ``<style>``, the markup, and the inline
+        ``<script>`` blocks that drive it. Scripts are re-executed after the
+        markup is attached so their DOM lookups resolve.
+    fallback : bool, default=True
+        When ``True`` and the ``anywidget`` package is not installed, fall back
+        to ``IPython.display.display(HTML(html))``. When ``False``, raise
+        ``ImportError`` instead.
+    """
+    from IPython.display import display
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError:
+        if fallback:
+            from IPython.display import HTML
+
+            display(HTML(html))
+            return
+        raise
+
+    class _HtmlWidget(anywidget.AnyWidget):
+        _esm = _HTML_WIDGET_ESM
+        html = traitlets.Unicode("").tag(sync=True)
+
+    display(_HtmlWidget(html=html))
 
 
 # ---------------------------------------------------------------------------
