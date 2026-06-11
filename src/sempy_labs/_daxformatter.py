@@ -26,6 +26,8 @@ def _format_dax(
         "SkipSpaceAfterFunctionName": skip_space_after_function_name,
         "ListSeparator": ",",
         "DecimalSeparator": ".",
+        "CallerApp": lib_name,
+        "CallerVersion": lib_version,
     }
 
     headers = {
@@ -36,8 +38,6 @@ def _format_dax(
         "Host": "api.daxformatter.com",
         "Expect": "100-continue",
         "Connection": "Keep-Alive",
-        "CallerApp": lib_name,
-        "CallerVersion": lib_version,
     }
 
     response = requests.post(url, json=payload, headers=headers)
