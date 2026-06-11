@@ -18,7 +18,7 @@ def _format_dax(
     # Add variable assignment to each expression
     expressions = [f"x :={item}" for item in expressions]
 
-    url = "https://daxformatter.azurewebsites.net/api/daxformatter/daxtextformatmulti"
+    url = "https://api.daxformatter.com/api/daxtextformatmulti"
 
     payload = {
         "Dax": expressions,
@@ -33,7 +33,7 @@ def _format_dax(
         "Accept-Encoding": "gzip,deflate",
         "Accept-Language": "en-US,en;q=0.8",
         "Content-Type": "application/json; charset=UTF-8",
-        "Host": "daxformatter.azurewebsites.net",
+        "Host": "api.daxformatter.com",
         "Expect": "100-continue",
         "Connection": "Keep-Alive",
         "CallerApp": lib_name,
