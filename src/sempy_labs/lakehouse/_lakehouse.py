@@ -123,7 +123,7 @@ def _optimize_table(path):
 
         DeltaTable(path).optimize.compact()
     else:
-        from delta import DeltaTable
+        from delta.tables import DeltaTable
 
         spark = _create_spark_session()
         DeltaTable.forPath(spark, path).optimize().executeCompaction()
@@ -137,7 +137,7 @@ def _vacuum_table(path, retain_n_hours):
 
         DeltaTable(path).vacuum(retention_hours=retain_n_hours)
     else:
-        from delta import DeltaTable
+        from delta.tables import DeltaTable
 
         spark = _create_spark_session()
         spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
