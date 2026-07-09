@@ -900,20 +900,6 @@ def save_as_delta_table(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-    from sempy_labs.lakehouse._schemas import is_schema_enabled
-    import pyarrow as pa
-    from pyspark.sql.types import (
-        StringType,
-        IntegerType,
-        FloatType,
-        DateType,
-        StructType,
-        StructField,
-        BooleanType,
-        LongType,
-        DoubleType,
-        TimestampType,
-    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
@@ -933,6 +919,20 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
+    import pyarrow as pa
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
+
     def get_type_mapping(pure_python):
         common_mapping = {
             "string": ("pa", pa.string(), StringType()),
@@ -951,17 +951,10 @@ def save_as_delta_table(
 
     def build_schema(schema_dict, type_mapping, use_arrow=True):
         if use_arrow:
-            fields = []
-            for name, dtype in schema_dict.items():
-                if dtype is None:
-                    raise ValueError(f"dtype is None for column: {name}")
-
-                arrow_type = type_mapping.get(dtype.lower())
-
-                if arrow_type is None:
-                    raise ValueError(f"No mapping for dtype '{dtype}' (column: {name})")
-
-                fields.append(pa.field(name, arrow_type))
+            fields = [
+                pa.field(name, type_mapping.get(dtype.lower()))
+                for name, dtype in schema_dict.items()
+            ]
             return pa.schema(fields)
         else:
             return StructType(
@@ -993,10 +986,6 @@ def save_as_delta_table(
             new_name = col_name.replace(" ", "_")
             dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
-
-    has_schema = is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
-    if has_schema and "/" not in delta_table_name:
-        delta_table_name = f"dbo/{delta_table_name}"
 
     file_path = create_abfss_path(
         lakehouse_id=lakehouse_id,
@@ -1921,6 +1910,8 @@ def _get_column_aggregate(
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
+    df = _read_delta_table(path)
+
     function = function.lower()
 
     if isinstance(column_name, str):
@@ -1928,25 +1919,22 @@ def _get_column_aggregate(
 
     if _pure_python_notebook():
         import polars as pl
-        from polars.datatypes import Datetime, Decimal
 
-        lf = pl.scan_delta(path)
-        schema = lf.collect_schema()
+        if not isinstance(df, pd.DataFrame):
+            df.to_pandas()
+
+        df = pl.from_pandas(df)
 
         def get_expr(col):
-            col_dtype = schema[col]
+            col_dtype = df.schema[col]
 
             if "approx" in function:
                 return pl.col(col).unique().count().alias(col)
-
             elif "distinct" in function:
-                # Check for decimal type properly
-                if isinstance(col_dtype, Decimal):
-                    # Cast to Float64 for unique counting
+                if col_dtype == pl.Decimal:
                     return pl.col(col).cast(pl.Float64).n_unique().alias(col)
                 else:
                     return pl.col(col).n_unique().alias(col)
-
             elif function == "sum":
                 return pl.col(col).sum().alias(col)
             elif function == "min":
@@ -1956,21 +1944,17 @@ def _get_column_aggregate(
             elif function == "count":
                 return pl.col(col).count().alias(col)
             elif function in {"avg", "mean"}:
-                # Cast Decimal to Float64 before averaging
-                if isinstance(col_dtype, Decimal):
-                    return pl.col(col).cast(pl.Float64).mean().alias(col)
                 return pl.col(col).mean().alias(col)
             else:
                 raise ValueError(f"Unsupported function: {function}")
 
-        safe_columns = [c for c in column_name if not isinstance(schema[c], Datetime)]
-        result = lf.select([get_expr(col) for col in safe_columns]).collect()
-        values = result.row(0, named=True)
+        exprs = [get_expr(col) for col in column_name]
+        aggs = df.select(exprs).to_dict(as_series=False)
 
         if len(column_name) == 1:
-            result = values[column_name[0]] or default_value
+            result = aggs[column_name[0]][0] or default_value
         else:
-            result = values
+            result = {col: aggs[col][0] for col in column_name}
     else:
         from pyspark.sql.functions import (
             count,
@@ -1981,8 +1965,6 @@ def _get_column_aggregate(
             approx_count_distinct,
             countDistinct,
         )
-
-        df = _read_delta_table(path, columns=column_name)
 
         result = None
         if "approx" in function:
@@ -2495,15 +2477,14 @@ def _get_delta_table(path: str) -> str:
     return DeltaTable.forPath(spark, path)
 
 
-def _read_delta_table(
-    path: str, to_pandas: bool = True, to_df: bool = False, columns=None
-):
+def _read_delta_table(path: str, to_pandas: bool = True, to_df: bool = False):
 
     if _pure_python_notebook():
         from deltalake import DeltaTable
 
-        df = DeltaTable(path).to_pyarrow_table(columns=columns)
-        df = df.to_pandas(timestamp_as_object=True)
+        df = DeltaTable(table_uri=path)
+        if to_pandas:
+            df = df.to_pandas()
     else:
         spark = _create_spark_session()
         df = spark.read.format("delta").load(path)
