@@ -86,4 +86,5 @@ items = {
     "AzureDatabricksStorage": "azureDatabricksStorages",
     "OrgAppAudience": "orgAppAudiences",
     "OrgApp": "orgApps",
+    "PaginatedReport": "paginatedReports",
 }
