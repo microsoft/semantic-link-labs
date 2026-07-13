@@ -91,6 +91,7 @@ def generate_direct_lake_semantic_model(
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
     inherit_descriptions: bool = True,
+    overwrite: bool = False,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on tables in Fabric.
@@ -125,6 +126,8 @@ def generate_direct_lake_semantic_model(
         If True, refreshes the newly created semantic model after it is created.
     inherit_descriptions : bool, default=True
         If True, sets table/column descriptions based on the comments/descriptions in the source table. Only available for lakehouse sources.
+    overwrite : bool, default=False
+        If True, overwrites the existing semantic model if it already exists. If False, raises an error if the semantic model already exists.
     """
     from sempy_labs.semantic_model._generate import (
         generate_direct_lake_semantic_model as gen,
