@@ -81,4 +81,9 @@ items = {
     "EventSchemaSet": "EventSchemaSets",
     "DataAgent": "DataAgents",
     "MirroredCatalog": "mirroredCatalogs",
+    "DataBuildToolJob": "dataBuildToolJobs",
+    "AppBackend": "appBackends",
+    "AzureDatabricksStorage": "azureDatabricksStorages",
+    "OrgAppAudience": "orgAppAudiences",
+    "OrgApp": "orgApps",
 }
