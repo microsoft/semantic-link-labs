@@ -339,11 +339,6 @@ from ._sql_audit_settings import (
     update_sql_audit_settings,
     set_audit_actions_and_group,
 )
-from ._onelake import (
-    get_onelake_settings,
-    modify_onelake_diagnostics,
-    modify_immutability_policy,
-)
 from ._domains import (
     list_domains,
 )
