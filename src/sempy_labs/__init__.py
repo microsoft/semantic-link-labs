@@ -234,6 +234,7 @@ from ._dax import (
     evaluate_dax_impersonation,
     get_dax_query_dependencies,
     get_dax_query_memory_size,
+    capture_dax_query_timings,
     # dax_perf_test,
     # dax_perf_test_bulk,
 )
@@ -519,6 +520,7 @@ __all__ = [
     "list_managed_private_endpoint_fqdns",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
+    "capture_dax_query_timings",
     "get_mirrored_database_definition",
     "get_mirroring_status",
     "list_mirrored_databases",
