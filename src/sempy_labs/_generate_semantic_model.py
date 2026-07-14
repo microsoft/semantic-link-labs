@@ -661,4 +661,4 @@ def get_semantic_model_size(
     else:
         result = model_size
 
-    return result
+    return float(result)
