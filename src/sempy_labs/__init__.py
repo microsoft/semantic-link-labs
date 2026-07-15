@@ -358,8 +358,16 @@ from ._items import (
     bulk_export_items,
     bulk_import_items,
 )
+from ._onelake import (
+    get_onelake_settings,
+    modify_onelake_diagnostics,
+    modify_immutability_policy,
+)
 
 __all__ = [
+    "get_onelake_settings",
+    "modify_onelake_diagnostics",
+    "modify_immutability_policy",
     "bulk_export_items",
     "bulk_import_items",
     "list_recoverable_items",

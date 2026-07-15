@@ -1,13 +1,6 @@
 from typing import Optional, Literal
 from uuid import UUID
 from sempy._utils._log import log
-from sempy_labs._helper_functions import (
-    resolve_workspace_id,
-    resolve_workspace_name_and_id,
-    _base_api,
-    resolve_lakehouse_name_and_id,
-)
-import sempy_labs._icons as icons
 import pandas as pd
 
 
@@ -33,34 +26,8 @@ def get_onelake_settings(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         The workspace OneLake settings.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/onelake/settings", client="fabric_sp"
-    ).json()
-
-    d = result.get("diagnostics", {})
-    enabled = True if d.get("status", {}) == "Enabled" else False
-    rows = []
-    rows.append(
-        {
-            "Enabled": enabled,
-            "Destination Type": (
-                d.get("destination", {}).get("type", {}) if enabled else None
-            ),
-            "Destination Id": (
-                d.get("destination", {}).get("lakehouse", {}).get("itemId", {})
-                if enabled
-                else None
-            ),
-            "Destination Workspace Id": (
-                d.get("destination", {}).get("lakehouse", {}).get("workspaceId", {})
-                if enabled
-                else None
-            ),
-        }
-    )
-
-    return pd.DataFrame(rows)
+    from sempy_labs.onelake._items import get_onelake_settings as gos
+    return gos(workspace=workspace)
 
 
 def modify_onelake_diagnostics(
@@ -94,41 +61,13 @@ def modify_onelake_diagnostics(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
-    (destination_workspace_name, destination_workspace_id) = (
-        resolve_workspace_name_and_id(destination_workspace)
+    from sempy_labs.onelake._items import modify_onelake_diagnostics as mod_diag
+    return mod_diag(
+        workspace=workspace,
+        enabled=enabled,
+        destination_lakehouse=destination_lakehouse,
+        destination_workspace=destination_workspace,
     )
-    (destination_lakehouse_name, destination_lakehouse_id) = (
-        resolve_lakehouse_name_and_id(destination_lakehouse, destination_workspace_id)
-    )
-
-    if enabled:
-        payload = {
-            "status": "Enabled",
-            "destination": {
-                "type": "Lakehouse",
-                "lakehouse": {
-                    "referenceType": "ById",
-                    "itemId": destination_lakehouse_id,
-                    "workspaceId": destination_workspace_id,
-                },
-            },
-        }
-    else:
-        payload = {"status": "Disabled"}
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyDiagnostics",
-        client="fabric_sp",
-        method="post",
-        payload=payload,
-    )
-
-    if enabled:
-        print(
-            f"{icons.green_dot} OneLake diagnostics have been enabled and updated to use the '{destination_lakehouse_name}' lakehouse in the '{destination_workspace_name}' workspace as the destination."
-        )
-    else:
-        print(f"{icons.green_dot} OneLake diagnostics have been disabled.")
 
 
 @log
@@ -157,33 +96,10 @@ def modify_immutability_policy(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    payload = {"scope": scope, "retentionDays": retention_days}
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyImmutabilityPolicy",
-        client="fabric_sp",
-        method="post",
-        payload=payload,
+    from sempy_labs.onelake._items import modify_immutability_policy as mod_immut
+    return mod_immut(
+        retention_days=retention_days,
+        scope=scope,
+        workspace=workspace,
     )
 
-    print(
-        f"{icons.green_dot} The OneLake immutability policy has been set to {retention_days} days for scope '{scope}' in the '{workspace_name}' workspace."
-    )
-
-
-@log
-def modify_default_tier(default_tier: Literal["Hot", "Cool", "Cold"], workspace: Optional[str | UUID] = None):
-
-    default_tier = default_tier.capitalize()
-
-    if default_tier not in ["Hot", "Cool", "Cold"]:
-        raise ValueError(
-            f"Invalid default_tier value: {default_tier}. Must be one of 'Hot', 'Cool', or 'Cold'."
-        )
-    
-    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
-
-    _base_api(request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyDefaultTier?defaultTier={default_tier}", method="post")
-
-    print(f"{icons.green_dot} The default tier for OneLake has been set to '{default_tier}' in the '{workspace_name}' workspace.")
