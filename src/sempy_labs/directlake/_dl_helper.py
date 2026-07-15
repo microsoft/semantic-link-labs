@@ -143,4 +143,5 @@ def generate_direct_lake_semantic_model(
         workspace=workspace,
         refresh=refresh,
         inherit_descriptions=inherit_descriptions,
+        overwrite=overwrite,
     )

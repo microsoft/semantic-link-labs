@@ -200,17 +200,11 @@ def generate_direct_lake_semantic_model(
             f"{icons.red_dot} No valid tables were provided given the source provided."
         )
 
-    try:
-        dataset_id = resolve_item_id(item=dataset, type="SemanticModel", workspace=workspace_id)
-        if not overwrite:
-            raise ValueError(
-                f"{icons.red_dot} A dataset with the name '{dataset}' already exists in the workspace '{workspace_name}'. Please choose a different name or set 'overwrite=True' to overwrite the existing dataset."
-            )
-    except:
-        dataset_id = create_blank_semantic_model(
-            dataset=dataset,
-            workspace=workspace_id,
-        )
+    dataset_id = create_blank_semantic_model(
+        dataset=dataset,
+        workspace=workspace_id,
+        overwrite=overwrite,
+    )
 
     # Imported lazily to avoid a circular import: sempy_labs.tom._model imports
     # from sempy_labs.semantic_model._helper, which triggers this module.
