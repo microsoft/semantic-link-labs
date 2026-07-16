@@ -339,11 +339,6 @@ from ._sql_audit_settings import (
     update_sql_audit_settings,
     set_audit_actions_and_group,
 )
-from ._onelake import (
-    get_onelake_settings,
-    modify_onelake_diagnostics,
-    modify_immutability_policy,
-)
 from ._domains import (
     list_domains,
 )
@@ -363,8 +358,16 @@ from ._items import (
     bulk_export_items,
     bulk_import_items,
 )
+from ._onelake import (
+    get_onelake_settings,
+    modify_onelake_diagnostics,
+    modify_immutability_policy,
+)
 
 __all__ = [
+    "get_onelake_settings",
+    "modify_onelake_diagnostics",
+    "modify_immutability_policy",
     "bulk_export_items",
     "bulk_import_items",
     "list_recoverable_items",
@@ -613,13 +616,10 @@ __all__ = [
     "update_sql_audit_settings",
     "set_audit_actions_and_group",
     "discover_dataflow_parameters",
-    "get_onelake_settings",
-    "modify_onelake_diagnostics",
     "list_domains",
     "get_workspace_git_outbound_policy",
     "set_workspace_git_outbound_policy",
     "cancel_item_job_instance",
-    "modify_immutability_policy",
     "takeover_item_ownership",
     "list_endorsements",
     "list_favorites",
