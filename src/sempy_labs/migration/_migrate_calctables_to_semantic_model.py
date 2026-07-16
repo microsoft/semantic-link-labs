@@ -93,7 +93,7 @@ def migrate_calc_tables_to_semantic_model(
         dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
     ) as tom:
         for tName in dfC_filt["Table Name"].unique():
-            if tName.lower() in lc["Table Name"].values:
+            if tName.replace(" ", "_").lower() in lc["Table Name"].values:
                 if not any(t.Name == tName for t in tom.model.Tables):
                     tom.add_table(name=tName)
                     tom.add_entity_partition(
