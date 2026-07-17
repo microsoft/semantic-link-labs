@@ -126,10 +126,10 @@ def refresh_semantic_model(
                 request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}",
                 client="fabric_sp",
             )
-            r = response.json()
-            error = r.get("serviceExceptionJson")
+            response_data = response.json()
+            error = response_data.get("serviceExceptionJson")
             final_message = f"{icons.red_dot} The refresh of the '{dataset_name}' semantic model within the '{workspace_name}' workspace has failed."
-            if error:
+            if error and isinstance(error, str):
                 error_json = json.loads(error)
                 error_code = error_json.get("errorCode", "")
                 error_description = error_json.get("errorDescription", "")
@@ -140,7 +140,7 @@ def refresh_semantic_model(
         # Function to perform dataset refresh via the Power BI Enhanced Refresh API
         def refresh_dataset():
             payload = {
-                "notifyOption": "NoNotification",
+                "notifyOption": "NoNotification",  # Suppress email notifications for programmatic/automated refreshes
                 "type": refresh_type,
                 "commitMode": commit_mode,
                 "maxParallelism": max_parallelism,
