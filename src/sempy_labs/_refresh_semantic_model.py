@@ -34,6 +34,8 @@ def refresh_semantic_model(
     """
     Refreshes a semantic model.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     dataset : str | uuid.UUID
@@ -58,6 +60,7 @@ def refresh_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     visualize : bool, default=False
         If True, displays a Gantt chart showing the refresh statistics for each table/partition.
+        Note: this option requires interactive user context and is not supported with Service Principal Authentication.
     commit_mode : str, default="transactional"
         Determines whether to commit objects in batches or only when complete. Modes are "transactional" and "partialBatch". Defaults to "transactional".
 
@@ -67,8 +70,8 @@ def refresh_semantic_model(
         If 'visualize' is set to True, returns a pandas dataframe showing the SSAS trace output used to generate the visualization.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     if isinstance(tables, str):
         tables = [tables]
@@ -119,42 +122,49 @@ def refresh_semantic_model(
         )
 
         def extract_failure_error():
-            error_messages = []
-            combined_messages = ""
+            response = _base_api(
+                request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}",
+                client="fabric_sp",
+            )
+            r = response.json()
+            error = r.get("serviceExceptionJson")
             final_message = f"{icons.red_dot} The refresh of the '{dataset_name}' semantic model within the '{workspace_name}' workspace has failed."
-            for _, r in fabric.get_refresh_execution_details(
-                refresh_request_id=request_id,
-                dataset=dataset_id,
-                workspace=workspace_id,
-            ).messages.iterrows():
-                error_messages.append(f"{r['Type']}: {r['Message']}")
-
-            if error_messages:
-                combined_messages = "\n".join(error_messages)
-            final_message += f"'\n' {combined_messages}"
-
+            if error:
+                error_json = json.loads(error)
+                error_code = error_json.get("errorCode", "")
+                error_description = error_json.get("errorDescription", "")
+                if error_code or error_description:
+                    final_message += f"\n{error_code}: {error_description}"
             return final_message
 
-        # Function to perform dataset refresh
+        # Function to perform dataset refresh via the Power BI Enhanced Refresh API
         def refresh_dataset():
-            return fabric.refresh_dataset(
-                dataset=dataset_id,
-                workspace=workspace_id,
-                refresh_type=refresh_type,
-                retry_count=retry_count,
-                apply_refresh_policy=apply_refresh_policy,
-                max_parallelism=max_parallelism,
-                commit_mode=commit_mode,
-                objects=objects if objects else None,
+            payload = {
+                "notifyOption": "NoNotification",
+                "type": refresh_type,
+                "commitMode": commit_mode,
+                "maxParallelism": max_parallelism,
+                "retryCount": retry_count,
+                "applyRefreshPolicy": apply_refresh_policy,
+            }
+            if objects:
+                payload["objects"] = objects
+
+            response = _base_api(
+                request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes",
+                method="post",
+                payload=payload,
+                status_codes=[200, 202],
+                client="fabric_sp",
             )
+            return response.headers.get("x-ms-request-id")
 
         def check_refresh_status(request_id):
-            request_details = fabric.get_refresh_execution_details(
-                dataset=dataset_id,
-                refresh_request_id=request_id,
-                workspace=workspace_id,
+            response = _base_api(
+                request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}",
+                client="fabric_sp",
             )
-            return request_details.status
+            return response.json().get("status")
 
         def display_trace_logs(trace, partition_map, widget, title, stop=False):
             if stop:
@@ -285,6 +295,8 @@ def cancel_dataset_refresh(
     """
     Cancels the refresh of a semantic model which was executed via the `Enhanced Refresh API <https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh>`_
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     dataset : str | uuid.UUID
@@ -298,23 +310,26 @@ def cancel_dataset_refresh(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
-    rr = fabric.list_refresh_requests(dataset=dataset_id, workspace=workspace_id)
-    rr_filt = rr[rr["Status"] == "Unknown"]
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     if request_id is None:
-        if len(rr_filt) == 0:
+        response = _base_api(
+            request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes",
+            client="fabric_sp",
+        )
+        refreshes = response.json().get("value", [])
+        active = [r for r in refreshes if r.get("status") == "Unknown"]
+        if not active:
             raise ValueError(
                 f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
             )
-
-        request_id = rr_filt["Request Id"].iloc[0]
+        request_id = active[0].get("requestId")
 
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}",
         method="delete",
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been cancelled."
@@ -331,6 +346,8 @@ def get_semantic_model_refresh_history(
     Obtains the semantic model refresh history (refreshes executed via the Enhanced Refresh API).
 
     This is a wrapper function for the following API: `Datasets - Get Refresh History In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/get-refresh-history-in-group>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -350,8 +367,8 @@ def get_semantic_model_refresh_history(
         A pandas dataframe showing the semantic model refresh history.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
     df = pd.DataFrame(
         columns=[
             "Request Id",
@@ -364,7 +381,8 @@ def get_semantic_model_refresh_history(
     )
 
     response = _base_api(
-        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes"
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes",
+        client="fabric_sp",
     )
     data = []
 
