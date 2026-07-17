@@ -630,7 +630,9 @@ def get_semantic_model_size(
     Returns
     -------
     float
-        The size of the semantic model in bytes.
+        The size of the semantic model in bytes, as reported by the DAX
+        ``INFO.STORAGETABLECOLUMNS`` and ``INFO.STORAGETABLECOLUMNSEGMENTS`` functions
+        (sum of ``DICTIONARY_SIZE`` and ``USED_SIZE`` columns).
     """
 
     dict = fabric.evaluate_dax(
