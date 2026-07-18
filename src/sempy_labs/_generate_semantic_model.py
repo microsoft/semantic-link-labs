@@ -614,7 +614,7 @@ def get_semantic_model_definition(
 @log
 def get_semantic_model_size(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
-):
+) -> int:
     """
     Gets size of the semantic model in bytes.
 
@@ -651,14 +651,5 @@ def get_semantic_model_size(
     dict_size = dict["[DICTIONARY_SIZE]"].sum()
     used_size = used_size["[USED_SIZE]"].sum()
     model_size = dict_size + used_size
-    # Calculate proper bytes size by dividing by 1024 and multiplying by 1000 - per 1000
-    if model_size >= 10**9:
-        result = model_size / (1024**3) * 10**9
-    elif model_size >= 10**6:
-        result = model_size / (1024**2) * 10**6
-    elif model_size >= 10**3:
-        result = model_size / (1024) * 10**3
-    else:
-        result = model_size
 
-    return float(result)
+    return int(model_size)
