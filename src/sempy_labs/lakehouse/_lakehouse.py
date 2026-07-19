@@ -1,5 +1,6 @@
 from tqdm.auto import tqdm
 from typing import List, Optional, Union
+from build.lib.sempy_labs.lakehouse._lakehouse import run_table_maintenance
 from sempy._utils._log import log
 from uuid import UUID
 from sempy_labs._helper_functions import (
@@ -116,34 +117,6 @@ def lakehouse_attached() -> bool:
 
 
 @log
-def _optimize_table(path):
-
-    if _pure_python_notebook():
-        from deltalake import DeltaTable
-
-        DeltaTable(path).optimize.compact()
-    else:
-        from delta import DeltaTable
-
-        spark = _create_spark_session()
-        DeltaTable.forPath(spark, path).optimize().executeCompaction()
-
-
-@log
-def _vacuum_table(path, retain_n_hours):
-
-    if _pure_python_notebook():
-        from deltalake import DeltaTable
-
-        DeltaTable(path).vacuum(retention_hours=retain_n_hours)
-    else:
-        from delta import DeltaTable
-
-        spark = _create_spark_session()
-        spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
-        DeltaTable.forPath(spark, path).vacuum(retain_n_hours)
-
-
 def _collect_tables(tables, lakehouse, workspace) -> pd.DataFrame:
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -213,12 +186,16 @@ def optimize_lakehouse_tables(
         table_name = r["Table Name"]
         schema_name = r["Schema Name"]
         full_table_name = f"{schema_name}.{table_name}"
-        path = r["Location"]
         bar.set_description(
             f"Optimizing the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
         )
-        _optimize_table(path=path)
-
+        run_table_maintenance(
+            table_name=table_name,
+            optimize=True,
+            schema=schema_name,
+            lakehouse=lakehouse,
+            workspace=workspace,
+        )
 
 @log
 def vacuum_lakehouse_tables(
@@ -256,11 +233,17 @@ def vacuum_lakehouse_tables(
         table_name = r["Table Name"]
         schema_name = r["Schema Name"]
         full_table_name = f"{schema_name}.{table_name}"
-        path = r["Location"]
         bar.set_description(
             f"Vacuuming the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
         )
-        _vacuum_table(path=path, retain_n_hours=retain_n_hours)
+        run_table_maintenance(
+            table_name=table_name,
+            vacuum=True,
+            retention_period=f"{retain_n_hours // 24}:{retain_n_hours % 24}:00:00"
+            schema=schema_name,
+            lakehouse=lakehouse,
+            workspace=workspace,
+        )
 
 
 @log
