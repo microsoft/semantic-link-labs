@@ -12,6 +12,9 @@ from ._perspective_editor import (
 from ._direct_lake_manager import (
     direct_lake_manager,
 )
+from ._lineage_view import (
+    lineage_view,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -20,4 +23,5 @@ __all__ = [
     "enable_query_caching",
     "perspective_editor",
     "direct_lake_manager",
+    "lineage_view",
 ]

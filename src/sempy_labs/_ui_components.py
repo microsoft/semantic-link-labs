@@ -18,7 +18,6 @@ output, an ``anywidget`` widget, or any other surface that renders raw HTML.
 
 from typing import Optional, Sequence, Tuple
 
-
 # ---------------------------------------------------------------------------
 # Icons (monochrome SVGs that use currentColor)
 # ---------------------------------------------------------------------------
@@ -156,6 +155,101 @@ ICONS: dict[str, str] = {
         '<path d="M6.5 9.5L9.5 6.5"/>'
         '<path d="M7 4.5l1-1a2.5 2.5 0 1 1 3.5 3.5l-1 1"/>'
         '<path d="M9 11.5l-1 1a2.5 2.5 0 1 1-3.5-3.5l1-1"/></svg>'
+    ),
+    "database": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="8" cy="3.5" rx="5" ry="1.8"/>'
+        '<path d="M3 3.5v9c0 1 2.24 1.8 5 1.8s5-.8 5-1.8v-9"/>'
+        '<path d="M3 8c0 1 2.24 1.8 5 1.8s5-.8 5-1.8"/></svg>'
+    ),
+    "report": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="3.5" y="2" width="9" height="12" rx="1.6"/>'
+        '<path d="M6 11v-2M8 11V6.5M10 11V8.5"/></svg>'
+    ),
+    "check_circle": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/>'
+        '<path d="M5.5 8.2l1.8 1.8 3.2-3.6"/></svg>'
+    ),
+    "alert": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M8 2.5l5.5 9.5H2.5z"/>'
+        '<path d="M8 6.5v2.5M8 11h.01"/></svg>'
+    ),
+    "external_link": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9 3.5h3.5V7"/>'
+        '<path d="M12.5 3.5L7.5 8.5"/>'
+        '<path d="M11 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3"/></svg>'
+    ),
+    "zoom_in": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="7" cy="7" r="4.2"/>'
+        '<path d="M10.2 10.2L13.5 13.5"/>'
+        '<path d="M7 5.4v3.2M5.4 7h3.2"/></svg>'
+    ),
+    "zoom_out": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="7" cy="7" r="4.2"/>'
+        '<path d="M10.2 10.2L13.5 13.5"/>'
+        '<path d="M5.4 7h3.2"/></svg>'
+    ),
+    "close": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg>'
+    ),
+    "workflow": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2" y="2.5" width="4.5" height="4.5" rx="1"/>'
+        '<rect x="9.5" y="9" width="4.5" height="4.5" rx="1"/>'
+        '<path d="M4.25 7v2.25a1.5 1.5 0 0 0 1.5 1.5h3.75"/></svg>'
+    ),
+    "scan": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 5V3.5A1 1 0 0 1 3.5 2.5H5"/>'
+        '<path d="M11 2.5h1.5a1 1 0 0 1 1 1V5"/>'
+        '<path d="M13.5 11v1.5a1 1 0 0 1-1 1H11"/>'
+        '<path d="M5 13.5H3.5a1 1 0 0 1-1-1V11"/>'
+        '<circle cx="8" cy="8" r="2"/></svg>'
+    ),
+    "fullscreen": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 6V3.5a1 1 0 0 1 1-1H6"/>'
+        '<path d="M10 2.5h2.5a1 1 0 0 1 1 1V6"/>'
+        '<path d="M13.5 10v2.5a1 1 0 0 1-1 1H10"/>'
+        '<path d="M6 13.5H3.5a1 1 0 0 1-1-1V10"/></svg>'
+    ),
+    "fullscreen_exit": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6 2.5V5a1 1 0 0 1-1 1H2.5"/>'
+        '<path d="M13.5 6H11a1 1 0 0 1-1-1V2.5"/>'
+        '<path d="M10 13.5V11a1 1 0 0 1 1-1h2.5"/>'
+        '<path d="M2.5 10H5a1 1 0 0 1 1 1v2.5"/></svg>'
     ),
 }
 
