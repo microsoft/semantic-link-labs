@@ -215,6 +215,18 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M4 4l8 8M12 4l-8 8"/></svg>'
     ),
+    "chevron_left": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M10 3.5L5.5 8l4.5 4.5"/></svg>'
+    ),
+    "chevron_right": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6 3.5L10.5 8L6 12.5"/></svg>'
+    ),
     "workflow": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
@@ -250,6 +262,29 @@ ICONS: dict[str, str] = {
         '<path d="M13.5 6H11a1 1 0 0 1-1-1V2.5"/>'
         '<path d="M10 13.5V11a1 1 0 0 1 1-1h2.5"/>'
         '<path d="M2.5 10H5a1 1 0 0 1 1 1v2.5"/></svg>'
+    ),
+    "save": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3.25 2.5h7.1l3.15 3.15V12.5a1 1 0 0 1-1 1H3.5'
+        'a1 1 0 0 1-1-1v-9a1 1 0 0 1 .75-.97z"/>'
+        '<path d="M5 2.5h5v3H5z"/>'
+        '<rect x="5" y="8.25" width="6" height="5.25" rx="0.5"/></svg>'
+    ),
+    "wrench": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M11.6 2.6a3 3 0 0 0-3.85 3.85l-4.9 4.9a1.25 1.25 0 0 0 '
+        '1.77 1.77l4.9-4.9a3 3 0 0 0 3.85-3.85l-1.9 1.9-1.47-.3-.3-1.47z"/></svg>'
+    ),
+    "undo": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6 4L3 7l3 3"/>'
+        '<path d="M3 7h6a3.5 3.5 0 0 1 0 7H5.5"/></svg>'
     ),
 }
 

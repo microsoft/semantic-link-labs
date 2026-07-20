@@ -1,6 +1,9 @@
 from typing import Optional
 from uuid import UUID
 from sempy._utils._log import log
+import base64
+import json
+import re
 
 # ---------------------------------------------------------------------------
 # Widget CSS (scoped under .slls-lv). Tokens mirror sempy_labs._ui_components
@@ -105,7 +108,8 @@ _WIDGET_CSS = """
 /* Body layout */
 .slls-lv-body { display: flex; flex: 1; min-height: 0; }
 .slls-lv-graphwrap { position: relative; flex: 1; min-width: 0; background: var(--slls-bg-secondary); }
-.slls-lv-scroll { position: absolute; inset: 0; overflow: auto; }
+.slls-lv-scroll { position: absolute; inset: 0; overflow: auto; cursor: grab; touch-action: none; }
+.slls-lv-scroll.slls-lv-panning { cursor: grabbing; }
 .slls-lv-canvas { position: relative; transform-origin: top left; }
 .slls-lv-edges { position: absolute; inset: 0; pointer-events: none; }
 
@@ -117,7 +121,7 @@ _WIDGET_CSS = """
 .slls-lv-node.selected { box-shadow: 0 0 0 2.5px var(--slls-accent); }
 .slls-lv-node.picked { box-shadow: 0 0 0 2px var(--slls-accent-soft); }
 .slls-lv-node-check { position: absolute; top: 8px; right: 8px; width: 15px; height: 15px; accent-color: var(--slls-accent); cursor: pointer; }
-.slls-lv-node-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 16px; }
+.slls-lv-node-name { font-size: 13px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 16px; }
 .slls-lv-node-ws { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--slls-text-secondary); overflow: hidden; }
 .slls-lv-node-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-lv-node-status { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; }
@@ -130,7 +134,7 @@ _WIDGET_CSS = """
 .slls-lv-node.error .slls-lv-node-status { color: var(--slls-text-tertiary); }
 
 .slls-lv-model { align-items: center; text-align: center; border-width: 2px; border-color: var(--slls-accent); background: var(--slls-accent-soft); }
-.slls-lv-model-top { display: flex; align-items: center; gap: 7px; color: var(--slls-accent); font-size: 14px; font-weight: 700; overflow: hidden; }
+.slls-lv-model-top { display: flex; align-items: center; gap: 7px; color: var(--slls-accent); font-size: 14px; font-weight: 700; line-height: 1.35; overflow: hidden; }
 .slls-lv-model-top span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-lv-model-ws { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--slls-text-secondary); overflow: hidden; max-width: 100%; }
 .slls-lv-model-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -150,7 +154,16 @@ _WIDGET_CSS = """
 .slls-lv-center-inner p { margin: 0; font-size: 12.5px; color: var(--slls-text-secondary); }
 
 /* Side panel */
-.slls-lv-panel { width: 360px; flex-shrink: 0; border-left: 1px solid var(--slls-border); display: flex; flex-direction: column; min-height: 0; background: var(--slls-bg-solid); }
+.slls-lv-panel { position: relative; width: 360px; flex-shrink: 0; border-left: 1px solid var(--slls-border); display: flex; flex-direction: column; min-height: 0; background: var(--slls-bg-solid); }
+.slls-lv-panel.slls-lv-panel-collapsed { width: 46px; min-width: 46px; }
+/* Drag handle straddling the panel's left border to resize its width. */
+.slls-lv-panel-resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 6; touch-action: none; }
+.slls-lv-panel-resize::after { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; background: transparent; transition: background 120ms ease; }
+.slls-lv-panel-resize:hover::after, .slls-lv-panel-resize.slls-lv-resizing::after { background: var(--slls-accent); }
+/* Collapsed rail */
+.slls-lv-rail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0; height: 100%; }
+.slls-lv-rail-badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--slls-danger-soft); color: var(--slls-danger); font-variant-numeric: tabular-nums; }
+.slls-lv-rail-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--slls-text-secondary); white-space: nowrap; }
 .slls-lv-panel-head { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--slls-border); }
 .slls-lv-panel-head .slls-lv-ic { color: var(--slls-accent); margin-top: 1px; flex-shrink: 0; }
 .slls-lv-panel-head .slls-lv-pt { min-width: 0; flex: 1; }
@@ -161,6 +174,7 @@ _WIDGET_CSS = """
 .slls-lv-panel-close:hover { background: var(--slls-surface-2); color: var(--slls-text); }
 .slls-lv-weblink { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border-bottom: 1px solid var(--slls-border); font-size: 12px; color: var(--slls-accent); text-decoration: none; }
 .slls-lv-weblink:hover { background: var(--slls-surface-2); }
+.slls-lv-panel-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
 .slls-lv-panel-body { flex: 1; overflow-y: auto; padding: 10px 12px; min-height: 0; }
 .slls-lv-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 48px 16px; }
 .slls-lv-empty .slls-lv-ic { opacity: 0.65; }
@@ -168,7 +182,8 @@ _WIDGET_CSS = """
 .slls-lv-empty h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 .slls-lv-empty p { margin: 0; font-size: 12px; color: var(--slls-text-secondary); max-width: 260px; }
 
-.slls-lv-repbtn { width: 100%; text-align: left; border: 1px solid var(--slls-border); background: var(--slls-surface); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 120ms ease, border-color 120ms ease; }
+.slls-lv-repbtn { width: 100%; text-align: left; border: 1px solid var(--slls-border); background: var(--slls-surface); color: var(--slls-text); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 120ms ease, border-color 120ms ease; }
+.slls-lv-repbtn .slls-lv-ic { color: var(--slls-text-secondary); flex-shrink: 0; }
 .slls-lv-repbtn:hover { background: var(--slls-surface-2); border-color: var(--slls-text-tertiary); }
 .slls-lv-repbtn .slls-lv-rp { min-width: 0; flex: 1; }
 .slls-lv-repbtn-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -184,10 +199,16 @@ _WIDGET_CSS = """
 .slls-lv-fix { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .slls-lv-fix-select { flex: 1; padding-top: 6px; padding-bottom: 6px; font-size: 12.5px; }
 .slls-lv-fix-arrow { color: var(--slls-success); display: inline-flex; flex-shrink: 0; }
-.slls-lv-staged { flex: 1; font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--slls-success); overflow-wrap: anywhere; }
+.slls-lv-staged { flex: 1; font-size: 12.5px; color: var(--slls-text-secondary); overflow-wrap: anywhere; }
 .slls-lv-unstage { width: 24px; height: 24px; border: none; background: transparent; color: var(--slls-text-tertiary); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.slls-lv-unstage:hover { background: var(--slls-danger-soft); color: var(--slls-danger); }
+.slls-lv-unstage:hover { background: var(--slls-surface-2); color: var(--slls-text); }
 .slls-lv-fix-note { font-size: 11.5px; color: var(--slls-text-tertiary); font-style: italic; }
+.slls-lv-panel-meta { font-size: 11.5px; color: var(--slls-text-secondary); margin-top: 3px; }
+.slls-lv-section-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slls-text-tertiary); margin: 2px 2px 8px; }
+.slls-lv-obj-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slls-lv-obj-ic { display: inline-flex; color: var(--slls-text-secondary); flex-shrink: 0; }
+.slls-lv-fix-ic { display: inline-flex; color: var(--slls-text-secondary); flex-shrink: 0; }
+.slls-lv-fix-staged { border: 1px solid var(--slls-border-strong); background: var(--slls-surface-2); border-radius: 9px; padding: 7px 9px; }
 .slls-lv-combo { position: relative; flex: 1; min-width: 0; }
 .slls-lv-combo-input { width: 100%; background: var(--slls-surface); border: 1px solid var(--slls-border-strong); border-radius: 10px; padding: 7px 12px; font-size: 12.5px; color: var(--slls-text); font-family: inherit; }
 .slls-lv-combo-input:focus { outline: none; border-color: var(--slls-accent); box-shadow: 0 0 0 3px var(--slls-accent-soft); }
@@ -241,10 +262,13 @@ function render({ model, el }) {
         zoomin: `__ICON_ZOOMIN__`, zoomout: `__ICON_ZOOMOUT__`, close: `__ICON_CLOSE__`,
         workflow: `__ICON_WORKFLOW__`, sun: `__ICON_SUN__`, moon: `__ICON_MOON__`,
         fullscreen: `__ICON_FULLSCREEN__`, fullscreen_exit: `__ICON_FULLSCREEN_EXIT__`,
+        measure: `__ICON_MEASURE__`, column: `__ICON_COLUMN__`, hierarchy: `__ICON_HIERARCHY__`,
+        save: `__ICON_SAVE__`, wrench: `__ICON_WRENCH__`, undo: `__ICON_UNDO__`,
+        chevron_left: `__ICON_CHEVRON_LEFT__`, chevron_right: `__ICON_CHEVRON_RIGHT__`,
     };
 
     const MODEL_KEY = "__model__";
-    const NODE_W = 184, NODE_H = 78, CENTER_W = 204, CENTER_H = 86, MARGIN = 150;
+    const NODE_W = 184, NODE_H = 86, CENTER_W = 204, CENTER_H = 92, MARGIN = 150;
     const MIN_ZOOM = 0.3, MAX_ZOOM = 2.5;
 
     const root = document.createElement("div");
@@ -311,6 +335,9 @@ function render({ model, el }) {
     let rebindOpen = false;
     let rebindWs = "";
     let rebindDs = "";
+    let panelWidth = 360;             // side panel width (px)
+    let panelCollapsed = false;       // side panel collapsed to a thin rail
+    const PANEL_MIN = 280, PANEL_MAX = 720;
 
     const esc = (s) => String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -326,6 +353,10 @@ function render({ model, el }) {
     // square brackets; columns/hierarchies keep the 'Table'[Object] form.
     const objLabel = (type, table, name) =>
         type === "Measure" ? `${name}` : `'${table}'[${name}]`;
+    const typeIcon = (type) =>
+        type === "Measure" ? ICON.measure
+        : type === "Column" ? ICON.column
+        : type === "Hierarchy" ? ICON.hierarchy : ICON.report;
 
     function dispatch(payload) {
         model.set("pending_action", payload);
@@ -416,19 +447,16 @@ function render({ model, el }) {
             `</div>` +
             (stagedFixes.size > 0
                 ? `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-btn-icon" data-act="save" title="Save ${stagedFixes.size} staged fix${stagedFixes.size === 1 ? "" : "es"}" ${busy() ? "disabled" : ""}>` +
-                    `${busy() ? spinner() : ICON.check}</button>`
+                    `${busy() ? spinner() : ICON.save}</button>`
                 : "") +
             (nPick > 0
                 ? `<button class="slls-lv-btn" data-act="open-rebind">${ICON.link}Rebind ${nPick}</button>`
                 : "") +
-            `<button class="slls-lv-btn slls-lv-btn-primary" data-act="analyze" ${busy() ? "disabled" : ""}>` +
-                `${busy() ? spinner() : ICON.scan}${analyzed() ? "Re-analyze" : "Analyze broken elements"}</button>` +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="refresh" title="Reload downstream reports" ${busy() ? "disabled" : ""}>` +
                 `${busy() ? spinner() : ICON.refresh}</button>` +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
-        h.querySelector('[data-act="analyze"]').onclick = () => dispatch({ action: "analyze" });
         h.querySelector('[data-act="refresh"]').onclick = () => dispatch({ action: "refresh" });
         h.querySelector('[data-act="fullscreen"]').onclick = () => toggleFullscreen();
         h.querySelector('[data-act="theme"]').onclick = () => {
@@ -535,6 +563,32 @@ function render({ model, el }) {
         rs.forEach((r) => canvas.appendChild(buildReportNode(r)));
 
         scroll.appendChild(canvas);
+
+        // Click-and-drag panning on empty canvas space. Nodes call
+        // stopPropagation on pointerdown, so dragging a node never pans.
+        const startPan = (e) => {
+            if (e.button != null && e.button !== 0) return;
+            e.preventDefault();
+            const sx = e.clientX, sy = e.clientY;
+            const sl = scroll.scrollLeft, stp = scroll.scrollTop;
+            scroll.classList.add("slls-lv-panning");
+            const move = (ev) => {
+                scroll.scrollLeft = sl - (ev.clientX - sx);
+                scroll.scrollTop = stp - (ev.clientY - sy);
+            };
+            const up = () => {
+                window.removeEventListener("pointermove", move);
+                window.removeEventListener("pointerup", up);
+                scroll.classList.remove("slls-lv-panning");
+                document.body.style.userSelect = "";
+            };
+            window.addEventListener("pointermove", move);
+            window.addEventListener("pointerup", up);
+            document.body.style.userSelect = "none";
+        };
+        scroll.addEventListener("pointerdown", startPan);
+        canvas.addEventListener("pointerdown", startPan);
+
         wrap.appendChild(scroll);
         wrap.appendChild(buildZoom());
 
@@ -626,10 +680,67 @@ function render({ model, el }) {
     function buildPanel() {
         const panel = document.createElement("div");
         panel.className = "slls-lv-panel";
+        if (panelCollapsed) {
+            panel.classList.add("slls-lv-panel-collapsed");
+            panel.appendChild(buildPanelRail());
+            return panel;
+        }
+        panel.style.width = panelWidth + "px";
+        const handle = document.createElement("div");
+        handle.className = "slls-lv-panel-resize";
+        handle.title = "Drag to resize";
+        handle.addEventListener("pointerdown", startPanelResize);
+        panel.appendChild(handle);
         const rep = reports().find((r) => r.id === selectedId) || null;
         if (rep) buildReportDetail(panel, rep);
         else buildBrokenSummary(panel);
         return panel;
+    }
+
+    // Thin rail shown when the panel is collapsed; click to expand.
+    function buildPanelRail() {
+        const rail = document.createElement("div");
+        rail.className = "slls-lv-rail";
+        const broken = reports().reduce((n, r) => n + (r.invalidCount || 0), 0);
+        rail.innerHTML =
+            `<button class="slls-lv-panel-close" data-act="expand" title="Expand panel">${ICON.chevron_left}</button>` +
+            (analyzed() && broken > 0 ? `<span class="slls-lv-rail-badge">${broken}</span>` : "") +
+            `<span class="slls-lv-rail-label">Broken elements</span>`;
+        rail.querySelector('[data-act="expand"]').onclick = () => {
+            panelCollapsed = false; renderAll();
+        };
+        return rail;
+    }
+
+    // Collapse toggle placed in each panel head.
+    function collapseBtn() {
+        return `<button class="slls-lv-panel-close" data-act="collapse" title="Collapse panel">${ICON.chevron_right}</button>`;
+    }
+
+    function startPanelResize(e) {
+        if (e.button != null && e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startW = panelWidth;
+        const handle = e.currentTarget;
+        const panel = handle.parentElement;
+        handle.classList.add("slls-lv-resizing");
+        const move = (ev) => {
+            // Panel sits on the right, so dragging left widens it.
+            const w = startW - (ev.clientX - startX);
+            panelWidth = Math.max(PANEL_MIN, Math.min(PANEL_MAX, w));
+            if (panel) panel.style.width = panelWidth + "px";
+        };
+        const up = () => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            handle.classList.remove("slls-lv-resizing");
+            document.body.style.userSelect = "";
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        document.body.style.userSelect = "none";
     }
 
     function buildBrokenSummary(panel) {
@@ -640,7 +751,15 @@ function render({ model, el }) {
             `<div class="slls-lv-pt"><div class="slls-lv-panel-title">Broken elements summary</div>` +
             `<div class="slls-lv-panel-sub"><span>${analyzed()
                 ? "Select a report to see its broken elements."
-                : "Analyze the reports to check for broken elements."}</span></div></div>`;
+                : "Analyze the reports to check for broken elements."}</span></div></div>` +
+            `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-panel-btn" data-act="panel-analyze" ${busy() ? "disabled" : ""}>` +
+            `${busy() ? spinner() : ICON.scan}${analyzed() ? "Re-analyze" : "Analyze"}</button>` +
+            collapseBtn();
+        head.querySelector('[data-act="panel-analyze"]').onclick = () =>
+            dispatch({ action: "analyze" });
+        head.querySelector('[data-act="collapse"]').onclick = () => {
+            panelCollapsed = true; renderAll();
+        };
         panel.appendChild(head);
 
         const bodyEl = document.createElement("div");
@@ -659,8 +778,7 @@ function render({ model, el }) {
                 b.className = "slls-lv-repbtn";
                 b.innerHTML =
                     `<span class="slls-lv-ic">${ICON.report}</span>` +
-                    `<span class="slls-lv-rp"><span class="slls-lv-repbtn-name">${esc(r.name)}</span>` +
-                    `<span class="slls-lv-repbtn-meta">${r.invalidCount} broken element${r.invalidCount === 1 ? "" : "s"}</span></span>` +
+                    `<span class="slls-lv-rp"><span class="slls-lv-repbtn-name">${esc(r.name)}</span></span>` +
                     `<span class="slls-lv-badge">${r.invalidCount}</span>`;
                 b.onclick = () => { selectedId = r.id; renderAll(); };
                 bodyEl.appendChild(b);
@@ -677,21 +795,31 @@ function render({ model, el }) {
 
     function buildReportDetail(panel, r) {
         const hs = health(r);
+        const brokenCount = (r.invalidObjects || []).length;
+        const refMeta = `${r.objectCount} object reference${r.objectCount === 1 ? "" : "s"} \u00b7 ${brokenCount} broken`;
         const head = document.createElement("div");
         head.className = "slls-lv-panel-head";
         head.innerHTML =
             `<span class="slls-lv-ic">${ICON.report}</span>` +
             `<div class="slls-lv-pt"><div class="slls-lv-panel-title">${esc(r.name)}</div>` +
-            `<div class="slls-lv-panel-sub">${ICON.workflow}<span>${esc(r.workspaceName)}</span></div></div>` +
-            `<button class="slls-lv-panel-close" title="Close">${ICON.close}</button>`;
+            `<div class="slls-lv-panel-sub">${ICON.workflow}<span>${esc(r.workspaceName)}</span></div>` +
+            (hs === "broken"
+                ? `<div class="slls-lv-panel-meta">${esc(refMeta)}</div>`
+                : "") +
+            `</div>` +
+            `<button class="slls-lv-panel-close" title="Close">${ICON.close}</button>` +
+            collapseBtn();
         head.querySelector(".slls-lv-panel-close").onclick = () => { selectedId = null; renderAll(); };
+        head.querySelector('[data-act="collapse"]').onclick = () => {
+            panelCollapsed = true; renderAll();
+        };
         panel.appendChild(head);
 
         if (r.webUrl) {
             const a = document.createElement("a");
             a.className = "slls-lv-weblink";
             a.href = r.webUrl; a.target = "_blank"; a.rel = "noopener noreferrer";
-            a.innerHTML = `${ICON.external}Open report`;
+            a.innerHTML = `${ICON.external}Open in Power BI`;
             panel.appendChild(a);
         }
 
@@ -704,6 +832,10 @@ function render({ model, el }) {
             bodyEl.innerHTML = emptyState("check", "No broken elements",
                 "Every object this report references exists in the model.", true);
         } else {
+            const secLabel = document.createElement("div");
+            secLabel.className = "slls-lv-section-label";
+            secLabel.textContent = "Broken elements";
+            bodyEl.appendChild(secLabel);
             // invalidObjects are already grouped per model object (deduped in
             // Python), so each row is a single broken object with a fix picker.
             (r.invalidObjects || []).forEach((o) => {
@@ -720,22 +852,23 @@ function render({ model, el }) {
         const staged = stagedFixes.get(key);
         d.innerHTML =
             `<div class="slls-lv-obj-top">` +
-            `<div class="slls-lv-obj-name">${esc(objLabel(o.objectType, o.table, o.name))}</div>` +
-            `<span class="slls-lv-tag type">${esc(o.objectType)}</span></div>`;
+            `<div class="slls-lv-obj-main">` +
+            `<span class="slls-lv-obj-ic">${typeIcon(o.objectType)}</span>` +
+            `<span class="slls-lv-obj-name">${esc(objLabel(o.objectType, o.table, o.name))}</span>` +
+            `</div><span class="slls-lv-tag type">${esc(o.objectType)}</span></div>`;
 
-        const fix = document.createElement("div");
-        fix.className = "slls-lv-fix";
         if (staged) {
+            const fix = document.createElement("div");
+            fix.className = "slls-lv-fix slls-lv-fix-staged";
             fix.innerHTML =
-                `<span class="slls-lv-fix-arrow">${ICON.link}</span>` +
-                `<span class="slls-lv-staged">${esc(objLabel(o.objectType, staged.targetTable, staged.targetName))}</span>` +
-                `<button class="slls-lv-unstage" title="Remove fix">${ICON.close}</button>`;
+                `<span class="slls-lv-fix-ic">${ICON.wrench}</span>` +
+                `<span class="slls-lv-staged">Point to ${esc(objLabel(o.objectType, staged.targetTable, staged.targetName))}</span>` +
+                `<button class="slls-lv-unstage" title="Undo fix">${ICON.undo}</button>`;
             fix.querySelector(".slls-lv-unstage").onclick = () => {
                 stagedFixes.delete(key);
                 renderAll();
             };
-        } else if (o.objectType === "Hierarchy") {
-            fix.innerHTML = `<span class="slls-lv-fix-note">Fixing hierarchy references is not supported.</span>`;
+            d.appendChild(fix);
         } else {
             const cands = modelObjects()
                 .filter((mo) => mo.type === o.objectType)
@@ -743,9 +876,11 @@ function render({ model, el }) {
                     ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
                     : (a.table + "\u0000" + a.name).toLowerCase()
                         .localeCompare((b.table + "\u0000" + b.name).toLowerCase())));
+            const fix = document.createElement("div");
+            fix.className = "slls-lv-fix";
             fix.appendChild(buildFixCombo(r, o, key, cands));
+            d.appendChild(fix);
         }
-        d.appendChild(fix);
         return d;
     }
 
@@ -980,6 +1115,14 @@ _WIDGET_JS = (
     .replace("__ICON_MOON__", _UI_ICONS["moon"])
     .replace("__ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
     .replace("__ICON_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
+    .replace("__ICON_MEASURE__", _UI_ICONS["measure"])
+    .replace("__ICON_COLUMN__", _UI_ICONS["column"])
+    .replace("__ICON_HIERARCHY__", _UI_ICONS["hierarchy"])
+    .replace("__ICON_SAVE__", _UI_ICONS["save"])
+    .replace("__ICON_WRENCH__", _UI_ICONS["wrench"])
+    .replace("__ICON_UNDO__", _UI_ICONS["undo"])
+    .replace("__ICON_CHEVRON_LEFT__", _UI_ICONS["chevron_left"])
+    .replace("__ICON_CHEVRON_RIGHT__", _UI_ICONS["chevron_right"])
 )
 
 
@@ -992,8 +1135,7 @@ def lineage_view(
     """
     Displays an interactive lineage view for a semantic model.
 
-    Recreates the "Lineage view" subtool of the Semantic Model Explorer: a node
-    graph placing the semantic model at the centre with each downstream report
+    Shows a node graph placing the semantic model at the center with each downstream report
     (i.e. the reports in the model's workspace that consume it) arranged around
     it. Each report can be analyzed for broken elements — references to columns,
     measures or hierarchies that no longer exist in the semantic model — with a
@@ -1003,13 +1145,9 @@ def lineage_view(
     back to the report(s) with the Save button. Reports can also be selected and
     rebound to a different semantic model.
 
-    This tool builds on the following Semantic Link Labs functions:
-    :func:`sempy_labs.list_reports_using_semantic_model`,
-    :func:`sempy_labs.list_report_semantic_model_objects` and
-    :func:`sempy_labs.report.report_rebind`.
 
-    Note: Broken-element analysis requires the downstream report(s) to be in the
-    'PBIR' format.
+    Both the 'PBIR' and 'PBIRLegacy' report formats are supported for
+    broken-element analysis and fixes.
 
     Parameters
     ----------
@@ -1039,6 +1177,7 @@ def lineage_view(
         resolve_workspace_name_and_id,
         resolve_dataset_name_and_id,
         format_dax_object_name,
+        _base_api,
     )
     from sempy_labs._list_functions import list_reports_using_semantic_model
     from sempy_labs.report._report_rebind import report_rebind
@@ -1097,6 +1236,234 @@ def lineage_view(
                 )
         return measures, columns, hierarchies, objects
 
+    # ------------------------------------------------------------------
+    # Report definition extractor / mutator.
+    #
+    # Works for both the 'PBIR' (multiple JSON parts) and 'PBIRLegacy' (single
+    # report.json with stringified config/query blobs) formats by walking every
+    # part's JSON and descending into any stringified JSON blobs. Ports the
+    # 'Tools' app's ReportObjectExtractor so this tool does not depend on the
+    # PBIR-only ReportWrapper. Resolves both direct SourceRef.Entity references
+    # and aliased SourceRef.Source references via each query's From clause.
+    # ------------------------------------------------------------------
+    def _get_report_definition(report_id):
+        result = _base_api(
+            request=(f"/v1/workspaces/{ws_id}/items/{report_id}/getDefinition"),
+            method="post",
+            status_codes=None,
+            lro_return_json=True,
+            client="fabric_sp",
+        )
+        return result.get("definition", {}).get("parts", [])
+
+    def _looks_like_json(s):
+        t = s.lstrip()
+        return t.startswith("{") or t.startswith("[")
+
+    def _walk_refs(node, parent_key, aliases, refs, report_measures):
+        if isinstance(node, dict):
+            # A 'From' clause maps query aliases (Source) to entities (tables).
+            local_aliases = aliases
+            frm = node.get("From")
+            if isinstance(frm, list):
+                local_aliases = dict(aliases)
+                for f in frm:
+                    if isinstance(f, dict):
+                        alias = f.get("Name")
+                        ent = f.get("Entity")
+                        if isinstance(alias, str) and alias and isinstance(ent, str):
+                            local_aliases[alias] = ent
+
+            # Report-level measures live in entities[].measures[].name; they are
+            # defined in the report (not the model) so must not be flagged broken.
+            entities = node.get("entities")
+            if isinstance(entities, list):
+                for ent in entities:
+                    if isinstance(ent, dict) and isinstance(ent.get("measures"), list):
+                        for m in ent["measures"]:
+                            if isinstance(m, dict) and isinstance(m.get("name"), str):
+                                if m["name"]:
+                                    report_measures.add(m["name"])
+
+            expr = node.get("Expression")
+            if isinstance(expr, dict) and isinstance(expr.get("SourceRef"), dict):
+                src = expr["SourceRef"]
+                entity = None
+                if isinstance(src.get("Entity"), str) and src["Entity"]:
+                    entity = src["Entity"]
+                else:
+                    alias = src.get("Source")
+                    if isinstance(alias, str) and alias in local_aliases:
+                        entity = local_aliases[alias]
+                if entity:
+                    prop = node.get("Property")
+                    hier = node.get("Hierarchy")
+                    if isinstance(prop, str) and prop:
+                        otype = "Measure" if parent_key == "Measure" else "Column"
+                        refs[(otype, entity, prop)] = {
+                            "table": entity,
+                            "name": prop,
+                            "objectType": otype,
+                        }
+                    elif isinstance(hier, str) and hier:
+                        refs[("Hierarchy", entity, hier)] = {
+                            "table": entity,
+                            "name": hier,
+                            "objectType": "Hierarchy",
+                        }
+
+            for k, v in node.items():
+                if isinstance(v, str) and _looks_like_json(v):
+                    # PBIRLegacy stores visual config / query as stringified JSON.
+                    try:
+                        inner = json.loads(v)
+                    except Exception:
+                        inner = None
+                    if inner is not None:
+                        _walk_refs(inner, k, local_aliases, refs, report_measures)
+                else:
+                    _walk_refs(v, k, local_aliases, refs, report_measures)
+        elif isinstance(node, list):
+            for item in node:
+                _walk_refs(item, parent_key, aliases, refs, report_measures)
+
+    def _extract_report_objects(parts):
+        refs = {}
+        report_measures = set()
+        for part in parts:
+            payload = part.get("payload")
+            if not payload:
+                continue
+            try:
+                node = json.loads(base64.b64decode(payload).decode("utf-8"))
+            except Exception:
+                continue
+            _walk_refs(node, None, {}, refs, report_measures)
+        return list(refs.values()), report_measures
+
+    def _rewrite_ref_string(s, fixes):
+        result = s
+        for fx in fixes:
+            old_qual = f"{fx['oldTable']}.{fx['oldName']}"
+            new_qual = f"{fx['newTable']}.{fx['newName']}"
+            result = result.replace(f"[{old_qual}]", f"[{new_qual}]").replace(
+                f"({old_qual})", f"({new_qual})"
+            )
+            # Bare qualified token, not preceded/followed by an identifier char
+            # or a dot.
+            pattern = r"(?<![\w.])" + re.escape(old_qual) + r"(?![\w.])"
+            result = re.sub(pattern, lambda _m, nq=new_qual: nq, result)
+        return result
+
+    def _mutate_reference(obj, parent_key, aliases, fixes):
+        expr = obj.get("Expression")
+        if not isinstance(expr, dict) or not isinstance(expr.get("SourceRef"), dict):
+            return
+        src = expr["SourceRef"]
+        entity_based = False
+        entity = None
+        if isinstance(src.get("Entity"), str) and src["Entity"]:
+            entity = src["Entity"]
+            entity_based = True
+        else:
+            alias = src.get("Source")
+            if isinstance(alias, str) and alias in aliases:
+                entity = aliases[alias]
+        if not entity:
+            return
+        prop = obj.get("Property")
+        hier = obj.get("Hierarchy")
+        if isinstance(prop, str) and prop:
+            ref_type = "Measure" if parent_key == "Measure" else "Column"
+            for fx in fixes:
+                if (
+                    fx["objectType"].lower() == ref_type.lower()
+                    and entity.lower() == fx["oldTable"].lower()
+                    and prop.lower() == fx["oldName"].lower()
+                ):
+                    obj["Property"] = fx["newName"]
+                    if (
+                        entity_based
+                        and fx["newTable"].lower() != fx["oldTable"].lower()
+                    ):
+                        src["Entity"] = fx["newTable"]
+                    break
+        elif isinstance(hier, str) and hier:
+            for fx in fixes:
+                if (
+                    fx["objectType"].lower() == "hierarchy"
+                    and entity.lower() == fx["oldTable"].lower()
+                    and hier.lower() == fx["oldName"].lower()
+                ):
+                    obj["Hierarchy"] = fx["newName"]
+                    if (
+                        entity_based
+                        and fx["newTable"].lower() != fx["oldTable"].lower()
+                    ):
+                        src["Entity"] = fx["newTable"]
+                    break
+
+    def _mutate_walk(node, parent_key, aliases, fixes):
+        if isinstance(node, dict):
+            local_aliases = aliases
+            frm = node.get("From")
+            if isinstance(frm, list):
+                local_aliases = dict(aliases)
+                for f in frm:
+                    if isinstance(f, dict):
+                        alias = f.get("Name")
+                        ent = f.get("Entity")
+                        if isinstance(alias, str) and alias and isinstance(ent, str):
+                            local_aliases[alias] = ent
+            _mutate_reference(node, parent_key, local_aliases, fixes)
+            for k in list(node.keys()):
+                v = node[k]
+                if isinstance(v, str):
+                    if _looks_like_json(v):
+                        try:
+                            inner = json.loads(v)
+                        except Exception:
+                            inner = None
+                        if inner is not None:
+                            _mutate_walk(inner, k, local_aliases, fixes)
+                            node[k] = json.dumps(inner)
+                    elif k in ("queryRef", "nativeQueryRef", "metadata"):
+                        node[k] = _rewrite_ref_string(v, fixes)
+                else:
+                    _mutate_walk(v, k, local_aliases, fixes)
+        elif isinstance(node, list):
+            for item in node:
+                _mutate_walk(item, parent_key, aliases, fixes)
+
+    def _apply_report_fixes(report_id, fixes):
+        parts = _get_report_definition(report_id)
+        out_parts = []
+        for part in parts:
+            path = part.get("path", "")
+            payload = part.get("payload")
+            out_payload = payload or ""
+            if payload:
+                try:
+                    node = json.loads(base64.b64decode(payload).decode("utf-8"))
+                except Exception:
+                    node = None
+                if node is not None:
+                    _mutate_walk(node, None, {}, fixes)
+                    out_payload = base64.b64encode(
+                        json.dumps(node).encode("utf-8")
+                    ).decode("utf-8")
+            out_parts.append(
+                {"path": path, "payload": out_payload, "payloadType": "InlineBase64"}
+            )
+        _base_api(
+            request=(f"/v1/workspaces/{ws_id}/reports/{report_id}/updateDefinition"),
+            method="post",
+            payload={"definition": {"parts": out_parts}},
+            status_codes=None,
+            lro_return_status_code=True,
+            client="fabric_sp",
+        )
+
     def _build_reports(analyze):
         """Return the list of downstream-report payload dicts."""
         dfR = list_reports_using_semantic_model(dataset=ds_id, workspace=ws_id)
@@ -1120,44 +1487,30 @@ def lineage_view(
         if not analyze or not reports:
             return reports
 
-        from sempy_labs.report import ReportWrapper
-
         measures, columns, hierarchies, _ = _model_objects_full()
 
         for rep in reports:
             try:
-                rpt = ReportWrapper(report=rep["name"], workspace=rep["workspaceName"])
-                dfRSO = rpt.list_semantic_model_objects()
+                parts = _get_report_definition(rep["id"])
+                references, report_measures = _extract_report_objects(parts)
                 invalid = []
-                seen = set()
-                for _, row in dfRSO.iterrows():
-                    otype = str(row.get("Object Type"))
-                    tname = str(row.get("Table Name") or "")
-                    oname = str(row.get("Object Name") or "")
+                for ref in references:
+                    otype = ref["objectType"]
+                    tname = ref["table"]
+                    oname = ref["name"]
                     if otype == "Measure":
-                        valid = oname in measures
+                        valid = oname in measures or oname in report_measures
                     elif otype == "Column":
                         valid = format_dax_object_name(tname, oname) in columns
                     elif otype == "Hierarchy":
                         valid = format_dax_object_name(tname, oname) in hierarchies
                     else:
                         valid = True
-                    if valid:
-                        continue
-                    # Group by model object: one row per unique broken object,
-                    # not one per visual that references it.
-                    dedupe_key = (otype, tname, oname)
-                    if dedupe_key in seen:
-                        continue
-                    seen.add(dedupe_key)
-                    invalid.append(
-                        {
-                            "table": tname,
-                            "name": oname,
-                            "objectType": otype,
-                        }
-                    )
-                rep["objectCount"] = int(len(dfRSO))
+                    if not valid:
+                        invalid.append(
+                            {"table": tname, "name": oname, "objectType": otype}
+                        )
+                rep["objectCount"] = len(references)
                 rep["invalidCount"] = len(invalid)
                 rep["invalidObjects"] = invalid
                 rep["analyzed"] = True
@@ -1310,56 +1663,43 @@ def lineage_view(
                 fixes = data.get("fixes") or []
                 if not fixes:
                     return
-                from sempy_labs.report import ReportWrapper
 
                 # Group staged fixes by the report they apply to.
                 by_report = {}
                 for f in fixes:
-                    rkey = (f.get("reportName"), f.get("reportWorkspace"))
-                    by_report.setdefault(rkey, []).append(f)
+                    by_report.setdefault(f.get("reportId"), []).append(f)
 
                 saved = 0
-                skipped = 0
-                for (rname, rws), flist in by_report.items():
-                    mapping = {"measures": {}, "columns": {}}
-                    applied = 0
+                for report_id, flist in by_report.items():
+                    if not report_id:
+                        continue
+                    report_fixes = []
                     for f in flist:
-                        otype = f.get("objectType")
-                        broken_table = f.get("brokenTable") or ""
-                        broken_name = f.get("brokenName") or ""
                         target_name = f.get("targetName") or ""
                         if not target_name:
                             continue
-                        if otype == "Measure":
-                            mapping["measures"][
-                                (broken_table, broken_name)
-                            ] = target_name
-                            applied += 1
-                        elif otype == "Column":
-                            mapping["columns"][
-                                (broken_table, broken_name)
-                            ] = target_name
-                            applied += 1
-                        else:
-                            skipped += 1
-                    if applied == 0:
+                        report_fixes.append(
+                            {
+                                "objectType": f.get("objectType") or "",
+                                "oldTable": f.get("brokenTable") or "",
+                                "oldName": f.get("brokenName") or "",
+                                "newTable": f.get("targetTable") or "",
+                                "newName": target_name,
+                            }
+                        )
+                    if not report_fixes:
                         continue
-                    rpt = ReportWrapper(report=rname, workspace=rws)
-                    rpt._rename_fields(mapping)
-                    rpt.save_changes()
-                    saved += applied
+                    _apply_report_fixes(report_id, report_fixes)
+                    saved += len(report_fixes)
 
                 # Re-analyze so the fixed objects drop off the broken list.
                 keep = widget.analyzed
                 widget.reports = _build_reports(analyze=keep)
                 widget.fixes_saved = widget.fixes_saved + 1
-                msg = f"Saved {saved} fix{'' if saved == 1 else 'es'}."
-                if skipped:
-                    msg += (
-                        f" Skipped {skipped} hierarchy fix"
-                        f"{'' if skipped == 1 else 'es'} (not supported)."
-                    )
-                widget.status = {"message": msg, "kind": "success"}
+                widget.status = {
+                    "message": f"Saved {saved} fix{'' if saved == 1 else 'es'}.",
+                    "kind": "success",
+                }
         except Exception as e:
             widget.status = {"message": f"Error: {e}", "kind": "error"}
         finally:
