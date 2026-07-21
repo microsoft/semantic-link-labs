@@ -360,7 +360,12 @@ function render({ model, el }) {
 
     function dispatch(payload) {
         model.set("pending_action", payload);
-        model.set("run", model.get("run") + 1);
+        // Guard against an undefined "run" (some notebook hosts do not seed
+        // every synced trait into the front-end model): "undefined + 1" is NaN,
+        // which serializes to JSON null and makes the back-end set_state raise a
+        // TraitError before the observer fires, so the click silently does
+        // nothing. Coercing to 0 keeps the counter a valid integer.
+        model.set("run", (model.get("run") || 0) + 1);
         model.save_changes();
     }
 
@@ -1341,21 +1346,80 @@ def lineage_view(
             _walk_refs(node, None, {}, refs, report_measures)
         return list(refs.values()), report_measures
 
-    def _rewrite_ref_string(s, fixes):
+    def _rewrite_ref_string(s, fixes, native=False):
+        """Rewrite a query-alias string in place.
+
+        Handles the qualified alias strings (``queryRef``, ``Name``,
+        ``metadata``) and, when ``native`` is True, the bare display strings
+        (``nativeQueryRef``, ``NativeReferenceName``).
+
+        Matching is anchored to the whole token so renaming an object never
+        corrupts a longer friendly name (e.g. renaming ``Table.Fiscal`` must not
+        touch ``Table.Fiscal Year``). Both the plain ``Table.Column`` form and
+        the aggregation / bracket wrapped forms (``Sum(Table.Column)``,
+        ``[Table.Column]``) are supported.
+        """
         result = s
         for fx in fixes:
             old_qual = f"{fx['oldTable']}.{fx['oldName']}"
             new_qual = f"{fx['newTable']}.{fx['newName']}"
-            result = result.replace(f"[{old_qual}]", f"[{new_qual}]").replace(
-                f"({old_qual})", f"({new_qual})"
-            )
-            # Bare qualified token, not preceded/followed by an identifier char
-            # or a dot.
-            pattern = r"(?<![\w.])" + re.escape(old_qual) + r"(?![\w.])"
-            result = re.sub(pattern, lambda _m, nq=new_qual: nq, result)
+            if native:
+                # Display names carry only the bare object name.
+                if result.lower() == str(fx["oldName"]).lower():
+                    result = fx["newName"]
+                continue
+            low = result.lower()
+            if low == old_qual.lower():
+                result = new_qual
+            elif low == f"[{old_qual}]".lower():
+                result = f"[{new_qual}]"
+            else:
+                # Aggregation wrapper, e.g. "Sum(Table.Column)".
+                m = re.match(r"^([A-Za-z]\w*)\((.+)\)$", result)
+                if m and m.group(2).lower() == old_qual.lower():
+                    result = f"{m.group(1)}({new_qual})"
         return result
 
-    def _mutate_reference(obj, parent_key, aliases, fixes):
+    def _new_from_alias(from_list, table):
+        """Return an unused query alias for ``table`` within ``from_list``."""
+        base = "".join(ch for ch in table.lower() if ch.isalnum()) or "t"
+        used = {str(f.get("Name", "")) for f in from_list if isinstance(f, dict)}
+        if base not in used:
+            return base
+        i = 1
+        while f"{base}{i}" in used:
+            i += 1
+        return f"{base}{i}"
+
+    def _repoint_source_ref(src, entity_based, from_list, new_table):
+        """Point a ``SourceRef`` at ``new_table`` for a cross-table fix.
+
+        Direct references update ``Entity`` in place. Aliased references reuse an
+        existing ``From`` alias for the target table (or append a new one) so
+        that sibling references to the original table are left untouched.
+        """
+        if entity_based:
+            src["Entity"] = new_table
+            return
+        if not isinstance(from_list, list):
+            return
+        existing = next(
+            (
+                f.get("Name")
+                for f in from_list
+                if isinstance(f, dict)
+                and str(f.get("Entity", "")).lower() == new_table.lower()
+            ),
+            None,
+        )
+        if existing:
+            src["Source"] = existing
+        else:
+            alias = _new_from_alias(from_list, new_table)
+            from_list.append({"Name": alias, "Entity": new_table, "Type": 0})
+            src["Source"] = alias
+
+    def _mutate_reference(obj, parent_key, aliases, from_list, fixes):
         expr = obj.get("Expression")
         if not isinstance(expr, dict) or not isinstance(expr.get("SourceRef"), dict):
             return
@@ -1382,11 +1446,10 @@ def lineage_view(
                     and prop.lower() == fx["oldName"].lower()
                 ):
                     obj["Property"] = fx["newName"]
-                    if (
-                        entity_based
-                        and fx["newTable"].lower() != fx["oldTable"].lower()
-                    ):
-                        src["Entity"] = fx["newTable"]
+                    if fx["newTable"].lower() != fx["oldTable"].lower():
+                        _repoint_source_ref(
+                            src, entity_based, from_list, fx["newTable"]
+                        )
                     break
         elif isinstance(hier, str) and hier:
             for fx in fixes:
@@ -1396,44 +1459,51 @@ def lineage_view(
                     and hier.lower() == fx["oldName"].lower()
                 ):
                     obj["Hierarchy"] = fx["newName"]
-                    if (
-                        entity_based
-                        and fx["newTable"].lower() != fx["oldTable"].lower()
-                    ):
-                        src["Entity"] = fx["newTable"]
+                    if fx["newTable"].lower() != fx["oldTable"].lower():
+                        _repoint_source_ref(
+                            src, entity_based, from_list, fx["newTable"]
+                        )
                     break
 
-    def _mutate_walk(node, parent_key, aliases, fixes):
+    def _mutate_walk(node, parent_key, aliases, from_list, fixes):
         if isinstance(node, dict):
             local_aliases = aliases
+            local_from = from_list
             frm = node.get("From")
             if isinstance(frm, list):
                 local_aliases = dict(aliases)
+                local_from = frm
                 for f in frm:
                     if isinstance(f, dict):
                         alias = f.get("Name")
                         ent = f.get("Entity")
                         if isinstance(alias, str) and alias and isinstance(ent, str):
                             local_aliases[alias] = ent
-            _mutate_reference(node, parent_key, local_aliases, fixes)
+            _mutate_reference(node, parent_key, local_aliases, local_from, fixes)
             for k in list(node.keys()):
                 v = node[k]
                 if isinstance(v, str):
-                    if _looks_like_json(v):
+                    # Rewrite query aliases so they stay in sync with the
+                    # structured reference mutated above. These are checked
+                    # before the stringified-JSON branch because a bracketed
+                    # alias such as "[Table.Column]" also starts with "[".
+                    if k in ("queryRef", "metadata", "Name"):
+                        node[k] = _rewrite_ref_string(v, fixes)
+                    elif k in ("nativeQueryRef", "NativeReferenceName"):
+                        node[k] = _rewrite_ref_string(v, fixes, native=True)
+                    elif _looks_like_json(v):
                         try:
                             inner = json.loads(v)
                         except Exception:
                             inner = None
                         if inner is not None:
-                            _mutate_walk(inner, k, local_aliases, fixes)
+                            _mutate_walk(inner, k, local_aliases, local_from, fixes)
                             node[k] = json.dumps(inner)
-                    elif k in ("queryRef", "nativeQueryRef", "metadata"):
-                        node[k] = _rewrite_ref_string(v, fixes)
                 else:
-                    _mutate_walk(v, k, local_aliases, fixes)
+                    _mutate_walk(v, k, local_aliases, local_from, fixes)
         elif isinstance(node, list):
             for item in node:
-                _mutate_walk(item, parent_key, aliases, fixes)
+                _mutate_walk(item, parent_key, aliases, from_list, fixes)
 
     def _apply_report_fixes(report_id, fixes):
         parts = _get_report_definition(report_id)
@@ -1448,7 +1518,7 @@ def lineage_view(
                 except Exception:
                     node = None
                 if node is not None:
-                    _mutate_walk(node, None, {}, fixes)
+                    _mutate_walk(node, None, {}, None, fixes)
                     out_payload = base64.b64encode(
                         json.dumps(node).encode("utf-8")
                     ).decode("utf-8")
