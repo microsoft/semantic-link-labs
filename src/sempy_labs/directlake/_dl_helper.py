@@ -35,7 +35,7 @@ def check_fallback_reason(
     from sempy_labs.tom import connect_semantic_model
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+    dataset_name, dataset_id = resolve_dataset_name_and_id(
         dataset, workspace=workspace_id
     )
 

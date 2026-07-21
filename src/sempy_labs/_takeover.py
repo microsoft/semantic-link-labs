@@ -35,8 +35,8 @@ def takeover_item_ownership(
             f"{icons.red_dot} Type must be either 'Report' or 'SemanticModel'."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(item, type, workspace_id)
 
     map = {
         "Report": "reports",

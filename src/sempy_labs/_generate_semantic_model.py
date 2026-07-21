@@ -49,7 +49,7 @@ def create_blank_semantic_model(
         The ID of the created semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
@@ -162,7 +162,7 @@ def create_semantic_model_from_bim(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfI = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfI_filt = dfI[(dfI["Dataset Name"] == dataset)]
@@ -228,8 +228,8 @@ def update_semantic_model_from_bim(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     defPBIDataset = {"version": "1.0", "settings": {}}
     payloadPBIDefinition = _conv_b64(defPBIDataset)
@@ -314,11 +314,11 @@ def deploy_semantic_model(
     """
     from datetime import datetime
 
-    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+    source_workspace_name, source_workspace_id = resolve_workspace_name_and_id(
         source_workspace
     )
 
-    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+    target_workspace_name, target_workspace_id = resolve_workspace_name_and_id(
         target_workspace
     )
 
@@ -333,7 +333,7 @@ def deploy_semantic_model(
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
 
-    (source_dataset_name, source_dataset_id) = resolve_item_name_and_id(
+    source_dataset_name, source_dataset_id = resolve_item_name_and_id(
         item=source_dataset, type="SemanticModel", workspace=source_workspace_id
     )
 
@@ -381,7 +381,7 @@ def deploy_semantic_model(
             dataset=target_dataset, bim_file=bim, workspace=target_workspace_id
         )
 
-    (target_dataset_name, target_dataset_id) = resolve_item_name_and_id(
+    target_dataset_name, target_dataset_id = resolve_item_name_and_id(
         item=target_dataset, type="SemanticModel", workspace=target_workspace_id
     )
 
@@ -510,8 +510,8 @@ def get_semantic_model_bim(
         The Model.bim file for the semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     bimJson = get_semantic_model_definition(
         dataset=dataset_id,
@@ -583,8 +583,8 @@ def get_semantic_model_definition(
             f"{icons.red_dot} Invalid format. Valid options: {valid_formats}."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
@@ -614,7 +614,7 @@ def get_semantic_model_definition(
 @log
 def get_semantic_model_size(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
-):
+) -> int:
     """
     Gets size of the semantic model in bytes.
 
@@ -630,35 +630,26 @@ def get_semantic_model_size(
     Returns
     -------
     int
-        The size of the semantic model in bytes
+        The size of the semantic model in bytes.
     """
+    dax = """
+    EVALUATE
+    ROW(
+        "TotalSize",
+            SUMX(
+                INFO.STORAGETABLECOLUMNSEGMENTS(),
+                [USED_SIZE]
+            )
+        +
+            SUMX(
+                FILTER(
+                    INFO.STORAGETABLECOLUMNS(),
+                    [COLUMN_TYPE] = "BASIC_DATA"
+                ),
+                [DICTIONARY_SIZE]
+            )
+    )"""
 
-    dict = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
-        dax_string="""
-        EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DICTIONARY_SIZE])
-        """,
-    )
+    result = fabric.evaluate_dax(dataset=dataset, workspace=workspace, dax_string=dax)
 
-    used_size = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
-        dax_string="""
-        EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[USED_SIZE])
-        """,
-    )
-    dict_size = dict["[DICTIONARY_SIZE]"].sum()
-    used_size = used_size["[USED_SIZE]"].sum()
-    model_size = dict_size + used_size
-    # Calculate proper bytes size by dividing by 1024 and multiplying by 1000 - per 1000
-    if model_size >= 10**9:
-        result = model_size / (1024**3) * 10**9
-    elif model_size >= 10**6:
-        result = model_size / (1024**2) * 10**6
-    elif model_size >= 10**3:
-        result = model_size / (1024) * 10**3
-    else:
-        result = model_size
-
-    return float(result)
+    return int(float(result.iloc[0, 0]))

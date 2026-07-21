@@ -44,7 +44,7 @@ def create_external_data_share(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
 
     if isinstance(paths, str):
@@ -92,7 +92,7 @@ def revoke_external_data_share(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
 
     _base_api(
@@ -215,8 +215,8 @@ def delete_external_data_share(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=item_type, workspace=workspace_id
     )
 

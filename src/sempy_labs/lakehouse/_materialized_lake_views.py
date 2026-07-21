@@ -38,8 +38,8 @@ def refresh_materialized_lake_views(
         A DataFrame containing the job instance details of the refresh materialized lake views operation.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -92,7 +92,7 @@ def _get_materialized_lake_views_schedule(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -145,7 +145,7 @@ def _delete_materialized_lake_view_schedule(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -208,8 +208,8 @@ def create_materialized_lake_view(
             is_valid = False
         return is_valid
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 

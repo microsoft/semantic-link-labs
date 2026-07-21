@@ -29,8 +29,8 @@ def refresh_catalog_metadata(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (mirrored_catalog_name, mirrored_catalog_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    mirrored_catalog_name, mirrored_catalog_id = resolve_item_name_and_id(
         item=mirrored_catalog, type="MirroredCatalog", workspace=workspace_id
     )
 

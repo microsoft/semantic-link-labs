@@ -88,7 +88,7 @@ def revoke_external_data_share(
     workspace : str | uuid.UUID
         The Fabric workspace name or id.
     """
-    (workspace, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke",

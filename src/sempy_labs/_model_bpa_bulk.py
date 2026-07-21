@@ -218,66 +218,39 @@ def create_model_bpa_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs.directlake import (
-        generate_shared_expression,
-        add_table_to_direct_lake_semantic_model,
-    )
+    from sempy_labs.lakehouse._schemas import is_schema_enabled
     from sempy_labs import create_blank_semantic_model, refresh_semantic_model
     from sempy_labs.tom import connect_semantic_model
 
     lakehouse_workspace_id = resolve_workspace_id(workspace=lakehouse_workspace)
-    (lakehouse_id, lakehouse_name) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
-
-    # Generate the shared expression based on the lakehouse and lakehouse workspace
-    expr = generate_shared_expression(
-        item=lakehouse_name,
-        item_type="Lakehouse",
-        workspace=lakehouse_workspace_id,
-    )
+    if is_schema_enabled(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id):
+        source_table = "dbo.modelbparesults"
+    else:
+        source_table = "modelbparesults"
 
     # Create blank model
-    create_blank_semantic_model(
+    dataset_id = create_blank_semantic_model(
         dataset=dataset, workspace=lakehouse_workspace_id, overwrite=True
     )
 
-    @retry(
-        sleep_time=1,
-        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
-    )
-    def dyn_connect():
-        with connect_semantic_model(
-            dataset=dataset, readonly=True, workspace=lakehouse_workspace_id
-        ) as tom:
-
-            tom.model
-
-    dyn_connect()
     icons.sll_tags.append("ModelBPABulk")
-    table_exists = False
     with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=lakehouse_workspace_id
+        dataset=dataset_id, readonly=False, workspace=lakehouse_workspace_id
     ) as tom:
         t_name = "BPAResults"
         t_name_full = f"'{t_name}'"
-        # Create the shared expression
-        if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
-            tom.add_expression(name="DatabaseQuery", expression=expr)
-        # Add the table to the model
-        if any(t.Name == t_name for t in tom.model.Tables):
-            table_exists = True
-    if not table_exists:
-        add_table_to_direct_lake_semantic_model(
-            dataset=dataset,
-            table_name=t_name,
-            lakehouse_table_name="modelbparesults",
-            workspace=lakehouse_workspace_id,
-            refresh=False,
+
+        tom.add_direct_lake_tables(
+            tables={t_name: source_table},
+            source=lakehouse_name,
+            source_type="Lakehouse",
+            source_workspace=lakehouse_workspace_id,
+            use_sql_endpoint=False,
         )
-    with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=lakehouse_workspace_id
-    ) as tom:
+
         # Fix column names
         for c in tom.all_columns():
             if c.Name == "Dataset_Name":

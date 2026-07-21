@@ -46,7 +46,7 @@ def create_warehouse(
         The ID of the created warehouse.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {"displayName": warehouse}
 
@@ -184,13 +184,11 @@ def get_warehouse_tables(
     from sempy_labs._sql import ConnectWarehouse
 
     with ConnectWarehouse(warehouse=warehouse, workspace=workspace) as sql:
-        df = sql.query(
-            """
+        df = sql.query("""
         SELECT TABLE_SCHEMA AS [Schema], TABLE_NAME AS [Table Name], TABLE_TYPE AS [Table Type]
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_TYPE = 'BASE TABLE'
-        """
-        )
+        """)
 
     return df
 
@@ -220,15 +218,13 @@ def get_warehouse_columns(
     from sempy_labs._sql import ConnectWarehouse
 
     with ConnectWarehouse(warehouse=warehouse, workspace=workspace) as sql:
-        df = sql.query(
-            """
+        df = sql.query("""
         SELECT t.TABLE_SCHEMA AS [Schema], t.TABLE_NAME AS [Table Name], c.COLUMN_NAME AS [Column Name], c.DATA_TYPE AS [Data Type], c.IS_NULLABLE AS [Is Nullable], c.CHARACTER_MAXIMUM_LENGTH AS [Character Max Length]
         FROM INFORMATION_SCHEMA.TABLES AS t
         LEFT JOIN INFORMATION_SCHEMA.COLUMNS AS c
         ON t.TABLE_NAME = c.TABLE_NAME
         AND t.TABLE_SCHEMA = c.TABLE_SCHEMA
         WHERE t.TABLE_TYPE = 'BASE TABLE'
-        """
-        )
+        """)
 
     return df

@@ -2,7 +2,6 @@ from typing import Optional
 from uuid import UUID
 from sempy._utils._log import log
 
-
 _WIDGET_CSS = """
 .slls-pe {
     --slls-bg-solid: #ffffff;

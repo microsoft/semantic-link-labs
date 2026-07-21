@@ -71,7 +71,7 @@ def resolve_recoverable_item_id(
     item: str | UUID, type: Optional[str], workspace: Optional[str | UUID] = None
 ) -> Tuple[str, str, str, str]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     df = list_recoverable_items(workspace=workspace_id)
     if _is_valid_uuid(item):
@@ -117,7 +117,7 @@ def recover_item(
         The API response as a dictionary.
     """
 
-    (workspace_name, workspace_id, item_id, item_type) = resolve_recoverable_item_id(
+    workspace_name, workspace_id, item_id, item_type = resolve_recoverable_item_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -156,7 +156,7 @@ def permanently_delete_item(
         The API response as a dictionary.
     """
 
-    (workspace_name, workspace_id, item_id, item_type) = resolve_recoverable_item_id(
+    workspace_name, workspace_id, item_id, item_type = resolve_recoverable_item_id(
         item=item, type=type, workspace=workspace
     )
 

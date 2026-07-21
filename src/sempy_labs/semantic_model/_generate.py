@@ -104,7 +104,7 @@ def generate_direct_lake_semantic_model(
     if source is None:
         raise ValueError(f"{icons.red_dot} The 'source' parameter must be provided.")
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     source_workspace_id = resolve_workspace_id(source_workspace)
     source_id = resolve_item_id(
         item=source, type=source_type, workspace=source_workspace_id

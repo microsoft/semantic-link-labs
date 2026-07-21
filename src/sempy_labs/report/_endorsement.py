@@ -30,8 +30,8 @@ def set_endorsement(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    report_name, report_id = resolve_item_name_and_id(
         item=report, type="Report", workspace=workspace_id
     )
 

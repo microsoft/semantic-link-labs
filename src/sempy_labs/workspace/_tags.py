@@ -28,7 +28,7 @@ def apply_workspace_tags(tags: str | List[str], workspace: Optional[str | UUID] 
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     # Ensure tags is a list
     if isinstance(tags, str):
@@ -75,7 +75,7 @@ def unapply_workspace_tags(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     # Ensure tags is a list
     if isinstance(tags, str):

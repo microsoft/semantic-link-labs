@@ -45,8 +45,8 @@ def warm_direct_lake_cache_perspective(
         Returns a pandas dataframe showing the columns that have been put into memory.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
 
@@ -153,8 +153,8 @@ def warm_direct_lake_cache_isresident(
         Returns a pandas dataframe showing the columns that have been put into memory.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
     if not any(r["Mode"] == "DirectLake" for _, r in dfP.iterrows()):

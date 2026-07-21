@@ -58,14 +58,14 @@ def migrate_calc_tables_to_lakehouse(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (new_dataset_workspace_name, new_dataset_workspace_id) = (
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    new_dataset_workspace_name, new_dataset_workspace_id = (
         resolve_workspace_name_and_id(new_dataset_workspace)
     )
-    (lakehouse_workspace_id, lakehouse_workspace_name) = resolve_workspace_name_and_id(
+    lakehouse_workspace_id, lakehouse_workspace_name = resolve_workspace_name_and_id(
         lakehouse_workspace
     )
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse, lakehouse_workspace
     )
 
@@ -268,7 +268,7 @@ def migrate_field_parameters(
 
     icons.sll_tags.append("DirectLakeMigration")
     fabric.refresh_tom_cache(workspace=workspace)
-    (new_dataset_workspace_name, new_dataset_workspace_id) = (
+    new_dataset_workspace_name, new_dataset_workspace_id = (
         resolve_workspace_name_and_id(new_dataset_workspace)
     )
 

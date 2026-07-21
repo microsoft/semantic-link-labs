@@ -49,7 +49,7 @@ def get_report_datasources(
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     df_reports = list_reports(workspace=workspace_id)
     if _is_valid_uuid(report):
         df_filt = df_reports[

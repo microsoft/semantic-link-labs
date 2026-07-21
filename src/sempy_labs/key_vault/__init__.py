@@ -12,7 +12,6 @@ from ._secrets import (
     list_secret_versions,
 )
 
-
 __all__ = [
     "get_secret",
     "set_secret",

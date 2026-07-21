@@ -173,11 +173,11 @@ def add_remove_update_package_to_semantic_model(
 ):
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
-    (tmdl, package_version) = get_daxlib_package_and_version(
+    tmdl, package_version = get_daxlib_package_and_version(
         package_name=package_name, version=version
     )
     funcs = extract_functions_list(text=tmdl)

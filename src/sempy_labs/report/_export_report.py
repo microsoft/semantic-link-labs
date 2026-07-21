@@ -64,7 +64,7 @@ def export_report(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if isinstance(page_name, str):
         page_name = [page_name]

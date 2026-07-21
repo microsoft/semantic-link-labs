@@ -33,7 +33,7 @@ def delete_user_from_workspace(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}",
@@ -73,7 +73,7 @@ def update_workspace_user(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     role_names = icons.workspace_roles
     role_name = role_name.capitalize()
@@ -193,7 +193,7 @@ def add_user_to_workspace(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     role_names = icons.workspace_roles
     role_name = role_name.capitalize()
@@ -256,7 +256,7 @@ def assign_to_capacity(
             f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     capacity_id = resolve_capacity_id(capacity=capacity)
 
     payload = {"capacityId": capacity_id}
@@ -290,7 +290,7 @@ def unassign_from_capacity(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/unassignFromCapacity",
@@ -381,7 +381,7 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"v1/workspaces/{workspace_id}", method="delete", client="fabric_sp"
@@ -470,7 +470,7 @@ def set_network_communication_policy(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     inbound_policy = inbound_policy.capitalize()
     outbound_policy = outbound_policy.capitalize()
@@ -562,7 +562,7 @@ def set_git_outbound_policy(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     policy = policy.capitalize()
 
@@ -685,7 +685,7 @@ def set_outbound_gateway_rules(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     if default_action not in ["Allow", "Deny"]:
         raise ValueError(
             f"{icons.red_dot} The 'default_action' must be either 'Allow' or 'Deny'."

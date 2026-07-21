@@ -52,7 +52,7 @@ def get_sku_size(workspace: Optional[str | UUID] = None) -> str:
     """
     from sempy_labs._capacities import list_capacities
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfW = fabric.list_workspaces(filter=f"id eq '{workspace_id}'")
 

@@ -3,7 +3,6 @@ from ._items import (
     create_graphql_api,
 )
 
-
 __all__ = [
     "list_graphql_apis",
     "create_graphql_api",

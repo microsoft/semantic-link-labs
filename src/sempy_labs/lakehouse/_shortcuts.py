@@ -97,18 +97,18 @@ def create_shortcut_onelake(
             f"{icons.red_dot} The 'source_item_type' parameter must be 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', or 'KQLDatabase'"
         )
 
-    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+    source_workspace_name, source_workspace_id = resolve_workspace_name_and_id(
         source_workspace
     )
 
-    (source_item_name, source_item_id) = resolve_item_name_and_id(
+    source_item_name, source_item_id = resolve_item_name_and_id(
         item=source_item, type=source_item_type, workspace=source_workspace_id
     )
 
-    (destination_workspace_name, destination_workspace_id) = (
+    destination_workspace_name, destination_workspace_id = (
         resolve_workspace_name_and_id(destination_workspace)
     )
-    (destination_lakehouse_name, destination_lakehouse_id) = (
+    destination_lakehouse_name, destination_lakehouse_id = (
         resolve_lakehouse_name_and_id(
             lakehouse=destination_lakehouse, workspace=destination_workspace_id
         )
@@ -213,8 +213,8 @@ def create_shortcut(
 
     sourceTitle = source_titles[source]
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -274,8 +274,8 @@ def delete_shortcut(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -307,7 +307,7 @@ def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/onelake/resetShortcutCache",
@@ -351,7 +351,7 @@ def list_shortcuts(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 

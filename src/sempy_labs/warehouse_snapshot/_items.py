@@ -135,7 +135,7 @@ def create_warehouse_snapshot(
         Example: "2024-10-15T13:00:00Z"
     """
     parent_warehouse_workspace_id = resolve_workspace_id(parent_warehouse_workspace)
-    (warehouse_snapshot_workspace_name, warehouse_snapshot_workspace_id) = (
+    warehouse_snapshot_workspace_name, warehouse_snapshot_workspace_id = (
         resolve_workspace_name_and_id(warehouse_snapshot_workspace)
     )
     parent_warehouse_id = resolve_item_id(

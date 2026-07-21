@@ -4,7 +4,6 @@ from ._items import (
     resolve_cluster_uri,
 )
 
-
 __all__ = [
     "list_kql_databases",
     "delete_kql_database",

@@ -126,7 +126,7 @@ def create_custom_pool(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {
         "name": pool_name,
@@ -208,7 +208,7 @@ def update_custom_pool(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     df = list_custom_pools(workspace=workspace)
     df_pool = df[df["Custom Pool Name"] == pool_name]
@@ -281,7 +281,7 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfL = list_custom_pools(workspace=workspace_id)
     dfL_filt = dfL[dfL["Custom Pool Name"] == pool_name]
@@ -430,7 +430,7 @@ def update_spark_settings(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = get_spark_settings(workspace=workspace, return_dataframe=False)
 

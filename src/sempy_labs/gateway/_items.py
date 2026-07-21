@@ -498,8 +498,8 @@ def bind_semantic_model_to_gateway(
         A list of data source object IDs to bind to the gateway.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(
         dataset, workspace=workspace_id
     )
 

@@ -28,7 +28,7 @@ def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
         The ID of the encryption key.
     """
 
-    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity)
+    capacity_name, capacity_id = _resolve_capacity_name_and_id(capacity)
 
     payload = {
         "tenantKeyId": tenant_key_id,
@@ -151,7 +151,7 @@ def get_capacity_assignment_status(
     """
     from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "Status": "string",
@@ -170,7 +170,7 @@ def get_capacity_assignment_status(
     v = response.json()
     capacity_id = v.get("capacityId")
 
-    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity_id)
+    capacity_name, capacity_id = _resolve_capacity_name_and_id(capacity=capacity_id)
 
     new_data = {
         "Status": v.get("status"),
@@ -327,7 +327,7 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of users that have access to the specified workspace.
     """
 
-    (_, capacity_id) = _resolve_capacity_name_and_id(capacity)
+    _, capacity_id = _resolve_capacity_name_and_id(capacity)
 
     columns = {
         "User Name": "string",

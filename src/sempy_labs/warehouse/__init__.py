@@ -18,7 +18,6 @@ from ._sql_pools import (
     enable_sql_pools_configuration,
 )
 
-
 __all__ = [
     "create_restore_point",
     "delete_restore_point",

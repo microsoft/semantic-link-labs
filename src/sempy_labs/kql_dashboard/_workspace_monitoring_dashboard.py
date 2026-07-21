@@ -32,7 +32,7 @@ def create_workspace_monitoring_dashboard(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     db_name = "Monitoring KQL database"
 
     url = "https://raw.githubusercontent.com/microsoft/fabric-toolbox/refs/heads/main/monitoring/workspace-monitoring-dashboards/Fabric%20Workspace%20Monitoring%20Dashboard.json"

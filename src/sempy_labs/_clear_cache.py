@@ -31,14 +31,14 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     if is_default_semantic_model(dataset=dataset, workspace=workspace):
         raise ValueError(
             f"{icons.red_dot} Cannot run XMLA operations against a default semantic model. Please choose a different semantic model. "
             "See here for more information: https://learn.microsoft.com/fabric/data-warehouse/semantic-models"
         )
 
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     xmla = f"""
             <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">
@@ -91,8 +91,8 @@ def backup_semantic_model(
             f"{icons.red_dot} The backup file for restoring must be in the .abf format."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     tmsl = {
         "backup": {
@@ -153,7 +153,7 @@ def restore_semantic_model(
             f"{icons.red_dot} The backup file for restoring must be in the .abf format."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     tmsl = {
         "restore": {
@@ -278,7 +278,7 @@ def list_backups(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of backup files contained within a workspace's ADLS Gen2 storage account.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     response = _base_api(
         request=f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}"
     )

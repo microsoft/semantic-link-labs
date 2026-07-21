@@ -47,16 +47,16 @@ class ConnectBase:
         # Resolve the appropriate ID and name (warehouse or lakehouse)
         if type == "SQLDatabase":
             # SQLDatabase is has special case for resolving the name and id
-            (resource_name, resource_id) = resolve_item_name_and_id(
+            resource_name, resource_id = resolve_item_name_and_id(
                 item=item, type=type, workspace=workspace_id
             )
         elif type == "Lakehouse":
-            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
+            resource_name, resource_id = resolve_lakehouse_name_and_id(
                 lakehouse=item,
                 workspace=workspace_id,
             )
         else:
-            (resource_name, resource_id) = resolve_item_name_and_id(
+            resource_name, resource_id = resolve_item_name_and_id(
                 item=item, workspace=workspace_id, type=type
             )
 
@@ -283,8 +283,7 @@ def get_primary_key(
     """
     with ConnectBase(item=item, type=type, workspace=workspace) as sql:
 
-        df = sql.query(
-            f"""
+        df = sql.query(f"""
         SELECT
             tc.TABLE_SCHEMA,
             tc.TABLE_NAME,
@@ -299,8 +298,7 @@ def get_primary_key(
         WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
         AND tc.TABLE_NAME = '{table}'
         AND tc.TABLE_SCHEMA = '{schema}'
-        ORDER BY kcu.ORDINAL_POSITION"""
-        )
+        ORDER BY kcu.ORDINAL_POSITION""")
         if not df.empty:
             return df["COLUMN_NAME"].iloc[0]
         else:

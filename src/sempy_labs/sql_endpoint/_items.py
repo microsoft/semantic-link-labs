@@ -100,9 +100,9 @@ def refresh_sql_endpoint_metadata(
         A pandas dataframe showing the status of the metadata refresh operation.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
-    (item_name, item_id) = resolve_item_name_and_id(
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 

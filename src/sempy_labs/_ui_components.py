@@ -18,7 +18,6 @@ output, an ``anywidget`` widget, or any other surface that renders raw HTML.
 
 from typing import Optional, Sequence, Tuple
 
-
 # ---------------------------------------------------------------------------
 # Icons (monochrome SVGs that use currentColor)
 # ---------------------------------------------------------------------------

@@ -157,7 +157,7 @@ def publish_environment(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(
         item=environment, type="Environment", workspace=workspace_id
     )
@@ -196,7 +196,7 @@ def cancel_publish_environment(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(
         item=environment, type="Environment", workspace=workspace_id
     )

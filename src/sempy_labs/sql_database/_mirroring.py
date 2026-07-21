@@ -28,7 +28,7 @@ def start_mirroring(sql_database: str | UUID, workspace: Optional[str | UUID] = 
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(
         item=sql_database, type="SQLDatabase", workspace=workspace_id
     )
@@ -63,7 +63,7 @@ def stop_mirroring(sql_database: str | UUID, workspace: Optional[str | UUID] = N
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(
         item=sql_database, type="SQLDatabase", workspace=workspace_id
     )
