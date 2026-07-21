@@ -300,9 +300,14 @@ def _score_queries(context, queries: List[str]) -> Dict[str, int]:
 
 
 def _score_reports(
-    context, dataset_id: str, workspace_id: str
+    context, dataset_id: str, workspace_id: str, selected=None
 ) -> Tuple[Dict[str, int], int]:
-    """Scores the model's downstream reports, returning counts + report count."""
+    """Scores the model's downstream reports, returning counts + report count.
+
+    When ``selected`` is provided (a set of ``(report name, report workspace)``
+    tuples), only those reports are analyzed; otherwise every downstream report
+    is analyzed.
+    """
     from sempy_labs._list_functions import list_report_semantic_model_objects
 
     tables_lower = context[_CTX_TABLES]
@@ -317,8 +322,10 @@ def _score_reports(
     )
     if not df_reports.empty:
         grouped = df_reports.groupby(["Report Name", "Report Workspace Name"])
-        report_count = grouped.ngroups
-        for _, grp in grouped:
+        for (report_name, report_workspace), grp in grouped:
+            if selected is not None and (report_name, report_workspace) not in selected:
+                continue
+            report_count += 1
             references = [
                 (r["Table Name"], r["Object Name"], r["Object Type"])
                 for _, r in grp.iterrows()
@@ -615,8 +622,16 @@ def _render_find_unused_objects(
                     n = len(queries)
                     widget.subtitle_count = f"{n:,} quer" + ("y" if n == 1 else "ies")
                 else:
+                    selected = None
+                    raw = action.get("reports")
+                    if isinstance(raw, list):
+                        selected = {
+                            (str(rr.get("name", "")), str(rr.get("workspace", "")))
+                            for rr in raw
+                            if isinstance(rr, dict)
+                        }
                     counts, report_count = _score_reports(
-                        context, dataset_id, workspace_id
+                        context, dataset_id, workspace_id, selected=selected
                     )
                     widget.data = _make_widget_data(context, counts)
                     widget.subtitle_count = f"{report_count:,} report" + (
@@ -786,6 +801,19 @@ _WIDGET_CSS = """
     padding: 12px 14px; font-size: 13px; color: var(--ui-text-tertiary);
     border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
 }
+.fuo-reports-count { font-weight: 500; color: var(--ui-text-tertiary); text-transform: none; letter-spacing: 0; }
+.fuo-rtoggle {
+    position: relative; width: 32px; height: 18px; border-radius: 9px;
+    border: none; background: var(--ui-border-strong); cursor: pointer;
+    padding: 0; flex-shrink: 0; transition: background 140ms ease;
+}
+.fuo-rtoggle.fuo-on { background: var(--ui-accent); }
+.fuo-rknob {
+    position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; transition: transform 140ms ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.fuo-rtoggle.fuo-on .fuo-rknob { transform: translateX(14px); }
 
 /* ================= RESULTS SCREEN ================= */
 .fuo-results { display: flex; flex-direction: column; }
@@ -1008,21 +1036,45 @@ function render({ model, el }) {
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && fsMode) setFs(false); });
 
     // ================= CONFIG SCREEN =================
+    // Per-report selection for the downstream-report analysis. A report key maps
+    // to false only when the user toggles it off (missing key = included).
+    let reportSelection = {};
+    function reportKey(r) { return (r.name || "") + "\u0000" + (r.workspace || ""); }
+    function selectedReports() {
+        return (model.get("reports_list") || []).filter((r) => reportSelection[reportKey(r)] !== false);
+    }
+    function updateReportSelectionUI() {
+        const reports = model.get("reports_list") || [];
+        const sel = reports.filter((r) => reportSelection[reportKey(r)] !== false).length;
+        const rc = root.querySelector('[data-r="rcount"]');
+        if (rc) rc.textContent = '(' + sel.toLocaleString() + ' of ' + reports.length.toLocaleString() + ' selected)';
+        const primary = root.querySelector('[data-r="primary"]');
+        if (primary && (model.get("method") || "") === "report") primary.disabled = sel === 0;
+    }
+
     function reportsSummaryHtml() {
         const reports = model.get("reports_list") || [];
         if (!reports.length) {
             return '<div class="fuo-section-label">Downstream reports</div>'
                 + '<div class="fuo-reports-empty">Loading downstream reports\u2026</div>';
         }
-        const rows = reports.map((r) =>
-            '<div class="fuo-report-row">'
-            + '<span class="fuo-ic">' + IC.report + '</span>'
-            + '<span class="fuo-report-name">' + esc(r.name || "") + '</span>'
-            + '<span class="fuo-report-ws">' + esc(r.workspace || "") + '</span>'
-            + '</div>'
-        ).join("");
-        return '<div class="fuo-section-label">Downstream reports ('
-            + reports.length.toLocaleString() + ')</div>'
+        const sel = reports.filter((r) => reportSelection[reportKey(r)] !== false).length;
+        const rows = reports.map((r, i) => {
+            const on = reportSelection[reportKey(r)] !== false;
+            const toggle = '<button class="fuo-rtoggle' + (on ? ' fuo-on' : '')
+                + '" data-ri="' + i + '" type="button" role="switch" aria-checked="'
+                + (on ? 'true' : 'false') + '" title="Include this report in the analysis">'
+                + '<span class="fuo-rknob"></span></button>';
+            return '<div class="fuo-report-row">'
+                + '<span class="fuo-ic">' + IC.report + '</span>'
+                + '<span class="fuo-report-name">' + esc(r.name || "") + '</span>'
+                + '<span class="fuo-report-ws">' + esc(r.workspace || "") + '</span>'
+                + toggle
+                + '</div>';
+        }).join("");
+        return '<div class="fuo-section-label">Downstream reports '
+            + '<span class="fuo-reports-count" data-r="rcount">(' + sel.toLocaleString()
+            + ' of ' + reports.length.toLocaleString() + ' selected)</span></div>'
             + '<div class="fuo-reports-list">' + rows + '</div>';
     }
 
@@ -1046,6 +1098,8 @@ function render({ model, el }) {
             ? `Reads the workspace-monitoring queries for <b>${esc(ds)}</b> in the chosen time frame and reports which objects were never used (plus how often each object was used).`
             : `Reads the downstream reports that consume <b>${esc(ds)}</b> and reports which objects are never referenced (plus how many reports use each object). Dependencies are included.`;
         const primaryLabel = isMon ? (qc >= 0 ? "Analyze" : "Count queries") : "Analyze reports";
+        const selectedCount = isMon ? 0 : selectedReports().length;
+        const primaryDisabled = running || (!isMon && reportsAvail && selectedCount === 0);
         const primaryInner = running
             ? `<span class="fuo-spin"></span>`
             : `${IC.scan}<span>${primaryLabel}</span>`;
@@ -1084,7 +1138,7 @@ function render({ model, el }) {
                 ${countMsg}${statusHtml}
                 <div class="fuo-footer">
                     ${hasResults ? `<button class="fuo-btn-secondary" data-r="cancel" type="button">Cancel</button>` : ``}
-                    <button class="fuo-btn-primary" data-r="primary" type="button" ${running ? 'disabled' : ''}>${primaryInner}</button>
+                    <button class="fuo-btn-primary" data-r="primary" type="button" ${primaryDisabled ? 'disabled' : ''}>${primaryInner}</button>
                 </div>
             </div>`;
 
@@ -1119,21 +1173,38 @@ function render({ model, el }) {
         });
         const cancel = root.querySelector('[data-r="cancel"]');
         if (cancel) cancel.addEventListener("click", () => goScreen("results"));
+        root.querySelectorAll('.fuo-rtoggle').forEach((t) => t.addEventListener("click", () => {
+            const i = parseInt(t.getAttribute("data-ri"), 10);
+            const reports = model.get("reports_list") || [];
+            if (isNaN(i) || !reports[i]) return;
+            const k = reportKey(reports[i]);
+            const cur = reportSelection[k] !== false;
+            reportSelection[k] = !cur;
+            t.classList.toggle("fuo-on", !cur);
+            t.setAttribute("aria-checked", (!cur) ? "true" : "false");
+            updateReportSelectionUI();
+        }));
         const primary = root.querySelector('[data-r="primary"]');
         if (primary) primary.addEventListener("click", () => {
-            if (model.get("running")) return;
+            if (model.get("running") || primary.disabled) return;
             const m = model.get("method") || "workspacemonitoring";
-            let action;
-            if (m === "report") action = "analyze";
-            else action = (model.get("query_count") >= 0) ? "analyze" : "count";
+            const payload = {
+                method: m,
+                amount: model.get("time_amount") || 7,
+                unit: model.get("time_unit") || "d",
+            };
+            if (m === "report") {
+                const chosen = selectedReports();
+                if (chosen.length === 0) return;
+                payload.action = "analyze";
+                payload.reports = chosen.map((r) => ({ name: r.name, workspace: r.workspace }));
+            } else {
+                payload.action = (model.get("query_count") >= 0) ? "analyze" : "count";
+            }
             // Immediate feedback: show the busy state before the (async) work.
             primary.disabled = true;
             primary.innerHTML = '<span class="fuo-spin"></span>';
-            model.set("pending_action", {
-                action: action, method: m,
-                amount: model.get("time_amount") || 7,
-                unit: model.get("time_unit") || "d",
-            });
+            model.set("pending_action", payload);
             model.set("run", (model.get("run") || 0) + 1);
             model.save_changes();
         });
