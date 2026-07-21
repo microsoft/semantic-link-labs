@@ -144,7 +144,9 @@ _WIDGET_CSS = """
 .slls-lv-zoom { position: absolute; bottom: 16px; right: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--slls-bg-solid); border: 1px solid var(--slls-border); border-radius: 10px; padding: 5px; box-shadow: var(--slls-shadow); }
 .slls-lv-zoom button { width: 28px; height: 28px; border: none; background: transparent; color: var(--slls-text-secondary); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .slls-lv-zoom button:hover { background: var(--slls-surface-2); color: var(--slls-text); }
-.slls-lv-zoom-label { font-size: 11px; font-weight: 600; color: var(--slls-text-secondary); font-variant-numeric: tabular-nums; }
+.slls-lv-zoom-label { font-size: 11px; font-weight: 600; color: var(--slls-text-secondary); font-variant-numeric: tabular-nums; cursor: pointer; border-radius: 5px; padding: 1px 5px; transition: background 120ms ease, color 120ms ease; }
+.slls-lv-zoom-label:hover { background: var(--slls-surface-2); color: var(--slls-text); }
+.slls-lv-zoom-input { width: 46px; text-align: center; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--slls-text); background: var(--slls-bg-solid); border: 1px solid var(--slls-accent); border-radius: 5px; padding: 1px 2px; font-family: inherit; outline: none; box-shadow: 0 0 0 3px var(--slls-accent-soft); }
 
 /* Center overlays (loading / empty / error) */
 .slls-lv-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
@@ -337,6 +339,11 @@ function render({ model, el }) {
     let rebindDs = "";
     let panelWidth = 360;             // side panel width (px)
     let panelCollapsed = false;       // side panel collapsed to a thin rail
+    // Preserved graph scroll offset. viewKey tracks the layout+zoom the view
+    // was last centred for, so re-renders that don't change either (e.g.
+    // toggling a report checkbox) keep the user's current position.
+    let viewKey = "";
+    let viewport = null;
     const PANEL_MIN = 280, PANEL_MAX = 720;
 
     const esc = (s) => String(s == null ? "" : s)
@@ -605,13 +612,29 @@ function render({ model, el }) {
         scroll.addEventListener("pointerdown", startPan);
         canvas.addEventListener("pointerdown", startPan);
 
+        // Remember the scroll offset so re-renders (e.g. toggling a report
+        // checkbox or selecting a node) can restore the user's current view.
+        scroll.addEventListener("scroll", () => {
+            viewport = { left: scroll.scrollLeft, top: scroll.scrollTop };
+        });
+
         wrap.appendChild(scroll);
         wrap.appendChild(buildZoom());
 
-        // Centre the viewport on the model node once per layout.
+        // Only recentre on the model node when the layout or zoom actually
+        // changed; otherwise restore the previous offset so the diagram stays
+        // put across incidental re-renders.
+        const centerKey = positionsKey + "|" + zoom;
         requestAnimationFrame(() => {
-            scroll.scrollLeft = m.x * zoom - scroll.clientWidth / 2;
-            scroll.scrollTop = m.y * zoom - scroll.clientHeight / 2;
+            if (viewKey !== centerKey || viewport === null) {
+                scroll.scrollLeft = m.x * zoom - scroll.clientWidth / 2;
+                scroll.scrollTop = m.y * zoom - scroll.clientHeight / 2;
+                viewKey = centerKey;
+            } else {
+                scroll.scrollLeft = viewport.left;
+                scroll.scrollTop = viewport.top;
+            }
+            viewport = { left: scroll.scrollLeft, top: scroll.scrollTop };
         });
         return wrap;
     }
@@ -680,11 +703,47 @@ function render({ model, el }) {
         z.className = "slls-lv-zoom";
         z.innerHTML =
             `<button data-z="in" title="Zoom in">${ICON.zoomin}</button>` +
-            `<span class="slls-lv-zoom-label">${Math.round(zoom * 100)}%</span>` +
+            `<span class="slls-lv-zoom-label" data-z="label" role="button" tabindex="0" title="Click to set zoom level">${Math.round(zoom * 100)}%</span>` +
             `<button data-z="out" title="Zoom out">${ICON.zoomout}</button>`;
         z.querySelector('[data-z="in"]').onclick = () => setZoom(zoom * 1.2);
         z.querySelector('[data-z="out"]').onclick = () => setZoom(zoom / 1.2);
+        const label = z.querySelector('[data-z="label"]');
+        // The label doubles as a button: click (or keyboard-activate) to type
+        // an exact zoom percentage.
+        label.onclick = () => startEditZoom(label);
+        label.onkeydown = (e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startEditZoom(label); }
+        };
+        label.addEventListener("pointerdown", (e) => e.stopPropagation());
         return z;
+    }
+
+    // Replace the zoom label with an inline input so the user can type an
+    // exact percentage. setZoom() clamps the value and re-renders, which
+    // restores the label; an invalid entry simply re-renders unchanged.
+    function startEditZoom(label) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "slls-lv-zoom-input";
+        input.value = String(Math.round(zoom * 100));
+        input.setAttribute("aria-label", "Zoom percentage");
+        label.replaceWith(input);
+        input.focus();
+        input.select();
+        input.addEventListener("pointerdown", (e) => e.stopPropagation());
+        let done = false;
+        const commit = (apply) => {
+            if (done) return;
+            done = true;
+            const v = parseFloat(String(input.value).replace("%", "").trim());
+            if (apply && !isNaN(v) && v > 0) setZoom(v / 100);
+            else renderAll();
+        };
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(true); }
+            else if (e.key === "Escape") { e.preventDefault(); commit(false); }
+        });
+        input.addEventListener("blur", () => commit(true));
     }
 
     function setZoom(v) {
