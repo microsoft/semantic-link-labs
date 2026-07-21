@@ -1,14 +1,11 @@
 from tqdm.auto import tqdm
 from typing import List, Optional, Union
-from build.lib.sempy_labs.lakehouse._lakehouse import run_table_maintenance
 from sempy._utils._log import log
 from uuid import UUID
 from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
-    _create_spark_session,
-    _pure_python_notebook,
     _create_dataframe,
     _update_dataframe_datatypes,
     resolve_workspace_id,
