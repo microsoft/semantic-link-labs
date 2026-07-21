@@ -25,6 +25,8 @@ _CTX_COLUMNS = 3
 _CTX_MEASURES = 4
 _CTX_ADJ = 5
 _CTX_HIDDEN = 6
+_CTX_TABLE_KIND = 7
+_CTX_CALC_COLS = 8
 
 
 def _ukey(object_type: str, table: str, name: str) -> str:
@@ -80,6 +82,8 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
     columns_by_table: Dict[str, Set[str]] = {}  # lower table -> {lower col}
     measure_home: Dict[str, str] = {}  # lower measure -> actual table
     hidden_keys: Set[str] = set()
+    table_kinds: Dict[str, str] = {}  # actual table name -> kind
+    calc_columns: Set[str] = set()  # ukeys of calculated columns
 
     def register(object_type: str, table: str, name: str) -> None:
         key = _ukey(object_type, table, name)
@@ -93,10 +97,42 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
     ) as tom:
         import Microsoft.AnalysisServices.Tabular as TOM
 
+        def _classify_table(t) -> str:
+            # Field parameters expose a "ParameterMetadata" extended property
+            # (or annotation) on one of their columns; checked first because
+            # they are also calculated tables.
+            for c in t.Columns:
+                try:
+                    if any(
+                        ep.Name == "ParameterMetadata" for ep in c.ExtendedProperties
+                    ):
+                        return "field_parameter"
+                except Exception:
+                    pass
+                try:
+                    if any(a.Name == "ParameterMetadata" for a in c.Annotations):
+                        return "field_parameter"
+                except Exception:
+                    pass
+            if t.CalculationGroup is not None:
+                return "calculation_group"
+            # A date table is marked with DataCategory = "Time" and has a key
+            # column of an integer or date/time data type.
+            if str(t.DataCategory) == "Time":
+                for c in t.Columns:
+                    if c.IsKey and str(c.DataType) in ("Int64", "DateTime"):
+                        return "date_table"
+            if any(
+                p.SourceType == TOM.PartitionSourceType.Calculated for p in t.Partitions
+            ):
+                return "calculated_table"
+            return "table"
+
         for table in tom.model.Tables:
             table_name = table.Name
             tables_lower[table_name.lower()] = table_name
             register("Table", table_name, table_name)
+            table_kinds[table_name] = _classify_table(table)
             if table.IsHidden:
                 hidden_keys.add(_ukey("Table", table_name, table_name))
 
@@ -107,6 +143,8 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
                     continue
                 cols.add(col.Name.lower())
                 register("Column", table_name, col.Name)
+                if col.Type == TOM.ColumnType.Calculated:
+                    calc_columns.add(_ukey("Column", table_name, col.Name))
                 if col.IsHidden:
                     hidden_keys.add(_ukey("Column", table_name, col.Name))
 
@@ -141,6 +179,8 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
         measure_home,
         adjacency,
         hidden_keys,
+        table_kinds,
+        calc_columns,
     )
 
 
@@ -326,18 +366,23 @@ def _make_widget_data(context, counts: Dict[str, int]) -> List[dict]:
     """Builds the object list sent to the interactive widget."""
     all_objects = context[_CTX_ALL]
     hidden_keys = context[_CTX_HIDDEN]
+    table_kinds = context[_CTX_TABLE_KIND]
+    calc_columns = context[_CTX_CALC_COLS]
     data = []
     for object_type, table, name in all_objects:
         key = _ukey(object_type, table, name)
-        data.append(
-            {
-                "t": table,
-                "ty": object_type,
-                "n": name,
-                "u": counts.get(key, 0),
-                "h": key in hidden_keys,
-            }
-        )
+        item = {
+            "t": table,
+            "ty": object_type,
+            "n": name,
+            "u": counts.get(key, 0),
+            "h": key in hidden_keys,
+        }
+        if object_type == "Table":
+            item["k"] = table_kinds.get(table, "table")
+        elif object_type == "Column":
+            item["c"] = key in calc_columns
+        data.append(item)
     return data
 
 
@@ -472,6 +517,7 @@ def _render_find_unused_objects(
         time_unit = traitlets.Unicode("d").tag(sync=True)
         query_count = traitlets.Int(-1).tag(sync=True)
         data = traitlets.List().tag(sync=True)
+        table_kinds = traitlets.Dict().tag(sync=True)
         subtitle_count = traitlets.Unicode("").tag(sync=True)
         has_results = traitlets.Bool(False).tag(sync=True)
         dataset_name = traitlets.Unicode("").tag(sync=True)
@@ -486,6 +532,7 @@ def _render_find_unused_objects(
         method=method,
         time_amount=max(1, min(9999, int(days))),
         time_unit="d",
+        table_kinds=context[_CTX_TABLE_KIND],
         dataset_name=dataset_name or "",
         workspace_name=workspace_name or "",
         dark_mode=bool(dark_mode),
@@ -761,11 +808,22 @@ function render({ model, el }) {
     el.appendChild(root);
 
     const IC = {
-        scan: `__IC_SCAN__`, table: `__IC_TABLE__`, column: `__IC_COLUMN__`,
-        measure: `__IC_MEASURE__`, caret: `__IC_CARET__`, search: `__IC_SEARCH__`,
-        close: `__IC_CLOSE__`, expand: `__IC_EXPAND__`, collapse: `__IC_COLLAPSE__`,
+        scan: `__IC_SCAN__`, table: `__IC_TABLE__`, calcTable: `__IC_CALCTABLE__`,
+        calcGroup: `__IC_CALCGROUP__`, dateTable: `__IC_DATETABLE__`,
+        fieldParam: `__IC_FIELDPARAM__`, column: `__IC_COLUMN__`,
+        calcColumn: `__IC_CALCCOLUMN__`, measure: `__IC_MEASURE__`,
+        caret: `__IC_CARET__`, search: `__IC_SEARCH__`,
+        expand: `__IC_EXPAND__`, collapse: `__IC_COLLAPSE__`,
     };
     const SUN = `__IC_SUN__`, MOON = `__IC_MOON__`, FS = `__IC_FS__`, FSX = `__IC_FSX__`;
+
+    function tableIcon(kind) {
+        if (kind === "calculation_group") return IC.calcGroup;
+        if (kind === "date_table") return IC.dateTable;
+        if (kind === "calculated_table") return IC.calcTable;
+        if (kind === "field_parameter") return IC.fieldParam;
+        return IC.table;
+    }
 
     let view = "unused";
     let search = "";
@@ -935,7 +993,7 @@ function render({ model, el }) {
                         <div class="fuo-res-title">Object usage</div>
                         <div class="fuo-res-sub" data-r="subtitle"></div>
                     </div>
-                    <div class="fuo-hdr-ctrls">${fsBtnHtml()}${themeBtnHtml()}<button class="fuo-icon-btn" data-r="close" type="button" title="Close">${IC.close}</button></div>
+                    <div class="fuo-hdr-ctrls">${fsBtnHtml()}${themeBtnHtml()}</div>
                 </div>
                 <div class="fuo-res-toolbar">
                     <div class="fuo-tools">
@@ -949,7 +1007,6 @@ function render({ model, el }) {
                 <div class="fuo-attr">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a></div>
             </div>`;
         wireHeaderCtrls();
-        root.querySelector('[data-r="close"]').addEventListener("click", () => { model.set("screen", "config"); model.save_changes(); });
         root.querySelector('[data-r="expand"]').addEventListener("click", () => { collapsed = {}; renderTree(); });
         root.querySelector('[data-r="collapse"]').addEventListener("click", () => { (model.get("data") || []).forEach((o) => { collapsed[o.t] = true; }); renderTree(); });
         root.querySelector('[data-r="search"]').addEventListener("input", (e) => { search = e.target.value; renderTree(); });
@@ -1012,6 +1069,7 @@ function render({ model, el }) {
             return;
         }
         const html = [];
+        const tableKinds = model.get("table_kinds") || {};
         nodes.forEach((node) => {
             const children = node.columns.concat(node.measures);
             const open = !collapsed[node.table];
@@ -1019,14 +1077,15 @@ function render({ model, el }) {
             const tHidden = node.tableObj && node.tableObj.h;
             html.push('<div class="fuo-table-row" data-table="' + esc(node.table) + '">');
             html.push('<span class="fuo-caret' + (open ? ' fuo-open' : '') + '">' + IC.caret + '</span>');
-            html.push('<span class="fuo-ic">' + IC.table + '</span>');
+            html.push('<span class="fuo-ic">' + tableIcon(tableKinds[node.table] || "table") + '</span>');
             html.push('<span class="fuo-name' + (tHidden ? ' fuo-hidden-obj' : '') + '">' + esc(node.table) + '</span>');
             if (tableCount !== null) html.push('<span class="fuo-count">' + tableCount.toLocaleString() + '</span>');
             html.push('</div>');
             html.push('<div class="fuo-children" style="display:' + (open ? 'block' : 'none') + '">');
             children.forEach((o) => {
+                const objIcon = o.ty === "Measure" ? IC.measure : (o.c ? IC.calcColumn : IC.column);
                 html.push('<div class="fuo-obj-row">');
-                html.push('<span class="fuo-ic">' + (o.ty === "Measure" ? IC.measure : IC.column) + '</span>');
+                html.push('<span class="fuo-ic">' + objIcon + '</span>');
                 html.push('<span class="fuo-name' + (o.h ? ' fuo-hidden-obj' : '') + '">' + esc(o.n) + '</span>');
                 if (showCount) html.push('<span class="fuo-count">' + o.u.toLocaleString() + '</span>');
                 html.push('</div>');
@@ -1077,11 +1136,15 @@ _WIDGET_CSS = _WIDGET_CSS.replace("__LIGHT__", _UI_LIGHT_VARS).replace(
 _WIDGET_JS = (
     _WIDGET_JS.replace("__IC_SCAN__", _UI_ICONS["scan"])
     .replace("__IC_TABLE__", _UI_ICONS["table"])
+    .replace("__IC_CALCTABLE__", _UI_ICONS["calculated_table"])
+    .replace("__IC_CALCGROUP__", _UI_ICONS["calculation_group"])
+    .replace("__IC_DATETABLE__", _UI_ICONS["date_table"])
+    .replace("__IC_FIELDPARAM__", _UI_ICONS["field_parameter"])
     .replace("__IC_COLUMN__", _UI_ICONS["column"])
+    .replace("__IC_CALCCOLUMN__", _UI_ICONS["calculated_column"])
     .replace("__IC_MEASURE__", _UI_ICONS["measure"])
     .replace("__IC_CARET__", _UI_ICONS["caret_right"])
     .replace("__IC_SEARCH__", _UI_ICONS["search"])
-    .replace("__IC_CLOSE__", _UI_ICONS["close"])
     .replace("__IC_EXPAND__", _UI_ICONS["expand_rows"])
     .replace("__IC_COLLAPSE__", _UI_ICONS["collapse_rows"])
     .replace("__IC_SUN__", _UI_ICONS["sun"])
