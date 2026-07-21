@@ -42,24 +42,24 @@ def report_rebind(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+    report_workspace_name, report_workspace_id = resolve_workspace_name_and_id(
         report_workspace
     )
 
     if dataset_workspace is None:
         dataset_workspace = report_workspace_name
 
-    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
+    dataset_workspace_name, dataset_workspace_id = resolve_workspace_name_and_id(
         dataset_workspace
     )
     if isinstance(report, str):
         report = [report]
 
     for rpt in report:
-        (report_name, report_id) = resolve_item_name_and_id(
+        report_name, report_id = resolve_item_name_and_id(
             item=rpt, type="Report", workspace=report_workspace_id
         )
-        (dataset_name, dataset_id) = resolve_item_name_and_id(
+        dataset_name, dataset_id = resolve_item_name_and_id(
             item=dataset, type="SemanticModel", workspace=dataset_workspace
         )
 
@@ -110,7 +110,7 @@ def report_rebind_all(
         the new semantic model.
     """
 
-    (dataset_name, dataset_id) = resolve_item_name_and_id(
+    dataset_name, dataset_id = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=dataset_workspace
     )
     new_dataset_id = resolve_item_id(
@@ -133,7 +133,7 @@ def report_rebind_all(
             & (dfR["Dataset Workspace Id"] == dataset_workspace_id)
         ]
         if dfR_filt.empty:
-            (wksp_name, _) = resolve_workspace_name_and_id(workspace=w)
+            wksp_name, _ = resolve_workspace_name_and_id(workspace=w)
             print(
                 f"{icons.info} No reports found for the '{dataset_name}' semantic model within the '{wksp_name}' workspace."
             )

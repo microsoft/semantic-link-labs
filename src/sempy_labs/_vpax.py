@@ -75,12 +75,12 @@ def create_vpax(
 
     direct_lake_stats_mode = direct_lake_stats_mode.capitalize()
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-    (lakehouse_workspace_name, lakehouse_workspace_id) = resolve_workspace_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+    lakehouse_workspace_name, lakehouse_workspace_id = resolve_workspace_name_and_id(
         lakehouse_workspace
     )
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
 

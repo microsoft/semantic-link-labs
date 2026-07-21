@@ -2,7 +2,6 @@ import requests
 import sempy_labs._icons as icons
 from typing import Optional, List
 
-
 vis_type_mapping = {
     "barChart": "Bar chart",
     "columnChart": "Column chart",

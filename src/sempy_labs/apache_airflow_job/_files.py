@@ -109,8 +109,8 @@ def delete_apache_airflow_job_file(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=apache_airflow_job,
         type="ApacheAirflowJob",
         workspace=workspace_id,
@@ -155,8 +155,8 @@ def create_or_update_apache_airflow_job_file(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=apache_airflow_job,
         type="ApacheAirflowJob",
         workspace=workspace_id,

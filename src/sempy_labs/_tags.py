@@ -125,8 +125,8 @@ def apply_tags(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(item, type, workspace_id)
 
     if isinstance(tags, str):
         tags = [tags]
@@ -177,8 +177,8 @@ def unapply_tags(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(item, type, workspace_id)
 
     if isinstance(tags, str):
         tags = [tags]

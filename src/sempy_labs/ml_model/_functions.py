@@ -139,8 +139,8 @@ def activate_ml_model_endpoint_version(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (model_name, model_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    model_name, model_id = resolve_item_name_and_id(
         item=ml_model, type="MLModel", workspace=workspace
     )
 
@@ -180,8 +180,8 @@ def deactivate_ml_model_endpoint_version(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (model_name, model_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    model_name, model_id = resolve_item_name_and_id(
         item=ml_model, type="MLModel", workspace=workspace
     )
 
@@ -219,8 +219,8 @@ def deactivate_all_ml_model_endpoint_versions(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (model_name, model_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    model_name, model_id = resolve_item_name_and_id(
         item=ml_model, type="MLModel", workspace=workspace
     )
 

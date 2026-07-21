@@ -178,7 +178,7 @@ def list_secret_versions(key_vault_uri: str, secret: str) -> pd.DataFrame:
     rows = []
     for r in responses:
         secret_id = r.get("id")
-        (secret_name, secret_version) = resolve_secret_name_and_version(
+        secret_name, secret_version = resolve_secret_name_and_version(
             key_vault_uri=key_vault_uri, secret_id=secret_id
         )
         rows.append(

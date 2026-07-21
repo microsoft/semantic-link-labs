@@ -146,7 +146,7 @@ def import_notebook_from_web(
         Defaults to None which places the notebook in the root of the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     # Fix links to go to the raw github file
     starting_text = "https://github.com/"
@@ -278,7 +278,7 @@ def update_notebook_definition(
         otherwise notebook_content should be GIT friendly format
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode(
         "utf-8"
     )

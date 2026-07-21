@@ -34,8 +34,8 @@ def refresh_graph(
         A pandas dataframe showing the result of the refresh operation.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=graph_model, type="GraphModel", workspace=workspace_id
     )
 

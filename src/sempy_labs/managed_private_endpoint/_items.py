@@ -44,7 +44,7 @@ def create_managed_private_endpoint(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     request_body = {
         "name": name,
@@ -163,7 +163,7 @@ def delete_managed_private_endpoint(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if _is_valid_uuid(managed_private_endpoint):
         item_id = managed_private_endpoint

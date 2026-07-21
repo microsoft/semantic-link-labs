@@ -42,7 +42,7 @@ def extract_table_comments(
 
     result = {"table": table, "tableDescription": None, "columns": []}
     workspace_id = resolve_workspace_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 

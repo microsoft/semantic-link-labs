@@ -44,7 +44,7 @@ def connect_workspace_to_azure_dev_ops(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {
         "gitProviderDetails": {
@@ -105,7 +105,7 @@ def connect_workspace_to_github(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {
         "gitProviderDetails": {
@@ -147,7 +147,7 @@ def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(request=f"/v1/workspaces/{workspace_id}/git/disconnect", method="post")
 
@@ -302,7 +302,7 @@ def initialize_connection(workspace: Optional[str | UUID] = None) -> str:
         Remote full SHA commit hash.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     response_json = _base_api(
         request=f"/v1/workspaces/{workspace_id}/git/initializeConnection",
@@ -342,7 +342,7 @@ def commit_to_git(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     gs = get_status(workspace=workspace_id)
     if not gs.empty:
@@ -417,7 +417,7 @@ def update_from_git(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     conflict_resolution_policies = ["PreferWorkspace", "PreferRemote"]
     if "remote" in [policy.lower() for policy in conflict_resolution_policies]:

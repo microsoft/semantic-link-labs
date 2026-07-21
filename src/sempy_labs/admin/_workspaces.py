@@ -44,7 +44,7 @@ def add_user_to_workspace(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     # Validation
     role = role.capitalize()
@@ -104,7 +104,7 @@ def delete_user_from_workspace(
         The service principal profile ID to delete.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     user = _encode_user(user)
     url = f"/v1.0/myorg/admin/groups/{workspace_id}/users/{user}"

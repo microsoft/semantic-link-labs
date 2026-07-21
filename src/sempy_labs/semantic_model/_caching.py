@@ -31,8 +31,8 @@ def enable_query_caching(
         Set to True to enable query caching, or False to disable it.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
     model_id = get_model_id(item_id=item_id)

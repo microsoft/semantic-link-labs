@@ -111,7 +111,7 @@ def list_capacity_tenant_settings_overrides(
     if capacity is None:
         url = "/v1/admin/capacities/delegatedTenantSettingOverrides"
     else:
-        (_, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity)
+        _, capacity_id = _resolve_capacity_name_and_id(capacity=capacity)
         url = f"/v1/admin/capacities/{capacity_id}/delegatedTenantSettingOverrides"
     responses = _base_api(
         request=url,
@@ -228,7 +228,7 @@ def delete_capacity_tenant_setting_override(capacity: str | UUID, tenant_setting
         The tenant setting name. Example: "TenantSettingForCapacityDelegatedSwitch"
     """
 
-    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity)
+    capacity_name, capacity_id = _resolve_capacity_name_and_id(capacity=capacity)
 
     _base_api(
         request=f"/v1/admin/capacities/{capacity_id}/delegatedTenantSettingOverrides/{tenant_setting}",
@@ -433,7 +433,7 @@ def update_capacity_tenant_setting_override(
         ]
     """
 
-    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity)
+    capacity_name, capacity_id = _resolve_capacity_name_and_id(capacity=capacity)
 
     payload = {"enabled": enabled}
 

@@ -52,10 +52,10 @@ def save_report_as_pbip(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+    report_workspace_name, report_workspace_id = resolve_workspace_name_and_id(
         workspace
     )
-    (report_name, report_id) = resolve_item_name_and_id(
+    report_name, report_id = resolve_item_name_and_id(
         item=report, type="Report", workspace=workspace
     )
     indent = 2

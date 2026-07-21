@@ -230,8 +230,8 @@ def delete_item(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(item, type, workspace_id)
 
     fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
@@ -283,7 +283,7 @@ def create_item(
         Defaults to None which places the item in the root of the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_type_url = utils.items.get(type)
 
     payload = {
@@ -351,13 +351,13 @@ def copy_item(
 
     from sempy_labs.report import report_rebind
 
-    (item_name, item_id) = resolve_item_name_and_id(
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=source_workspace
     )
-    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+    source_workspace_name, source_workspace_id = resolve_workspace_name_and_id(
         source_workspace
     )
-    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+    target_workspace_name, target_workspace_id = resolve_workspace_name_and_id(
         target_workspace
     )
 
@@ -608,12 +608,12 @@ def resolve_lakehouse_name_and_id(
             raise ValueError(
                 f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
             )
-        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+        lakehouse_name, lakehouse_id = resolve_item_name_and_id(
             item=lakehouse_id, type=type, workspace=workspace_id
         )
 
     else:
-        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+        lakehouse_name, lakehouse_id = resolve_item_name_and_id(
             item=lakehouse, type=type, workspace=workspace_id
         )
 
@@ -625,7 +625,7 @@ def resolve_dataset_name_and_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    (dataset_name, dataset_id) = resolve_item_name_and_id(
+    dataset_name, dataset_id = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace
     )
 
@@ -915,8 +915,8 @@ def save_as_delta_table(
         TimestampType,
     )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
@@ -1178,7 +1178,7 @@ def resolve_item_id(
     error_out: bool = True,
 ) -> UUID:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_id = None
 
     if _is_valid_uuid(item):
@@ -1308,7 +1308,7 @@ def is_default_semantic_model(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_item_name_and_id(
+    dataset_name, dataset_id = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
 
@@ -1342,7 +1342,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
         The item type for the item Id.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     dfI = fabric.list_items(workspace=workspace_id)
     dfI_filt = dfI[dfI["Id"] == item_id]
 
@@ -1451,7 +1451,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
     if workspace is None:
         capacity_id = _get_fabric_context_setting(name="trident.capacity.id")
     else:
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
         filter_condition = urllib.parse.quote(workspace_id)
         dfW = fabric.list_workspaces(filter=f"id eq '{filter_condition}'")
         if len(dfW) == 0:
@@ -2559,8 +2559,8 @@ def _mount(
 
     import notebookutils
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace=workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
 
@@ -2617,7 +2617,7 @@ def _get_or_create_workspace(
     # Workspace already exists
     if (not dfW_filt_name.empty) or (not dfW_filt_id.empty):
         print(f"{icons.green_dot} The '{workspace}' workspace already exists.")
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
         return (workspace_name, workspace_id)
 
     # Do not create workspace with name of an ID
@@ -2641,7 +2641,7 @@ def _get_or_create_lakehouse(
     description: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfI = fabric.list_items(type="Lakehouse", workspace=workspace)
     dfI_filt_name = dfI[dfI["Display Name"] == lakehouse]
@@ -2649,7 +2649,7 @@ def _get_or_create_lakehouse(
 
     if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
         print(f"{icons.green_dot} The '{lakehouse}' lakehouse already exists.")
-        (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
             lakehouse=lakehouse, workspace=workspace
         )
         return (lakehouse_name, lakehouse_id)
@@ -2675,7 +2675,7 @@ def _get_or_create_warehouse(
 
     from sempy_labs._warehouses import create_warehouse
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfI = fabric.list_items(item_type="Warehouse", workspace=workspace)
     dfI_filt_name = dfI[dfI["Display Name"] == warehouse]
@@ -2683,7 +2683,7 @@ def _get_or_create_warehouse(
 
     if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
         print(f"{icons.green_dot} The '{warehouse}' warehouse already exists.")
-        (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+        warehouse_name, warehouse_id = resolve_item_name_and_id(
             warehouse=warehouse, type="Warehouse", workspace=workspace
         )
         return (warehouse_name, warehouse_id)

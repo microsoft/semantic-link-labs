@@ -117,7 +117,7 @@ def assign_workspace_to_dataflow_storage(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     df = list_dataflow_storage_accounts()
     df_filt = df[df["Dataflow Storage Account Name"] == dataflow_storage_account]
@@ -206,8 +206,8 @@ def list_upstream_dataflows(
         A pandas dataframe showing a list of upstream dataflows for the specified dataflow.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataflow_name, dataflow_id, dataflow_generation) = (
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataflow_name, dataflow_id, dataflow_generation = (
         resolve_dataflow_name_and_id_and_generation(
             dataflow=dataflow, workspace=workspace_id
         )
@@ -236,7 +236,7 @@ def list_upstream_dataflows(
             tgt_dataflow_id = v.get("targetDataflowId")
             tgt_workspace_id = v.get("groupId")
             tgt_workspace_name = resolve_workspace_name(workspace_id=tgt_workspace_id)
-            (tgt_dataflow_name, _, _) = resolve_dataflow_name_and_id_and_generation(
+            tgt_dataflow_name, _, _ = resolve_dataflow_name_and_id_and_generation(
                 dataflow=tgt_dataflow_id, workspace=tgt_workspace_id
             )
 
@@ -268,7 +268,7 @@ def resolve_dataflow_name_and_id_and_generation(
     dataflow: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID, str]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfD = list_dataflows(workspace=workspace_id)
 
@@ -321,7 +321,7 @@ def get_dataflow_definition(
 
     workspace_id = resolve_workspace_id(workspace)
 
-    (dataflow_name, dataflow_id, dataflow_generation) = (
+    dataflow_name, dataflow_id, dataflow_generation = (
         resolve_dataflow_name_and_id_and_generation(
             dataflow=dataflow, workspace=workspace_id
         )
@@ -386,10 +386,10 @@ def upgrade_dataflow(
     """
 
     # Resolve the workspace name and ID
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
     # Resolve the dataflow name and ID
-    (dataflow_name, dataflow_id, dataflow_generation) = (
+    dataflow_name, dataflow_id, dataflow_generation = (
         resolve_dataflow_name_and_id_and_generation(dataflow, workspace_id)
     )
 
@@ -400,7 +400,7 @@ def upgrade_dataflow(
         )
         return
 
-    (new_dataflow_workspace, new_dataflow_workspace_id) = resolve_workspace_name_and_id(
+    new_dataflow_workspace, new_dataflow_workspace_id = resolve_workspace_name_and_id(
         new_dataflow_workspace
     )
 
@@ -580,7 +580,7 @@ def create_dataflow(
         The definition of the dataflow in the form of a dictionary.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {
         "displayName": name,

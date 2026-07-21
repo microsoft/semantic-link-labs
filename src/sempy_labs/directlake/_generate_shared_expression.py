@@ -41,7 +41,7 @@ def generate_shared_expression(
         Shows the expression which can be used to connect a Direct Lake semantic model to its SQL Endpoint.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_types = [
         "Lakehouse",
         "Warehouse",
@@ -55,11 +55,11 @@ def generate_shared_expression(
         )
 
     if item_type == "Lakehouse":
-        (item_name, item_id) = resolve_lakehouse_name_and_id(
+        item_name, item_id = resolve_lakehouse_name_and_id(
             lakehouse=item, workspace=workspace_id
         )
     else:
-        (item_name, item_id) = resolve_item_name_and_id(
+        item_name, item_id = resolve_item_name_and_id(
             item=item, type=item_type, workspace=workspace_id
         )
 

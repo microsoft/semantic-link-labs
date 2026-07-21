@@ -95,10 +95,10 @@ def modify_onelake_diagnostics(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (destination_workspace_name, destination_workspace_id) = (
+    destination_workspace_name, destination_workspace_id = (
         resolve_workspace_name_and_id(destination_workspace)
     )
-    (destination_lakehouse_name, destination_lakehouse_id) = (
+    destination_lakehouse_name, destination_lakehouse_id = (
         resolve_lakehouse_name_and_id(destination_lakehouse, destination_workspace_id)
     )
 
@@ -157,7 +157,7 @@ def modify_immutability_policy(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     payload = {"scope": scope, "retentionDays": retention_days}
 
     _base_api(

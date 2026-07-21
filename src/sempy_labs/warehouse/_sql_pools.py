@@ -97,7 +97,7 @@ def disable_sql_pools_configuration(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {
         "customSQLPoolsEnabled": False,
@@ -144,7 +144,7 @@ def enable_sql_pools_configuration(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload: Dict[str, Any] = {"customSQLPoolsEnabled": True}
     if custom_sql_pools is not None:

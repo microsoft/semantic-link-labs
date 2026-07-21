@@ -223,7 +223,7 @@ def create_model_bpa_semantic_model(
     from sempy_labs.tom import connect_semantic_model
 
     lakehouse_workspace_id = resolve_workspace_id(workspace=lakehouse_workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
     if is_schema_enabled(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id):
@@ -242,7 +242,7 @@ def create_model_bpa_semantic_model(
     ) as tom:
         t_name = "BPAResults"
         t_name_full = f"'{t_name}'"
-        
+
         tom.add_direct_lake_tables(
             tables={t_name: source_table},
             source=lakehouse_name,
@@ -250,7 +250,7 @@ def create_model_bpa_semantic_model(
             source_workspace=lakehouse_workspace_id,
             use_sql_endpoint=False,
         )
-      
+
         # Fix column names
         for c in tom.all_columns():
             if c.Name == "Dataset_Name":

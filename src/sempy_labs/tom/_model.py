@@ -552,7 +552,18 @@ class TOMWrapper:
         display_folder: Optional[str] = None,
         data_category: Optional[str] = None,
         key: bool = False,
-        summarize_by: Optional[Literal["Default", "None", "Sum", "Min", "Max", "Count", "Average", "DistinctCount"]] = None,
+        summarize_by: Optional[
+            Literal[
+                "Default",
+                "None",
+                "Sum",
+                "Min",
+                "Max",
+                "Count",
+                "Average",
+                "DistinctCount",
+            ]
+        ] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):

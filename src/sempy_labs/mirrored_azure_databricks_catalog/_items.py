@@ -12,7 +12,6 @@ from sempy_labs._helper_functions import (
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 
-
 auto_sync_map = {True: "Enabled", False: "Disabled"}
 
 
@@ -61,7 +60,7 @@ def create_mirrored_azure_databricks_catalog(
     uuid.UUID
         The ID of the created mirrored Azure Databricks Catalog.
     """
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {
         "displayName": name,
@@ -161,7 +160,7 @@ def update_mirrored_azure_databricks_catalog(
         The updated mirrored Azure Databricks Catalog item definition.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     payload = {"publicUpdateableExtendedProperties": {}}
 

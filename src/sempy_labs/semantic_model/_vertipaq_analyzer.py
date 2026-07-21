@@ -214,8 +214,8 @@ def vertipaq_analyzer(
 
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
     save_prefix = "vertipaqanalyzer_"
     save_table_name = f"{save_prefix}model"
 
@@ -1056,9 +1056,7 @@ def vertipaq_analyzer(
             df_datasets["Dataset Id"] == dataset_id, "Configured By"
         ].iloc[0]
 
-        (capacity_id, capacity_name) = resolve_workspace_capacity(
-            workspace=workspace_id
-        )
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
 
         base_metadata = {
             "Capacity Name": capacity_name,
