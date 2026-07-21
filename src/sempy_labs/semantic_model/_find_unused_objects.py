@@ -726,7 +726,18 @@ _WIDGET_CSS = """
 }
 .fuo-res-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
 .fuo-res-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--ui-text); }
-.fuo-res-sub { font-size: 12px; color: var(--ui-text-secondary); margin-top: 2px; }
+.fuo-res-sub { font-size: 12px; color: var(--ui-text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fuo-res-sub b { color: var(--ui-text); font-weight: 600; }
+.fuo-res-sub .fuo-sep { color: var(--ui-text-tertiary); margin: 0 6px; }
+.fuo-rerun {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--ui-border-strong); background: var(--ui-surface);
+    color: var(--ui-text); font-size: 12.5px; font-weight: 500; font-family: inherit;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+.fuo-rerun:hover { background: var(--ui-surface-2); border-color: var(--ui-text-tertiary); }
+.fuo-rerun svg { width: 14px; height: 14px; }
 .fuo-res-toolbar {
     display: flex; align-items: center; gap: 16px;
     padding: 10px 18px; border-bottom: 1px solid var(--ui-border); flex-wrap: wrap;
@@ -813,7 +824,7 @@ function render({ model, el }) {
         fieldParam: `__IC_FIELDPARAM__`, column: `__IC_COLUMN__`,
         calcColumn: `__IC_CALCCOLUMN__`, measure: `__IC_MEASURE__`,
         caret: `__IC_CARET__`, search: `__IC_SEARCH__`,
-        expand: `__IC_EXPAND__`, collapse: `__IC_COLLAPSE__`,
+        expand: `__IC_EXPAND__`, collapse: `__IC_COLLAPSE__`, rerun: `__IC_REFRESH__`,
     };
     const SUN = `__IC_SUN__`, MOON = `__IC_MOON__`, FS = `__IC_FS__`, FSX = `__IC_FSX__`;
 
@@ -823,6 +834,20 @@ function render({ model, el }) {
         if (kind === "calculated_table") return IC.calcTable;
         if (kind === "field_parameter") return IC.fieldParam;
         return IC.table;
+    }
+
+    function kindLabel(kind) {
+        return {
+            calculation_group: "Calculation Group",
+            date_table: "Date Table",
+            calculated_table: "Calculated Table",
+            field_parameter: "Field Parameter",
+        }[kind] || "Table";
+    }
+
+    function objLabel(o) {
+        if (o.ty === "Measure") return "Measure";
+        return o.c ? "Calculated Column" : "Column";
     }
 
     let view = "unused";
@@ -852,6 +877,9 @@ function render({ model, el }) {
     }
     function fsBtnHtml() {
         return `<button class="fuo-icon-btn" data-r="fs" type="button" title="${fsMode ? 'Exit full screen' : 'Toggle full screen'}">${fsMode ? FSX : FS}</button>`;
+    }
+    function rerunBtnHtml() {
+        return `<button class="fuo-rerun" data-r="rerun" type="button" title="Run a new analysis">${IC.rerun}<span>New analysis</span></button>`;
     }
     function wireHeaderCtrls() {
         const tb = root.querySelector('[data-r="theme"]');
@@ -993,7 +1021,7 @@ function render({ model, el }) {
                         <div class="fuo-res-title">Object usage</div>
                         <div class="fuo-res-sub" data-r="subtitle"></div>
                     </div>
-                    <div class="fuo-hdr-ctrls">${fsBtnHtml()}${themeBtnHtml()}</div>
+                    <div class="fuo-hdr-ctrls">${rerunBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
                 </div>
                 <div class="fuo-res-toolbar">
                     <div class="fuo-tools">
@@ -1007,6 +1035,7 @@ function render({ model, el }) {
                 <div class="fuo-attr">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a></div>
             </div>`;
         wireHeaderCtrls();
+        root.querySelector('[data-r="rerun"]').addEventListener("click", () => { model.set("screen", "config"); model.save_changes(); });
         root.querySelector('[data-r="expand"]').addEventListener("click", () => { collapsed = {}; renderTree(); });
         root.querySelector('[data-r="collapse"]').addEventListener("click", () => { (model.get("data") || []).forEach((o) => { collapsed[o.t] = true; }); renderTree(); });
         root.querySelector('[data-r="search"]').addEventListener("input", (e) => { search = e.target.value; renderTree(); });
@@ -1017,7 +1046,15 @@ function render({ model, el }) {
 
     function renderSubtitle() {
         const st = root.querySelector('[data-r="subtitle"]');
-        if (st) st.textContent = model.get("subtitle_count") || "";
+        if (!st) return;
+        const ds = model.get("dataset_name") || "";
+        const ws = model.get("workspace_name") || "";
+        const cnt = model.get("subtitle_count") || "";
+        const parts = [];
+        if (ds) parts.push('<b>' + esc(ds) + '</b>');
+        if (ws) parts.push(esc(ws));
+        if (cnt) parts.push(esc(cnt));
+        st.innerHTML = parts.join('<span class="fuo-sep">\u00b7</span>');
     }
 
     function renderToggle() {
@@ -1075,9 +1112,10 @@ function render({ model, el }) {
             const open = !collapsed[node.table];
             const tableCount = (showCount && node.tableObj) ? node.tableObj.u : null;
             const tHidden = node.tableObj && node.tableObj.h;
+            const kind = tableKinds[node.table] || "table";
             html.push('<div class="fuo-table-row" data-table="' + esc(node.table) + '">');
             html.push('<span class="fuo-caret' + (open ? ' fuo-open' : '') + '">' + IC.caret + '</span>');
-            html.push('<span class="fuo-ic">' + tableIcon(tableKinds[node.table] || "table") + '</span>');
+            html.push('<span class="fuo-ic" title="' + esc(kindLabel(kind)) + '">' + tableIcon(kind) + '</span>');
             html.push('<span class="fuo-name' + (tHidden ? ' fuo-hidden-obj' : '') + '">' + esc(node.table) + '</span>');
             if (tableCount !== null) html.push('<span class="fuo-count">' + tableCount.toLocaleString() + '</span>');
             html.push('</div>');
@@ -1085,7 +1123,7 @@ function render({ model, el }) {
             children.forEach((o) => {
                 const objIcon = o.ty === "Measure" ? IC.measure : (o.c ? IC.calcColumn : IC.column);
                 html.push('<div class="fuo-obj-row">');
-                html.push('<span class="fuo-ic">' + objIcon + '</span>');
+                html.push('<span class="fuo-ic" title="' + esc(objLabel(o)) + '">' + objIcon + '</span>');
                 html.push('<span class="fuo-name' + (o.h ? ' fuo-hidden-obj' : '') + '">' + esc(o.n) + '</span>');
                 if (showCount) html.push('<span class="fuo-count">' + o.u.toLocaleString() + '</span>');
                 html.push('</div>');
@@ -1147,6 +1185,7 @@ _WIDGET_JS = (
     .replace("__IC_SEARCH__", _UI_ICONS["search"])
     .replace("__IC_EXPAND__", _UI_ICONS["expand_rows"])
     .replace("__IC_COLLAPSE__", _UI_ICONS["collapse_rows"])
+    .replace("__IC_REFRESH__", _UI_ICONS["refresh"])
     .replace("__IC_SUN__", _UI_ICONS["sun"])
     .replace("__IC_MOON__", _UI_ICONS["moon"])
     .replace("__IC_FS__", _UI_ICONS["fullscreen"])
