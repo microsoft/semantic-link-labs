@@ -15,6 +15,9 @@ from ._direct_lake_manager import (
 from ._lineage_view import (
     lineage_view,
 )
+from ._direct_lake_migration import (
+    migrate_to_direct_lake,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -24,4 +27,5 @@ __all__ = [
     "perspective_editor",
     "direct_lake_manager",
     "lineage_view",
+    "migrate_to_direct_lake",
 ]
