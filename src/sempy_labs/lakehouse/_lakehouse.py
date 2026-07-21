@@ -239,7 +239,7 @@ def vacuum_lakehouse_tables(
         run_table_maintenance(
             table_name=table_name,
             vacuum=True,
-            retention_period=f"{retain_n_hours // 24}:{retain_n_hours % 24}:00:00"
+            retention_period=f"{retain_n_hours // 24}:{retain_n_hours % 24}:00:00",
             schema=schema_name,
             lakehouse=lakehouse,
             workspace=workspace,
