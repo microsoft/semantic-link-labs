@@ -462,7 +462,7 @@ function render({ model, el }) {
         const dm = model.get("dark_mode") === true;
         const nPick = picked.size;
         h.innerHTML =
-            `<span class="slls-lv-headicon">${ICON.database}</span>` +
+            `<span class="slls-lv-headicon">${ICON.workflow}</span>` +
             `<div class="slls-lv-titlewrap">` +
                 `<div class="slls-lv-title">Lineage view</div>` +
                 `<div class="slls-lv-subtitle"><b>${esc(model.get("dataset_name"))}</b>` +

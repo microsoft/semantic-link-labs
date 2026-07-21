@@ -585,12 +585,21 @@ def fullscreen_toggle_script(
 ) -> str:
     """Return a small JS snippet that wires a full-screen toggle button.
 
-    Clicking the button toggles ``fs_class`` on the element matched by
-    ``root_selector`` (a CSS overlay that covers the viewport) and, as a
-    best-effort enhancement, attempts the native Fullscreen API. Notebook
-    hosts frequently sandbox the output and reject native fullscreen, so the
-    CSS overlay is the reliable primary mechanism. The button icon swaps
-    between the enter/exit glyphs and pressing ``Escape`` exits.
+    Clicking the button re-parents the widget root to ``<body>`` and toggles
+    ``fs_class`` on it (a CSS overlay that pins the widget to the viewport).
+
+    The re-parenting is essential: notebook hosts (Jupyter, VS Code, Fabric)
+    routinely wrap cell output in ancestors that use ``transform`` or
+    ``overflow: hidden``. A ``position: fixed`` overlay is positioned/clipped
+    relative to the nearest transformed ancestor rather than the viewport, so
+    without re-parenting the overlay can render offscreen or zero-sized and the
+    UI appears to vanish. Moving the root to ``<body>`` (which has no such
+    ancestor) makes the fixed overlay reliably cover the screen. The native
+    Fullscreen API is intentionally *not* used because it is frequently
+    rejected in sandboxed notebook iframes and can collapse the element.
+
+    The button icon swaps between the enter/exit glyphs and pressing
+    ``Escape`` exits.
 
     Parameters
     ----------
@@ -600,7 +609,8 @@ def fullscreen_toggle_script(
         A CSS selector for the root element to expand (e.g. ``".vpx-abc123"``).
     fs_class : str, default="sl-fs"
         The CSS class that activates the full-screen overlay on the root
-        element. The caller must define what this class does in its own CSS.
+        element. The caller must define what this class does in its own CSS
+        (typically ``position: fixed; inset: 0``).
 
     Returns
     -------
@@ -618,6 +628,7 @@ def fullscreen_toggle_script(
     if (!root) return;
     var FS = `{fs}`;
     var FSX = `{fsx}`;
+    var placeholder = null;
     function isOn() {{ return root.classList.contains({fs_class!r}); }}
     function render() {{
         btn.innerHTML = isOn() ? FSX : FS;
@@ -626,27 +637,34 @@ def fullscreen_toggle_script(
         btn.setAttribute('aria-label', label);
     }}
     function setFs(on) {{
-        root.classList.toggle({fs_class!r}, on);
-        try {{
-            if (on) {{
-                var req = root.requestFullscreen || root.webkitRequestFullscreen;
-                if (req) {{ var p = req.call(root); if (p && p.catch) p.catch(function() {{}}); }}
-            }} else {{
-                var ex = document.exitFullscreen || document.webkitExitFullscreen;
-                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {{
-                    var p2 = ex.call(document); if (p2 && p2.catch) p2.catch(function() {{}});
-                }}
+        if (on === isOn()) return;
+        if (on) {{
+            // Reserve the widget's original footprint with a sized placeholder
+            // before removing it from normal flow. Static-HTML outputs are
+            // rendered in an auto-height iframe (VS Code / Fabric); without the
+            // placeholder the iframe collapses to zero height once the widget
+            // goes position:fixed, which clips the overlay and makes the UI
+            // appear to vanish. Then portal the widget to <body> (so a
+            // transformed/overflow ancestor cannot clip it) and pin it.
+            var rect = root.getBoundingClientRect();
+            placeholder = document.createElement('div');
+            placeholder.setAttribute('aria-hidden', 'true');
+            placeholder.style.height = rect.height + 'px';
+            placeholder.style.width = '100%';
+            if (root.parentNode) root.parentNode.insertBefore(placeholder, root);
+            document.body.appendChild(root);
+            root.classList.add({fs_class!r});
+        }} else {{
+            root.classList.remove({fs_class!r});
+            if (placeholder && placeholder.parentNode) {{
+                placeholder.parentNode.insertBefore(root, placeholder);
+                placeholder.parentNode.removeChild(placeholder);
             }}
-        }} catch (e) {{ /* native fullscreen blocked; CSS overlay handles it */ }}
+            placeholder = null;
+        }}
         render();
     }}
     btn.addEventListener('click', function() {{ setFs(!isOn()); }});
-    function onFsChange() {{
-        var nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        if (!nativeOn && isOn()) {{ root.classList.remove({fs_class!r}); render(); }}
-    }}
-    document.addEventListener('fullscreenchange', onFsChange);
-    document.addEventListener('webkitfullscreenchange', onFsChange);
     document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape' && isOn()) setFs(false); }});
     render();
 }})();
