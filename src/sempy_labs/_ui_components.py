@@ -73,6 +73,52 @@ ICONS: dict[str, str] = {
         '<circle cx="4" cy="8" r="2.5"/><circle cx="12" cy="8" r="2.5"/>'
         '<line x1="6.5" y1="8" x2="9.5" y2="8"/></svg>'
     ),
+    "calculated_table": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="3" width="11" height="10" rx="1.8"/>'
+        '<path d="M2.5 6.75h11"/>'
+        '<path d="M9.7 8.1c-1.1-.4-1.9.1-2.1 1.1l-.7 3.6M6.3 9.9h3"/></svg>'
+    ),
+    "calculation_group": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="3" y="1.5" width="10" height="13" rx="2"/>'
+        '<rect x="5" y="3.4" width="6" height="2.3" rx="0.6"/>'
+        '<path d="M5.5 8.5h.01M8 8.5h.01M10.5 8.5h.01M5.5 10.7h.01M8 10.7h.01'
+        'M10.5 10.7h.01M5.5 12.9h.01M8 12.9h.01M10.5 12.9h.01"/></svg>'
+    ),
+    "date_table": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="3.5" width="11" height="10" rx="1.8"/>'
+        '<path d="M2.5 6.75h11"/>'
+        '<path d="M5.5 2v2.6M10.5 2v2.6"/>'
+        '<path d="M5.2 9.2h.01M8 9.2h.01M10.8 9.2h.01M5.2 11.4h.01'
+        'M8 11.4h.01"/></svg>'
+    ),
+    "field_parameter": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.35" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="1.6" y="2" width="8.6" height="8.6" rx="1.2"/>'
+        '<path d="M1.6 4.85h8.6M1.6 7.75h8.6"/>'
+        '<path d="M4.5 2v8.6M7.4 2v8.6"/>'
+        '<path d="M10.8 11.45c.1-1 .9-1.55 1.65-1.4.8.16 1.15.98.72 1.7'
+        '-.27.45-.72.55-.72 1.25"/>'
+        '<path d="M12.45 14.5h.01"/></svg>'
+    ),
+    "calculated_column": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="5" y="2.5" width="6" height="11" rx="1.8"/>'
+        '<path stroke-width="1.3" d="M9.6 5.4c-.4-1.3-1.8-1.3-2.2.2l-1.2 5.8'
+        'M6.3 8h2.8"/></svg>'
+    ),
     # UI icons --------------------------------------------------------------
     "sun": (
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" '
@@ -234,6 +280,18 @@ ICONS: dict[str, str] = {
         '<rect x="2" y="2.5" width="4.5" height="4.5" rx="1"/>'
         '<rect x="9.5" y="9" width="4.5" height="4.5" rx="1"/>'
         '<path d="M4.25 7v2.25a1.5 1.5 0 0 0 1.5 1.5h3.75"/></svg>'
+    ),
+    "expand_rows": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M5 6.5l3-3 3 3"/><path d="M5 9.5l3 3 3-3"/></svg>'
+    ),
+    "collapse_rows": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M5 4l3 3 3-3"/><path d="M5 12l3-3 3 3"/></svg>'
     ),
     "scan": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
