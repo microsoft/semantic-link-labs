@@ -9,7 +9,7 @@ from sempy._utils._log import log
 def migrate_direct_lake_to_import(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    mode: Literal["import", "directquery"] = "import",
+    mode: Literal["Import", "DirectQuery"] = "Import",
 ):
     """
     Migrates a semantic model or specific table(s) from a Direct Lake mode to import or DirectQuery mode. After running this function, you must go to the semantic model settings and update the cloud connection. Not doing so will result in an inablity to refresh/use the semantic model.
@@ -22,8 +22,8 @@ def migrate_direct_lake_to_import(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    mode : typing.Literal["import", "directquery"], default="import"
-        The mode to migrate to. Can be either "import" or "directquery".
+    mode : typing.Literal["Import", "DirectQuery"], default="Import"
+        The mode to migrate to. Can be either "Import" or "DirectQuery".
     """
 
     sempy.fabric._client._utils._init_analysis_services()
