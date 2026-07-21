@@ -1570,7 +1570,11 @@ def lineage_view(
         if not analyze or not reports:
             return reports
 
-        measures, columns, hierarchies, _ = _model_objects_full()
+        # Re-capture the model metadata on every analysis (including
+        # Re-analyze) so the valid fix targets and broken-element checks
+        # reflect any changes to the model since the view was opened.
+        measures, columns, hierarchies, objects = _model_objects_full()
+        widget.model_objects = objects
 
         for rep in reports:
             try:
