@@ -456,9 +456,8 @@ def find_unused_objects(
             f"{method} is not a valid method. Must be one of ['Report', 'WorkspaceMonitoring']."
         )
 
-    context = _build_usage_context(dataset_id, workspace_id)
-
     if not visualize:
+        context = _build_usage_context(dataset_id, workspace_id)
         if method_normalized == "workspacemonitoring":
             days = max(1, min(9999, int(workspace_monitoring_days)))
             queries = _fetch_monitoring_queries(dataset_name, workspace_id, f"{days}d")
@@ -467,8 +466,9 @@ def find_unused_objects(
             counts, _ = _score_reports(context, dataset_id, workspace_id)
         return _counts_to_dataframe(context[_CTX_ALL], counts)
 
+    # The widget renders immediately; the (slow) model context is built lazily
+    # on the first analysis, so there is nothing to compute up front.
     _render_find_unused_objects(
-        context=context,
         dataset_name=dataset_name,
         dataset_id=dataset_id,
         workspace_name=workspace_name,
@@ -480,8 +480,20 @@ def find_unused_objects(
     return None
 
 
+def _list_downstream_reports(dataset_id: str, workspace_id: str) -> List[dict]:
+    """Returns the downstream reports (name + workspace) that consume the model."""
+    from sempy_labs._list_functions import list_reports_using_semantic_model
+
+    df = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
+    if df.empty:
+        return []
+    return [
+        {"name": r["Report Name"], "workspace": r["Report Workspace Name"]}
+        for _, r in df.iterrows()
+    ]
+
+
 def _render_find_unused_objects(
-    context,
     dataset_name: str,
     dataset_id: str,
     workspace_name: Optional[str],
@@ -507,6 +519,15 @@ def _render_find_unused_objects(
     # on "Analyze") so the two-step flow does not re-query the monitoring db.
     captured = {"queries": None}
 
+    # The model context (object registry + dependency adjacency) is expensive to
+    # build, so it is created lazily on the first analysis and cached here.
+    ctx_cache = {"context": None}
+
+    def _get_context():
+        if ctx_cache["context"] is None:
+            ctx_cache["context"] = _build_usage_context(dataset_id, workspace_id)
+        return ctx_cache["context"]
+
     class FindUnusedObjectsWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
         _css = _WIDGET_CSS
@@ -516,6 +537,9 @@ def _render_find_unused_objects(
         time_amount = traitlets.Int(7).tag(sync=True)
         time_unit = traitlets.Unicode("d").tag(sync=True)
         query_count = traitlets.Int(-1).tag(sync=True)
+        reports_available = traitlets.Bool(True).tag(sync=True)
+        reports_checked = traitlets.Bool(False).tag(sync=True)
+        reports_list = traitlets.List().tag(sync=True)
         data = traitlets.List().tag(sync=True)
         table_kinds = traitlets.Dict().tag(sync=True)
         subtitle_count = traitlets.Unicode("").tag(sync=True)
@@ -528,11 +552,13 @@ def _render_find_unused_objects(
         run = traitlets.Int(0).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
 
+    # The widget is displayed immediately with no blocking work; the downstream
+    # reports are detected after the first render (via the run/observe channel)
+    # and the model context is built lazily on the first analysis.
     widget = FindUnusedObjectsWidget(
         method=method,
         time_amount=max(1, min(9999, int(days))),
         time_unit="d",
-        table_kinds=context[_CTX_TABLE_KIND],
         dataset_name=dataset_name or "",
         workspace_name=workspace_name or "",
         dark_mode=bool(dark_mode),
@@ -541,6 +567,21 @@ def _render_find_unused_objects(
     def _on_run(_change):
         action = dict(widget.pending_action or {})
         act = action.get("action")
+        if act == "detect_reports":
+            # Runs after the first render (kept off the load path) on the
+            # kernel's main thread via the run/observe channel, so the result
+            # reliably syncs back to the widget.
+            try:
+                reports = _list_downstream_reports(dataset_id, workspace_id)
+                widget.reports_list = reports
+                widget.reports_available = len(reports) > 0
+                if not reports and widget.method == "report":
+                    widget.method = "workspacemonitoring"
+            except Exception:
+                widget.reports_available = False
+            finally:
+                widget.reports_checked = True
+            return
         if act not in ("count", "analyze"):
             return
         m = str(action.get("method", "workspacemonitoring")).lower()
@@ -561,6 +602,8 @@ def _render_find_unused_objects(
                 captured["queries"] = queries
                 widget.query_count = len(queries)
             else:  # analyze
+                context = _get_context()
+                widget.table_kinds = context[_CTX_TABLE_KIND]
                 if m == "workspacemonitoring":
                     queries = captured["queries"]
                     if queries is None:
@@ -717,6 +760,34 @@ _WIDGET_CSS = """
     transition: background 120ms ease, color 120ms ease;
 }
 .fuo-seg-btn.fuo-active { background: var(--ui-accent-soft); color: var(--ui-accent); font-weight: 600; }
+.fuo-seg-btn:disabled { color: var(--ui-text-tertiary); cursor: not-allowed; opacity: 0.5; }
+.fuo-seg-btn:disabled:hover { background: none; }
+
+/* ---- Downstream reports summary (config screen) ---- */
+.fuo-reports-list {
+    max-height: 180px; overflow: auto;
+    border: 1px solid var(--ui-border); border-radius: 10px;
+    background: var(--ui-bg-secondary);
+}
+.fuo-report-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; font-size: 13px;
+    border-bottom: 1px solid var(--ui-border);
+}
+.fuo-report-row:last-child { border-bottom: none; }
+.fuo-report-row .fuo-ic { color: var(--ui-text-tertiary); flex-shrink: 0; }
+.fuo-report-name {
+    color: var(--ui-text); font-weight: 500; flex: 1 1 auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fuo-report-ws {
+    color: var(--ui-text-tertiary); font-size: 12px; flex-shrink: 0; margin-left: auto;
+    max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fuo-reports-empty {
+    padding: 12px 14px; font-size: 13px; color: var(--ui-text-tertiary);
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
+}
 
 /* ================= RESULTS SCREEN ================= */
 .fuo-results { display: flex; flex-direction: column; }
@@ -730,13 +801,14 @@ _WIDGET_CSS = """
 .fuo-res-sub b { color: var(--ui-text); font-weight: 600; }
 .fuo-res-sub .fuo-sep { color: var(--ui-text-tertiary); margin: 0 6px; }
 .fuo-rerun {
-    display: inline-flex; align-items: center; gap: 6px;
-    border: 1px solid var(--ui-border-strong); background: var(--ui-surface);
-    color: var(--ui-text); font-size: 12.5px; font-weight: 500; font-family: inherit;
-    padding: 6px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
-    transition: background 120ms ease, border-color 120ms ease;
+    display: inline-flex; align-items: center; gap: 7px;
+    border: none; background: var(--ui-accent-soft); color: var(--ui-accent);
+    font-size: 12.5px; font-weight: 600; font-family: inherit;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    transition: background 140ms ease, color 140ms ease, transform 80ms ease;
 }
-.fuo-rerun:hover { background: var(--ui-surface-2); border-color: var(--ui-text-tertiary); }
+.fuo-rerun:hover { background: var(--ui-accent); color: #fff; }
+.fuo-rerun:active { transform: scale(0.97); }
 .fuo-rerun svg { width: 14px; height: 14px; }
 .fuo-res-toolbar {
     display: flex; align-items: center; gap: 16px;
@@ -833,6 +905,7 @@ function render({ model, el }) {
         calcColumn: `__IC_CALCCOLUMN__`, measure: `__IC_MEASURE__`,
         caret: `__IC_CARET__`, search: `__IC_SEARCH__`,
         expand: `__IC_EXPAND__`, collapse: `__IC_COLLAPSE__`, rerun: `__IC_REFRESH__`,
+        report: `__IC_REPORT__`,
     };
     const SUN = `__IC_SUN__`, MOON = `__IC_MOON__`, FS = `__IC_FS__`, FSX = `__IC_FSX__`;
 
@@ -937,8 +1010,28 @@ function render({ model, el }) {
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && fsMode) setFs(false); });
 
     // ================= CONFIG SCREEN =================
+    function reportsSummaryHtml() {
+        const reports = model.get("reports_list") || [];
+        if (!reports.length) {
+            return '<div class="fuo-section-label">Downstream reports</div>'
+                + '<div class="fuo-reports-empty">Loading downstream reports\u2026</div>';
+        }
+        const rows = reports.map((r) =>
+            '<div class="fuo-report-row">'
+            + '<span class="fuo-ic">' + IC.report + '</span>'
+            + '<span class="fuo-report-name">' + esc(r.name || "") + '</span>'
+            + '<span class="fuo-report-ws">' + esc(r.workspace || "") + '</span>'
+            + '</div>'
+        ).join("");
+        return '<div class="fuo-section-label">Downstream reports ('
+            + reports.length.toLocaleString() + ')</div>'
+            + '<div class="fuo-reports-list">' + rows + '</div>';
+    }
+
     function mountConfig() {
         const method = model.get("method") || "workspacemonitoring";
+        const reportsAvail = model.get("reports_available") !== false;
+        const reportsChecked = model.get("reports_checked") === true;
         const ds = model.get("dataset_name") || "";
         const amount = model.get("time_amount") || 7;
         const unit = model.get("time_unit") || "d";
@@ -946,6 +1039,11 @@ function render({ model, el }) {
         const hasResults = model.get("has_results") === true;
         const running = model.get("running") === true;
         const isMon = method === "workspacemonitoring";
+        const reportAttr = !reportsChecked
+            ? 'disabled title="Checking for downstream reports\u2026"'
+            : (reportsAvail
+                ? ""
+                : 'disabled title="This semantic model has no downstream reports."');
         const desc = isMon
             ? `Reads the workspace-monitoring queries for <b>${esc(ds)}</b> in the chosen time frame and reports which objects were never used (plus how often each object was used).`
             : `Reads the downstream reports that consume <b>${esc(ds)}</b> and reports which objects are never referenced (plus how many reports use each object). Dependencies are included.`;
@@ -973,7 +1071,7 @@ function render({ model, el }) {
                 <div class="fuo-section-label">Analyze by</div>
                 <div class="fuo-seg" data-r="method">
                     <button class="fuo-seg-btn ${isMon ? 'fuo-active' : ''}" data-method="workspacemonitoring" type="button">Workspace monitoring</button>
-                    <button class="fuo-seg-btn ${isMon ? '' : 'fuo-active'}" data-method="report" type="button">Downstream reports</button>
+                    <button class="fuo-seg-btn ${isMon ? '' : 'fuo-active'}" data-method="report" type="button" ${reportAttr}>Downstream reports</button>
                 </div>
                 ${isMon ? `
                 <div class="fuo-section-label">Time frame</div>
@@ -984,7 +1082,7 @@ function render({ model, el }) {
                         <option value="h" ${unit === 'h' ? 'selected' : ''}>hours</option>
                         <option value="d" ${unit === 'd' ? 'selected' : ''}>days</option>
                     </select>
-                </div>` : ``}
+                </div>` : (reportsAvail ? reportsSummaryHtml() : ``)}
                 ${countMsg}${statusHtml}
                 <div class="fuo-footer">
                     ${hasResults ? `<button class="fuo-btn-secondary" data-r="cancel" type="button">Cancel</button>` : ``}
@@ -994,6 +1092,7 @@ function render({ model, el }) {
 
         wireHeaderCtrls();
         root.querySelectorAll('[data-r="method"] .fuo-seg-btn').forEach((b) => b.addEventListener("click", () => {
+            if (b.disabled) return;
             const m = b.getAttribute("data-method");
             if (m === model.get("method")) return;
             model.set("method", m);
@@ -1191,6 +1290,14 @@ function render({ model, el }) {
     }
 
     model.on("change:screen", () => { view = "unused"; search = ""; collapsed = {}; route(); });
+    model.on("change:reports_available", () => {
+        if (model.get("reports_available") === false && (model.get("method") || "") === "report") {
+            model.set("method", "workspacemonitoring"); model.save_changes();
+        }
+        if (currentScreen() === "config") mountConfig();
+    });
+    model.on("change:reports_list", () => { if (currentScreen() === "config") mountConfig(); });
+    model.on("change:reports_checked", () => { if (currentScreen() === "config") mountConfig(); });
     model.on("change:running", route);
     model.on("change:query_count", () => { if (currentScreen() === "config") mountConfig(); });
     model.on("change:status", () => { if (currentScreen() === "config") mountConfig(); });
@@ -1199,6 +1306,14 @@ function render({ model, el }) {
     model.on("change:subtitle_count", renderSubtitle);
 
     route();
+
+    // Detect downstream reports AFTER the (immediate) first render, via the
+    // run/observe channel so the result reliably syncs back. This keeps the
+    // initial load fast; the "Downstream reports" option stays disabled
+    // ("Checking\u2026") until the detection completes.
+    model.set("pending_action", { action: "detect_reports" });
+    model.set("run", (model.get("run") || 0) + 1);
+    model.save_changes();
 }
 export default { render };
 """
@@ -1231,6 +1346,7 @@ _WIDGET_JS = (
     .replace("__IC_EXPAND__", _UI_ICONS["expand_rows"])
     .replace("__IC_COLLAPSE__", _UI_ICONS["collapse_rows"])
     .replace("__IC_REFRESH__", _UI_ICONS["refresh"])
+    .replace("__IC_REPORT__", _UI_ICONS["report"])
     .replace("__IC_SUN__", _UI_ICONS["sun"])
     .replace("__IC_MOON__", _UI_ICONS["moon"])
     .replace("__IC_FS__", _UI_ICONS["fullscreen"])
