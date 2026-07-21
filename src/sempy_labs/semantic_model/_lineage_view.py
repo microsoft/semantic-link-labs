@@ -361,15 +361,20 @@ function render({ model, el }) {
     const working = () => busyLocal || busy();
     const modelObjects = () => model.get("model_objects") || [];
     const health = (r) => (!r.analyzed ? "error" : (r.invalidCount > 0 ? "broken" : "clean"));
-    const fixKey = (rid, type, table, name) => `${rid}\u0000${type}\u0000${table}\u0000${name}`;
+    const fixKey = (rid, type, table, name, hierarchy) =>
+        `${rid}\u0000${type}\u0000${table}\u0000${hierarchy || ""}\u0000${name}`;
     // Measures are model-global, so they are shown without a table prefix or
-    // square brackets; columns/hierarchies keep the 'Table'[Object] form.
-    const objLabel = (type, table, name) =>
-        type === "Measure" ? `${name}` : `'${table}'[${name}]`;
+    // square brackets; columns/hierarchies keep the 'Table'[Object] form; a
+    // hierarchy level is shown as 'Table'[Hierarchy].[Level].
+    const objLabel = (type, table, name, hierarchy) =>
+        type === "Measure" ? `${name}`
+        : type === "Hierarchy Level" ? `'${table}'[${hierarchy}].[${name}]`
+        : `'${table}'[${name}]`;
     const typeIcon = (type) =>
         type === "Measure" ? ICON.measure
         : type === "Column" ? ICON.column
-        : type === "Hierarchy" ? ICON.hierarchy : ICON.report;
+        : (type === "Hierarchy" || type === "Hierarchy Level") ? ICON.hierarchy
+        : ICON.report;
 
     function dispatch(payload) {
         // Reflect activity immediately for snappy feedback, then re-render so
@@ -931,13 +936,13 @@ function render({ model, el }) {
     function buildBrokenRow(r, o) {
         const d = document.createElement("div");
         d.className = "slls-lv-obj";
-        const key = fixKey(r.id, o.objectType, o.table, o.name);
+        const key = fixKey(r.id, o.objectType, o.table, o.name, o.hierarchy);
         const staged = stagedFixes.get(key);
         d.innerHTML =
             `<div class="slls-lv-obj-top">` +
             `<div class="slls-lv-obj-main">` +
             `<span class="slls-lv-obj-ic">${typeIcon(o.objectType)}</span>` +
-            `<span class="slls-lv-obj-name">${esc(objLabel(o.objectType, o.table, o.name))}</span>` +
+            `<span class="slls-lv-obj-name">${esc(objLabel(o.objectType, o.table, o.name, o.hierarchy))}</span>` +
             `</div><span class="slls-lv-tag type">${esc(o.objectType)}</span></div>`;
 
         if (staged) {
@@ -945,7 +950,7 @@ function render({ model, el }) {
             fix.className = "slls-lv-fix slls-lv-fix-staged";
             fix.innerHTML =
                 `<span class="slls-lv-fix-ic">${ICON.wrench}</span>` +
-                `<span class="slls-lv-staged">Point to ${esc(objLabel(o.objectType, staged.targetTable, staged.targetName))}</span>` +
+                `<span class="slls-lv-staged">Point to ${esc(objLabel(o.objectType, staged.targetTable, staged.targetName, staged.targetHierarchy))}</span>` +
                 `<button class="slls-lv-unstage" title="Undo fix">${ICON.undo}</button>`;
             fix.querySelector(".slls-lv-unstage").onclick = () => {
                 stagedFixes.delete(key);
@@ -957,8 +962,8 @@ function render({ model, el }) {
                 .filter((mo) => mo.type === o.objectType)
                 .sort((a, b) => (o.objectType === "Measure"
                     ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-                    : (a.table + "\u0000" + a.name).toLowerCase()
-                        .localeCompare((b.table + "\u0000" + b.name).toLowerCase())));
+                    : (a.table + "\u0000" + (a.hierarchy || "") + "\u0000" + a.name).toLowerCase()
+                        .localeCompare((b.table + "\u0000" + (b.hierarchy || "") + "\u0000" + b.name).toLowerCase())));
             const fix = document.createElement("div");
             fix.className = "slls-lv-fix";
             fix.appendChild(buildFixCombo(r, o, key, cands));
@@ -992,8 +997,10 @@ function render({ model, el }) {
                 objectType: o.objectType,
                 brokenTable: o.table,
                 brokenName: o.name,
+                brokenHierarchy: o.hierarchy,
                 targetTable: mo.table,
                 targetName: mo.name,
+                targetHierarchy: mo.hierarchy,
             });
             renderAll();
         }
@@ -1001,7 +1008,7 @@ function render({ model, el }) {
         function renderList() {
             const q = input.value.trim().toLowerCase();
             const matches = cands.filter((mo) =>
-                objLabel(mo.type, mo.table, mo.name).toLowerCase().includes(q));
+                objLabel(mo.type, mo.table, mo.name, mo.hierarchy).toLowerCase().includes(q));
             list.innerHTML = "";
             if (matches.length === 0) {
                 const em = document.createElement("div");
@@ -1013,7 +1020,7 @@ function render({ model, el }) {
             matches.slice(0, 200).forEach((mo) => {
                 const item = document.createElement("div");
                 item.className = "slls-lv-combo-item";
-                item.textContent = objLabel(mo.type, mo.table, mo.name);
+                item.textContent = objLabel(mo.type, mo.table, mo.name, mo.hierarchy);
                 // mousedown fires before the input blur, so the click registers.
                 item.addEventListener("mousedown", (e) => { e.preventDefault(); choose(mo); });
                 list.appendChild(item);
@@ -1291,15 +1298,18 @@ def lineage_view(
     def _model_objects_full():
         """Valid model objects.
 
-        Returns the sets of valid measure names, fully-qualified column names and
-        fully-qualified hierarchy names (used to detect broken references), plus
-        an ordered list of ``{table, name, type}`` objects offered as fix targets.
+        Returns the sets of valid measure names, fully-qualified column names,
+        fully-qualified hierarchy names and fully-qualified hierarchy-level
+        names (used to detect broken references), plus an ordered list of
+        ``{table, name, type}`` objects offered as fix targets. Hierarchy-level
+        objects additionally carry a ``hierarchy`` key.
         """
         from sempy_labs.tom import connect_semantic_model
 
         measures = set()
         columns = set()
         hierarchies = set()
+        hierarchy_levels = set()
         objects = []
         with connect_semantic_model(
             dataset=ds_id, readonly=True, workspace=ws_id
@@ -1315,11 +1325,22 @@ def lineage_view(
                     {"table": c.Parent.Name, "name": c.Name, "type": "Column"}
                 )
             for h in tom.all_hierarchies():
-                hierarchies.add(format_dax_object_name(h.Parent.Name, h.Name))
+                hqual = format_dax_object_name(h.Parent.Name, h.Name)
+                hierarchies.add(hqual)
                 objects.append(
                     {"table": h.Parent.Name, "name": h.Name, "type": "Hierarchy"}
                 )
-        return measures, columns, hierarchies, objects
+                for lvl in h.Levels:
+                    hierarchy_levels.add(f"{hqual}.{lvl.Name}")
+                    objects.append(
+                        {
+                            "table": h.Parent.Name,
+                            "hierarchy": h.Name,
+                            "name": lvl.Name,
+                            "type": "Hierarchy Level",
+                        }
+                    )
+        return measures, columns, hierarchies, hierarchy_levels, objects
 
     # ------------------------------------------------------------------
     # Report definition extractor / mutator.
@@ -1369,6 +1390,41 @@ def lineage_view(
                             if isinstance(m, dict) and isinstance(m.get("name"), str):
                                 if m["name"]:
                                     report_measures.add(m["name"])
+
+            # Hierarchy level: a HierarchyLevel node nests the hierarchy (with
+            # its own SourceRef) and carries the level name. Record the (table,
+            # hierarchy, level) triple and stop descending so the nested
+            # hierarchy is not also counted as a standalone Hierarchy reference.
+            hl_level = node.get("Level")
+            hl_expr = node.get("Expression")
+            if (
+                isinstance(hl_level, str)
+                and hl_level
+                and isinstance(hl_expr, dict)
+                and isinstance(hl_expr.get("Hierarchy"), dict)
+            ):
+                h_node = hl_expr["Hierarchy"]
+                h_name = h_node.get("Hierarchy")
+                h_inner = h_node.get("Expression")
+                h_entity = None
+                if isinstance(h_inner, dict) and isinstance(
+                    h_inner.get("SourceRef"), dict
+                ):
+                    h_src = h_inner["SourceRef"]
+                    if isinstance(h_src.get("Entity"), str) and h_src["Entity"]:
+                        h_entity = h_src["Entity"]
+                    else:
+                        h_alias = h_src.get("Source")
+                        if isinstance(h_alias, str) and h_alias in local_aliases:
+                            h_entity = local_aliases[h_alias]
+                if h_entity and isinstance(h_name, str) and h_name:
+                    refs[("Hierarchy Level", h_entity, h_name, hl_level)] = {
+                        "table": h_entity,
+                        "hierarchy": h_name,
+                        "name": hl_level,
+                        "objectType": "Hierarchy Level",
+                    }
+                    return
 
             expr = node.get("Expression")
             if isinstance(expr, dict) and isinstance(expr.get("SourceRef"), dict):
@@ -1441,6 +1497,21 @@ def lineage_view(
         """
         result = s
         for fx in fixes:
+            if str(fx.get("objectType", "")).lower() == "hierarchy level":
+                # queryRef: 'Table.Hierarchy.Level'; nativeQueryRef: 'Hierarchy Level'.
+                old_h = fx.get("oldHierarchy") or ""
+                new_h = fx.get("newHierarchy") or ""
+                if native:
+                    old_disp = f"{old_h} {fx['oldName']}"
+                    new_disp = f"{new_h} {fx['newName']}"
+                    if result.lower() == old_disp.lower():
+                        result = new_disp
+                else:
+                    old_q = f"{fx['oldTable']}.{old_h}.{fx['oldName']}"
+                    new_q = f"{fx['newTable']}.{new_h}.{fx['newName']}"
+                    if result.lower() == old_q.lower():
+                        result = new_q
+                continue
             old_qual = f"{fx['oldTable']}.{fx['oldName']}"
             new_qual = f"{fx['newTable']}.{fx['newName']}"
             if native:
@@ -1545,6 +1616,54 @@ def lineage_view(
                         )
                     break
 
+    def _mutate_hierarchy_level(obj, aliases, from_list, fixes):
+        """Repoint a HierarchyLevel node for a staged hierarchy-level fix.
+
+        A HierarchyLevel node nests the hierarchy (with its own SourceRef) and
+        carries the ``Level`` name, so the table, hierarchy and level are all
+        updated together to match the chosen replacement.
+        """
+        level = obj.get("Level")
+        expr = obj.get("Expression")
+        if not (isinstance(level, str) and level and isinstance(expr, dict)):
+            return
+        h_node = expr.get("Hierarchy")
+        if not isinstance(h_node, dict):
+            return
+        h_name = h_node.get("Hierarchy")
+        h_inner = h_node.get("Expression")
+        if not (
+            isinstance(h_name, str)
+            and h_name
+            and isinstance(h_inner, dict)
+            and isinstance(h_inner.get("SourceRef"), dict)
+        ):
+            return
+        src = h_inner["SourceRef"]
+        entity_based = False
+        entity = None
+        if isinstance(src.get("Entity"), str) and src["Entity"]:
+            entity = src["Entity"]
+            entity_based = True
+        else:
+            alias = src.get("Source")
+            if isinstance(alias, str) and alias in aliases:
+                entity = aliases[alias]
+        if not entity:
+            return
+        for fx in fixes:
+            if (
+                str(fx.get("objectType", "")).lower() == "hierarchy level"
+                and entity.lower() == fx["oldTable"].lower()
+                and h_name.lower() == str(fx.get("oldHierarchy") or "").lower()
+                and level.lower() == fx["oldName"].lower()
+            ):
+                obj["Level"] = fx["newName"]
+                h_node["Hierarchy"] = fx.get("newHierarchy") or h_name
+                if fx["newTable"].lower() != fx["oldTable"].lower():
+                    _repoint_source_ref(src, entity_based, from_list, fx["newTable"])
+                break
+
     def _mutate_walk(node, parent_key, aliases, from_list, fixes):
         if isinstance(node, dict):
             local_aliases = aliases
@@ -1560,6 +1679,7 @@ def lineage_view(
                         if isinstance(alias, str) and alias and isinstance(ent, str):
                             local_aliases[alias] = ent
             _mutate_reference(node, parent_key, local_aliases, local_from, fixes)
+            _mutate_hierarchy_level(node, local_aliases, local_from, fixes)
             for k in list(node.keys()):
                 v = node[k]
                 if isinstance(v, str):
@@ -1640,7 +1760,9 @@ def lineage_view(
         # Re-capture the model metadata on every analysis (including
         # Re-analyze) so the valid fix targets and broken-element checks
         # reflect any changes to the model since the view was opened.
-        measures, columns, hierarchies, objects = _model_objects_full()
+        measures, columns, hierarchies, hierarchy_levels, objects = (
+            _model_objects_full()
+        )
         widget.model_objects = objects
 
         for rep in reports:
@@ -1658,11 +1780,22 @@ def lineage_view(
                         valid = format_dax_object_name(tname, oname) in columns
                     elif otype == "Hierarchy":
                         valid = format_dax_object_name(tname, oname) in hierarchies
+                    elif otype == "Hierarchy Level":
+                        hkey = (
+                            format_dax_object_name(tname, ref.get("hierarchy"))
+                            + f".{oname}"
+                        )
+                        valid = hkey in hierarchy_levels
                     else:
                         valid = True
                     if not valid:
                         invalid.append(
-                            {"table": tname, "name": oname, "objectType": otype}
+                            {
+                                "table": tname,
+                                "name": oname,
+                                "objectType": otype,
+                                "hierarchy": ref.get("hierarchy"),
+                            }
                         )
                 rep["objectCount"] = len(references)
                 rep["invalidCount"] = len(invalid)
@@ -1718,7 +1851,7 @@ def lineage_view(
 
     # Valid model objects offered as fix targets in the report detail panel.
     try:
-        initial_model_objects = _model_objects_full()[3]
+        initial_model_objects = _model_objects_full()[4]
     except Exception:
         initial_model_objects = []
 
@@ -1837,8 +1970,10 @@ def lineage_view(
                                 "objectType": f.get("objectType") or "",
                                 "oldTable": f.get("brokenTable") or "",
                                 "oldName": f.get("brokenName") or "",
+                                "oldHierarchy": f.get("brokenHierarchy") or "",
                                 "newTable": f.get("targetTable") or "",
                                 "newName": target_name,
+                                "newHierarchy": f.get("targetHierarchy") or "",
                             }
                         )
                     if not report_fixes:
