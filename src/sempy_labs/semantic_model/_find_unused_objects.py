@@ -743,24 +743,32 @@ _WIDGET_CSS = """
     padding: 10px 18px; border-bottom: 1px solid var(--ui-border); flex-wrap: wrap;
 }
 .fuo-tools { display: inline-flex; gap: 6px; }
-.fuo-toggle-wrap { display: inline-flex; align-items: center; gap: 10px; }
-.fuo-toggle-label {
-    border: none; background: none; font-family: inherit;
-    font-size: 14px; font-weight: 600; color: var(--ui-text-secondary); cursor: pointer;
-    padding: 0; transition: color 120ms ease;
+.fuo-toggle-wrap { display: inline-flex; align-items: center; }
+.fuo-seg3 {
+    display: inline-flex; background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border); border-radius: 999px; padding: 3px;
 }
-.fuo-toggle-label.fuo-active { color: var(--ui-text); }
-.fuo-switch {
-    position: relative; width: 36px; height: 20px; border-radius: 10px;
-    border: none; background: var(--ui-accent); cursor: pointer; padding: 0; flex-shrink: 0;
+.fuo-seg3-btn {
+    border: none; background: none; color: var(--ui-text-secondary);
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    padding: 6px 16px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
-.fuo-knob {
-    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
-    border-radius: 50%; background: #fff; transition: transform 140ms ease;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
-}
-.fuo-switch.fuo-on .fuo-knob { transform: translateX(16px); }
+.fuo-seg3-btn.fuo-active { background: var(--ui-bg); color: var(--ui-text); box-shadow: var(--ui-shadow-sm); }
 .fuo-res-search { margin: 12px 18px 4px 18px; }
+
+/* ---- Unused highlight (combined "All" view) ---- */
+.fuo-row-unused { background: rgba(245, 158, 11, 0.10); }
+.fuo-unused-tag {
+    flex-shrink: 0; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: #b7791f; background: rgba(245, 158, 11, 0.16);
+    padding: 1px 8px; border-radius: 10px;
+}
+.fuo.fuo-dark .fuo-unused-tag { color: #f2c14e; background: rgba(245, 158, 11, 0.20); }
+@media (prefers-color-scheme: dark) {
+    .fuo.fuo-auto .fuo-unused-tag { color: #f2c14e; background: rgba(245, 158, 11, 0.20); }
+}
 
 /* ---- Shared search ---- */
 .fuo-search-wrap { position: relative; }
@@ -850,6 +858,17 @@ function render({ model, el }) {
         return o.c ? "Calculated Column" : "Column";
     }
 
+    // Right-aligned badge for a row: a usage count for used objects, or an
+    // "unused" tag (only in the combined "all" view).
+    function usageBadge(o) {
+        if (o && o.u > 0) {
+            const n = o.u.toLocaleString();
+            return '<span class="fuo-count" title="Referenced ' + n + ' time' + (o.u === 1 ? '' : 's') + '">' + n + '</span>';
+        }
+        if (view === "all" && o && o.u === 0) return '<span class="fuo-unused-tag">unused</span>';
+        return "";
+    }
+
     let view = "unused";
     let search = "";
     let collapsed = {};
@@ -883,7 +902,15 @@ function render({ model, el }) {
     }
     function wireHeaderCtrls() {
         const tb = root.querySelector('[data-r="theme"]');
-        if (tb) tb.addEventListener("click", () => { model.set("dark_mode", !(model.get("dark_mode") === true)); model.save_changes(); });
+        if (tb) tb.addEventListener("click", () => {
+            const nd = !(model.get("dark_mode") === true);
+            model.set("dark_mode", nd); model.save_changes();
+            // Immediate feedback (do not wait for the sync round-trip).
+            applyTheme();
+            tb.innerHTML = nd ? SUN : MOON;
+            tb.title = nd ? "Switch to light mode" : "Switch to dark mode";
+            tb.setAttribute("aria-label", tb.title);
+        });
         const fb = root.querySelector('[data-r="fs"]');
         if (fb) fb.addEventListener("click", () => setFs(!fsMode));
     }
@@ -994,7 +1021,7 @@ function render({ model, el }) {
             mountConfig();
         });
         const cancel = root.querySelector('[data-r="cancel"]');
-        if (cancel) cancel.addEventListener("click", () => { model.set("screen", "results"); model.save_changes(); });
+        if (cancel) cancel.addEventListener("click", () => goScreen("results"));
         const primary = root.querySelector('[data-r="primary"]');
         if (primary) primary.addEventListener("click", () => {
             if (model.get("running")) return;
@@ -1002,6 +1029,9 @@ function render({ model, el }) {
             let action;
             if (m === "report") action = "analyze";
             else action = (model.get("query_count") >= 0) ? "analyze" : "count";
+            // Immediate feedback: show the busy state before the (async) work.
+            primary.disabled = true;
+            primary.innerHTML = '<span class="fuo-spin"></span>';
             model.set("pending_action", {
                 action: action, method: m,
                 amount: model.get("time_amount") || 7,
@@ -1035,7 +1065,7 @@ function render({ model, el }) {
                 <div class="fuo-attr">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a></div>
             </div>`;
         wireHeaderCtrls();
-        root.querySelector('[data-r="rerun"]').addEventListener("click", () => { model.set("screen", "config"); model.save_changes(); });
+        root.querySelector('[data-r="rerun"]').addEventListener("click", () => goScreen("config"));
         root.querySelector('[data-r="expand"]').addEventListener("click", () => { collapsed = {}; renderTree(); });
         root.querySelector('[data-r="collapse"]').addEventListener("click", () => { (model.get("data") || []).forEach((o) => { collapsed[o.t] = true; }); renderTree(); });
         root.querySelector('[data-r="search"]').addEventListener("input", (e) => { search = e.target.value; renderTree(); });
@@ -1064,12 +1094,17 @@ function render({ model, el }) {
         let unused = 0;
         data.forEach((o) => { if (o.u === 0) unused++; });
         const used = data.length - unused;
-        wrap.innerHTML = `
-            <button class="fuo-toggle-label ${view === 'unused' ? 'fuo-active' : ''}" data-view="unused" type="button">Unused (${unused.toLocaleString()})</button>
-            <button class="fuo-switch ${view === 'used' ? 'fuo-on' : ''}" data-r="switch" type="button" aria-label="Toggle used / unused"><span class="fuo-knob"></span></button>
-            <button class="fuo-toggle-label ${view === 'used' ? 'fuo-active' : ''}" data-view="used" type="button">Used (${used.toLocaleString()})</button>`;
-        wrap.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { view = b.getAttribute("data-view"); renderToggle(); renderTree(); }));
-        wrap.querySelector('[data-r="switch"]').addEventListener("click", () => { view = (view === "used" ? "unused" : "used"); renderToggle(); renderTree(); });
+        const opts = [["unused", "Unused", unused], ["used", "Used", used], ["all", "All", data.length]];
+        wrap.innerHTML = '<div class="fuo-seg3">' + opts.map((o) =>
+            '<button class="fuo-seg3-btn' + (view === o[0] ? ' fuo-active' : '') + '" data-view="' + o[0] + '" type="button">' + o[1] + ' (' + o[2].toLocaleString() + ')</button>'
+        ).join("") + '</div>';
+        wrap.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+            const v = b.getAttribute("data-view");
+            if (v === view) return;
+            view = v;
+            renderToggle();
+            renderTree();
+        }));
     }
 
     function buildTree(objs) {
@@ -1094,15 +1129,16 @@ function render({ model, el }) {
         const tree = root.querySelector('[data-r="tree"]');
         if (!tree) return;
         const data = model.get("data") || [];
-        const showCount = view === "used";
+        const showAll = view === "all";
         const s = search.trim().toLowerCase();
-        let filtered = data.filter((o) => view === "used" ? o.u > 0 : o.u === 0);
+        let filtered = data.filter((o) => view === "used" ? o.u > 0 : (view === "unused" ? o.u === 0 : true));
         if (s) filtered = filtered.filter((o) => o.n.toLowerCase().indexOf(s) >= 0 || o.t.toLowerCase().indexOf(s) >= 0);
         const nodes = buildTree(filtered);
         if (nodes.length === 0) {
-            tree.innerHTML = '<div class="fuo-empty">' + (view === "unused"
+            const msg = view === "unused"
                 ? "Every object was used at least once."
-                : "No objects were used.") + "</div>";
+                : (view === "used" ? "No objects were used." : "No objects in this model.");
+            tree.innerHTML = '<div class="fuo-empty">' + msg + "</div>";
             return;
         }
         const html = [];
@@ -1110,22 +1146,24 @@ function render({ model, el }) {
         nodes.forEach((node) => {
             const children = node.columns.concat(node.measures);
             const open = !collapsed[node.table];
-            const tableCount = (showCount && node.tableObj) ? node.tableObj.u : null;
-            const tHidden = node.tableObj && node.tableObj.h;
+            const tObj = node.tableObj;
+            const tHidden = tObj && tObj.h;
+            const tHl = showAll && tObj && tObj.u === 0;
             const kind = tableKinds[node.table] || "table";
-            html.push('<div class="fuo-table-row" data-table="' + esc(node.table) + '">');
+            html.push('<div class="fuo-table-row' + (tHl ? ' fuo-row-unused' : '') + '" data-table="' + esc(node.table) + '">');
             html.push('<span class="fuo-caret' + (open ? ' fuo-open' : '') + '">' + IC.caret + '</span>');
             html.push('<span class="fuo-ic" title="' + esc(kindLabel(kind)) + '">' + tableIcon(kind) + '</span>');
             html.push('<span class="fuo-name' + (tHidden ? ' fuo-hidden-obj' : '') + '">' + esc(node.table) + '</span>');
-            if (tableCount !== null) html.push('<span class="fuo-count">' + tableCount.toLocaleString() + '</span>');
+            html.push(usageBadge(tObj));
             html.push('</div>');
             html.push('<div class="fuo-children" style="display:' + (open ? 'block' : 'none') + '">');
             children.forEach((o) => {
                 const objIcon = o.ty === "Measure" ? IC.measure : (o.c ? IC.calcColumn : IC.column);
-                html.push('<div class="fuo-obj-row">');
+                const hl = showAll && o.u === 0;
+                html.push('<div class="fuo-obj-row' + (hl ? ' fuo-row-unused' : '') + '">');
                 html.push('<span class="fuo-ic" title="' + esc(objLabel(o)) + '">' + objIcon + '</span>');
                 html.push('<span class="fuo-name' + (o.h ? ' fuo-hidden-obj' : '') + '">' + esc(o.n) + '</span>');
-                if (showCount) html.push('<span class="fuo-count">' + o.u.toLocaleString() + '</span>');
+                html.push(usageBadge(o));
                 html.push('</div>');
             });
             html.push('</div>');
@@ -1144,6 +1182,13 @@ function render({ model, el }) {
 
     function currentScreen() { return model.get("screen") || "config"; }
     function route() { if (currentScreen() === "results") mountResults(); else mountConfig(); }
+    // Navigate between screens with immediate feedback (does not wait for the
+    // traitlet sync round-trip).
+    function goScreen(name) {
+        view = "unused"; search = ""; collapsed = {};
+        model.set("screen", name); model.save_changes();
+        route();
+    }
 
     model.on("change:screen", () => { view = "unused"; search = ""; collapsed = {}; route(); });
     model.on("change:running", route);
