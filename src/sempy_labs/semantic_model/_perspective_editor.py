@@ -67,6 +67,23 @@ _WIDGET_CSS = """
 }
 .slls-pe * { box-sizing: border-box; }
 
+.slls-pe.slls-pe-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: auto;
+}
+.slls-pe.slls-pe-fs .slls-pe-tree {
+    max-height: calc(100vh - 320px);
+}
+
 .slls-pe-header {
     display: flex;
     align-items: center;
@@ -506,7 +523,47 @@ function render({ model, el }) {
     });
     model.on("change:dark_mode", renderThemeBtn);
     renderThemeBtn();
-    header.appendChild(themeBtn);
+
+    // Fullscreen toggle button. Notebook hosts often sandbox the output and
+    // reject the native Fullscreen API, so a CSS overlay (root pinned to the
+    // viewport) is the reliable primary mechanism, with native fullscreen
+    // attempted as a best-effort enhancement.
+    const FS_SVG = `__SLLS_ICON_FULLSCREEN__`;
+    const FSX_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
+    let peFsMode = false;
+    const fsBtn = document.createElement("button");
+    fsBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    fsBtn.type = "button";
+    function renderFsBtn() {
+        fsBtn.innerHTML = peFsMode ? FSX_SVG : FS_SVG;
+        fsBtn.title = peFsMode ? "Exit full screen" : "Toggle full screen";
+        fsBtn.setAttribute("aria-label", fsBtn.title);
+    }
+    function setPeFullscreen(on) {
+        peFsMode = on;
+        root.classList.toggle("slls-pe-fs", on);
+        try {
+            if (on) {
+                const req = root.requestFullscreen || root.webkitRequestFullscreen;
+                if (req) { const p = req.call(root); if (p && p.catch) p.catch(() => {}); }
+            } else {
+                const ex = document.exitFullscreen || document.webkitExitFullscreen;
+                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {
+                    const p = ex.call(document); if (p && p.catch) p.catch(() => {});
+                }
+            }
+        } catch (e) { /* native fullscreen blocked; CSS overlay handles it */ }
+        renderFsBtn();
+    }
+    fsBtn.addEventListener("click", () => setPeFullscreen(!peFsMode));
+    document.addEventListener("fullscreenchange", () => {
+        const nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!nativeOn && peFsMode) { peFsMode = false; root.classList.remove("slls-pe-fs"); renderFsBtn(); }
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && peFsMode) setPeFullscreen(false);
+    });
+    renderFsBtn();
 
     const select = document.createElement("select");
     select.className = "slls-pe-select";
@@ -540,6 +597,10 @@ function render({ model, el }) {
     createRow.appendChild(okBtn);
     createRow.appendChild(cancelBtn);
     header.appendChild(createRow);
+
+    // Fullscreen then theme, so the theme toggle is always the rightmost button.
+    header.appendChild(fsBtn);
+    header.appendChild(themeBtn);
 
     // ----------- Toolbar -----------
     const toolbar = document.createElement("div");
@@ -1097,6 +1158,8 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
     .replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])
+    .replace("__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
+    .replace("__SLLS_ICON_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
 )
 
 

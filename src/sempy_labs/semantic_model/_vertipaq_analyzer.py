@@ -32,6 +32,7 @@ from sempy_labs._ui_components import (
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
 )
 
 
@@ -1191,6 +1192,7 @@ def visualize_vertipaq(
     uid = uuid.uuid4().hex[:8]
     root_selector = f".vpx-{uid}"
     theme_btn_id = f"vpx-theme-{uid}"
+    fullscreen_btn_id = f"vpx-fs-{uid}"
     # Scope the shared header CSS under the root selector so its rules win
     # against notebook host styles (e.g. Jupyter's ``.jp-RenderedHTMLCommon
     # button`` rules that would otherwise override the theme toggle
@@ -1236,6 +1238,28 @@ def visualize_vertipaq(
     }}
     .vpx-{uid}.vpx-dark {{
         {_UI_DARK_VARS}
+    }}
+    /* ── Fullscreen overlay ── */
+    .vpx-{uid}.vpx-fs {{
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    .vpx-{uid}.vpx-fs .vpx-container {{
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 100%;
+    }}
+    .vpx-{uid}.vpx-fs .vpx-table-wrap {{
+        max-height: calc(100vh - 260px);
     }}
     .vpx-{uid} *, .vpx-{uid} *::before, .vpx-{uid} *::after {{
         box-sizing: border-box;
@@ -1589,6 +1613,7 @@ def visualize_vertipaq(
         workspace_name=workspace_name,
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
+        fullscreen_btn_id=fullscreen_btn_id,
     )
 
     html_parts = []
@@ -1953,7 +1978,13 @@ def visualize_vertipaq(
         dark_class="vpx-dark",
     )
 
-    display(HTML(styles + "\n".join(html_parts) + script + theme_script))
+    fullscreen_script = _ui_fullscreen_toggle_script(
+        btn_id=fullscreen_btn_id,
+        root_selector=root_selector,
+        fs_class="vpx-fs",
+    )
+
+    display(HTML(styles + "\n".join(html_parts) + script + theme_script + fullscreen_script))
 
 
 @log

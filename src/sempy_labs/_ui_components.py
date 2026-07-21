@@ -459,6 +459,7 @@ def render_header_html(
     workspace_name: Optional[str] = None,
     theme_btn_id: Optional[str] = None,
     dark_mode: bool = False,
+    fullscreen_btn_id: Optional[str] = None,
 ) -> str:
     """Render the standard widget header as HTML.
 
@@ -473,8 +474,13 @@ def render_header_html(
     theme_btn_id : str, default=None
         If provided, includes a light/dark theme toggle button with this
         DOM id. Pair with :func:`theme_toggle_script` to wire up behavior.
+        The theme button is always rendered as the rightmost control.
     dark_mode : bool, default=False
         Controls the initial icon shown on the theme toggle button.
+    fullscreen_btn_id : str, default=None
+        If provided, includes a full-screen toggle button with this DOM id,
+        placed immediately to the left of the theme toggle button. Pair with
+        :func:`fullscreen_toggle_script` to wire up behavior.
 
     Returns
     -------
@@ -498,6 +504,15 @@ def render_header_html(
 
     parts.append("</div>")  # titlewrap
 
+    if fullscreen_btn_id:
+        fs_icon = ICONS["fullscreen"]
+        parts.append(
+            f'<button type="button" class="sl-theme-btn" id="{fullscreen_btn_id}" '
+            f'title="Toggle full screen" aria-label="Toggle full screen">'
+            f"{fs_icon}</button>"
+        )
+
+    # The theme button is appended last so it is always the rightmost control.
     if theme_btn_id:
         icon = ICONS["sun"] if dark_mode else ICONS["moon"]
         label = "Switch to light mode" if dark_mode else "Switch to dark mode"
@@ -557,6 +572,82 @@ def theme_toggle_script(
         root.classList.toggle({dark_class!r});
         render();
     }});
+    render();
+}})();
+</script>
+"""
+
+
+def fullscreen_toggle_script(
+    btn_id: str,
+    root_selector: str,
+    fs_class: str = "sl-fs",
+) -> str:
+    """Return a small JS snippet that wires a full-screen toggle button.
+
+    Clicking the button toggles ``fs_class`` on the element matched by
+    ``root_selector`` (a CSS overlay that covers the viewport) and, as a
+    best-effort enhancement, attempts the native Fullscreen API. Notebook
+    hosts frequently sandbox the output and reject native fullscreen, so the
+    CSS overlay is the reliable primary mechanism. The button icon swaps
+    between the enter/exit glyphs and pressing ``Escape`` exits.
+
+    Parameters
+    ----------
+    btn_id : str
+        The DOM id of the full-screen toggle button.
+    root_selector : str
+        A CSS selector for the root element to expand (e.g. ``".vpx-abc123"``).
+    fs_class : str, default="sl-fs"
+        The CSS class that activates the full-screen overlay on the root
+        element. The caller must define what this class does in its own CSS.
+
+    Returns
+    -------
+    str
+        A ``<script>`` block ready to be inserted into the rendered HTML.
+    """
+    fs = ICONS["fullscreen"].replace("`", "\\`")
+    fsx = ICONS["fullscreen_exit"].replace("`", "\\`")
+    return f"""
+<script>
+(function() {{
+    var btn = document.getElementById({btn_id!r});
+    if (!btn) return;
+    var root = document.querySelector({root_selector!r});
+    if (!root) return;
+    var FS = `{fs}`;
+    var FSX = `{fsx}`;
+    function isOn() {{ return root.classList.contains({fs_class!r}); }}
+    function render() {{
+        btn.innerHTML = isOn() ? FSX : FS;
+        var label = isOn() ? 'Exit full screen' : 'Toggle full screen';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+    }}
+    function setFs(on) {{
+        root.classList.toggle({fs_class!r}, on);
+        try {{
+            if (on) {{
+                var req = root.requestFullscreen || root.webkitRequestFullscreen;
+                if (req) {{ var p = req.call(root); if (p && p.catch) p.catch(function() {{}}); }}
+            }} else {{
+                var ex = document.exitFullscreen || document.webkitExitFullscreen;
+                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {{
+                    var p2 = ex.call(document); if (p2 && p2.catch) p2.catch(function() {{}});
+                }}
+            }}
+        }} catch (e) {{ /* native fullscreen blocked; CSS overlay handles it */ }}
+        render();
+    }}
+    btn.addEventListener('click', function() {{ setFs(!isOn()); }});
+    function onFsChange() {{
+        var nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!nativeOn && isOn()) {{ root.classList.remove({fs_class!r}); render(); }}
+    }}
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape' && isOn()) setFs(false); }});
     render();
 }})();
 </script>
