@@ -594,8 +594,10 @@ function render({ model, el }) {
             e.preventDefault();
             const sx = e.clientX, sy = e.clientY;
             const sl = scroll.scrollLeft, stp = scroll.scrollTop;
+            let moved = false;
             scroll.classList.add("slls-lv-panning");
             const move = (ev) => {
+                if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 4) moved = true;
                 scroll.scrollLeft = sl - (ev.clientX - sx);
                 scroll.scrollTop = stp - (ev.clientY - sy);
             };
@@ -604,6 +606,12 @@ function render({ model, el }) {
                 window.removeEventListener("pointerup", up);
                 scroll.classList.remove("slls-lv-panning");
                 document.body.style.userSelect = "";
+                // A click on empty canvas (i.e. not a drag/pan, and not on a
+                // node since nodes stop propagation) deselects the report.
+                if (!moved && selectedId !== null) {
+                    selectedId = null;
+                    renderAll();
+                }
             };
             window.addEventListener("pointermove", move);
             window.addEventListener("pointerup", up);
