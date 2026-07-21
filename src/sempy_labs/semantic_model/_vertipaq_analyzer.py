@@ -133,7 +133,7 @@ def format_bytes(size, decimals=2):
 
 def cast_to_type(value, type_):
     type_mapping = {
-        "int": int,
+        "int": lambda v: int(float(v)),
         "decimal": float,
         "bool": lambda v: str(v).strip().lower()
         == "true",  # convert "True"/"False" strings,

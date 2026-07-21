@@ -38,6 +38,7 @@ def generate_direct_lake_semantic_model(
     workspace: Optional[str | UUID] = None,
     refresh: bool = True,
     inherit_descriptions: bool = True,
+    overwrite: bool = False,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on tables in Fabric.
@@ -72,6 +73,8 @@ def generate_direct_lake_semantic_model(
         If True, refreshes the newly created semantic model after it is created.
     inherit_descriptions : bool, default=True
         If True, sets table/column descriptions based on the comments/descriptions in the source table. Only available for lakehouse sources.
+    overwrite : bool, default=False
+        If True, overwrites the existing semantic model if it already exists. If False, raises an error if the semantic model already exists.
     """
     from sempy_labs._helper_functions import extract_descriptions_from_table_path
 
@@ -197,18 +200,11 @@ def generate_direct_lake_semantic_model(
             f"{icons.red_dot} No valid tables were provided given the source provided."
         )
 
-    dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
-    dfD_filt = dfD[dfD["Dataset Name"] == dataset]
-
-    if dfD_filt.empty:
-        dataset_id = create_blank_semantic_model(
-            dataset=dataset,
-            workspace=workspace_id,
-        )
-    else:
-        raise ValueError(
-            f"{icons.red_dot} A dataset with the name '{dataset}' already exists in the workspace '{workspace_name}'. Please choose a different name or delete the existing dataset."
-        )
+    dataset_id = create_blank_semantic_model(
+        dataset=dataset,
+        workspace=workspace_id,
+        overwrite=overwrite,
+    )
 
     # Imported lazily to avoid a circular import: sempy_labs.tom._model imports
     # from sempy_labs.semantic_model._helper, which triggers this module.
