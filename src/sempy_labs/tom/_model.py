@@ -5453,7 +5453,7 @@ class TOMWrapper:
                 let
                     Source = Lakehouse.Contents(null),
                     Workspace = Source{{[workspaceId={s.get('workspaceId')}]}}[Data],
-                    Artifact = Workspace{{[lakehouseId={s.get('lakehouseId')}]}}[Data],
+                    Artifact = Workspace{{[lakehouseId={s.get('itemId')}]}}[Data],
                     Table = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]
                 in
                     Table"""
@@ -5462,7 +5462,7 @@ class TOMWrapper:
                 let
                     Source = Fabric.Warehouse(),
                     Workspace = Source{{[workspaceId={s.get('workspaceId')}]}}[Data],
-                    Warehouse = Workspace{{[warehouseId={s.get('warehouseId')}]}}[Data],
+                    Warehouse = Workspace{{[warehouseId={s.get('itemId')}]}}[Data],
                     Table = Warehouse{{[Schema="{source_schema}", Item="{source_table}"]}}[Data]
                 in
                     Table
