@@ -156,6 +156,136 @@ ICONS: dict[str, str] = {
         '<path d="M7 4.5l1-1a2.5 2.5 0 1 1 3.5 3.5l-1 1"/>'
         '<path d="M9 11.5l-1 1a2.5 2.5 0 1 1-3.5-3.5l1-1"/></svg>'
     ),
+    "database": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="8" cy="3.5" rx="5" ry="1.8"/>'
+        '<path d="M3 3.5v9c0 1 2.24 1.8 5 1.8s5-.8 5-1.8v-9"/>'
+        '<path d="M3 8c0 1 2.24 1.8 5 1.8s5-.8 5-1.8"/></svg>'
+    ),
+    "report": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="3.5" y="2" width="9" height="12" rx="1.6"/>'
+        '<path d="M6 11v-2M8 11V6.5M10 11V8.5"/></svg>'
+    ),
+    "check_circle": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/>'
+        '<path d="M5.5 8.2l1.8 1.8 3.2-3.6"/></svg>'
+    ),
+    "alert": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M8 2.5l5.5 9.5H2.5z"/>'
+        '<path d="M8 6.5v2.5M8 11h.01"/></svg>'
+    ),
+    "external_link": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9 3.5h3.5V7"/>'
+        '<path d="M12.5 3.5L7.5 8.5"/>'
+        '<path d="M11 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3"/></svg>'
+    ),
+    "zoom_in": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="7" cy="7" r="4.2"/>'
+        '<path d="M10.2 10.2L13.5 13.5"/>'
+        '<path d="M7 5.4v3.2M5.4 7h3.2"/></svg>'
+    ),
+    "zoom_out": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="7" cy="7" r="4.2"/>'
+        '<path d="M10.2 10.2L13.5 13.5"/>'
+        '<path d="M5.4 7h3.2"/></svg>'
+    ),
+    "close": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg>'
+    ),
+    "chevron_left": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M10 3.5L5.5 8l4.5 4.5"/></svg>'
+    ),
+    "chevron_right": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6 3.5L10.5 8L6 12.5"/></svg>'
+    ),
+    "workflow": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2" y="2.5" width="4.5" height="4.5" rx="1"/>'
+        '<rect x="9.5" y="9" width="4.5" height="4.5" rx="1"/>'
+        '<path d="M4.25 7v2.25a1.5 1.5 0 0 0 1.5 1.5h3.75"/></svg>'
+    ),
+    "scan": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 5V3.5A1 1 0 0 1 3.5 2.5H5"/>'
+        '<path d="M11 2.5h1.5a1 1 0 0 1 1 1V5"/>'
+        '<path d="M13.5 11v1.5a1 1 0 0 1-1 1H11"/>'
+        '<path d="M5 13.5H3.5a1 1 0 0 1-1-1V11"/>'
+        '<circle cx="8" cy="8" r="2"/></svg>'
+    ),
+    "fullscreen": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 6V3.5a1 1 0 0 1 1-1H6"/>'
+        '<path d="M10 2.5h2.5a1 1 0 0 1 1 1V6"/>'
+        '<path d="M13.5 10v2.5a1 1 0 0 1-1 1H10"/>'
+        '<path d="M6 13.5H3.5a1 1 0 0 1-1-1V10"/></svg>'
+    ),
+    "fullscreen_exit": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6 2.5V5a1 1 0 0 1-1 1H2.5"/>'
+        '<path d="M13.5 6H11a1 1 0 0 1-1-1V2.5"/>'
+        '<path d="M10 13.5V11a1 1 0 0 1 1-1h2.5"/>'
+        '<path d="M2.5 10H5a1 1 0 0 1 1 1v2.5"/></svg>'
+    ),
+    "save": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3.25 2.5h7.1l3.15 3.15V12.5a1 1 0 0 1-1 1H3.5'
+        'a1 1 0 0 1-1-1v-9a1 1 0 0 1 .75-.97z"/>'
+        '<path d="M5 2.5h5v3H5z"/>'
+        '<rect x="5" y="8.25" width="6" height="5.25" rx="0.5"/></svg>'
+    ),
+    "wrench": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M11.6 2.6a3 3 0 0 0-3.85 3.85l-4.9 4.9a1.25 1.25 0 0 0 '
+        '1.77 1.77l4.9-4.9a3 3 0 0 0 3.85-3.85l-1.9 1.9-1.47-.3-.3-1.47z"/></svg>'
+    ),
+    "undo": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6 4L3 7l3 3"/>'
+        '<path d="M3 7h6a3.5 3.5 0 0 1 0 7H5.5"/></svg>'
+    ),
 }
 
 
@@ -329,6 +459,7 @@ def render_header_html(
     workspace_name: Optional[str] = None,
     theme_btn_id: Optional[str] = None,
     dark_mode: bool = False,
+    fullscreen_btn_id: Optional[str] = None,
 ) -> str:
     """Render the standard widget header as HTML.
 
@@ -343,8 +474,13 @@ def render_header_html(
     theme_btn_id : str, default=None
         If provided, includes a light/dark theme toggle button with this
         DOM id. Pair with :func:`theme_toggle_script` to wire up behavior.
+        The theme button is always rendered as the rightmost control.
     dark_mode : bool, default=False
         Controls the initial icon shown on the theme toggle button.
+    fullscreen_btn_id : str, default=None
+        If provided, includes a full-screen toggle button with this DOM id,
+        placed immediately to the left of the theme toggle button. Pair with
+        :func:`fullscreen_toggle_script` to wire up behavior.
 
     Returns
     -------
@@ -368,6 +504,15 @@ def render_header_html(
 
     parts.append("</div>")  # titlewrap
 
+    if fullscreen_btn_id:
+        fs_icon = ICONS["fullscreen"]
+        parts.append(
+            f'<button type="button" class="sl-theme-btn" id="{fullscreen_btn_id}" '
+            f'title="Toggle full screen" aria-label="Toggle full screen">'
+            f"{fs_icon}</button>"
+        )
+
+    # The theme button is appended last so it is always the rightmost control.
     if theme_btn_id:
         icon = ICONS["sun"] if dark_mode else ICONS["moon"]
         label = "Switch to light mode" if dark_mode else "Switch to dark mode"
@@ -427,6 +572,129 @@ def theme_toggle_script(
         root.classList.toggle({dark_class!r});
         render();
     }});
+    render();
+}})();
+</script>
+"""
+
+
+def fullscreen_toggle_script(
+    btn_id: str,
+    root_selector: str,
+    fs_class: str = "sl-fs",
+) -> str:
+    """Return a small JS snippet that wires a full-screen toggle button.
+
+    Clicking the button requests the native Fullscreen API on the widget root
+    (so it truly fills the screen where the host permits it) and toggles
+    ``fs_class`` on the root as a CSS-overlay fallback for hosts that reject the
+    native request.
+
+    The native request is issued directly in the click handler, before any DOM
+    mutation, so the browser's user-activation requirement is satisfied (moving
+    the element around beforehand can cause the request to be silently
+    rejected). A sized placeholder is inserted to reserve the widget's original
+    footprint so an auto-height output iframe (VS Code / Fabric) does not
+    collapse — which would otherwise clip the overlay fallback and make the UI
+    appear to vanish.
+
+    The button icon swaps between the enter/exit glyphs and pressing
+    ``Escape`` exits.
+
+    Parameters
+    ----------
+    btn_id : str
+        The DOM id of the full-screen toggle button.
+    root_selector : str
+        A CSS selector for the root element to expand (e.g. ``".vpx-abc123"``).
+    fs_class : str, default="sl-fs"
+        The CSS class that activates the full-screen overlay on the root
+        element. The caller must define what this class does in its own CSS
+        (typically ``position: fixed; inset: 0``).
+
+    Returns
+    -------
+    str
+        A ``<script>`` block ready to be inserted into the rendered HTML.
+    """
+    fs = ICONS["fullscreen"].replace("`", "\\`")
+    fsx = ICONS["fullscreen_exit"].replace("`", "\\`")
+    return f"""
+<script>
+(function() {{
+    var btn = document.getElementById({btn_id!r});
+    if (!btn) return;
+    var root = document.querySelector({root_selector!r});
+    if (!root) return;
+    var FS = `{fs}`;
+    var FSX = `{fsx}`;
+    var placeholder = null;
+    function isOn() {{ return root.classList.contains({fs_class!r}); }}
+    function render() {{
+        btn.innerHTML = isOn() ? FSX : FS;
+        var label = isOn() ? 'Exit full screen' : 'Toggle full screen';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+    }}
+    function setFs(on) {{
+        if (on === isOn()) return;
+        if (on) {{
+            // Reserve the widget's original footprint with a sized placeholder
+            // so an auto-height output (VS Code / Fabric render static HTML in
+            // an auto-sizing iframe) does not collapse to zero height when the
+            // widget leaves normal flow — which would clip the overlay and make
+            // the UI vanish. The widget is NOT re-parented: moving it in the
+            // DOM disturbs the user activation that the native Fullscreen API
+            // requires, which prevented true fullscreen.
+            var rect = root.getBoundingClientRect();
+            placeholder = document.createElement('div');
+            placeholder.setAttribute('aria-hidden', 'true');
+            placeholder.style.height = rect.height + 'px';
+            placeholder.style.width = '100%';
+            if (root.parentNode) root.parentNode.insertBefore(placeholder, root.nextSibling);
+            root.classList.add({fs_class!r});
+        }} else {{
+            root.classList.remove({fs_class!r});
+            if (placeholder && placeholder.parentNode) {{
+                placeholder.parentNode.removeChild(placeholder);
+            }}
+            placeholder = null;
+        }}
+        render();
+    }}
+    function requestNative() {{
+        // Request true (native) fullscreen directly in the click gesture and
+        // before any DOM mutation, so the browser honors the user activation.
+        // Notebook output frames generally carry allow="fullscreen"; when the
+        // request is rejected the CSS overlay applied by setFs() is the
+        // guaranteed fallback.
+        var req = root.requestFullscreen || root.webkitRequestFullscreen
+            || root.mozRequestFullScreen || root.msRequestFullscreen;
+        if (req) {{
+            try {{ var pr = req.call(root); if (pr && pr.catch) pr.catch(function() {{}}); }}
+            catch (e) {{ /* native fullscreen unavailable; overlay covers it */ }}
+        }}
+    }}
+    function exitNative() {{
+        var ex = document.exitFullscreen || document.webkitExitFullscreen
+            || document.mozCancelFullScreen || document.msExitFullscreen;
+        if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {{
+            try {{ var pe = ex.call(document); if (pe && pe.catch) pe.catch(function() {{}}); }}
+            catch (e) {{}}
+        }}
+    }}
+    btn.addEventListener('click', function() {{
+        if (isOn()) {{ exitNative(); setFs(false); }}
+        else {{ requestNative(); setFs(true); }}
+    }});
+    // If the user leaves native fullscreen (Esc / F11), drop the overlay too.
+    function onFsChange() {{
+        var nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!nativeOn && isOn()) setFs(false);
+    }}
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape' && isOn()) {{ exitNative(); setFs(false); }} }});
     render();
 }})();
 </script>

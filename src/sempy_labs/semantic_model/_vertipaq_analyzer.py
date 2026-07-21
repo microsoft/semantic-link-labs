@@ -32,6 +32,7 @@ from sempy_labs._ui_components import (
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
 )
 
 
@@ -1189,6 +1190,7 @@ def visualize_vertipaq(
     uid = uuid.uuid4().hex[:8]
     root_selector = f".vpx-{uid}"
     theme_btn_id = f"vpx-theme-{uid}"
+    fullscreen_btn_id = f"vpx-fs-{uid}"
     # Scope the shared header CSS under the root selector so its rules win
     # against notebook host styles (e.g. Jupyter's ``.jp-RenderedHTMLCommon
     # button`` rules that would otherwise override the theme toggle
@@ -1234,6 +1236,39 @@ def visualize_vertipaq(
     }}
     .vpx-{uid}.vpx-dark {{
         {_UI_DARK_VARS}
+    }}
+    /* ── Fullscreen overlay ── */
+    .vpx-{uid}.vpx-fs {{
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    /* Native fullscreen (when the host grants it) — fill the screen and drop
+       the framing chrome. */
+    .vpx-{uid}:fullscreen,
+    .vpx-{uid}:-webkit-full-screen {{
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    .vpx-{uid}.vpx-fs .vpx-container {{
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 100%;
+    }}
+    .vpx-{uid}.vpx-fs .vpx-table-wrap {{
+        max-height: calc(100vh - 260px);
     }}
     .vpx-{uid} *, .vpx-{uid} *::before, .vpx-{uid} *::after {{
         box-sizing: border-box;
@@ -1459,7 +1494,7 @@ def visualize_vertipaq(
     .vpx-{uid} thead {{
         position: sticky;
         top: 0;
-        z-index: 2;
+        z-index: 3;
     }}
     .vpx-{uid} thead th {{
         padding: 10px 20px 10px 16px;
@@ -1565,6 +1600,39 @@ def visualize_vertipaq(
         opacity: 0.5;
     }}
 
+    /* ── Frozen (sticky) leading columns ── */
+    /* Frozen cells must be fully opaque so the columns scrolled underneath
+       them are hidden. The generic row/zebra rule and the translucent hover
+       background would otherwise let the scrolled cells show through, so set
+       solid background-colors here for every row state with a selector that
+       out-specifies the row rules. */
+    .vpx-{uid} th.vpx-freeze,
+    .vpx-{uid} td.vpx-freeze {{
+        position: sticky;
+        left: 0;
+        background-color: var(--vpx-bg);
+    }}
+    .vpx-{uid} tbody tr:nth-child(even) td.vpx-freeze {{
+        background-color: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} tbody tr:hover td.vpx-freeze {{
+        background-color: var(--vpx-bg-secondary);
+    }}
+    /* Above the scrolled body cells (a data-bar cell's .vpx-bar-value uses
+       z-index 1) but below the sticky header (z-index 3) so the top-left
+       corner still stacks correctly. */
+    .vpx-{uid} tbody td.vpx-freeze {{
+        z-index: 2;
+    }}
+    .vpx-{uid} thead th.vpx-freeze {{
+        background-color: var(--vpx-bg-secondary);
+        z-index: 5;
+    }}
+    .vpx-{uid} th.vpx-freeze-edge,
+    .vpx-{uid} td.vpx-freeze-edge {{
+        box-shadow: inset -1px 0 0 var(--vpx-border-strong);
+    }}
+
     /* ── Empty state ── */
     .vpx-{uid} .vpx-empty {{
         text-align: center;
@@ -1587,6 +1655,7 @@ def visualize_vertipaq(
         workspace_name=workspace_name,
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
+        fullscreen_btn_id=fullscreen_btn_id,
     )
 
     html_parts = []
@@ -1655,6 +1724,13 @@ def visualize_vertipaq(
         "Relationships": ["Used Size"],
         "Partitions": ["Record Count"],
         "Hierarchies": ["Used Size"],
+    }
+
+    # Leading columns to freeze (sticky) per tab so the key identifier
+    # column(s) stay visible when the table is scrolled horizontally.
+    freeze_columns = {
+        "Tables": ["Table Name"],
+        "Columns": ["Table Name", "Column Name"],
     }
 
     # Tab bar
@@ -1730,6 +1806,20 @@ def visualize_vertipaq(
                 if df[col].dtype.kind in ("i", "f", "u"):
                     numeric_cols.add(col)
 
+            # Leading columns frozen (sticky) for this tab. They must be
+            # contiguous from the left; the last one gets an edge separator.
+            freeze_cols = freeze_columns.get(title, [])
+            freeze_set = [c for c in df.columns if c in freeze_cols]
+            freeze_edge = freeze_set[-1] if freeze_set else None
+
+            def _freeze_classes(col):
+                if col not in freeze_set:
+                    return []
+                cls = ["vpx-freeze"]
+                if col == freeze_edge:
+                    cls.append("vpx-freeze-edge")
+                return cls
+
             # Header
             presort_col = default_sort.get(title) if default_sort else None
             html_parts.append("<thead><tr>")
@@ -1737,10 +1827,11 @@ def visualize_vertipaq(
                 tt = tooltip_lookup.get((vw, col), "")
                 num_cls = " vpx-numeric" if col in numeric_cols else ""
                 sort_cls = " vpx-sort-desc" if col == presort_col else ""
+                freeze_cls = "".join(f" {c}" for c in _freeze_classes(col))
                 tip_attr = f' title="{tt}"' if tt else ""
                 arrow = "&#x25BC;" if col == presort_col else "&#x25B2;"
                 html_parts.append(
-                    f'<th class="{(num_cls + sort_cls).strip()}"{tip_attr} '
+                    f'<th class="{(num_cls + sort_cls + freeze_cls).strip()}"{tip_attr} '
                     f'onclick="vpxSort_{uid}(this)">'
                     f'{col}<span class="vpx-sort-arrow">{arrow}</span>'
                     f'<div class="vpx-resize-handle" '
@@ -1779,6 +1870,7 @@ def visualize_vertipaq(
                         cls_parts.append("vpx-numeric")
                     if is_bar:
                         cls_parts.append("vpx-bar-cell")
+                    cls_parts.extend(_freeze_classes(col))
                     cls_attr = f' class="{" ".join(cls_parts)}"' if cls_parts else ""
                     if is_bar and cell_val:
                         try:
@@ -1826,7 +1918,11 @@ def visualize_vertipaq(
             btn.classList.add('vpx-active');
             container.querySelectorAll('.vpx-panel').forEach(function(p) {{ p.classList.remove('vpx-visible'); }});
             var target = container.querySelector('#' + btn.getAttribute('data-vpx-target'));
-            if (target) target.classList.add('vpx-visible');
+            if (target) {{
+                target.classList.add('vpx-visible');
+                var ft = target.querySelector('table');
+                if (ft) requestAnimationFrame(function() {{ window.vpxUpdateFreeze_{uid}(ft); }});
+            }}
         }};
 
         /* Filtering */
@@ -1878,11 +1974,13 @@ def visualize_vertipaq(
                 var newW = Math.max(minW, startW + diff);
                 th.style.width = newW + 'px';
                 th.style.minWidth = newW + 'px';
+                window.vpxUpdateFreeze_{uid}(table);
             }}
             function onUp() {{
                 handle.classList.remove('vpx-resizing');
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                window.vpxUpdateFreeze_{uid}(table);
                 setTimeout(function() {{ _vpxResizing_{uid} = false; }}, 0);
             }}
             document.addEventListener('mousemove', onMove);
@@ -1940,6 +2038,37 @@ def visualize_vertipaq(
             }});
         }};
 
+        /* Frozen (sticky) leading columns: set each frozen cell's left offset
+           to the cumulative width of the frozen columns before it. Recomputed
+           on tab switch and column resize since widths can change. */
+        window.vpxUpdateFreeze_{uid} = function(table) {{
+            var headRow = table.querySelector('thead tr');
+            if (!headRow) return;
+            var ths = Array.prototype.slice.call(headRow.children);
+            var bodyRows = table.querySelectorAll('tbody tr');
+            var offset = 0;
+            for (var i = 0; i < ths.length; i++) {{
+                var th = ths[i];
+                if (!th.classList.contains('vpx-freeze')) continue;
+                var left = offset + 'px';
+                th.style.left = left;
+                (function(idx, lv) {{
+                    bodyRows.forEach(function(tr) {{
+                        var cell = tr.children[idx];
+                        if (cell) cell.style.left = lv;
+                    }});
+                }})(i, left);
+                offset += th.offsetWidth;
+            }}
+        }};
+
+        /* Initialize frozen columns for the currently visible panel. */
+        requestAnimationFrame(function() {{
+            document.querySelectorAll('.vpx-{uid} .vpx-panel.vpx-visible table').forEach(function(t) {{
+                window.vpxUpdateFreeze_{uid}(t);
+            }});
+        }});
+
 
     }})();
     </script>
@@ -1951,7 +2080,13 @@ def visualize_vertipaq(
         dark_class="vpx-dark",
     )
 
-    display(HTML(styles + "\n".join(html_parts) + script + theme_script))
+    fullscreen_script = _ui_fullscreen_toggle_script(
+        btn_id=fullscreen_btn_id,
+        root_selector=root_selector,
+        fs_class="vpx-fs",
+    )
+
+    display(HTML(styles + "\n".join(html_parts) + script + theme_script + fullscreen_script))
 
 
 @log
