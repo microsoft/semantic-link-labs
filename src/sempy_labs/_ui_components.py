@@ -585,18 +585,18 @@ def fullscreen_toggle_script(
 ) -> str:
     """Return a small JS snippet that wires a full-screen toggle button.
 
-    Clicking the button re-parents the widget root to ``<body>`` and toggles
-    ``fs_class`` on it (a CSS overlay that pins the widget to the viewport).
+    Clicking the button requests the native Fullscreen API on the widget root
+    (so it truly fills the screen where the host permits it) and toggles
+    ``fs_class`` on the root as a CSS-overlay fallback for hosts that reject the
+    native request.
 
-    The re-parenting is essential: notebook hosts (Jupyter, VS Code, Fabric)
-    routinely wrap cell output in ancestors that use ``transform`` or
-    ``overflow: hidden``. A ``position: fixed`` overlay is positioned/clipped
-    relative to the nearest transformed ancestor rather than the viewport, so
-    without re-parenting the overlay can render offscreen or zero-sized and the
-    UI appears to vanish. Moving the root to ``<body>`` (which has no such
-    ancestor) makes the fixed overlay reliably cover the screen. The native
-    Fullscreen API is intentionally *not* used because it is frequently
-    rejected in sandboxed notebook iframes and can collapse the element.
+    The native request is issued directly in the click handler, before any DOM
+    mutation, so the browser's user-activation requirement is satisfied (moving
+    the element around beforehand can cause the request to be silently
+    rejected). A sized placeholder is inserted to reserve the widget's original
+    footprint so an auto-height output iframe (VS Code / Fabric) does not
+    collapse — which would otherwise clip the overlay fallback and make the UI
+    appear to vanish.
 
     The button icon swaps between the enter/exit glyphs and pressing
     ``Escape`` exits.
@@ -640,47 +640,53 @@ def fullscreen_toggle_script(
         if (on === isOn()) return;
         if (on) {{
             // Reserve the widget's original footprint with a sized placeholder
-            // before removing it from normal flow. Static-HTML outputs are
-            // rendered in an auto-height iframe (VS Code / Fabric); without the
-            // placeholder the iframe collapses to zero height once the widget
-            // goes position:fixed, which clips the overlay and makes the UI
-            // appear to vanish. Then portal the widget to <body> (so a
-            // transformed/overflow ancestor cannot clip it) and pin it.
+            // so an auto-height output (VS Code / Fabric render static HTML in
+            // an auto-sizing iframe) does not collapse to zero height when the
+            // widget leaves normal flow — which would clip the overlay and make
+            // the UI vanish. The widget is NOT re-parented: moving it in the
+            // DOM disturbs the user activation that the native Fullscreen API
+            // requires, which prevented true fullscreen.
             var rect = root.getBoundingClientRect();
             placeholder = document.createElement('div');
             placeholder.setAttribute('aria-hidden', 'true');
             placeholder.style.height = rect.height + 'px';
             placeholder.style.width = '100%';
-            if (root.parentNode) root.parentNode.insertBefore(placeholder, root);
-            document.body.appendChild(root);
+            if (root.parentNode) root.parentNode.insertBefore(placeholder, root.nextSibling);
             root.classList.add({fs_class!r});
-            // Best-effort true (native) fullscreen so the widget fills the
-            // whole screen where the host allows it. The CSS overlay above is
-            // the guaranteed fallback when the native request is rejected
-            // (e.g. a sandboxed output iframe without fullscreen permission).
-            try {{
-                var req = root.requestFullscreen || root.webkitRequestFullscreen
-                    || root.mozRequestFullScreen || root.msRequestFullscreen;
-                if (req) {{ var pr = req.call(root); if (pr && pr.catch) pr.catch(function() {{}}); }}
-            }} catch (e) {{ /* native fullscreen unavailable; overlay covers it */ }}
         }} else {{
-            try {{
-                var ex = document.exitFullscreen || document.webkitExitFullscreen
-                    || document.mozCancelFullScreen || document.msExitFullscreen;
-                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {{
-                    var pe = ex.call(document); if (pe && pe.catch) pe.catch(function() {{}});
-                }}
-            }} catch (e) {{}}
             root.classList.remove({fs_class!r});
             if (placeholder && placeholder.parentNode) {{
-                placeholder.parentNode.insertBefore(root, placeholder);
                 placeholder.parentNode.removeChild(placeholder);
             }}
             placeholder = null;
         }}
         render();
     }}
-    btn.addEventListener('click', function() {{ setFs(!isOn()); }});
+    function requestNative() {{
+        // Request true (native) fullscreen directly in the click gesture and
+        // before any DOM mutation, so the browser honors the user activation.
+        // Notebook output frames generally carry allow="fullscreen"; when the
+        // request is rejected the CSS overlay applied by setFs() is the
+        // guaranteed fallback.
+        var req = root.requestFullscreen || root.webkitRequestFullscreen
+            || root.mozRequestFullScreen || root.msRequestFullscreen;
+        if (req) {{
+            try {{ var pr = req.call(root); if (pr && pr.catch) pr.catch(function() {{}}); }}
+            catch (e) {{ /* native fullscreen unavailable; overlay covers it */ }}
+        }}
+    }}
+    function exitNative() {{
+        var ex = document.exitFullscreen || document.webkitExitFullscreen
+            || document.mozCancelFullScreen || document.msExitFullscreen;
+        if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {{
+            try {{ var pe = ex.call(document); if (pe && pe.catch) pe.catch(function() {{}}); }}
+            catch (e) {{}}
+        }}
+    }}
+    btn.addEventListener('click', function() {{
+        if (isOn()) {{ exitNative(); setFs(false); }}
+        else {{ requestNative(); setFs(true); }}
+    }});
     // If the user leaves native fullscreen (Esc / F11), drop the overlay too.
     function onFsChange() {{
         var nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -688,7 +694,7 @@ def fullscreen_toggle_script(
     }}
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
-    document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape' && isOn()) setFs(false); }});
+    document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape' && isOn()) {{ exitNative(); setFs(false); }} }});
     render();
 }})();
 </script>
