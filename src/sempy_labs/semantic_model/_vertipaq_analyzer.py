@@ -1252,6 +1252,17 @@ def visualize_vertipaq(
         overflow: auto;
         background: var(--vpx-bg);
     }}
+    /* Native fullscreen (when the host grants it) — fill the screen and drop
+       the framing chrome. */
+    .vpx-{uid}:fullscreen,
+    .vpx-{uid}:-webkit-full-screen {{
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
     .vpx-{uid}.vpx-fs .vpx-container {{
         border: none;
         border-radius: 0;

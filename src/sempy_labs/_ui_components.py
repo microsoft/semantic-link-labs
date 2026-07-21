@@ -654,7 +654,23 @@ def fullscreen_toggle_script(
             if (root.parentNode) root.parentNode.insertBefore(placeholder, root);
             document.body.appendChild(root);
             root.classList.add({fs_class!r});
+            // Best-effort true (native) fullscreen so the widget fills the
+            // whole screen where the host allows it. The CSS overlay above is
+            // the guaranteed fallback when the native request is rejected
+            // (e.g. a sandboxed output iframe without fullscreen permission).
+            try {{
+                var req = root.requestFullscreen || root.webkitRequestFullscreen
+                    || root.mozRequestFullScreen || root.msRequestFullscreen;
+                if (req) {{ var pr = req.call(root); if (pr && pr.catch) pr.catch(function() {{}}); }}
+            }} catch (e) {{ /* native fullscreen unavailable; overlay covers it */ }}
         }} else {{
+            try {{
+                var ex = document.exitFullscreen || document.webkitExitFullscreen
+                    || document.mozCancelFullScreen || document.msExitFullscreen;
+                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {{
+                    var pe = ex.call(document); if (pe && pe.catch) pe.catch(function() {{}});
+                }}
+            }} catch (e) {{}}
             root.classList.remove({fs_class!r});
             if (placeholder && placeholder.parentNode) {{
                 placeholder.parentNode.insertBefore(root, placeholder);
@@ -665,6 +681,13 @@ def fullscreen_toggle_script(
         render();
     }}
     btn.addEventListener('click', function() {{ setFs(!isOn()); }});
+    // If the user leaves native fullscreen (Esc / F11), drop the overlay too.
+    function onFsChange() {{
+        var nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!nativeOn && isOn()) setFs(false);
+    }}
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
     document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape' && isOn()) setFs(false); }});
     render();
 }})();
