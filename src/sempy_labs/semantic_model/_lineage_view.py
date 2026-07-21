@@ -337,6 +337,7 @@ function render({ model, el }) {
     let rebindOpen = false;
     let rebindWs = "";
     let rebindDs = "";
+    let workspacesRequested = false;  // full tenant workspace list fetched once
     let panelWidth = 360;             // side panel width (px)
     let panelCollapsed = false;       // side panel collapsed to a thin rail
     // Preserved graph scroll offset. viewKey tracks the layout+zoom the view
@@ -1057,8 +1058,17 @@ function render({ model, el }) {
         rebindOpen = true;
         rebindWs = model.get("workspace_id") || "";
         rebindDs = "";
+        ensureWorkspaces();
         ensureDatasets(rebindWs);
         renderAll();
+    }
+
+    function ensureWorkspaces() {
+        // The full tenant workspace list is only needed for the rebind picker,
+        // so it is fetched on demand (once) rather than at initial load.
+        if (workspacesRequested) return;
+        workspacesRequested = true;
+        dispatch({ action: "list_workspaces" });
     }
 
     function ensureDatasets(wsId) {
@@ -1849,11 +1859,11 @@ def lineage_view(
         initial_reports = []
         initial_status = {"message": f"Error loading lineage: {e}", "kind": "error"}
 
-    # Valid model objects offered as fix targets in the report detail panel.
-    try:
-        initial_model_objects = _model_objects_full()[4]
-    except Exception:
-        initial_model_objects = []
+    # Valid model objects (fix targets) require a TOM connection to the model,
+    # so they are loaded lazily on the first analysis rather than at load time.
+    # Fixes can only be staged after analysing, and _build_reports(analyze=True)
+    # repopulates model_objects, so nothing is lost by deferring this.
+    initial_model_objects = []
 
     class LineageViewWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
@@ -1882,7 +1892,9 @@ def lineage_view(
         reports=initial_reports,
         analyzed=False,
         model_objects=initial_model_objects,
-        workspaces=_list_workspaces_payload(),
+        # Seed with the current workspace for an immediate default; the full
+        # tenant workspace list is fetched lazily when the rebind modal opens.
+        workspaces=[{"id": ws_id, "name": ws_name or ""}],
         datasets={},
         status=initial_status,
         pending_action={},
@@ -1916,6 +1928,9 @@ def lineage_view(
                     new_map = dict(widget.datasets)
                     new_map[str(target_ws)] = _list_datasets_payload(target_ws)
                     widget.datasets = new_map
+
+            elif action == "list_workspaces":
+                widget.workspaces = _list_workspaces_payload()
 
             elif action == "rebind":
                 report_ids = data.get("report_ids") or []
