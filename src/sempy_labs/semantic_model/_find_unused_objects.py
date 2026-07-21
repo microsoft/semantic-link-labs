@@ -396,11 +396,9 @@ def find_unused_objects(
     dark_mode: bool = False,
 ) -> Optional[pd.DataFrame]:
     """
-    Identifies unused objects (tables, columns and measures) in a semantic model.
+    Identifies used and unused objects (tables, columns and measures) in a semantic model.
 
-    Replicates the 'Find unused objects' subtool of the Semantic Model Explorer
-    in the `Fabric Tools app <https://github.com/m-kovalsky/Two>`_. Object usage
-    is determined by scoring the DAX queries that reference the model (either
+    Object usage is determined by scoring the DAX queries that reference the model (either
     captured by workspace monitoring, or reconstructed from the model's
     downstream reports), expanding each direct reference through the model's
     calculation dependencies, and counting how many queries/reports used each
