@@ -5417,28 +5417,28 @@ class TOMWrapper:
         entity_name: Optional[str] = None,
         schema: Optional[str] = None,
         source: Optional[str | UUID] = None,
-        source_type: str = "Lakehouse",
+        source_type: Literal["Lakehouse", "Warehouse"] = "Lakehouse",
         source_workspace: Optional[str | UUID] = None,
     ):
         """
         Converts a Direct Lake table's partition to an import-mode partition.
 
-        The entity_name and schema parameters default to using the existing values in the Direct Lake partition. The source, source_type, and source_workspace
-        parameters do not default to existing values. This is because it may not always be possible to reconcile the source and its workspace.
+        Only specify the table_name parameter. The rest of the parameters are no longer required as the function will automatically retrieve the necessary information from the existing Direct Lake partition.
+        Note that after running this function, you will need to go to the semantic model settings in the Power BI service and update the gateway/connection of the import-mode source.
 
         Parameters
         ----------
         table_name : str
             The table name.
-        entity_name : str, default=None
+        entity_name : typing.Optional[str] = None
             The entity name of the Direct Lake partition (the table name in the source).
-        schema : str, default=None
+        schema : typing.Optional[str], default=None
             The schema of the source table. Defaults to None which resolves to the existing schema.
-        source : str | uuid.UUID, default=None
+        source : typing.Optional[str | uuid.UUID] = None
             The source name or ID. This is the name or ID of the Lakehouse or Warehouse.
-        source_type : str, default="Lakehouse"
+        source_type : typing.Literal["Lakehouse", "Warehouse"] = "Lakehouse"
             The source type (i.e. "Lakehouse" or "Warehouse").
-        source_workspace: str | uuid.UUID, default=None
+        source_workspace: typing.Optional[str | uuid.UUID] = None
             The workspace name or ID of the source. This is the workspace in which the Lakehouse or Warehouse exists.
             Defaults to None which resolves to the workspace of the attached lakehouse
             or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -5451,74 +5451,42 @@ class TOMWrapper:
         if p.Mode != TOM.ModeType.DirectLake:
             print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
             return
-
-        partition_name = p.Name
-        partition_entity_name = entity_name or p.Source.EntityName
-        partition_schema = schema or p.Source.SchemaName
-
-        # Update name of the Direct Lake partition (will be removed later)
-        t.Partitions[partition_name].Name = f"{partition_name}_remove"
-
-        source_workspace_id = resolve_workspace_id(workspace=source_workspace)
-        if source_type == "Lakehouse":
-            item_id = resolve_lakehouse_id(
-                lakehouse=source, workspace=source_workspace_id
-            )
+        
+        p.Name = p.Name + "_Remove"
+    
+        source_table = p.Source.EntityName
+        source_schema = p.Source.SchemaName or 'dbo'
+        expr_name = p.Source.ExpressionSource.Name
+        sources = self.get_direct_lake_sources()
+        s = next(s for s in sources if s.get('expressionName') == expr_name)
+        if s.get('itemType') == 'Lakehouse':
+            expr = f"""
+                let
+                    Source = Lakehouse.Contents(null),
+                    Workspace = Source{{[workspaceId={s.get('workspaceId')}]}}[Data],
+                    Artifact = Workspace{{[lakehouseId={s.get('itemId')}]}}[Data],
+                    Table = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]
+                in
+                    Table"""
+        elif s.get('itemType') == 'Warehouse':
+            expr = f"""
+                let
+                    Source = Fabric.Warehouse(),
+                    Workspace = Source{{[workspaceId={s.get('workspaceId')}]}}[Data],
+                    Warehouse = Workspace{{[warehouseId={s.get('itemId')}]}}[Data],
+                    Table = Warehouse{{[Schema="{source_schema}", Item="{source_table}"]}}[Data]
+                in
+                    Table
+                """
         else:
-            item_id = resolve_item_id(
-                item=source, type=source_type, workspace=source_workspace_id
-            )
-
-        column_pairs = []
-        m_filter = None
-        for c in t.Columns:
-            if c.Type == TOM.ColumnType.Data:
-                if c.Name != c.SourceColumn:
-                    column_pairs.append((c.SourceColumn, c.Name))
-
-        if column_pairs:
-            m_filter = (
-                f'#"Renamed Columns" = Table.RenameColumns(ToDelta, {{'
-                + ", ".join([f'{{"{old}", "{new}"}}' for old, new in column_pairs])
-                + "})"
-            )
-
-        def _generate_m_expression(
-            workspace_id, artifact_id, artifact_type, table_name, schema_name, m_filter
-        ):
-            """
-            Generates the M expression for the import partition. Adds a rename step if any columns have been renamed in the model.
-            """
-
-            full_table_name = (
-                f"{schema_name}/{table_name}" if schema_name else table_name
-            )
-
-            code = f"""let\n\tSource = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/{workspace_id}/{artifact_id}", [HierarchicalNavigation=true]),
-        Tables = Source{{[Name = "Tables"]}}[Content],
-        ExpressionTable = Tables{{[Name = "{full_table_name}"]}}[Content],
-        ToDelta = DeltaLake.Table(ExpressionTable)"""
-            if m_filter is None:
-                code += "\n in\n\tToDelta"
-            else:
-                code += f',\n\t {m_filter} \n in\n\t#"Renamed Columns"'
-
-            return code
-
-        m_expression = _generate_m_expression(
-            source_workspace_id,
-            item_id,
-            source_type,
-            partition_entity_name,
-            partition_schema,
-            m_filter,
-        )
+            print(f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import mode.")
+            return
 
         # Add the import partition
         self.add_m_partition(
             table_name=table_name,
-            partition_name=f"{partition_name}",
-            expression=m_expression,
+            partition_name=table_name,
+            expression=expr,
             mode="Import",
         )
         # Remove the Direct Lake partition
