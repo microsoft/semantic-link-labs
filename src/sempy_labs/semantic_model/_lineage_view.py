@@ -346,6 +346,12 @@ function render({ model, el }) {
     const reports = () => model.get("reports") || [];
     const analyzed = () => !!model.get("analyzed");
     const busy = () => !!model.get("busy");
+    // Front-end-local "working" flag: flipped on the instant a button is
+    // clicked so the UI reacts immediately, without waiting for the back-end
+    // round-trip to set the synced "busy" trait. Cleared once the back-end
+    // reports a result (see the model change wiring below).
+    let busyLocal = false;
+    const working = () => busyLocal || busy();
     const modelObjects = () => model.get("model_objects") || [];
     const health = (r) => (!r.analyzed ? "error" : (r.invalidCount > 0 ? "broken" : "clean"));
     const fixKey = (rid, type, table, name) => `${rid}\u0000${type}\u0000${table}\u0000${name}`;
@@ -359,6 +365,10 @@ function render({ model, el }) {
         : type === "Hierarchy" ? ICON.hierarchy : ICON.report;
 
     function dispatch(payload) {
+        // Reflect activity immediately for snappy feedback, then re-render so
+        // the clicked button shows its working state before the round-trip
+        // completes.
+        busyLocal = true;
         model.set("pending_action", payload);
         // Guard against an undefined "run" (some notebook hosts do not seed
         // every synced trait into the front-end model): "undefined + 1" is NaN,
@@ -367,6 +377,7 @@ function render({ model, el }) {
         // nothing. Coercing to 0 keeps the counter a valid integer.
         model.set("run", (model.get("run") || 0) + 1);
         model.save_changes();
+        renderAll();
     }
 
     function saveFixes() {
@@ -451,14 +462,14 @@ function render({ model, el }) {
                 `<span class="slls-lv-sep">&middot;</span>${esc(model.get("workspace_name"))}</div>` +
             `</div>` +
             (stagedFixes.size > 0
-                ? `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-btn-icon" data-act="save" title="Save ${stagedFixes.size} staged fix${stagedFixes.size === 1 ? "" : "es"}" ${busy() ? "disabled" : ""}>` +
-                    `${busy() ? spinner() : ICON.save}</button>`
+                ? `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-btn-icon" data-act="save" title="Save ${stagedFixes.size} staged fix${stagedFixes.size === 1 ? "" : "es"}" ${working() ? "disabled" : ""}>` +
+                    `${working() ? spinner() : ICON.save}</button>`
                 : "") +
             (nPick > 0
                 ? `<button class="slls-lv-btn" data-act="open-rebind">${ICON.link}Rebind ${nPick}</button>`
                 : "") +
-            `<button class="slls-lv-btn slls-lv-btn-icon" data-act="refresh" title="Reload downstream reports" ${busy() ? "disabled" : ""}>` +
-                `${busy() ? spinner() : ICON.refresh}</button>` +
+            `<button class="slls-lv-btn slls-lv-btn-icon" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
+                `${working() ? spinner() : ICON.refresh}</button>` +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
@@ -757,8 +768,8 @@ function render({ model, el }) {
             `<div class="slls-lv-panel-sub"><span>${analyzed()
                 ? "Select a report to see its broken elements."
                 : "Analyze the reports to check for broken elements."}</span></div></div>` +
-            `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-panel-btn" data-act="panel-analyze" ${busy() ? "disabled" : ""}>` +
-            `${busy() ? spinner() : ICON.scan}${analyzed() ? "Re-analyze" : "Analyze"}</button>` +
+            `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-panel-btn" data-act="panel-analyze" ${working() ? "disabled" : ""}>` +
+            `${ICON.scan}${analyzed() ? "Re-analyze" : "Analyze"}${working() ? spinner() : ""}</button>` +
             collapseBtn();
         head.querySelector('[data-act="panel-analyze"]').onclick = () =>
             dispatch({ action: "analyze" });
@@ -1006,8 +1017,8 @@ function render({ model, el }) {
             `<select class="slls-lv-select" data-r="ds" ${ds === null ? "disabled" : ""}>${dsInner}</select></div>` +
             `<div class="slls-lv-modal-actions">` +
             `<button class="slls-lv-btn" data-r="cancel">Cancel</button>` +
-            `<button class="slls-lv-btn slls-lv-btn-primary" data-r="confirm" ${(!rebindDs || busy()) ? "disabled" : ""}>` +
-            `${busy() ? spinner() : ICON.link}Rebind</button></div>`;
+            `<button class="slls-lv-btn slls-lv-btn-primary" data-r="confirm" ${(!rebindDs || working()) ? "disabled" : ""}>` +
+            `${ICON.link}Rebind${working() ? spinner() : ""}</button></div>`;
 
         modal.querySelector('[data-r="ws"]').onchange = (e) => {
             rebindWs = e.target.value; rebindDs = ""; ensureDatasets(rebindWs); renderAll();
@@ -1082,18 +1093,20 @@ function render({ model, el }) {
     function attachGraphInteractions() { /* listeners attached during build */ }
 
     // ---------- Model change wiring ----------
-    model.on("change:reports", renderAll);
-    model.on("change:analyzed", renderAll);
-    model.on("change:busy", renderAll);
-    model.on("change:status", renderAll);
+    // Any result arriving from the back-end also clears the local working flag.
+    function settle() { busyLocal = false; renderAll(); }
+    model.on("change:reports", settle);
+    model.on("change:analyzed", settle);
+    model.on("change:busy", settle);
+    model.on("change:status", settle);
     model.on("change:workspaces", () => { if (rebindOpen) renderAll(); });
-    model.on("change:datasets", () => { if (rebindOpen) renderAll(); });
+    model.on("change:datasets", () => { busyLocal = false; if (rebindOpen) renderAll(); });
     model.on("change:model_objects", () => { if (selectedId) renderAll(); });
     model.on("change:rebind_done", () => {
-        rebindOpen = false; picked = new Set(); selectedId = null; renderAll();
+        busyLocal = false; rebindOpen = false; picked = new Set(); selectedId = null; renderAll();
     });
     model.on("change:fixes_saved", () => {
-        stagedFixes = new Map(); renderAll();
+        busyLocal = false; stagedFixes = new Map(); renderAll();
     });
 
     renderAll();
