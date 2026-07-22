@@ -429,6 +429,7 @@ _WIDGET_CSS = """
 .slls-mdl-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
 .slls-mdl-pill-ok { background: var(--slls-success-soft); color: var(--slls-success); }
 .slls-mdl-pill-no { background: var(--slls-danger-soft); color: var(--slls-danger); }
+.slls-mdl-pill-warn { background: var(--slls-orange-soft); color: var(--slls-orange); }
 
 .slls-mdl-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px 12px; text-align: center; color: var(--slls-text-secondary); }
 .slls-mdl-center svg { width: 40px; height: 40px; }
@@ -470,6 +471,28 @@ _WIDGET_CSS = """
 .slls-mdl-copybtn { position: absolute; top: 6px; right: 6px; z-index: 1; font-size: 11px; padding: 4px 10px; gap: 5px; }
 .slls-mdl-copybtn svg { width: 13px; height: 13px; }
 .slls-mdl-copywrap .slls-mdl-code { padding-right: 82px; }
+
+/* Code syntax highlighting (DAX / M / Python) */
+.slls-hl-com { color: #6e7781; font-style: italic; }
+.slls-hl-str { color: #0a3069; }
+.slls-hl-num { color: #0550ae; }
+.slls-hl-kw { color: #cf222e; }
+.slls-hl-fn { color: #8250df; }
+.slls-hl-ref { color: #953800; }
+.slls-mdl.slls-mdl-dark .slls-hl-com { color: #8b949e; }
+.slls-mdl.slls-mdl-dark .slls-hl-str { color: #a5d6ff; }
+.slls-mdl.slls-mdl-dark .slls-hl-num { color: #79c0ff; }
+.slls-mdl.slls-mdl-dark .slls-hl-kw { color: #ff7b72; }
+.slls-mdl.slls-mdl-dark .slls-hl-fn { color: #d2a8ff; }
+.slls-mdl.slls-mdl-dark .slls-hl-ref { color: #ffa657; }
+@media (prefers-color-scheme: dark) {
+    .slls-mdl.slls-mdl-auto .slls-hl-com { color: #8b949e; }
+    .slls-mdl.slls-mdl-auto .slls-hl-str { color: #a5d6ff; }
+    .slls-mdl.slls-mdl-auto .slls-hl-num { color: #79c0ff; }
+    .slls-mdl.slls-mdl-auto .slls-hl-kw { color: #ff7b72; }
+    .slls-mdl.slls-mdl-auto .slls-hl-fn { color: #d2a8ff; }
+    .slls-mdl.slls-mdl-auto .slls-hl-ref { color: #ffa657; }
+}
 """
 
 
@@ -501,6 +524,51 @@ function render({ model, el }) {
         return String(s ?? "").replace(/[&<>"']/g, (c) => ({
             "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
         }[c]));
+    }
+
+    // --- Lightweight syntax highlighting for DAX / M / Python code blocks ---
+    const HL_RULES = {
+        dax: [
+            { cls: "com", re: `//[^\\n]*|/\\*[\\s\\S]*?\\*/` },
+            { cls: "str", re: `"(?:[^"]|"")*"` },
+            { cls: "ref", re: `'(?:[^']|'')*'\\[[^\\]]*\\]|'(?:[^']|'')*'|\\[[^\\]]*\\]` },
+            { cls: "kw", re: `\\b(?:VAR|RETURN|EVALUATE|DEFINE|MEASURE|ORDER|BY|START|AT|TRUE|FALSE|NOT|IN|AND|OR)\\b` },
+            { cls: "fn", re: `[A-Za-z_][A-Za-z0-9_.]*(?=\\s*\\()` },
+            { cls: "num", re: `\\b\\d+(?:\\.\\d+)?\\b` },
+        ],
+        m: [
+            { cls: "com", re: `//[^\\n]*|/\\*[\\s\\S]*?\\*/` },
+            { cls: "str", re: `"(?:[^"]|"")*"` },
+            { cls: "ref", re: `#"(?:[^"]|"")*"` },
+            { cls: "kw", re: `\\b(?:let|in|each|if|then|else|true|false|null|type|meta|and|or|not|as|is|try|otherwise|error|section|shared)\\b` },
+            { cls: "fn", re: `[A-Za-z_][A-Za-z0-9_.]*(?=\\s*\\()` },
+            { cls: "num", re: `\\b\\d+(?:\\.\\d+)?\\b` },
+        ],
+        python: [
+            { cls: "com", re: `#[^\\n]*` },
+            { cls: "str", re: `"[^"]*"|'[^']*'` },
+            { cls: "kw", re: `\\b(?:import|from|as|def|return|class|for|while|if|elif|else|with|try|except|finally|None|True|False|and|or|not|in|is|lambda|yield|raise|pass|break|continue|global|nonlocal|assert|del)\\b` },
+            { cls: "fn", re: `[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()` },
+            { cls: "num", re: `\\b\\d+(?:\\.\\d+)?\\b` },
+        ],
+    };
+
+    function hlCode(code, lang) {
+        const src = String(code == null ? "" : code);
+        const rules = HL_RULES[lang];
+        if (!rules) return esc(src);
+        const re = new RegExp(rules.map((r) => "(" + r.re + ")").join("|"), "g");
+        let out = "", last = 0, m;
+        while ((m = re.exec(src)) !== null) {
+            if (m.index > last) out += esc(src.slice(last, m.index));
+            let gi = 1;
+            while (gi < m.length && m[gi] === undefined) gi++;
+            out += `<span class="slls-hl-${rules[gi - 1].cls}">${esc(m[0])}</span>`;
+            last = re.lastIndex;
+            if (re.lastIndex === m.index) re.lastIndex++;
+        }
+        if (last < src.length) out += esc(src.slice(last));
+        return out;
     }
 
     function applyTheme() {
@@ -621,8 +689,8 @@ function render({ model, el }) {
             out += `<div class="slls-mdl-note slls-mdl-note-err">${IC.alert}<div>This model already uses Direct Lake and cannot be migrated.</div></div>`;
         }
 
-        function detailsBlock(label, dax) {
-            return `<details class="slls-mdl-details"><summary>${esc(label)}</summary><div class="slls-mdl-code">${esc(dax || "")}</div></details>`;
+        function detailsBlock(label, code, lang) {
+            return `<details class="slls-mdl-details"><summary>${esc(label)}</summary><div class="slls-mdl-code">${hlCode(code || "", lang)}</div></details>`;
         }
 
         const changes = a.changes || [];
@@ -636,7 +704,7 @@ function render({ model, el }) {
             reshaped.forEach((c) => {
                 out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">${esc(c.kind)}</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
                 if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
-                if (c.expression) out += detailsBlock("View expression", c.expression);
+                if (c.expression) out += detailsBlock("View expression", c.expression, "m");
                 out += `</div>`;
             });
         }
@@ -650,10 +718,10 @@ function render({ model, el }) {
                 const refs = c.removedReferences || [];
                 if (refs.length > 0) {
                     out += `<div class="slls-mdl-removed"><span>Removed reference${refs.length === 1 ? "" : "s"}:</span>${refs.map((r) => `<span class="slls-mdl-refpill">${esc(r)}</span>`).join("")}</div>`;
-                    out += detailsBlock("View original DAX", c.originalExpression);
-                    out += detailsBlock("View updated DAX", c.expression);
+                    out += detailsBlock("View original DAX", c.originalExpression, "dax");
+                    out += detailsBlock("View updated DAX", c.expression, "dax");
                 } else if (c.expression) {
-                    out += detailsBlock("View DAX", c.expression);
+                    out += detailsBlock("View DAX", c.expression, "dax");
                 }
                 out += `</div>`;
             });
@@ -768,7 +836,7 @@ function render({ model, el }) {
         let out = `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>This is the plan for <b>${esc(model.get("new_model_name") || "")}</b>. ${p.pqt ? "A Power Query template (.pqt) will also be saved to the lakehouse to load the data." : "No data is moved — only the model structure is created."}</div></div>`;
         if (p.expression) {
             out += `<div class="slls-mdl-sec-title">Source connection (Power Query M)</div>`;
-            out += `<div class="slls-mdl-code">${esc(p.expression)}</div>`;
+            out += `<div class="slls-mdl-code">${hlCode(p.expression, "m")}</div>`;
         }
         const tables = p.tables || [];
         out += `<div class="slls-mdl-sec-title">Tables to create (${tables.length})</div>`;
@@ -802,6 +870,7 @@ function render({ model, el }) {
 
         out += `<div class="slls-mdl-sec-title">Load the data</div>`;
         if (r.pqt) {
+            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>Make sure <a href="https://www.microsoft.com/download/details.aspx?id=105222" target="_blank" rel="noopener noreferrer">OneLake file explorer</a> is installed and fully synced — it is needed to load the .pqt into a Dataflow Gen2.</div></div>`;
             out += `<ol class="slls-mdl-steplist">
                 <li>Open the target workspace in Fabric.</li>
                 <li>Choose <b>+ New item</b> and select <b>Dataflow Gen2</b>.</li>
@@ -812,7 +881,6 @@ function render({ model, el }) {
             out += `<ol class="slls-mdl-steplist">
                 <li>Load each table into the ${esc((r.sourceType || "lakehouse").toLowerCase())} as a delta table whose name matches the model's table (spaces become underscores).</li>
             </ol>`;
-            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>Make sure <a href="https://www.microsoft.com/download/details.aspx?id=105222" target="_blank" rel="noopener noreferrer">OneLake file explorer</a> is installed and fully synced before copying the delta tables.</div></div>`;
         }
 
         // Refresh the model — the wizard does not auto-refresh; the user runs
@@ -821,15 +889,24 @@ function render({ model, el }) {
         out += `<div class="slls-mdl-change-detail" style="margin-bottom:8px;">Once the data is loaded, refresh (reframe) the model by running this code:</div>`;
         out += `<div class="slls-mdl-copywrap">` +
             `<button class="slls-mdl-btn slls-mdl-copybtn" data-r="copy-refresh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>` +
-            `<div class="slls-mdl-code">${esc(r.refreshCode || "")}</div></div>`;
+            `<div class="slls-mdl-code">${hlCode(r.refreshCode || "", "python")}</div></div>`;
 
         const rows = r.validation || [];
         if (rows.length > 0) {
             out += `<div class="slls-mdl-sec-title">Migration validation</div>`;
             out += `<table class="slls-mdl-table"><thead><tr><th>Object type</th><th>Migrated</th><th>Total</th><th>Status</th></tr></thead><tbody>`;
             rows.forEach((v) => {
-                const ok = v.migrated >= v.total && v.total > 0;
-                out += `<tr><td>${esc(v.objectType)}</td><td>${v.migrated}</td><td>${v.total}</td><td>${v.total === 0 ? "—" : `<span class="slls-mdl-pill ${ok ? "slls-mdl-pill-ok" : "slls-mdl-pill-no"}">${ok ? "Complete" : "Partial"}</span>`}</td></tr>`;
+                let cell;
+                if (v.total === 0) {
+                    cell = "—";
+                } else if (v.migrated === 0) {
+                    cell = `<span class="slls-mdl-pill slls-mdl-pill-no">None</span>`;
+                } else if (v.migrated >= v.total) {
+                    cell = `<span class="slls-mdl-pill slls-mdl-pill-ok">Complete</span>`;
+                } else {
+                    cell = `<span class="slls-mdl-pill slls-mdl-pill-warn">Partial</span>`;
+                }
+                out += `<tr><td>${esc(v.objectType)}</td><td>${v.migrated}</td><td>${v.total}</td><td>${cell}</td></tr>`;
             });
             out += `</tbody></table>`;
         }
@@ -1637,6 +1714,7 @@ def migrate_to_direct_lake(
                     dataset=dataset_id,
                     workspace=workspace_id,
                     file_name=template_name,
+                    verbose=False,
                 )
                 pqt_file_name = f"{template_name}.pqt"
             except Exception as e:
@@ -1644,7 +1722,7 @@ def migrate_to_direct_lake(
 
         # 2) Create the blank Direct Lake model.
         create_blank_semantic_model(
-            dataset=new_name, workspace=target_ws, overwrite=True
+            dataset=new_name, workspace=target_ws, overwrite=True, verbose=False
         )
 
         # 3) Migrate tables/columns and dependent objects. Each step is
@@ -1667,6 +1745,7 @@ def migrate_to_direct_lake(
             new_dataset_workspace=target_ws,
             lakehouse=lakehouse,
             lakehouse_workspace=lakehouse_ws,
+            verbose=False,
         )
         _step(
             migrate_field_parameters,
@@ -1675,6 +1754,7 @@ def migrate_to_direct_lake(
             new_dataset=new_name,
             workspace=workspace_id,
             new_dataset_workspace=target_ws,
+            verbose=False,
         )
         _step(
             migrate_model_objects_to_semantic_model,
@@ -1683,6 +1763,7 @@ def migrate_to_direct_lake(
             new_dataset=new_name,
             workspace=workspace_id,
             new_dataset_workspace=target_ws,
+            verbose=False,
         )
 
         # 3b) Post-process the new model. Calculated tables (other than field
@@ -1726,6 +1807,7 @@ def migrate_to_direct_lake(
                 new_dataset=new_name,
                 workspace=workspace_id,
                 new_dataset_workspace=target_ws,
+                verbose=False,
             )
             validation = _validation_to_rows(dfV)
         except Exception as e:

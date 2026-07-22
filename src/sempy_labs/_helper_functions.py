@@ -25,6 +25,27 @@ import sempy_labs._utils as utils
 import unicodedata
 
 
+def _quiet_if_not_verbose(func):
+    """Decorator adding a keyword-only ``verbose`` parameter (default True).
+
+    When the decorated function is called with ``verbose=False``, any text it
+    (or a nested call) prints to stdout is suppressed. This lets interactive
+    UIs run the migration/creation helpers silently, while the default
+    behavior (``verbose=True``) is unchanged for direct callers.
+    """
+    import contextlib
+    import io
+
+    @wraps(func)
+    def wrapper(*args, verbose: bool = True, **kwargs):
+        if verbose:
+            return func(*args, **kwargs)
+        with contextlib.redirect_stdout(io.StringIO()):
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
 def _build_url(url: str, params: dict) -> str:
     """
     Build the url with a list of parameters
