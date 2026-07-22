@@ -521,7 +521,7 @@ function render({ model, el }) {
         on('[data-r="close"]', "click", () => { root.innerHTML = ""; });
         on('[data-r="analyze"]', "click", () => runAction("analyze"));
 
-        on('[data-r="to-configure"]', "click", () => { model.set("screen", "configure"); model.save_changes(); });
+        on('[data-r="to-configure"]', "click", () => { model.set("screen", "configure"); model.save_changes(); requestSourceItems(); });
         on('[data-r="to-analyze"]', "click", () => { model.set("screen", "analyze"); model.save_changes(); });
         on('[data-r="to-configure2"]', "click", () => { model.set("screen", "configure"); model.save_changes(); });
 
@@ -602,7 +602,6 @@ function render({ model, el }) {
 
     const a0 = model.get("analysis") || {};
     if (!a0.ready) runAction("analyze");
-    requestSourceItems();
 }
 export default { render };
 """
