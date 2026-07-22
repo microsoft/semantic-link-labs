@@ -46,6 +46,95 @@ def _split_top_level(text: str):
     return parts
 
 
+def _find_matching_paren(text, open_index):
+    """Return the index of the ')' matching the '(' at open_index (ignoring
+    parentheses inside string literals)."""
+    depth = 0
+    in_string = False
+    for i in range(open_index, len(text)):
+        c = text[i]
+        if in_string:
+            if c == '"':
+                in_string = False
+            continue
+        if c == '"':
+            in_string = True
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _first_top_level_arg(inner):
+    """Return the first top-level (comma-separated) argument within a call's
+    argument list, ignoring commas nested in brackets or strings."""
+    depth = 0
+    in_string = False
+    for i, c in enumerate(inner):
+        if in_string:
+            if c == '"':
+                in_string = False
+            continue
+        if c == '"':
+            in_string = True
+        elif c in "({[":
+            depth += 1
+        elif c in ")}]":
+            depth -= 1
+        elif c == "," and depth == 0:
+            return inner[:i]
+    return inner
+
+
+def _strip_range_filters(m):
+    """Remove every ``Table.SelectRows(src, each ...)`` step whose predicate
+    references the incremental-refresh RangeStart/RangeEnd parameters, replacing
+    it with its source argument (best-effort). Mirrors the reference tool."""
+    if not m:
+        return m or ""
+    token = "Table.SelectRows("
+    result = m
+    for _guard in range(200):
+        rewritten = False
+        search_from = 0
+        while True:
+            idx = result.find(token, search_from)
+            if idx < 0:
+                break
+            open_p = idx + len(token) - 1
+            close_p = _find_matching_paren(result, open_p)
+            if close_p < 0:
+                search_from = idx + len(token)
+                continue
+            inner = result[open_p + 1 : close_p]
+            lowered = inner.lower()
+            if "rangestart" in lowered or "rangeend" in lowered:
+                first_arg = _first_top_level_arg(inner).strip()
+                result = result[:idx] + first_arg + result[close_p + 1 :]
+                rewritten = True
+                break
+            search_from = idx + len(token)
+        if not rewritten:
+            break
+    return result
+
+
+def _partition_query(partition):
+    """The M / native-query text backing a partition, or None (e.g. for a
+    calculated partition)."""
+    src = partition.Source
+    expr = getattr(src, "Expression", None)
+    if expr:
+        return expr
+    query = getattr(src, "Query", None)
+    if query:
+        return query
+    return None
+
+
 def _row_removed_reference(row, removed_tables, removed_columns, removed_measures):
     """Return the field reference (e.g. 'Sales'[Amount]) in a field-parameter
     row that points at a dropped object, or None when every reference in the
@@ -149,7 +238,7 @@ def _expand_dependents(
                 changed = True
                 unsupported.append(
                     {
-                        "category": "Dependent objects",
+                        "category": "Dependent object",
                         "table": r["table"],
                         "name": r["object"],
                         "reason": reason,
@@ -160,7 +249,7 @@ def _expand_dependents(
                 changed = True
                 unsupported.append(
                     {
-                        "category": "Dependent objects",
+                        "category": "Dependent object",
                         "table": r["table"],
                         "name": r["object"],
                         "reason": reason,
@@ -353,6 +442,28 @@ _WIDGET_CSS = """
 .slls-mdl-steplist li { font-size: 12.5px; line-height: 1.6; color: var(--slls-text-secondary); }
 .slls-mdl-steplist li b { color: var(--slls-text); font-weight: 500; }
 .slls-mdl-sec-title { font-size: 13.5px; font-weight: 600; margin: 4px 0 8px 0; }
+
+/* Migration change / kept sections */
+.slls-mdl-lead { font-size: 13px; color: var(--slls-text-secondary); line-height: 1.45; margin: 20px 0 10px; }
+.slls-mdl-lead b { color: var(--slls-text); font-weight: 600; }
+.slls-mdl-change { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); padding: 12px 14px; margin-bottom: 10px; }
+.slls-mdl-change-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.slls-mdl-change-title { font-size: 14px; font-weight: 600; }
+.slls-mdl-change-detail { font-size: 12.5px; color: var(--slls-text-secondary); line-height: 1.45; }
+.slls-mdl-chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--slls-accent-soft); color: var(--slls-accent); white-space: nowrap; }
+.slls-mdl-removed { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.slls-mdl-refpill { font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; background: var(--slls-danger-soft); color: var(--slls-danger); padding: 1px 6px; border-radius: 4px; }
+.slls-mdl-details { margin-top: 8px; }
+.slls-mdl-details > summary { cursor: pointer; list-style: none; color: var(--slls-accent); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+.slls-mdl-details > summary::-webkit-details-marker { display: none; }
+.slls-mdl-details > summary::before { content: "\\25B6"; font-size: 9px; }
+.slls-mdl-details[open] > summary::before { content: "\\25BC"; }
+.slls-mdl-details .slls-mdl-code { margin-top: 8px; margin-bottom: 0; }
+.slls-mdl-cat { border: 1px solid var(--slls-border); border-radius: var(--slls-radius-sm); overflow: hidden; margin-bottom: 10px; }
+.slls-mdl-cat > summary { cursor: pointer; list-style: none; background: var(--slls-surface-2); padding: 10px 14px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; user-select: none; }
+.slls-mdl-cat > summary::-webkit-details-marker { display: none; }
+.slls-mdl-cat > summary::before { content: "\\25B6"; font-size: 9px; color: var(--slls-text-tertiary); }
+.slls-mdl-cat[open] > summary::before { content: "\\25BC"; }
 """
 
 
@@ -419,6 +530,8 @@ function render({ model, el }) {
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && fsMode) setFullscreen(false); });
+
+    function runAction(action, extra) {
         model.set("pending_action", Object.assign({ action: action }, extra || {}));
         model.set("run", (model.get("run") || 0) + 1);
         model.save_changes();
@@ -503,30 +616,60 @@ function render({ model, el }) {
             out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>The model has ${roles.length} security role${roles.length === 1 ? "" : "s"} (<b>${esc(roles.join(", "))}</b>). Re-create the equivalent security on the new model using OneLake security.</div></div>`;
         }
 
-        const fpCount = a.fieldParameterCount || 0;
-        const cgCount = a.calcGroupCount || 0;
-        if (fpCount + cgCount > 0) {
-            const bits = [];
-            if (cgCount > 0) bits.push(`${cgCount} calculation group${cgCount === 1 ? "" : "s"}`);
-            if (fpCount > 0) bits.push(`${fpCount} field parameter${fpCount === 1 ? "" : "s"}`);
-            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div><b>${esc(bits.join(" and "))}</b> will be migrated (both are supported in Direct Lake).</div></div>`;
+        function detailsBlock(label, dax) {
+            return `<details class="slls-mdl-details"><summary>${esc(label)}</summary><div class="slls-mdl-code">${esc(dax || "")}</div></details>`;
         }
 
-        const fpChanges = (a.fieldParameterChanges || []).filter((f) => !f.dropped && (f.removed || []).length > 0);
-        fpChanges.forEach((f) => {
-            out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>Field parameter <b>${esc(f.name)}</b> will be migrated with ${f.removed.length} field reference${f.removed.length === 1 ? "" : "s"} removed (they point at objects that won't be in the migrated model): <b>${esc(f.removed.join(", "))}</b>.</div></div>`;
-        });
+        const changes = a.changes || [];
+        const reshaped = changes.filter((c) => c.category === "reshape");
+        const keptFp = changes.filter((c) => c.category === "kept" && c.kind === "Field parameter");
+        const keptCg = changes.filter((c) => c.category === "kept" && c.kind === "Calculation group");
 
+        // Tables reshaped into a single partition (data preserved).
+        if (reshaped.length > 0) {
+            out += `<div class="slls-mdl-lead">These tables will be <b>reshaped into a single partition</b> (their data is preserved):</div>`;
+            reshaped.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">${esc(c.kind)}</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                if (c.expression) out += detailsBlock("View expression", c.expression);
+                out += `</div>`;
+            });
+        }
+
+        // Objects kept in the new model (calculation groups + field parameters).
+        if (keptFp.length + keptCg.length > 0) {
+            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculation groups and field parameters are supported in Direct Lake):</div>`;
+            keptFp.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Field parameter</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                const refs = c.removedReferences || [];
+                if (refs.length > 0) {
+                    out += `<div class="slls-mdl-removed"><span>Removed reference${refs.length === 1 ? "" : "s"}:</span>${refs.map((r) => `<span class="slls-mdl-refpill">${esc(r)}</span>`).join("")}</div>`;
+                    out += detailsBlock("View original DAX", c.originalExpression);
+                    out += detailsBlock("View updated DAX", c.expression);
+                } else if (c.expression) {
+                    out += detailsBlock("View DAX", c.expression);
+                }
+                out += `</div>`;
+            });
+            keptCg.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Calculation group</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                out += `</div>`;
+            });
+        }
+
+        // Objects that won't be migrated — one collapsible section per category.
         const groups = a.unsupportedGroups || [];
         if (groups.length > 0) {
-            out += `<div class="slls-mdl-sec-title">Objects that won't be migrated</div>`;
+            out += `<div class="slls-mdl-lead">The following objects are not supported in Direct Lake and <b>will not be migrated</b> (objects that depend on them are dropped too):</div>`;
             groups.forEach((g) => {
-                out += `<div class="slls-mdl-group"><div class="slls-mdl-group-head">${esc(g.category)} (${g.items.length})</div>`;
+                out += `<details class="slls-mdl-cat" open><summary>${esc(g.category)} (${g.items.length})</summary>`;
                 g.items.forEach((it) => {
                     const tbl = it.table ? `<span class="slls-mdl-tblname">${esc(it.table)} · </span>` : "";
                     out += `<div class="slls-mdl-group-item"><span class="slls-mdl-obj">${tbl}${esc(it.name)}</span>${it.reason ? `<span class="slls-mdl-reason">${esc(it.reason)}</span>` : ""}</div>`;
                 });
-                out += `</div>`;
+                out += `</details>`;
             });
         }
         return out;
@@ -948,6 +1091,7 @@ def migrate_to_direct_lake(
         removed_measures = set()
         field_parameters = {}  # table name -> calculated-table DAX expression
         calc_groups = []
+        changes = []
         unsupported = []
 
         # --- Table-level classification ---
@@ -962,6 +1106,18 @@ def migrate_to_direct_lake(
             # Calculation groups are supported in Direct Lake — kept unchanged.
             if t.CalculationGroup is not None:
                 calc_groups.append(tname)
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Calculation group",
+                        "category": "kept",
+                        "detail": (
+                            "Kept unchanged in import mode (calculation groups "
+                            "are supported in Direct Lake and are not converted "
+                            "to Direct Lake partitions)."
+                        ),
+                    }
+                )
                 continue
 
             # Field parameters are supported in Direct Lake — kept as calculated
@@ -985,7 +1141,7 @@ def migrate_to_direct_lake(
                 removed_tables.add(tname)
                 unsupported.append(
                     {
-                        "category": "Calculated tables",
+                        "category": "Calculated table",
                         "table": tname,
                         "name": tname,
                         "reason": "Calculated (DAX) tables are not supported in Direct Lake.",
@@ -998,10 +1154,54 @@ def migrate_to_direct_lake(
                 removed_tables.add(tname)
                 unsupported.append(
                     {
-                        "category": "Aggregation tables",
+                        "category": "Aggregation",
                         "table": tname,
                         "name": tname,
                         "reason": "Aggregation tables are not supported in Direct Lake.",
+                    }
+                )
+                continue
+
+            # Incremental-refresh tables collapse to a single partition: take the
+            # policy's source expression and strip the RangeStart/RangeEnd
+            # filters so the partition loads the whole table.
+            refresh_policy = t.RefreshPolicy
+            if refresh_policy is not None and getattr(
+                refresh_policy, "SourceExpression", None
+            ):
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Incremental refresh",
+                        "category": "reshape",
+                        "detail": (
+                            "Incremental refresh removed: the source query's "
+                            "RangeStart/RangeEnd filters were stripped so the "
+                            "partition loads the full table."
+                        ),
+                        "expression": _strip_range_filters(
+                            refresh_policy.SourceExpression
+                        ),
+                    }
+                )
+                continue
+
+            # Multi-partition tables are reduced to a single partition by keeping
+            # the first partition.
+            if t.Partitions.Count > 1:
+                first = list(t.Partitions)[0]
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Kept first partition",
+                        "category": "reshape",
+                        "detail": (
+                            f"The {t.Partitions.Count} partitions were reduced "
+                            f"to a single partition; the first partition "
+                            f"'{first.Name}' was kept and the other "
+                            f"{t.Partitions.Count - 1} dropped."
+                        ),
+                        "expression": _partition_query(first) or "",
                     }
                 )
                 continue
@@ -1022,7 +1222,7 @@ def migrate_to_direct_lake(
                     removed_columns.add(_mig_key(tname, c.Name))
                     unsupported.append(
                         {
-                            "category": "Calculated columns",
+                            "category": "Calculated column",
                             "table": tname,
                             "name": c.Name,
                             "reason": "Calculated (DAX) columns are not supported in Direct Lake.",
@@ -1032,7 +1232,7 @@ def migrate_to_direct_lake(
                     removed_columns.add(_mig_key(tname, c.Name))
                     unsupported.append(
                         {
-                            "category": "Binary columns",
+                            "category": "Binary column",
                             "table": tname,
                             "name": c.Name,
                             "reason": "Columns of data type Binary are not supported in Direct Lake.",
@@ -1045,10 +1245,10 @@ def migrate_to_direct_lake(
         )
 
         # --- Field-parameter DAX rewrite (drop only dead field references) ---
-        fp_changes = []
         for tname in list(field_parameters.keys()):
+            original = field_parameters[tname]
             rewritten, removed_refs = _rewrite_field_parameter_dax(
-                field_parameters[tname],
+                original,
                 removed_tables,
                 removed_columns,
                 removed_measures,
@@ -1059,21 +1259,43 @@ def migrate_to_direct_lake(
                 removed_tables.add(tname)
                 unsupported.append(
                     {
-                        "category": "Field parameters",
+                        "category": "Field parameter",
                         "table": tname,
                         "name": tname,
                         "reason": "Every field references an object that is not migrated.",
                     }
                 )
-                fp_changes.append(
-                    {"name": tname, "removed": removed_refs, "dropped": True}
+                continue
+
+            field_parameters[tname] = rewritten
+            if removed_refs:
+                n = len(removed_refs)
+                detail = (
+                    f"Kept as a calculated table; removed {n} field "
+                    f"reference{'' if n == 1 else 's'} pointing at objects that "
+                    f"are not migrated: {', '.join(removed_refs)}."
+                )
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Field parameter",
+                        "category": "kept",
+                        "detail": detail,
+                        "expression": rewritten,
+                        "originalExpression": original,
+                        "removedReferences": removed_refs,
+                    }
                 )
             else:
-                field_parameters[tname] = rewritten
-                if removed_refs:
-                    fp_changes.append(
-                        {"name": tname, "removed": removed_refs, "dropped": False}
-                    )
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Field parameter",
+                        "category": "kept",
+                        "detail": "Kept as a calculated table (field parameters are supported in Direct Lake).",
+                        "expression": rewritten,
+                    }
+                )
 
         # A field parameter may have been emptied (and thus removed); re-expand
         # so measures depending on it are dropped too.
@@ -1087,8 +1309,8 @@ def migrate_to_direct_lake(
             "removedColumns": removed_columns,
             "removedMeasures": removed_measures,
             "fieldParameters": field_parameters,
-            "fieldParameterChanges": fp_changes,
             "calcGroups": calc_groups,
+            "changes": changes,
             "unsupported": unsupported,
         }
 
@@ -1103,12 +1325,12 @@ def migrate_to_direct_lake(
 
         # Group the unsupported objects by category (in a stable order).
         order = [
-            "Calculated tables",
-            "Aggregation tables",
-            "Field parameters",
-            "Calculated columns",
-            "Binary columns",
-            "Dependent objects",
+            "Calculated table",
+            "Aggregation",
+            "Field parameter",
+            "Calculated column",
+            "Binary column",
+            "Dependent object",
         ]
         grouped = {}
         for u in plan["unsupported"]:
@@ -1136,9 +1358,7 @@ def migrate_to_direct_lake(
             "totalTables": total,
             "migratedTables": migrated,
             "droppedTables": dropped,
-            "fieldParameterCount": len(plan["fieldParameters"]),
-            "calcGroupCount": len(plan["calcGroups"]),
-            "fieldParameterChanges": plan["fieldParameterChanges"],
+            "changes": plan["changes"],
             "removedRoles": roles,
             "unsupportedGroups": groups,
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
