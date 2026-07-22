@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from uuid import UUID
 from sempy._utils._log import log
@@ -9,6 +10,162 @@ _DIRECT_LAKE_DOCS_URL = (
     "https://learn.microsoft.com/power-bi/enterprise/directlake-overview"
     "#known-issues-and-limitations"
 )
+
+# A field-parameter field reference looks like 'Table'[Column], Table[Column]
+# or [Measure] inside a NAMEOF() call.
+_FP_FIELD_REGEX = re.compile(r"(?:'(?P<tq>[^']+)'|(?P<tu>\w+))?\[(?P<o>[^\]]+)\]")
+
+
+def _mig_key(table_name: str, object_name: str) -> str:
+    """Build the "table|object" key used to track removed columns/measures."""
+    return f"{table_name}|{object_name}"
+
+
+def _split_top_level(text: str):
+    """Split a string on commas that sit at the top level (outside any
+    parentheses, braces, brackets, or string literal)."""
+    parts = []
+    depth = 0
+    in_string = False
+    start = 0
+    for i, ch in enumerate(text):
+        if in_string:
+            if ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "({[":
+            depth += 1
+        elif ch in ")}]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
+
+
+def _row_removed_reference(row, removed_tables, removed_columns, removed_measures):
+    """Return the field reference (e.g. 'Sales'[Amount]) in a field-parameter
+    row that points at a dropped object, or None when every reference in the
+    row survives the migration."""
+    for m in _FP_FIELD_REGEX.finditer(row):
+        table = m.group("tq") or m.group("tu") or ""
+        obj = m.group("o")
+        if table:
+            if (
+                table in removed_tables
+                or _mig_key(table, obj) in removed_columns
+                or _mig_key(table, obj) in removed_measures
+            ):
+                return m.group(0).strip()
+        else:
+            # A measure reference with no table qualifier (e.g. [Sales]).
+            suffix = f"|{obj}"
+            if any(k.endswith(suffix) for k in removed_measures):
+                return m.group(0).strip()
+    return None
+
+
+def _rewrite_field_parameter_dax(
+    dax, removed_tables, removed_columns, removed_measures
+):
+    """Rewrite a field-parameter table-constructor DAX, dropping the individual
+    rows whose field references a migrated-away object. Returns a tuple of the
+    rewritten DAX (empty string when every row was dropped) and the list of
+    removed field references."""
+    removed = []
+    if not dax:
+        return dax, removed
+    open_i = dax.find("{")
+    close_i = dax.rfind("}")
+    if open_i < 0 or close_i <= open_i:
+        return dax, removed
+    prefix = dax[: open_i + 1]
+    suffix = dax[close_i:]
+    body = dax[open_i + 1 : close_i]
+    kept = []
+    for row in _split_top_level(body):
+        if not row.strip():
+            continue
+        dead = _row_removed_reference(
+            row, removed_tables, removed_columns, removed_measures
+        )
+        if dead is not None:
+            removed.append(dead)
+        else:
+            kept.append(row.strip())
+    if not kept:
+        return "", removed
+    return prefix + "\n\t" + ",\n\t".join(kept) + "\n" + suffix, removed
+
+
+def _expand_dependents(
+    dep_df, removed_tables, removed_columns, removed_measures, unsupported
+):
+    """Transitively add measures / calculated columns that reference a removed
+    object to the removal sets (mirrors the reference migration tool)."""
+    if dep_df is None or getattr(dep_df, "empty", True):
+        return
+
+    def _clean(v):
+        # Coerce None / NaN (v != v) to an empty string.
+        return "" if v is None or (isinstance(v, float) and v != v) else str(v)
+
+    rows = [
+        {
+            "table": _clean(r["Table Name"]),
+            "object": _clean(r["Object Name"]),
+            "type": _clean(r["Object Type"]).upper().replace(" ", "_"),
+            "ref_table": _clean(r["Referenced Table"]),
+            "ref_object": _clean(r["Referenced Object"]),
+        }
+        for _, r in dep_df.iterrows()
+    ]
+
+    def _is_removed_ref(ref_table, ref_object):
+        if ref_table in removed_tables:
+            return True
+        key = _mig_key(ref_table, ref_object)
+        return key in removed_columns or key in removed_measures
+
+    changed = True
+    while changed:
+        changed = False
+        for r in rows:
+            if r["table"] in removed_tables:
+                continue
+            if not _is_removed_ref(r["ref_table"], r["ref_object"]):
+                continue
+            key = _mig_key(r["table"], r["object"])
+            reason = (
+                f"Depends on '{r['ref_table']}'"
+                + (f"[{r['ref_object']}]" if r["ref_object"] else "")
+                + ", which is not migrated."
+            )
+            if "MEASURE" in r["type"] and key not in removed_measures:
+                removed_measures.add(key)
+                changed = True
+                unsupported.append(
+                    {
+                        "category": "Dependent objects",
+                        "table": r["table"],
+                        "name": r["object"],
+                        "reason": reason,
+                    }
+                )
+            elif "CALC_COLUMN" in r["type"] and key not in removed_columns:
+                removed_columns.add(key)
+                changed = True
+                unsupported.append(
+                    {
+                        "category": "Dependent objects",
+                        "table": r["table"],
+                        "name": r["object"],
+                        "reason": reason,
+                    }
+                )
 
 
 _WIDGET_CSS = """
@@ -50,6 +207,13 @@ _WIDGET_CSS = """
 @media (prefers-color-scheme: dark) { .slls-mdl.slls-mdl-auto { --slls-bg-solid: #1c1c1e; --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03); --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16); --slls-text: #f5f5f7; --slls-text-secondary: #a1a1a6; --slls-text-tertiary: #6e6e73; --slls-accent-soft: rgba(10,132,255,0.18); --slls-accent: #0A84FF; --slls-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.5); } }
 .slls-mdl.slls-mdl-dark { --slls-bg-solid: #1c1c1e; --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03); --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16); --slls-text: #f5f5f7; --slls-text-secondary: #a1a1a6; --slls-text-tertiary: #6e6e73; --slls-accent-soft: rgba(10,132,255,0.18); --slls-accent: #0A84FF; --slls-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.5); }
 .slls-mdl * { box-sizing: border-box; }
+
+/* Fullscreen: fill the viewport and drop the framing chrome. Notebook hosts
+   often block the native Fullscreen API, so a CSS overlay (position: fixed
+   covering the viewport) is the reliable primary mechanism; native fullscreen
+   is attempted as a best-effort enhancement. */
+.slls-mdl.slls-mdl-fs { position: fixed; inset: 0; z-index: 2147483000; width: 100vw; height: 100vh; max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; overflow: auto; }
+.slls-mdl:fullscreen, .slls-mdl:-webkit-full-screen { width: 100vw; height: 100vh; max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; overflow: auto; }
 
 .slls-mdl-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .slls-mdl-badge { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: var(--slls-accent-soft); color: var(--slls-accent); flex-shrink: 0; }
@@ -209,6 +373,8 @@ function render({ model, el }) {
         moon: `__IC_MOON__`,
         table: `__IC_TABLE__`,
         chevron: `__IC_CHEVRON__`,
+        fullscreen: `__IC_FULLSCREEN__`,
+        fullscreen_exit: `__IC_FULLSCREEN_EXIT__`,
     };
 
     function esc(s) {
@@ -224,7 +390,35 @@ function render({ model, el }) {
     applyTheme();
     model.on("change:dark_mode", applyTheme);
 
-    function runAction(action, extra) {
+    // --- Fullscreen ---
+    // Notebook hosts (VS Code, Jupyter, Fabric) frequently sandbox the widget
+    // output. Toggle a CSS overlay on the root (reliable) and additionally
+    // attempt the native Fullscreen API (best-effort).
+    let fsMode = false;
+    function setFullscreen(on) {
+        fsMode = on;
+        root.classList.toggle("slls-mdl-fs", on);
+        try {
+            if (on) {
+                const req = root.requestFullscreen || root.webkitRequestFullscreen;
+                if (req) { const p = req.call(root); if (p && p.catch) p.catch(() => {}); }
+            } else {
+                const ex = document.exitFullscreen || document.webkitExitFullscreen;
+                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {
+                    const p = ex.call(document); if (p && p.catch) p.catch(() => {});
+                }
+            }
+        } catch (e) { /* native fullscreen blocked; CSS overlay handles it */ }
+        route();
+    }
+    function onFsChange() {
+        // If the user left native fullscreen (Esc / F11), drop the overlay too.
+        const nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!nativeOn && fsMode) { fsMode = false; root.classList.remove("slls-mdl-fs"); route(); }
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && fsMode) setFullscreen(false); });
         model.set("pending_action", Object.assign({ action: action }, extra || {}));
         model.set("run", (model.get("run") || 0) + 1);
         model.save_changes();
@@ -237,6 +431,11 @@ function render({ model, el }) {
         return `<button class="slls-mdl-btn slls-mdl-btn-icon" data-r="theme" title="Toggle theme" aria-label="Toggle theme">${dark ? IC.sun : IC.moon}</button>`;
     }
 
+    function fsBtn() {
+        const label = fsMode ? "Exit full screen" : "Toggle full screen";
+        return `<button class="slls-mdl-btn slls-mdl-btn-icon" data-r="fullscreen" title="${label}" aria-label="${label}">${fsMode ? IC.fullscreen_exit : IC.fullscreen}</button>`;
+    }
+
     function headerHtml() {
         const ds = model.get("dataset_name") || "Semantic model";
         const ws = model.get("workspace_name") || "";
@@ -247,7 +446,7 @@ function render({ model, el }) {
                 <div class="slls-mdl-title">Migrate to Direct Lake</div>
                 <div class="slls-mdl-subtitle">${sub}</div>
             </div>
-            <div class="slls-mdl-hdr-ctrls">${themeBtn()}</div>
+            <div class="slls-mdl-hdr-ctrls">${fsBtn()}${themeBtn()}</div>
         </div>`;
     }
 
@@ -303,6 +502,20 @@ function render({ model, el }) {
         if (roles.length > 0) {
             out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>The model has ${roles.length} security role${roles.length === 1 ? "" : "s"} (<b>${esc(roles.join(", "))}</b>). Re-create the equivalent security on the new model using OneLake security.</div></div>`;
         }
+
+        const fpCount = a.fieldParameterCount || 0;
+        const cgCount = a.calcGroupCount || 0;
+        if (fpCount + cgCount > 0) {
+            const bits = [];
+            if (cgCount > 0) bits.push(`${cgCount} calculation group${cgCount === 1 ? "" : "s"}`);
+            if (fpCount > 0) bits.push(`${fpCount} field parameter${fpCount === 1 ? "" : "s"}`);
+            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div><b>${esc(bits.join(" and "))}</b> will be migrated (both are supported in Direct Lake).</div></div>`;
+        }
+
+        const fpChanges = (a.fieldParameterChanges || []).filter((f) => !f.dropped && (f.removed || []).length > 0);
+        fpChanges.forEach((f) => {
+            out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>Field parameter <b>${esc(f.name)}</b> will be migrated with ${f.removed.length} field reference${f.removed.length === 1 ? "" : "s"} removed (they point at objects that won't be in the migrated model): <b>${esc(f.removed.join(", "))}</b>.</div></div>`;
+        });
 
         const groups = a.unsupportedGroups || [];
         if (groups.length > 0) {
@@ -413,7 +626,14 @@ function render({ model, el }) {
         out += `<div class="slls-mdl-sec-title">Tables to create (${tables.length})</div>`;
         out += `<div class="slls-mdl-plan">`;
         tables.forEach((t) => {
-            out += `<div class="slls-mdl-plan-row">${IC.table}<span>${esc(t.name)}</span><span class="slls-mdl-cols">${t.columnCount} column${t.columnCount === 1 ? "" : "s"}</span></div>`;
+            const kindLabel = t.kind === "fieldParameter" ? "field parameter" : t.kind === "calculationGroup" ? "calculation group" : "";
+            const countLabel = t.kind === "calculationGroup"
+                ? `${t.columnCount} calculation item${t.columnCount === 1 ? "" : "s"}`
+                : `${t.columnCount} column${t.columnCount === 1 ? "" : "s"}`;
+            const nameHtml = kindLabel
+                ? `${esc(t.name)} <span class="slls-mdl-tblname">· ${kindLabel}</span>`
+                : esc(t.name);
+            out += `<div class="slls-mdl-plan-row">${IC.table}<span>${nameHtml}</span><span class="slls-mdl-cols">${countLabel}</span></div>`;
         });
         if (tables.length === 0) out += `<div class="slls-mdl-plan-row"><span>No eligible tables.</span></div>`;
         out += `</div>`;
@@ -518,6 +738,7 @@ function render({ model, el }) {
             model.save_changes();
             route();
         });
+        on('[data-r="fullscreen"]', "click", () => setFullscreen(!fsMode));
         on('[data-r="close"]', "click", () => { root.innerHTML = ""; });
         on('[data-r="analyze"]', "click", () => runAction("analyze"));
 
@@ -701,53 +922,213 @@ def migrate_to_direct_lake(
         rows.sort(key=lambda x: x["name"].lower())
         return rows
 
-    # ---------------- Analysis ----------------
-    def _analyze_model():
+    # ---------------- Migration plan ----------------
+    def _compute_migration_plan(tom):
+        """Classifies every table/column for Direct Lake migration and resolves
+        field-parameter / calculation-group dependencies. Mirrors the reference
+        migration tool (m-kovalsky/Two)."""
         import Microsoft.AnalysisServices.Tabular as TOM
 
+        # Calculation dependencies drive the transitive removal of measures /
+        # calculated columns. Best-effort: skip the expansion if unavailable.
+        try:
+            from sempy_labs._model_dependencies import (
+                get_model_calc_dependencies,
+            )
+
+            dep_df = get_model_calc_dependencies(
+                dataset=dataset_id, workspace=workspace_id
+            )
+        except Exception:
+            dep_df = None
+
+        total = 0
+        removed_tables = set()
+        removed_columns = set()
+        removed_measures = set()
+        field_parameters = {}  # table name -> calculated-table DAX expression
+        calc_groups = []
+        unsupported = []
+
+        # --- Table-level classification ---
+        for t in tom.model.Tables:
+            total += 1
+            tname = t.Name
+            is_calc = any(
+                getattr(p, "SourceType", None) == TOM.PartitionSourceType.Calculated
+                for p in t.Partitions
+            )
+
+            # Calculation groups are supported in Direct Lake — kept unchanged.
+            if t.CalculationGroup is not None:
+                calc_groups.append(tname)
+                continue
+
+            # Field parameters are supported in Direct Lake — kept as calculated
+            # tables. Dead field references are pruned from their DAX below.
+            if is_calc and tom.is_field_parameter(table_name=tname):
+                expr = ""
+                for p in t.Partitions:
+                    if (
+                        getattr(p, "SourceType", None)
+                        == TOM.PartitionSourceType.Calculated
+                    ):
+                        e = p.Source.Expression
+                        if e and e.strip():
+                            expr = e
+                            break
+                field_parameters[tname] = expr
+                continue
+
+            # Other calculated (DAX) tables are not supported.
+            if is_calc:
+                removed_tables.add(tname)
+                unsupported.append(
+                    {
+                        "category": "Calculated tables",
+                        "table": tname,
+                        "name": tname,
+                        "reason": "Calculated (DAX) tables are not supported in Direct Lake.",
+                    }
+                )
+                continue
+
+            # Aggregation tables are not supported.
+            if any(c.AlternateOf is not None for c in t.Columns):
+                removed_tables.add(tname)
+                unsupported.append(
+                    {
+                        "category": "Aggregation tables",
+                        "table": tname,
+                        "name": tname,
+                        "reason": "Aggregation tables are not supported in Direct Lake.",
+                    }
+                )
+                continue
+
+        # --- Column-level unsupported features (within surviving tables) ---
+        for t in tom.model.Tables:
+            tname = t.Name
+            if (
+                tname in removed_tables
+                or tname in field_parameters
+                or t.CalculationGroup is not None
+            ):
+                continue
+            for c in t.Columns:
+                if c.Type == TOM.ColumnType.RowNumber:
+                    continue
+                if c.Type == TOM.ColumnType.Calculated:
+                    removed_columns.add(_mig_key(tname, c.Name))
+                    unsupported.append(
+                        {
+                            "category": "Calculated columns",
+                            "table": tname,
+                            "name": c.Name,
+                            "reason": "Calculated (DAX) columns are not supported in Direct Lake.",
+                        }
+                    )
+                elif c.DataType == TOM.DataType.Binary:
+                    removed_columns.add(_mig_key(tname, c.Name))
+                    unsupported.append(
+                        {
+                            "category": "Binary columns",
+                            "table": tname,
+                            "name": c.Name,
+                            "reason": "Columns of data type Binary are not supported in Direct Lake.",
+                        }
+                    )
+
+        # --- Transitive dependents (measures / calc columns) ---
+        _expand_dependents(
+            dep_df, removed_tables, removed_columns, removed_measures, unsupported
+        )
+
+        # --- Field-parameter DAX rewrite (drop only dead field references) ---
+        fp_changes = []
+        for tname in list(field_parameters.keys()):
+            rewritten, removed_refs = _rewrite_field_parameter_dax(
+                field_parameters[tname],
+                removed_tables,
+                removed_columns,
+                removed_measures,
+            )
+            if rewritten is None or not rewritten.strip():
+                # Every field referenced a dropped object — drop the table.
+                del field_parameters[tname]
+                removed_tables.add(tname)
+                unsupported.append(
+                    {
+                        "category": "Field parameters",
+                        "table": tname,
+                        "name": tname,
+                        "reason": "Every field references an object that is not migrated.",
+                    }
+                )
+                fp_changes.append(
+                    {"name": tname, "removed": removed_refs, "dropped": True}
+                )
+            else:
+                field_parameters[tname] = rewritten
+                if removed_refs:
+                    fp_changes.append(
+                        {"name": tname, "removed": removed_refs, "dropped": False}
+                    )
+
+        # A field parameter may have been emptied (and thus removed); re-expand
+        # so measures depending on it are dropped too.
+        _expand_dependents(
+            dep_df, removed_tables, removed_columns, removed_measures, unsupported
+        )
+
+        return {
+            "totalTables": total,
+            "removedTables": removed_tables,
+            "removedColumns": removed_columns,
+            "removedMeasures": removed_measures,
+            "fieldParameters": field_parameters,
+            "fieldParameterChanges": fp_changes,
+            "calcGroups": calc_groups,
+            "unsupported": unsupported,
+        }
+
+    # ---------------- Analysis ----------------
+    def _analyze_model():
         with connect_semantic_model(
             dataset=dataset_id, workspace=workspace_id, readonly=True
         ) as tom:
             is_dl = tom.is_direct_lake()
-            total = 0
-            migrated = 0
-            dropped = 0
-            calc_tables = []
-            calc_columns = []
-            for t in tom.model.Tables:
-                total += 1
-                is_calc_table = any(
-                    getattr(p, "SourceType", None) == TOM.PartitionSourceType.Calculated
-                    for p in t.Partitions
-                )
-                if is_calc_table:
-                    dropped += 1
-                    reason = (
-                        "Calculated tables are not supported as Direct Lake "
-                        "entity tables."
-                    )
-                    calc_tables.append({"table": "", "name": t.Name, "reason": reason})
-                else:
-                    migrated += 1
-                for c in t.Columns:
-                    if c.Type == TOM.ColumnType.Calculated:
-                        calc_columns.append(
-                            {
-                                "table": t.Name,
-                                "name": c.Name,
-                                "reason": (
-                                    "Calculated columns are not supported in "
-                                    "Direct Lake."
-                                ),
-                            }
-                        )
+            plan = _compute_migration_plan(tom)
             roles = [r.Name for r in tom.model.Roles]
 
+        # Group the unsupported objects by category (in a stable order).
+        order = [
+            "Calculated tables",
+            "Aggregation tables",
+            "Field parameters",
+            "Calculated columns",
+            "Binary columns",
+            "Dependent objects",
+        ]
+        grouped = {}
+        for u in plan["unsupported"]:
+            grouped.setdefault(u["category"], []).append(
+                {
+                    "table": u.get("table", ""),
+                    "name": u["name"],
+                    "reason": u["reason"],
+                }
+            )
         groups = []
-        if calc_tables:
-            groups.append({"category": "Calculated tables", "items": calc_tables})
-        if calc_columns:
-            groups.append({"category": "Calculated columns", "items": calc_columns})
+        for cat in order:
+            if cat in grouped:
+                groups.append({"category": cat, "items": grouped.pop(cat)})
+        for cat, items in grouped.items():
+            groups.append({"category": cat, "items": items})
+
+        total = plan["totalTables"]
+        dropped = len(plan["removedTables"])
+        migrated = total - dropped
 
         return {
             "ready": True,
@@ -755,6 +1136,9 @@ def migrate_to_direct_lake(
             "totalTables": total,
             "migratedTables": migrated,
             "droppedTables": dropped,
+            "fieldParameterCount": len(plan["fieldParameters"]),
+            "calcGroupCount": len(plan["calcGroups"]),
+            "fieldParameterChanges": plan["fieldParameterChanges"],
             "removedRoles": roles,
             "unsupportedGroups": groups,
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
@@ -781,20 +1165,53 @@ def migrate_to_direct_lake(
         with connect_semantic_model(
             dataset=dataset_id, workspace=workspace_id, readonly=True
         ) as tom:
+            plan = _compute_migration_plan(tom)
+            removed = plan["removedTables"]
+            removed_cols = plan["removedColumns"]
+            field_params = plan["fieldParameters"]
+            calc_groups = set(plan["calcGroups"])
             for t in tom.model.Tables:
-                is_calc_table = any(
-                    getattr(p, "SourceType", None) == TOM.PartitionSourceType.Calculated
-                    for p in t.Partitions
-                )
-                if is_calc_table:
+                tname = t.Name
+                if tname in removed:
+                    continue
+                if tname in field_params:
+                    col_count = sum(
+                        1
+                        for c in t.Columns
+                        if c.Type != TOM.ColumnType.RowNumber
+                    )
+                    tables.append(
+                        {
+                            "name": tname,
+                            "columnCount": col_count,
+                            "kind": "fieldParameter",
+                        }
+                    )
+                    continue
+                if tname in calc_groups:
+                    ci_count = (
+                        t.CalculationGroup.CalculationItems.Count
+                        if t.CalculationGroup is not None
+                        else 0
+                    )
+                    tables.append(
+                        {
+                            "name": tname,
+                            "columnCount": ci_count,
+                            "kind": "calculationGroup",
+                        }
+                    )
                     continue
                 col_count = sum(
                     1
                     for c in t.Columns
                     if c.Type != TOM.ColumnType.RowNumber
                     and c.Type != TOM.ColumnType.Calculated
+                    and _mig_key(tname, c.Name) not in removed_cols
                 )
-                tables.append({"name": t.Name, "columnCount": col_count})
+                tables.append(
+                    {"name": tname, "columnCount": col_count, "kind": "table"}
+                )
 
         return {
             "ready": True,
@@ -1081,4 +1498,6 @@ _WIDGET_JS = (
     .replace("__IC_MOON__", _UI_ICONS["moon"])
     .replace("__IC_TABLE__", _UI_ICONS["table"])
     .replace("__IC_CHEVRON__", _UI_ICONS["chevron_right"])
+    .replace("__IC_FULLSCREEN__", _UI_ICONS["fullscreen"])
+    .replace("__IC_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
 )
