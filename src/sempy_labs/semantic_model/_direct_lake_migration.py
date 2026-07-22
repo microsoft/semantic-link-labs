@@ -486,6 +486,9 @@ function render({ model, el }) {
         chevron: `__IC_CHEVRON__`,
         fullscreen: `__IC_FULLSCREEN__`,
         fullscreen_exit: `__IC_FULLSCREEN_EXIT__`,
+        field_parameter: `__IC_FIELD_PARAMETER__`,
+        calculation_group: `__IC_CALCULATION_GROUP__`,
+        database_zap: `__IC_DATABASE_ZAP__`,
     };
 
     function esc(s) {
@@ -554,7 +557,7 @@ function render({ model, el }) {
         const ws = model.get("workspace_name") || "";
         const sub = ws ? `<b>${esc(ds)}</b><span class="slls-mdl-sep">·</span>${esc(ws)}` : `<b>${esc(ds)}</b>`;
         return `<div class="slls-mdl-header">
-            <span class="slls-mdl-badge">${IC.database}</span>
+            <span class="slls-mdl-badge">${IC.database_zap}</span>
             <div class="slls-mdl-titlewrap">
                 <div class="slls-mdl-title">Migrate to Direct Lake</div>
                 <div class="slls-mdl-subtitle">${sub}</div>
@@ -610,10 +613,6 @@ function render({ model, el }) {
 
         if (a.isDirectLake) {
             out += `<div class="slls-mdl-note slls-mdl-note-err">${IC.alert}<div>This model already uses Direct Lake and cannot be migrated.</div></div>`;
-        }
-        const roles = a.removedRoles || [];
-        if (roles.length > 0) {
-            out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>The model has ${roles.length} security role${roles.length === 1 ? "" : "s"} (<b>${esc(roles.join(", "))}</b>). Re-create the equivalent security on the new model using OneLake security.</div></div>`;
         }
 
         function detailsBlock(label, dax) {
@@ -730,19 +729,19 @@ function render({ model, el }) {
                 <select class="slls-mdl-select" data-r="src_item"${srcItems === undefined ? " disabled" : ""}>${optionsHtml(srcItems || [], model.get("source_item_id"), itemsPlaceholder)}</select>
             </div>
             <div class="slls-mdl-field">
-                <span class="slls-mdl-label">Schema ${schemaDisabled ? "(not used)" : type === "Warehouse" ? "(required)" : "(optional)"}</span>
-                <input class="slls-mdl-input" data-r="schema" value="${esc(schemaDisabled ? "" : schema)}"${schemaDisabled ? " disabled" : ""} placeholder="${schemaDisabled ? "Not a schema-enabled lakehouse" : type === "Warehouse" ? "dbo" : "(default)"}" />
+                <span class="slls-mdl-label">Schema ${schemaDisabled ? "(not used)" : "(required)"}</span>
+                <input class="slls-mdl-input" data-r="schema" value="${esc(schemaDisabled ? "" : schema)}"${schemaDisabled ? " disabled" : ""} placeholder="${schemaDisabled ? "Not a schema-enabled lakehouse" : "dbo"}" />
             </div>
         </div>`;
 
         out += `<div class="slls-mdl-sec-title" style="margin-top:8px;">Load the data</div>`;
         out += `<label class="slls-mdl-radio ${movement === "manual" ? "is-selected" : ""}">
             <input type="radio" name="mv" data-r="mv-manual"${movement === "manual" ? " checked" : ""} />
-            <span><span class="slls-mdl-radio-title">I'll move the data myself</span><span class="slls-mdl-radio-desc">Load each table into the ${esc(typeLower)} as a delta table whose name matches the model's table (spaces become underscores), then refresh the model.</span></span>
+            <span><span class="slls-mdl-radio-title">I'll move the data myself</span><span class="slls-mdl-radio-desc"> Load each table into the ${esc(typeLower)} as a delta table whose name matches the model's table (spaces become underscores), then refresh the model.</span></span>
         </label>`;
         out += `<label class="slls-mdl-radio ${movement === "pqt" ? "is-selected" : ""}">
             <input type="radio" name="mv" data-r="mv-pqt"${movement === "pqt" ? " checked" : ""} />
-            <span><span class="slls-mdl-radio-title">Generate a Power Query template (.pqt)</span><span class="slls-mdl-radio-desc">Save a .pqt to the attached lakehouse's Files, then import it as a Dataflow Gen2 to load the data.</span></span>
+            <span><span class="slls-mdl-radio-title">Generate a Power Query template (.pqt)</span><span class="slls-mdl-radio-desc"> Save a .pqt to the attached lakehouse's Files, then import it as a Dataflow Gen2 to load the data.</span></span>
         </label>`;
 
         if (movement === "pqt") {
@@ -769,14 +768,13 @@ function render({ model, el }) {
         out += `<div class="slls-mdl-sec-title">Tables to create (${tables.length})</div>`;
         out += `<div class="slls-mdl-plan">`;
         tables.forEach((t) => {
-            const kindLabel = t.kind === "fieldParameter" ? "field parameter" : t.kind === "calculationGroup" ? "calculation group" : "";
+            const icon = t.kind === "fieldParameter" ? IC.field_parameter
+                : t.kind === "calculationGroup" ? IC.calculation_group
+                : IC.table;
             const countLabel = t.kind === "calculationGroup"
                 ? `${t.columnCount} calculation item${t.columnCount === 1 ? "" : "s"}`
                 : `${t.columnCount} column${t.columnCount === 1 ? "" : "s"}`;
-            const nameHtml = kindLabel
-                ? `${esc(t.name)} <span class="slls-mdl-tblname">· ${kindLabel}</span>`
-                : esc(t.name);
-            out += `<div class="slls-mdl-plan-row">${IC.table}<span>${nameHtml}</span><span class="slls-mdl-cols">${countLabel}</span></div>`;
+            out += `<div class="slls-mdl-plan-row">${icon}<span>${esc(t.name)}</span><span class="slls-mdl-cols">${countLabel}</span></div>`;
         });
         if (tables.length === 0) out += `<div class="slls-mdl-plan-row"><span>No eligible tables.</span></div>`;
         out += `</div>`;
@@ -905,7 +903,24 @@ function render({ model, el }) {
             requestSourceItems();
             route();
         });
-        on('[data-r="src_item"]', "change", (e) => { model.set("source_item_id", e.target.value); model.save_changes(); });
+        on('[data-r="src_item"]', "change", (e) => {
+            const val = e.target.value;
+            model.set("source_item_id", val);
+            model.save_changes();
+            if (!val) { route(); return; }
+            const type = model.get("source_type") || "Lakehouse";
+            if (type === "Lakehouse") {
+                // Determine whether the lakehouse is schema-enabled; the backend
+                // sets lakehouse_schema_enabled (and defaults the schema to dbo).
+                runAction("check_lakehouse_schema", { item_id: val, workspace_id: model.get("source_workspace_id") });
+            } else {
+                // Warehouses are always schema-based; require a schema (dbo).
+                model.set("lakehouse_schema_enabled", true);
+                if (!(model.get("schema") || "").trim()) model.set("schema", "dbo");
+                model.save_changes();
+                route();
+            }
+        });
         on('[data-r="schema"]', "input", (e) => { model.set("schema", e.target.value); model.save_changes(); });
         on('[data-r="mv-manual"]', "change", () => { model.set("data_movement", "manual"); model.save_changes(); route(); });
         on('[data-r="mv-pqt"]', "change", () => { model.set("data_movement", "pqt"); model.save_changes(); route(); });
@@ -915,8 +930,17 @@ function render({ model, el }) {
             const name = (model.get("new_model_name") || "").trim();
             const ws = model.get("target_workspace_id");
             const item = model.get("source_item_id");
+            const type = model.get("source_type") || "Lakehouse";
+            const schemaVal = (model.get("schema") || "").trim();
+            const schemaRequired = type === "Warehouse" || model.get("lakehouse_schema_enabled") !== false;
             if (!name || !ws || !item) {
                 model.set("status", { message: "New model name, target workspace, and a source are required.", kind: "error" });
+                model.save_changes();
+                route();
+                return;
+            }
+            if (schemaRequired && !schemaVal) {
+                model.set("status", { message: "A schema is required for the selected source (e.g. 'dbo').", kind: "error" });
                 model.save_changes();
                 route();
                 return;
@@ -1113,8 +1137,7 @@ def migrate_to_direct_lake(
                         "category": "kept",
                         "detail": (
                             "Kept unchanged in import mode (calculation groups "
-                            "are supported in Direct Lake and are not converted "
-                            "to Direct Lake partitions)."
+                            "are supported in Direct Lake."
                         ),
                     }
                 )
@@ -1303,6 +1326,87 @@ def migrate_to_direct_lake(
             dep_df, removed_tables, removed_columns, removed_measures, unsupported
         )
 
+        # --- Security (RLS / OLS) referencing removed objects ---
+        # Roles, RLS, OLS and role members are copied to the migrated model. The
+        # only exceptions are RLS filters that reference an object which is not
+        # migrated, and OLS set on a table/column which is not migrated.
+        try:
+            for role in tom.model.Roles:
+                for tp in role.TablePermissions:
+                    perm_table = tp.Table.Name if tp.Table is not None else ""
+
+                    # RLS: a filter expression referencing a removed object.
+                    filt = getattr(tp, "FilterExpression", None)
+                    if filt and filt.strip():
+                        dead = (
+                            perm_table
+                            if perm_table in removed_tables
+                            else _row_removed_reference(
+                                filt,
+                                removed_tables,
+                                removed_columns,
+                                removed_measures,
+                            )
+                        )
+                        if dead is not None:
+                            unsupported.append(
+                                {
+                                    "category": "Security (RLS)",
+                                    "table": perm_table,
+                                    "name": role.Name,
+                                    "reason": (
+                                        f"The row-level security filter on "
+                                        f"'{perm_table}' references an object that "
+                                        f"is not migrated; this filter is not "
+                                        f"carried over."
+                                    ),
+                                }
+                            )
+
+                    # OLS at the table level (the whole table is hidden).
+                    if (
+                        perm_table in removed_tables
+                        and str(getattr(tp, "MetadataPermission", "")) == "None"
+                    ):
+                        unsupported.append(
+                            {
+                                "category": "Security (OLS)",
+                                "table": perm_table,
+                                "name": role.Name,
+                                "reason": (
+                                    f"Object-level security hides '{perm_table}', "
+                                    f"which is not migrated; this permission is not "
+                                    f"carried over."
+                                ),
+                            }
+                        )
+
+                    # OLS at the column level.
+                    for cp in tp.ColumnPermissions:
+                        col = getattr(cp, "Column", None)
+                        if col is None:
+                            continue
+                        col_name = col.Name
+                        if (
+                            perm_table in removed_tables
+                            or _mig_key(perm_table, col_name) in removed_columns
+                        ) and str(getattr(cp, "MetadataPermission", "")) == "None":
+                            unsupported.append(
+                                {
+                                    "category": "Security (OLS)",
+                                    "table": perm_table,
+                                    "name": f"{role.Name}: {col_name}",
+                                    "reason": (
+                                        f"Object-level security hides "
+                                        f"'{perm_table}'[{col_name}], which is not "
+                                        f"migrated; this permission is not carried "
+                                        f"over."
+                                    ),
+                                }
+                            )
+        except Exception:
+            pass
+
         return {
             "totalTables": total,
             "removedTables": removed_tables,
@@ -1321,7 +1425,6 @@ def migrate_to_direct_lake(
         ) as tom:
             is_dl = tom.is_direct_lake()
             plan = _compute_migration_plan(tom)
-            roles = [r.Name for r in tom.model.Roles]
 
         # Group the unsupported objects by category (in a stable order).
         order = [
@@ -1331,6 +1434,8 @@ def migrate_to_direct_lake(
             "Calculated column",
             "Binary column",
             "Dependent object",
+            "Security (RLS)",
+            "Security (OLS)",
         ]
         grouped = {}
         for u in plan["unsupported"]:
@@ -1359,7 +1464,6 @@ def migrate_to_direct_lake(
             "migratedTables": migrated,
             "droppedTables": dropped,
             "changes": plan["changes"],
-            "removedRoles": roles,
             "unsupportedGroups": groups,
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
         }
@@ -1685,6 +1789,28 @@ def migrate_to_direct_lake(
                 new_map[key] = items
                 widget.source_items = new_map
 
+            elif action == "check_lakehouse_schema":
+                # A schema-enabled lakehouse requires a schema (default 'dbo');
+                # a non-schema-enabled lakehouse has the schema box disabled.
+                item_id = data.get("item_id")
+                ws_id = data.get("workspace_id") or workspace_id
+                enabled = False
+                if item_id:
+                    try:
+                        from sempy_labs.lakehouse._schemas import is_schema_enabled
+
+                        enabled = bool(
+                            is_schema_enabled(lakehouse=item_id, workspace=ws_id)
+                        )
+                    except Exception:
+                        enabled = False
+                widget.lakehouse_schema_enabled = enabled
+                if enabled:
+                    if not (widget.schema or "").strip():
+                        widget.schema = "dbo"
+                else:
+                    widget.schema = ""
+
             elif action == "preview":
                 widget.status = {}
                 widget.preview = _build_preview(data)
@@ -1720,4 +1846,7 @@ _WIDGET_JS = (
     .replace("__IC_CHEVRON__", _UI_ICONS["chevron_right"])
     .replace("__IC_FULLSCREEN__", _UI_ICONS["fullscreen"])
     .replace("__IC_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
+    .replace("__IC_FIELD_PARAMETER__", _UI_ICONS["field_parameter"])
+    .replace("__IC_CALCULATION_GROUP__", _UI_ICONS["calculation_group"])
+    .replace("__IC_DATABASE_ZAP__", _UI_ICONS["database_zap"])
 )
