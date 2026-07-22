@@ -1206,6 +1206,24 @@ def migrate_to_direct_lake(
         rows.sort(key=lambda x: x["name"].lower())
         return rows
 
+    def _model_exists(name, ws_id):
+        """True if a semantic model with ``name`` already exists in ``ws_id``
+        (case-insensitive). Best-effort: returns False if the list fails."""
+        name = (name or "").strip()
+        if not name:
+            return False
+        try:
+            dfD = fabric.list_datasets(workspace=ws_id)
+        except Exception:
+            return False
+        name_col = next(
+            (c for c in ["Dataset Name", "Name"] if c in dfD.columns), None
+        )
+        if name_col is None:
+            return False
+        existing = {str(v).strip().lower() for v in dfD[name_col]}
+        return name.lower() in existing
+
     # ---------------- Migration plan ----------------
     def _compute_migration_plan(tom):
         """Classifies every table/column for Direct Lake migration and resolves
@@ -1962,6 +1980,17 @@ def migrate_to_direct_lake(
 
             elif action == "preview":
                 widget.status = {}
+                new_name = (data.get("new_model_name") or "").strip()
+                target_ws = data.get("target_workspace_id") or workspace_id
+                if _model_exists(new_name, target_ws):
+                    widget.status = {
+                        "message": (
+                            f"A semantic model named '{new_name}' already exists "
+                            "in the target workspace. Choose a different name."
+                        ),
+                        "kind": "error",
+                    }
+                    return
                 widget.preview = _build_preview(data)
                 widget.screen = "preview"
 
