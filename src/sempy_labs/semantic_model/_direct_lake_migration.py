@@ -464,6 +464,12 @@ _WIDGET_CSS = """
 .slls-mdl-cat > summary::-webkit-details-marker { display: none; }
 .slls-mdl-cat > summary::before { content: "\\25B6"; font-size: 9px; color: var(--slls-text-tertiary); }
 .slls-mdl-cat[open] > summary::before { content: "\\25BC"; }
+
+/* Copy-to-clipboard code block */
+.slls-mdl-copywrap { position: relative; }
+.slls-mdl-copybtn { position: absolute; top: 6px; right: 6px; z-index: 1; font-size: 11px; padding: 4px 10px; gap: 5px; }
+.slls-mdl-copybtn svg { width: 13px; height: 13px; }
+.slls-mdl-copywrap .slls-mdl-code { padding-right: 82px; }
 """
 
 
@@ -790,22 +796,32 @@ function render({ model, el }) {
             out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>${esc(w)}</div></div>`;
         });
 
+        if (r.targetWorkspaceId) {
+            out += `<a class="slls-mdl-link" href="https://app.powerbi.com/groups/${esc(r.targetWorkspaceId)}" target="_blank" rel="noopener noreferrer">${IC.ext}Open the workspace in Fabric</a>`;
+        }
+
+        out += `<div class="slls-mdl-sec-title">Load the data</div>`;
         if (r.pqt) {
-            out += `<div class="slls-mdl-sec-title">Load the data</div>`;
             out += `<ol class="slls-mdl-steplist">
                 <li>Open the target workspace in Fabric.</li>
-                <li>Choose <b>Get data → New Dataflow Gen2</b>.</li>
+                <li>Choose <b>+ New item</b> and select <b>Dataflow Gen2</b>.</li>
                 <li>Select <b>Import from a Power Query template</b> and pick <b>${esc(r.pqtFileName || "the .pqt")}</b>.</li>
                 <li>Configure credentials, save the dataflow, then run it to load the data.</li>
-                <li>Refresh (reframe) the new Direct Lake model.</li>
             </ol>`;
         } else {
-            out += `<div class="slls-mdl-sec-title">Load the data</div>`;
             out += `<ol class="slls-mdl-steplist">
                 <li>Load each table into the ${esc((r.sourceType || "lakehouse").toLowerCase())} as a delta table whose name matches the model's table (spaces become underscores).</li>
-                <li>Refresh (reframe) the new Direct Lake model before using it.</li>
             </ol>`;
+            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>Make sure <a href="https://www.microsoft.com/download/details.aspx?id=105222" target="_blank" rel="noopener noreferrer">OneLake file explorer</a> is installed and fully synced before copying the delta tables.</div></div>`;
         }
+
+        // Refresh the model — the wizard does not auto-refresh; the user runs
+        // this once the data is loaded.
+        out += `<div class="slls-mdl-sec-title">Refresh the model</div>`;
+        out += `<div class="slls-mdl-change-detail" style="margin-bottom:8px;">Once the data is loaded, refresh (reframe) the model by running this code:</div>`;
+        out += `<div class="slls-mdl-copywrap">` +
+            `<button class="slls-mdl-btn slls-mdl-copybtn" data-r="copy-refresh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>` +
+            `<div class="slls-mdl-code">${esc(r.refreshCode || "")}</div></div>`;
 
         const rows = r.validation || [];
         if (rows.length > 0) {
@@ -882,6 +898,30 @@ function render({ model, el }) {
         on('[data-r="fullscreen"]', "click", () => setFullscreen(!fsMode));
         on('[data-r="close"]', "click", () => { root.innerHTML = ""; });
         on('[data-r="analyze"]', "click", () => runAction("analyze"));
+
+        on('[data-r="copy-refresh"]', "click", (e) => {
+            const btn = e.currentTarget;
+            const code = (model.get("result") || {}).refreshCode || "";
+            let ok = false;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code); ok = true;
+                }
+            } catch (err) { /* fall through to the textarea fallback */ }
+            if (!ok) {
+                try {
+                    const ta = document.createElement("textarea");
+                    ta.value = code; ta.style.position = "fixed"; ta.style.opacity = "0";
+                    root.appendChild(ta); ta.focus(); ta.select();
+                    document.execCommand("copy"); root.removeChild(ta); ok = true;
+                } catch (err) { /* clipboard unavailable in this host */ }
+            }
+            if (ok) {
+                const orig = btn.innerHTML;
+                btn.textContent = "Copied!";
+                setTimeout(() => { btn.innerHTML = orig; }, 1400);
+            }
+        });
 
         on('[data-r="to-configure"]', "click", () => { model.set("screen", "configure"); model.save_changes(); requestSourceItems(); });
         on('[data-r="to-analyze"]', "click", () => { model.set("screen", "analyze"); model.save_changes(); });
@@ -1569,18 +1609,12 @@ def migrate_to_direct_lake(
             migrate_tables_columns_to_semantic_model,
         )
         from sempy_labs.migration._migrate_calctables_to_lakehouse import (
-            migrate_calc_tables_to_lakehouse,
             migrate_field_parameters,
         )
         from sempy_labs.migration._migrate_model_objects_to_semantic_model import (
             migrate_model_objects_to_semantic_model,
         )
-        from sempy_labs.migration._migrate_calctables_to_semantic_model import (
-            migrate_calc_tables_to_semantic_model,
-        )
-        from sempy_labs.migration._refresh_calc_tables import refresh_calc_tables
         from sempy_labs.migration._migration_validation import migration_validation
-        from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
         new_name = (data.get("new_model_name") or "").strip()
         target_ws = data.get("target_workspace_id") or workspace_id
@@ -1588,6 +1622,7 @@ def migrate_to_direct_lake(
         src_ws = data.get("source_workspace_id") or workspace_id
         src_id = data.get("source_item_id")
         movement = data.get("data_movement") or "manual"
+        schema = (data.get("schema") or "").strip()
         template_name = (
             data.get("template_name") or ""
         ).strip() or "PowerQueryTemplate"
@@ -1634,16 +1669,6 @@ def migrate_to_direct_lake(
             lakehouse_workspace=lakehouse_ws,
         )
         _step(
-            migrate_calc_tables_to_lakehouse,
-            "Migrate calculated tables to lakehouse",
-            dataset=dataset_name,
-            new_dataset=new_name,
-            workspace=workspace_id,
-            new_dataset_workspace=target_ws,
-            lakehouse=lakehouse,
-            lakehouse_workspace=lakehouse_ws,
-        )
-        _step(
             migrate_field_parameters,
             "Migrate field parameters",
             dataset=dataset_name,
@@ -1659,28 +1684,39 @@ def migrate_to_direct_lake(
             workspace=workspace_id,
             new_dataset_workspace=target_ws,
         )
-        _step(
-            migrate_calc_tables_to_semantic_model,
-            "Migrate calculated tables to model",
-            dataset=dataset_name,
-            new_dataset=new_name,
-            workspace=workspace_id,
-            new_dataset_workspace=target_ws,
-            lakehouse=lakehouse,
-            lakehouse_workspace=lakehouse_ws,
-        )
-        _step(
-            refresh_calc_tables,
-            "Refresh calculated tables",
-            dataset=new_name,
-            workspace=target_ws,
-        )
-        _step(
-            refresh_semantic_model,
-            "Refresh model",
-            dataset=new_name,
-            workspace=target_ws,
-        )
+
+        # 3b) Post-process the new model. Calculated tables (other than field
+        #     parameters) are intentionally not migrated, so drop the measures
+        #     that depend on non-migrated objects, and stamp the schema onto each
+        #     Direct Lake entity partition (the migration helpers leave it blank).
+        removed_measures = set()
+        try:
+            with connect_semantic_model(
+                dataset=dataset_id, workspace=workspace_id, readonly=True
+            ) as src_tom:
+                _plan = _compute_migration_plan(src_tom)
+                removed_measures = _plan["removedMeasures"]
+        except Exception as e:
+            warnings.append(f"Resolving non-migrated objects: {e}")
+
+        try:
+            import Microsoft.AnalysisServices.Tabular as TOM
+
+            with connect_semantic_model(
+                dataset=new_name, workspace=target_ws, readonly=False
+            ) as new_tom:
+                # Drop measures that depend on objects that were not migrated.
+                for t in new_tom.model.Tables:
+                    for mname in [m.Name for m in t.Measures]:
+                        if _mig_key(t.Name, mname) in removed_measures:
+                            t.Measures.Remove(t.Measures[mname])
+                # Stamp the schema onto each Direct Lake entity partition.
+                for t in new_tom.model.Tables:
+                    for p in t.Partitions:
+                        if p.SourceType == TOM.PartitionSourceType.Entity:
+                            p.Source.SchemaName = schema
+        except Exception as e:
+            warnings.append(f"Post-migration cleanup: {e}")
 
         # 4) Validate the migration.
         validation = []
@@ -1695,11 +1731,29 @@ def migrate_to_direct_lake(
         except Exception as e:
             warnings.append(f"Migration validation: {e}")
 
+        target_ws_name = next(
+            (
+                w["name"]
+                for w in (widget.workspaces or [])
+                if w.get("id") == target_ws
+            ),
+            target_ws,
+        )
+        refresh_code = (
+            "import sempy_labs as labs\n\n"
+            "labs.refresh_semantic_model(\n"
+            f'    dataset="{new_name}",\n'
+            f'    workspace="{target_ws_name}",\n'
+            ")"
+        )
+
         return {
             "createdModel": new_name,
             "sourceType": src_type,
+            "targetWorkspaceId": target_ws,
             "pqt": movement == "pqt",
             "pqtFileName": pqt_file_name,
+            "refreshCode": refresh_code,
             "warnings": warnings,
             "validation": validation,
         }
