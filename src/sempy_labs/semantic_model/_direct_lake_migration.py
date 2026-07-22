@@ -864,7 +864,7 @@ function render({ model, el }) {
             out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>${esc(w)}</div></div>`;
         });
 
-        if (r.targetWorkspaceId) {
+        if (r.pqt && r.targetWorkspaceId) {
             out += `<a class="slls-mdl-link" href="https://app.powerbi.com/groups/${esc(r.targetWorkspaceId)}" target="_blank" rel="noopener noreferrer">${IC.ext}Open the workspace in Fabric</a>`;
         }
 
@@ -937,9 +937,8 @@ function render({ model, el }) {
                 <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="create"${b || !p.ready ? " disabled" : ""}>${b ? spin : IC.database} Create Direct Lake model</button>
             </div>`;
         }
-        return `<div class="slls-mdl-footer slls-mdl-footer-end">
-            <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="close">Done</button>
-        </div>`;
+        // Done screen: no footer actions.
+        return "";
     }
 
     function bodyHtml() {
@@ -973,7 +972,6 @@ function render({ model, el }) {
             route();
         });
         on('[data-r="fullscreen"]', "click", () => setFullscreen(!fsMode));
-        on('[data-r="close"]', "click", () => { root.innerHTML = ""; });
         on('[data-r="analyze"]', "click", () => runAction("analyze"));
 
         on('[data-r="copy-refresh"]', "click", (e) => {
