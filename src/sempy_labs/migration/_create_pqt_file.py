@@ -4,6 +4,7 @@ import os
 import shutil
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy._utils._log import log
+from sempy_labs._helper_functions import _quiet_if_not_verbose
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
@@ -13,6 +14,7 @@ from sempy_labs._helper_functions import (
 )
 
 
+@_quiet_if_not_verbose
 @log
 def create_pqt_file(
     dataset: str | UUID,

@@ -12,6 +12,7 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional
 from sempy._utils._log import log
+from sempy_labs._helper_functions import _quiet_if_not_verbose
 import sempy_labs._icons as icons
 from uuid import UUID
 
@@ -234,6 +235,7 @@ def migrate_calc_tables_to_lakehouse(
                                 print(e)
 
 
+@_quiet_if_not_verbose
 @log
 def migrate_field_parameters(
     dataset: str,
