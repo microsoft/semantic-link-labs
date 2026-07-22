@@ -474,24 +474,27 @@ _WIDGET_CSS = """
 
 /* Code syntax highlighting (DAX / M / Python) */
 .slls-hl-com { color: #6e7781; font-style: italic; }
-.slls-hl-str { color: #0a3069; }
-.slls-hl-num { color: #0550ae; }
+.slls-hl-str { color: #c0392b; }
+.slls-hl-num { color: #a04900; }
 .slls-hl-kw { color: #cf222e; }
-.slls-hl-fn { color: #8250df; }
-.slls-hl-ref { color: #953800; }
-.slls-mdl.slls-mdl-dark .slls-hl-com { color: #8b949e; }
-.slls-mdl.slls-mdl-dark .slls-hl-str { color: #a5d6ff; }
-.slls-mdl.slls-mdl-dark .slls-hl-num { color: #79c0ff; }
+.slls-hl-fn { color: #0057b7; }
+.slls-hl-ref { color: #1d1d1f; }
+.slls-hl-tbl { color: #1d1d1f; }
+.slls-mdl.slls-mdl-dark .slls-hl-com { color: #6a737d; }
+.slls-mdl.slls-mdl-dark .slls-hl-str { color: #e06c75; }
+.slls-mdl.slls-mdl-dark .slls-hl-num { color: #d19a66; }
 .slls-mdl.slls-mdl-dark .slls-hl-kw { color: #ff7b72; }
-.slls-mdl.slls-mdl-dark .slls-hl-fn { color: #d2a8ff; }
-.slls-mdl.slls-mdl-dark .slls-hl-ref { color: #ffa657; }
+.slls-mdl.slls-mdl-dark .slls-hl-fn { color: #4fc1ff; }
+.slls-mdl.slls-mdl-dark .slls-hl-ref { color: #d4d4d4; }
+.slls-mdl.slls-mdl-dark .slls-hl-tbl { color: #d4d4d4; }
 @media (prefers-color-scheme: dark) {
-    .slls-mdl.slls-mdl-auto .slls-hl-com { color: #8b949e; }
-    .slls-mdl.slls-mdl-auto .slls-hl-str { color: #a5d6ff; }
-    .slls-mdl.slls-mdl-auto .slls-hl-num { color: #79c0ff; }
+    .slls-mdl.slls-mdl-auto .slls-hl-com { color: #6a737d; }
+    .slls-mdl.slls-mdl-auto .slls-hl-str { color: #e06c75; }
+    .slls-mdl.slls-mdl-auto .slls-hl-num { color: #d19a66; }
     .slls-mdl.slls-mdl-auto .slls-hl-kw { color: #ff7b72; }
-    .slls-mdl.slls-mdl-auto .slls-hl-fn { color: #d2a8ff; }
-    .slls-mdl.slls-mdl-auto .slls-hl-ref { color: #ffa657; }
+    .slls-mdl.slls-mdl-auto .slls-hl-fn { color: #4fc1ff; }
+    .slls-mdl.slls-mdl-auto .slls-hl-ref { color: #d4d4d4; }
+    .slls-mdl.slls-mdl-auto .slls-hl-tbl { color: #d4d4d4; }
 }
 """
 
@@ -531,7 +534,8 @@ function render({ model, el }) {
         dax: [
             { cls: "com", re: `//[^\\n]*|/\\*[\\s\\S]*?\\*/` },
             { cls: "str", re: `"(?:[^"]|"")*"` },
-            { cls: "ref", re: `'(?:[^']|'')*'\\[[^\\]]*\\]|'(?:[^']|'')*'|\\[[^\\]]*\\]` },
+            { cls: "tbl", re: `'(?:[^']|'')*'` },
+            { cls: "ref", re: `\\[[^\\]]*\\]` },
             { cls: "kw", re: `\\b(?:VAR|RETURN|EVALUATE|DEFINE|MEASURE|ORDER|BY|START|AT|TRUE|FALSE|NOT|IN|AND|OR)\\b` },
             { cls: "fn", re: `[A-Za-z_][A-Za-z0-9_.]*(?=\\s*\\()` },
             { cls: "num", re: `\\b\\d+(?:\\.\\d+)?\\b` },
@@ -573,7 +577,7 @@ function render({ model, el }) {
 
     function applyTheme() {
         root.classList.remove("slls-mdl-dark", "slls-mdl-auto");
-        root.classList.add(model.get("dark_mode") ? "slls-mdl-dark" : "slls-mdl-auto");
+        if (model.get("dark_mode")) root.classList.add("slls-mdl-dark");
     }
     applyTheme();
     model.on("change:dark_mode", applyTheme);
