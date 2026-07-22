@@ -52,57 +52,41 @@ def migrate_direct_lake_to_import(
             )
             return
 
-        # if tables is None:
-        table_list = [t for t in tom.model.Tables]
-
         sources = tom.get_direct_lake_sources()
-        for t in table_list:
+
+        migrated_tables = []
+        for t in tom.model.Tables:
             table_name = t.Name
-            if t.Partitions.Count == 1 and all(
-                p.Mode == TOM.ModeType.DirectLake for p in t.Partitions
-            ):
-                p = next(p for p in t.Partitions)
+            p = next(p for p in t.Partitions)
+            if p.Mode == TOM.ModeType.DirectLake:
                 source_table = p.Source.EntityName
-                source_schema = p.Source.SchemaName or "dbo"
-                # Rename Direct Lake partition
-                p.Name = f"{p.Name}_remove"
+                source_schema = p.Source.SchemaName or 'dbo'
                 expr_name = p.Source.ExpressionSource.Name
+                p.Name = f"{p.Name}_remove"
+                expr = None
 
                 s = next(s for s in sources if s.get('expressionName') == expr_name)
                 if s.get('itemType') == 'Lakehouse':
-                    expr = f"""
-                        let
-                            Source = Lakehouse.Contents(null),
-                            Workspace = Source{{[workspaceId={s.get('workspaceId')}]}}[Data],
-                            Artifact = Workspace{{[lakehouseId={s.get('itemId')}]}}[Data],
-                        Table = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]
-                    in
-                        Table"""
+                    expr = f"""let\n\tSource = Lakehouse.Contents(null),\n\tWorkspace = Source{{[workspaceId="{s.get('workspaceId')}"]}}[Data],\n\tArtifact = Workspace{{[lakehouseId="{s.get('itemId')}"]}}[Data],\n\tTable = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]\nin\n\tTable"""
                 elif s.get('itemType') == 'Warehouse':
-                    expr = f"""
-                        let
-                            Source = Fabric.Warehouse(),
-                            Workspace = Source{{[workspaceId={s.get('workspaceId')}]}}[Data],
-                            Warehouse = Workspace{{[warehouseId={s.get('itemId')}]}}[Data],
-                            Table = Warehouse{{[Schema="{source_schema}", Item="{source_table}"]}}[Data]
-                        in
-                            Table
-                        """
+                    expr = f"""let\n\tSource = Fabric.Warehouse(),\n\tWorkspace = Source{{[workspaceId="{s.get('workspaceId')}"]}}[Data],\n\tWarehouse = Workspace{{[warehouseId="{s.get('itemId')}"]}}[Data],\n\tTable = Warehouse{{[Schema="{source_schema}", Item="{source_table}"]}}[Data]\nin\n\tTable"""
                 else:
-                    print(f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import mode.")
-                    return
-                # Generate M partition
-                tom.add_m_partition(
-                    table_name=table_name,
-                    partition_name=table_name,
-                    expression=expr,
-                    mode=actual_mode,
-                )
-                # Remove Direct Lake partition
-                tom.remove_object(object=p)
+                    print(f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import/DirectQuery mode.")
+                
+                if expr:
+                    tom.add_m_partition(
+                        table_name=table_name,
+                        partition_name=table_name,
+                        expression=expr,
+                        mode=actual_mode,
+                    )           
+                    
+                    # Remove Direct Lake partition
+                    tom.remove_object(object=p)
+                    migrated_tables.append(table_name)
 
-        tom.model.Model.DefaultMode = TOM.ModeType.Import
-    # if tables is None:
-    print(
-        f"{icons.green_dot} All tables which were in Direct Lake mode have been migrated to '{actual_mode}' mode."
-    )
+        if migrated_tables:
+            tom.model.Model.DefaultMode = TOM.ModeType.Import
+            print(
+                f"{icons.green_dot} All tables which were in Direct Lake mode have been migrated to '{actual_mode}' mode."
+            )
