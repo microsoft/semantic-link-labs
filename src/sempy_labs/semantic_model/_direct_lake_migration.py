@@ -1768,15 +1768,18 @@ def migrate_to_direct_lake(
 
         # 3b) Post-process the new model. Calculated tables (other than field
         #     parameters) are intentionally not migrated, so drop the measures
-        #     that depend on non-migrated objects, and stamp the schema onto each
-        #     Direct Lake entity partition (the migration helpers leave it blank).
+        #     that depend on non-migrated objects, apply the rewritten
+        #     field-parameter DAX (dead references removed), and stamp the schema
+        #     onto each Direct Lake entity partition (the helpers leave it blank).
         removed_measures = set()
+        field_parameters = {}
         try:
             with connect_semantic_model(
                 dataset=dataset_id, workspace=workspace_id, readonly=True
             ) as src_tom:
                 _plan = _compute_migration_plan(src_tom)
                 removed_measures = _plan["removedMeasures"]
+                field_parameters = _plan["fieldParameters"]
         except Exception as e:
             warnings.append(f"Resolving non-migrated objects: {e}")
 
@@ -1786,6 +1789,16 @@ def migrate_to_direct_lake(
             with connect_semantic_model(
                 dataset=new_name, workspace=target_ws, readonly=False
             ) as new_tom:
+                # Apply the rewritten field-parameter DAX so references to
+                # objects that were not migrated (e.g. a calculated column) are
+                # removed — otherwise the field parameter fails on refresh.
+                for t in new_tom.model.Tables:
+                    new_expr = field_parameters.get(t.Name)
+                    if not new_expr:
+                        continue
+                    for p in t.Partitions:
+                        if p.SourceType == TOM.PartitionSourceType.Calculated:
+                            p.Source.Expression = new_expr
                 # Drop measures that depend on objects that were not migrated.
                 for t in new_tom.model.Tables:
                     for mname in [m.Name for m in t.Measures]:
