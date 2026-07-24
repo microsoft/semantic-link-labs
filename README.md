@@ -279,21 +279,21 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 10. Run the following code in the terminal to ensure a virtual environment exists.
 
 For Windows:
-```python
+```cli
 python -m venv venv
 ```
 For Mac:
-```python
+```cli
 python3 -m venv venv
 ```
 11. Run the following code in the terminal to activate the virtual environment.
 
 For Windows:
-```python
+```cli
 .\venv\Scripts\Activate.ps1
 ```
 For Mac:
-```python
+```cli
 source venv/bin/activate
 ```
 12. Run the following code in the terminal to install the build module.
