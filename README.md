@@ -277,12 +277,22 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 8. When prompted to open the cloned repository, click 'Open'.
 9. Open the integrated terminal (View -> Terminal).
 10. Run the following code in the terminal to ensure a virtual environment exists.
+For Windows:
 ```python
 python -m venv venv
 ```
+For Mac:
+```python
+python3 -m venv venv
+```
 11. Run the following code in the terminal to activate the virtual environment.
+For Windows:
 ```python
 .\venv\Scripts\Activate.ps1
+```
+For Mac:
+```python
+source venv/bin/activate
 ```
 12. Run the following code in the terminal to install the build module.
 ```
