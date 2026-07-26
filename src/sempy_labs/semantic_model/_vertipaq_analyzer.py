@@ -12,6 +12,7 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
     resolve_workspace_capacity,
+    _base_api,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
@@ -65,7 +66,17 @@ function render({ model, el }) {
         model.save_changes();
     }
 
+    function rootEl() {
+        const c = el.querySelector(".vpx-container");
+        return c ? c.parentElement : null;
+    }
+
     function draw() {
+        // Re-rendering (e.g. switching semantic models) replaces the whole
+        // markup, so remember the view state and re-apply it afterwards.
+        const prev = rootEl();
+        const wasFs = !!(prev && prev.classList.contains("vpx-fs"));
+        const wasDark = !!(prev && prev.classList.contains("vpx-dark"));
         uid = model.get("uid");
         el.innerHTML = model.get("html_content") || "";
         // innerHTML-injected <script> tags never execute, so run the collected
@@ -74,6 +85,19 @@ function render({ model, el }) {
         const s = document.createElement("script");
         s.textContent = model.get("script_content") || "";
         el.appendChild(s);
+        const root = rootEl();
+        // Only on a re-render (prev exists): on the first draw the markup
+        // already carries the requested theme.
+        if (root && prev) {
+            // Click the wired buttons so the toggles keep their placeholder /
+            // icon bookkeeping in sync.
+            const themeBtn = el.querySelector("#vpx-theme-" + uid);
+            if (themeBtn && wasDark !== root.classList.contains("vpx-dark")) {
+                themeBtn.click();
+            }
+            const fsBtn = el.querySelector("#vpx-fs-" + uid);
+            if (wasFs && fsBtn) fsBtn.click();
+        }
         wireDelta();
         wirePicker();
         mergeDelta();
@@ -272,6 +296,7 @@ function render({ model, el }) {
         const dsSel = dialog.querySelector(".vpx-picker-ds");
         const connectBtn = dialog.querySelector(".vpx-picker-connect");
         const reloadBtn = dialog.querySelector(".vpx-picker-reload");
+        let reloading = false;
         function closeDialog() { dialog.style.display = "none"; }
 
         function options(items, selected, placeholder) {
@@ -281,6 +306,38 @@ function render({ model, el }) {
                         (i.id === selected ? " selected" : "") + ">" +
                         esc(i.name) + "</option>";
                 }).join("");
+        }
+
+        // Models already analyzed in this session: selecting one restores its
+        // cached stats instantly instead of re-running the analysis.
+        function renderRecent() {
+            const wrap = dialog.querySelector(".vpx-picker-recent");
+            if (!wrap) return;
+            const items = model.get("recent_models") || [];
+            if (items.length < 2) {
+                wrap.style.display = "none";
+                wrap.innerHTML = "";
+                return;
+            }
+            wrap.style.display = "block";
+            wrap.innerHTML =
+                '<div class="vpx-picker-recent-head">Already analyzed</div>' +
+                '<div class="vpx-picker-recent-list">' +
+                items.map(function (m) {
+                    return '<button type="button" class="vpx-picker-recentitem' +
+                        (m.current ? " vpx-current" : "") + '" data-key="' +
+                        esc(m.key) + '"' + (m.current ? " disabled" : "") + ">" +
+                        esc(m.dataset) +
+                        '<span class="vpx-picker-recentsub">' + esc(m.workspace) +
+                        "</span></button>";
+                }).join("") +
+                "</div>";
+            wrap.querySelectorAll(".vpx-picker-recentitem").forEach(function (b) {
+                b.addEventListener("click", function () {
+                    closeDialog();
+                    dispatch("restore", { key: b.getAttribute("data-key") });
+                });
+            });
         }
 
         function renderOptions() {
@@ -300,7 +357,12 @@ function render({ model, el }) {
             }
             dsSel.disabled = !pickWs || !datasets;
             connectBtn.disabled = !pickDs;
-            if (reloadBtn) reloadBtn.disabled = false;
+            if (reloadBtn) {
+                // Re-enabled once the refreshed workspace list comes back.
+                if (workspaces.length) reloading = false;
+                reloadBtn.disabled = reloading;
+            }
+            renderRecent();
         }
         renderPickerOptions = renderOptions;
 
@@ -311,7 +373,9 @@ function render({ model, el }) {
         }
 
         if (reloadBtn) reloadBtn.addEventListener("click", function () {
-            // Force a fresh fetch of both lists.
+            // Force a fresh fetch of the workspace list and of the semantic
+            // models in the selected workspace.
+            reloading = true;
             reloadBtn.disabled = true;
             dispatch("list_workspaces", {});
             if (pickWs) dispatch("list_datasets", { workspace_id: pickWs });
@@ -336,7 +400,26 @@ function render({ model, el }) {
         connectBtn.addEventListener("click", function () {
             if (!pickDs) return;
             connectBtn.disabled = true;
-            dispatch("connect", { workspace_id: pickWs, dataset_id: pickDs });
+            // Close right away - the analysis runs in Python and replaces the
+            // whole widget when it finishes.
+            closeDialog();
+            const wsName = wsSel.selectedIndex >= 0
+                ? wsSel.options[wsSel.selectedIndex].text : "";
+            const dsName = dsSel.selectedIndex >= 0
+                ? dsSel.options[dsSel.selectedIndex].text : "";
+            const st = el.querySelector(".vpx-delta-status");
+            if (st) {
+                st.textContent = "Running Vertipaq Analyzer on '" + dsName +
+                    "' within the '" + wsName + "' workspace\u2026";
+                st.className = "vpx-delta-status vpx-delta-status-info";
+                st.style.display = "block";
+            }
+            dispatch("connect", {
+                workspace_id: pickWs,
+                dataset_id: pickDs,
+                workspace_name: wsName,
+                dataset_name: dsName,
+            });
         });
         if (btn) btn.addEventListener("click", function () {
             if (!pickWs) pickWs = model.get("workspace_id") || "";
@@ -351,6 +434,7 @@ function render({ model, el }) {
     model.on("change:status", showStatus);
     model.on("change:workspaces", function () { renderPickerOptions(); });
     model.on("change:datasets", function () { renderPickerOptions(); });
+    model.on("change:recent_models", function () { renderPickerOptions(); });
     model.on("change:html_content", draw);
 
     draw();
@@ -1672,6 +1756,70 @@ def vertipaq_analyzer(
             )
 
 
+def _vpx_model_key(workspace_id, dataset_id) -> str:
+    """Cache key identifying an analyzed semantic model."""
+    return f"{str(workspace_id).lower()}|{str(dataset_id).lower()}"
+
+
+def _vpx_snapshot_model(widget):
+    """Cache the state of the model currently rendered in the widget (HTML/JS
+    plus any merged Delta Analyzer results) so it can be shown again later
+    without re-running the analysis."""
+    key = getattr(widget, "_model_key", "")
+    if not key or getattr(widget, "_cache", None) is None:
+        return
+    widget._cache[key] = {
+        "uid": widget.uid,
+        "html": widget.html_content,
+        "js": widget.script_content,
+        "workspace_id": widget.workspace_id,
+        "delta_tables": list(widget.delta_tables or []),
+        "delta_results": dict(widget.delta_results or {}),
+        "delta_info": dict(getattr(widget, "_delta_info", {}) or {}),
+        "col_src": dict(getattr(widget, "_col_src", {}) or {}),
+        "meta": dict(getattr(widget, "_model_meta", {}) or {}),
+    }
+
+
+def _vpx_sync_recent(widget):
+    """Publish the analyzed models so the picker can offer them for instant
+    switching."""
+    widget.recent_models = [
+        {
+            "key": k,
+            "dataset": (e.get("meta") or {}).get("dataset", ""),
+            "workspace": (e.get("meta") or {}).get("workspace", ""),
+            "current": k == getattr(widget, "_model_key", ""),
+        }
+        for k, e in (getattr(widget, "_cache", None) or {}).items()
+    ]
+
+
+def _vpx_restore_model(widget, key) -> bool:
+    """Re-render a previously analyzed model from the cache. Returns False when
+    that model has not been analyzed in this session."""
+    if key not in (getattr(widget, "_cache", None) or {}):
+        return False
+    # Capture the latest state (e.g. Delta Analyzer results added since the
+    # model was rendered) before switching away from it.
+    _vpx_snapshot_model(widget)
+    entry = widget._cache[key]
+    widget._model_key = key
+    widget._model_meta = dict(entry.get("meta") or {})
+    widget._delta_info = dict(entry.get("delta_info") or {})
+    widget._col_src = dict(entry.get("col_src") or {})
+    widget.workspace_id = entry.get("workspace_id", "")
+    widget.delta_tables = entry.get("delta_tables", [])
+    widget.delta_results = entry.get("delta_results", {})
+    widget.status = {}
+    widget.uid = entry.get("uid", "")
+    widget.script_content = entry.get("js", "")
+    # Set last: the frontend redraws on this trait.
+    widget.html_content = entry.get("html", "")
+    _vpx_sync_recent(widget)
+    return True
+
+
 def visualize_vertipaq(
     dataframes,
     dataset_name,
@@ -2515,6 +2663,51 @@ def visualize_vertipaq(
         flex: 1 1 260px;
         margin-bottom: 0;
     }}
+    .vpx-{uid} .vpx-picker-recent {{
+        display: none;
+        margin-top: 20px;
+    }}
+    .vpx-{uid} .vpx-picker-recent-head {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+        margin-bottom: 8px;
+    }}
+    .vpx-{uid} .vpx-picker-recent-list {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }}
+    .vpx-{uid} .vpx-picker-recentitem {{
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        padding: 6px 12px;
+        font-size: 12.5px;
+        font-family: inherit;
+        color: var(--vpx-text);
+        background: var(--vpx-bg-secondary);
+        border: 1px solid var(--vpx-border);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: color var(--vpx-transition), border-color var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-picker-recentitem:hover {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-picker-recentitem.vpx-current {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+        background: var(--ui-accent-soft);
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-picker-recentsub {{
+        font-size: 11px;
+        color: var(--vpx-text-tertiary);
+    }}
     .vpx-{uid} .vpx-picker-field {{
         display: flex;
         flex-direction: column;
@@ -2961,6 +3154,7 @@ def visualize_vertipaq(
             f'<div class="vpx-picker-field"><label>Semantic model</label>'
             f'<select class="vpx-picker-select vpx-picker-ds"></select></div>'
             f"</div>"
+            f'<div class="vpx-picker-recent"></div>'
             f"</div>"
             f'<div class="vpx-delta-modal-foot">'
             f'<button type="button" class="vpx-delta-cancel vpx-picker-cancel">'
@@ -3175,8 +3369,15 @@ def visualize_vertipaq(
     # widget to a different model), replacing the pre-built HTML/JS and the
     # Delta Analyzer metadata the observers rely on.
     if widget is not None:
+        # Keep the outgoing model's state so the user can switch back to it.
+        _vpx_snapshot_model(widget)
         widget._delta_info = {t["tableName"]: t for t in delta_tables}
         widget._col_src = column_source_map or {}
+        widget._model_key = _vpx_model_key(workspace_id, dataset_id)
+        widget._model_meta = {
+            "dataset": dataset_name or "",
+            "workspace": workspace_name or "",
+        }
         widget.workspace_id = str(workspace_id or "")
         widget.delta_tables = delta_tables
         widget.delta_results = {}
@@ -3185,6 +3386,8 @@ def visualize_vertipaq(
         widget.script_content = raw_static_js
         # Set last: the frontend redraws on this trait.
         widget.html_content = static_html
+        _vpx_snapshot_model(widget)
+        _vpx_sync_recent(widget)
         return
 
     # When the model has no Direct-Lake-over-Lakehouse source tables and the
@@ -3220,6 +3423,7 @@ def visualize_vertipaq(
         workspace_id = traitlets.Unicode("").tag(sync=True)
         workspaces = traitlets.List().tag(sync=True)
         datasets = traitlets.Dict().tag(sync=True)
+        recent_models = traitlets.List().tag(sync=True)
 
     # In a pure-Python (non-Spark) notebook the Delta Analyzer cannot run, so
     # surface an upfront hint next to the button.
@@ -3249,6 +3453,7 @@ def visualize_vertipaq(
         workspace_id=str(workspace_id or ""),
         workspaces=[],
         datasets={},
+        recent_models=[],
     )
 
     # Delta Analyzer metadata for the model currently shown. Kept on the widget
@@ -3256,6 +3461,16 @@ def visualize_vertipaq(
     # while the observers below stay bound.
     widget._delta_info = {t["tableName"]: t for t in delta_tables}
     widget._col_src = column_source_map or {}
+    # Every analyzed model is cached (rendered HTML/JS + Delta Analyzer
+    # results) so the picker can switch back to it instantly.
+    widget._cache = {}
+    widget._model_key = _vpx_model_key(workspace_id, dataset_id)
+    widget._model_meta = {
+        "dataset": dataset_name or "",
+        "workspace": workspace_name or "",
+    }
+    _vpx_snapshot_model(widget)
+    _vpx_sync_recent(widget)
     # Long-running work (Delta Analyzer, switching models) runs inline on the
     # kernel thread: Spark/OneLake calls (e.g. mounting the lakehouse) are not
     # reliable from a background thread in Fabric notebooks. Trait updates sent
@@ -3330,33 +3545,77 @@ def visualize_vertipaq(
                 "done": True,
             }
 
+    def _api_items(request):
+        """Collect ``{id, name}`` entries from a paginated Fabric list API."""
+        responses = _base_api(request=request, uses_pagination=True, client="fabric_sp")
+        return [
+            {"id": str(v.get("id")), "name": str(v.get("displayName"))}
+            for r in responses
+            for v in r.get("value", [])
+            if v.get("id")
+        ]
+
+    def _df_items(df, id_names, name_names):
+        """Collect ``{id, name}`` entries from a sempy dataframe, tolerating the
+        different column spellings across semantic-link versions."""
+        cols = list(df.columns)
+        id_col = next((c for c in id_names if c in cols), None)
+        name_col = next((c for c in name_names if c in cols), None)
+        if id_col is None or name_col is None:
+            return []
+        return [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
+        ]
+
     def _list_workspaces_payload():
+        out = []
         try:
-            dfW = fabric.list_workspaces()
-            out = [
-                {"id": str(r["Id"]), "name": str(r["Name"])} for _, r in dfW.iterrows()
-            ]
+            out = _api_items("/v1/workspaces")
         except Exception:
+            out = []
+        if not out:
+            try:
+                out = _df_items(fabric.list_workspaces(), ["Id", "ID"], ["Name"])
+            except Exception:
+                out = []
+        if not out:
             return [{"id": str(workspace_id or ""), "name": str(workspace_name or "")}]
         return sorted(out, key=lambda x: x["name"].lower())
 
     def _list_datasets_payload(target_workspace_id):
+        out = []
         try:
-            dfD = fabric.list_datasets(workspace=target_workspace_id)
-            out = [
-                {"id": str(r["Dataset Id"]), "name": str(r["Dataset Name"])}
-                for _, r in dfD.iterrows()
-            ]
+            out = _api_items(f"/v1/workspaces/{target_workspace_id}/semanticModels")
         except Exception:
-            return []
+            out = []
+        if not out:
+            try:
+                out = _df_items(
+                    fabric.list_datasets(workspace=target_workspace_id),
+                    ["Dataset Id", "Dataset ID", "Id"],
+                    ["Dataset Name", "Name"],
+                )
+            except Exception:
+                out = []
         return sorted(out, key=lambda x: x["name"].lower())
 
-    def _connect(target_workspace_id, target_dataset_id):
-        """Re-run the Vertipaq Analyzer for the model chosen in the picker and
-        re-render this widget in place."""
+    def _connect(target_workspace_id, target_dataset_id, target_names=None):
+        """Show the semantic model chosen in the picker: restored from the cache
+        when it was already analyzed, otherwise analyzed now and re-rendered in
+        place."""
+        names = target_names or {}
+        model_label = names.get("dataset") or str(target_dataset_id)
+        ws_label = names.get("workspace") or str(target_workspace_id)
         try:
+            if _vpx_restore_model(
+                widget, _vpx_model_key(target_workspace_id, target_dataset_id)
+            ):
+                return
             widget.status = {
-                "message": "Running the Vertipaq Analyzer on the selected semantic model\u2026",
+                "message": (
+                    f"Running Vertipaq Analyzer on '{model_label}' within "
+                    f"the '{ws_label}' workspace\u2026"
+                ),
                 "kind": "info",
             }
             vertipaq_analyzer(
@@ -3368,7 +3627,10 @@ def visualize_vertipaq(
             )
         except Exception as e:  # noqa: BLE001
             widget.status = {
-                "message": f"Could not analyze the selected semantic model: {e}",
+                "message": (
+                    f"Could not analyze '{model_label}' within the "
+                    f"'{ws_label}' workspace: {e}"
+                ),
                 "kind": "error",
                 "done": True,
             }
@@ -3378,6 +3640,9 @@ def visualize_vertipaq(
         action_name = action.get("action")
 
         if action_name == "list_workspaces":
+            # Clear first so the trait always changes (an identical payload
+            # would not notify the frontend) and the dropdown shows "Loading".
+            widget.workspaces = []
             widget.workspaces = _list_workspaces_payload()
             return
 
@@ -3386,8 +3651,15 @@ def visualize_vertipaq(
             if not target:
                 return
             new_map = dict(widget.datasets or {})
-            new_map[target] = _list_datasets_payload(target)
+            new_map.pop(target, None)
             widget.datasets = new_map
+            refreshed = dict(new_map)
+            refreshed[target] = _list_datasets_payload(target)
+            widget.datasets = refreshed
+            return
+
+        if action_name == "restore":
+            _vpx_restore_model(widget, str(action.get("key") or ""))
             return
 
         if action_name == "connect":
@@ -3397,7 +3669,14 @@ def visualize_vertipaq(
                 return
             _running["active"] = True
             try:
-                _connect(target_ws, target_ds)
+                _connect(
+                    target_ws,
+                    target_ds,
+                    {
+                        "dataset": action.get("dataset_name"),
+                        "workspace": action.get("workspace_name"),
+                    },
+                )
             finally:
                 _running["active"] = False
             return
