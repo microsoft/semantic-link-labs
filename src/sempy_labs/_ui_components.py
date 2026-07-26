@@ -16,7 +16,7 @@ strings (HTML / CSS / JS) so they can be embedded in ``IPython.display.HTML``
 output, an ``anywidget`` widget, or any other surface that renders raw HTML.
 """
 
-from typing import Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Icons (monochrome SVGs that use currentColor)
@@ -158,6 +158,28 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M11.5 2.5l2 2L5 13H3v-2z"/>'
         '<path d="M10 4l2 2"/></svg>'
+    ),
+    # Vertipaq Analyzer: a database cylinder examined by a magnifying glass,
+    # mirroring the VertiPaq Analyzer mark (same drawing as the Tools app's
+    # semantic model explorer sub-tool icon).
+    "vertipaq": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="8" cy="3.3" rx="5.3" ry="1.7"/>'
+        '<path d="M2.7 3.3v9.4c0 .94 2.37 1.7 5.3 1.7s5.3-.76 5.3-1.7V3.3"/>'
+        '<circle cx="7" cy="7.4" r="3.1"/>'
+        '<path d="M5.4 6.5a2.1 2.1 0 0 0-.2 2.3"/>'
+        '<path d="M9.3 9.7 12.6 13"/></svg>'
+    ),
+    "swap": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 5.5h9"/>'
+        '<path d="M9.5 3l2.5 2.5L9.5 8"/>'
+        '<path d="M13 10.5H4"/>'
+        '<path d="M6.5 8L4 10.5 6.5 13"/></svg>'
     ),
     "link": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
@@ -359,10 +381,22 @@ HEADER_CSS: str = """\
     color: var(--ui-text);
 }
 .sl-header * { box-sizing: border-box; }
+.sl-head-spacer { flex: 1 1 auto; }
+.sl-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    flex-shrink: 0;
+}
+.sl-title-icon svg { display: block; width: 19px; height: 19px; }
 .sl-titlewrap {
     display: flex;
     flex-direction: column;
-    margin-right: auto;
     min-width: 0;
 }
 .sl-title {
@@ -471,6 +505,8 @@ def render_header_html(
     theme_btn_id: Optional[str] = None,
     dark_mode: bool = False,
     fullscreen_btn_id: Optional[str] = None,
+    title_icon: Optional[str] = None,
+    extra_buttons: Optional[List[Dict[str, str]]] = None,
 ) -> str:
     """Render the standard widget header as HTML.
 
@@ -492,6 +528,13 @@ def render_header_html(
         If provided, includes a full-screen toggle button with this DOM id,
         placed immediately to the left of the theme toggle button. Pair with
         :func:`fullscreen_toggle_script` to wire up behavior.
+    title_icon : str, default=None
+        Optional SVG markup (e.g. an entry from :data:`ICONS`) rendered in an
+        accent-colored badge to the left of the title.
+    extra_buttons : list[dict[str, str]], default=None
+        Optional extra icon buttons rendered immediately to the right of the
+        title. Each dict accepts ``id``, ``icon`` (SVG markup), ``title`` and an
+        optional ``cls`` appended to the button's classes.
 
     Returns
     -------
@@ -501,6 +544,8 @@ def render_header_html(
         custom properties) on the page.
     """
     parts = ['<div class="sl-header">']
+    if title_icon:
+        parts.append(f'<span class="sl-title-icon">{title_icon}</span>')
     parts.append('<div class="sl-titlewrap">')
     parts.append(f'<div class="sl-title">{_escape_html(title)}</div>')
 
@@ -514,6 +559,17 @@ def render_header_html(
         parts.append(f'<div class="sl-subtitle">{sub}</div>')
 
     parts.append("</div>")  # titlewrap
+
+    for btn in extra_buttons or []:
+        cls = f"sl-theme-btn {btn.get('cls', '')}".strip()
+        label = btn.get("title", "")
+        parts.append(
+            f'<button type="button" class="{cls}" id="{btn.get("id", "")}" '
+            f'title="{label}" aria-label="{label}">{btn.get("icon", "")}</button>'
+        )
+
+    # Pushes the full-screen / theme buttons to the right edge.
+    parts.append('<div class="sl-head-spacer"></div>')
 
     if fullscreen_btn_id:
         fs_icon = ICONS["fullscreen"]
