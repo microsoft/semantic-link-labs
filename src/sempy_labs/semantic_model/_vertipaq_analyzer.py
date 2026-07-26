@@ -2419,7 +2419,9 @@ def visualize_vertipaq(
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 10px 2px 2px 2px;
+        /* Same horizontal padding as the table rows so this toggle lines up
+           with the ones above it. */
+        padding: 12px 6px 2px 6px;
         font-size: 13px;
         color: var(--vpx-text-secondary);
     }}
