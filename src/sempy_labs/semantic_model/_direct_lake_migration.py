@@ -307,7 +307,8 @@ _WIDGET_CSS = """
 .slls-mdl-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .slls-mdl-badge { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: var(--slls-accent-soft); color: var(--slls-accent); flex-shrink: 0; }
 .slls-mdl-badge svg { width: 22px; height: 22px; }
-.slls-mdl-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.slls-mdl-titlewrap { display: flex; flex-direction: column; min-width: 0; }
+.slls-mdl-head-spacer { flex: 1 1 auto; }
 .slls-mdl-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
 .slls-mdl-subtitle { font-size: 12px; color: var(--slls-text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 620px; }
 .slls-mdl-subtitle .slls-mdl-sep { color: var(--slls-text-tertiary); margin: 0 6px; }
@@ -374,6 +375,14 @@ _WIDGET_CSS = """
 .slls-mdl-body { min-height: 220px; }
 .slls-mdl-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 22px; }
 .slls-mdl-footer-end { justify-content: flex-end; }
+
+/* Model / workspace picker ("connect" screen) */
+.slls-mdl-picker { max-width: 760px; margin: 0 auto; }
+.slls-mdl-picker-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.slls-mdl-picker-head { min-width: 0; }
+.slls-mdl-picker-title { font-size: 16px; font-weight: 600; }
+.slls-mdl-picker-sub { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 3px; }
+.slls-mdl-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 
 .slls-mdl-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .slls-mdl-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slls-text-tertiary); }
@@ -538,6 +547,8 @@ function render({ model, el }) {
         field_parameter: `__IC_FIELD_PARAMETER__`,
         calculation_group: `__IC_CALCULATION_GROUP__`,
         database_zap: `__IC_DATABASE_ZAP__`,
+        swap: `__IC_SWAP__`,
+        refresh: `__IC_REFRESH__`,
     };
 
     function esc(s) {
@@ -637,6 +648,32 @@ function render({ model, el }) {
 
     function busy() { return model.get("busy") === true; }
 
+    const connected = () => model.get("connected") === true;
+    // The picker ("connect") screen replaces the wizard whenever no model is
+    // connected, or the user reopens it to switch models.
+    let pickerReopen = false;
+    let pickWs = "";
+    let pickDs = "";
+    const showPicker = () => !connected() || pickerReopen;
+
+    function openPicker() {
+        pickerReopen = true;
+        pickWs = model.get("workspace_id") || "";
+        pickDs = connected() ? "" : pickDs;
+        ensureDatasets(pickWs);
+        route();
+    }
+
+    function ensureDatasets(wsId) {
+        if (!wsId) return;
+        const map = model.get("datasets") || {};
+        if (map[wsId] === undefined) runAction("list_datasets", { workspace_id: wsId });
+    }
+
+    function reloadPickerLists() {
+        runAction("reload_picker", { workspace_id: pickWs });
+    }
+
     function themeBtn() {
         const dark = model.get("dark_mode");
         return `<button class="slls-mdl-btn slls-mdl-btn-icon" data-r="theme" title="Toggle theme" aria-label="Toggle theme">${dark ? IC.sun : IC.moon}</button>`;
@@ -648,15 +685,23 @@ function render({ model, el }) {
     }
 
     function headerHtml() {
+        const picking = showPicker();
         const ds = model.get("dataset_name") || "Semantic model";
         const ws = model.get("workspace_name") || "";
-        const sub = ws ? `<b>${esc(ds)}</b><span class="slls-mdl-sep">·</span>${esc(ws)}` : `<b>${esc(ds)}</b>`;
+        const sub = connected() && (model.get("dataset_name") || "")
+            ? (ws ? `<b>${esc(ds)}</b><span class="slls-mdl-sep">·</span>${esc(ws)}` : `<b>${esc(ds)}</b>`)
+            : `Select a semantic model to migrate`;
+        const changeBtn = (connected() && !picking)
+            ? `<button class="slls-mdl-btn slls-mdl-btn-icon" data-r="change-model" title="Change semantic model / workspace" aria-label="Change semantic model / workspace">${IC.swap}</button>`
+            : "";
         return `<div class="slls-mdl-header">
             <span class="slls-mdl-badge">${IC.database_zap}</span>
             <div class="slls-mdl-titlewrap">
                 <div class="slls-mdl-title">Migrate to Direct Lake</div>
                 <div class="slls-mdl-subtitle">${sub}</div>
             </div>
+            ${changeBtn}
+            <div class="slls-mdl-head-spacer"></div>
             <div class="slls-mdl-hdr-ctrls">${fsBtn()}${themeBtn()}</div>
         </div>`;
     }
@@ -1127,7 +1172,51 @@ function render({ model, el }) {
         return analyzeHtml();
     }
 
+    function pickerHtml() {
+        if (!pickWs) pickWs = model.get("workspace_id") || "";
+        const workspaces = model.get("workspaces") || [];
+        const ds = (model.get("datasets") || {})[pickWs];
+        const wsOptions = optionsHtml(workspaces, pickWs, "Select a workspace\u2026");
+        let dsInner;
+        if (!pickWs) dsInner = `<option value="">Select a workspace first\u2026</option>`;
+        else if (ds === undefined) dsInner = `<option value="">Loading\u2026</option>`;
+        else if (ds.length === 0) dsInner = `<option value="">No semantic models</option>`;
+        else dsInner = optionsHtml(ds, pickDs, "Select a semantic model\u2026");
+        const dsDisabled = (!pickWs || ds === undefined) ? " disabled" : "";
+        const spin = `<span class="slls-mdl-spin"></span>`;
+        return `<div class="slls-mdl-picker">
+            <div class="slls-mdl-picker-top">
+                <div class="slls-mdl-picker-head">
+                    <div class="slls-mdl-picker-title">Choose a semantic model</div>
+                    <div class="slls-mdl-picker-sub">Pick a workspace and an import/DirectQuery semantic model to migrate to Direct Lake.</div>
+                </div>
+                <button class="slls-mdl-btn" data-r="pick-reload"${busy() ? " disabled" : ""}>${busy() ? spin : IC.refresh} Reload</button>
+            </div>
+            <div class="slls-mdl-grid">
+                <div class="slls-mdl-field">
+                    <span class="slls-mdl-label">Workspace</span>
+                    <select class="slls-mdl-select" data-r="pick-ws">${wsOptions}</select>
+                </div>
+                <div class="slls-mdl-field">
+                    <span class="slls-mdl-label">Semantic model</span>
+                    <select class="slls-mdl-select" data-r="pick-ds"${dsDisabled}>${dsInner}</select>
+                </div>
+            </div>
+            <div class="slls-mdl-picker-actions">
+                ${connected() ? `<button class="slls-mdl-btn" data-r="pick-cancel">Cancel</button>` : ""}
+                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="pick-connect"${(!pickDs || busy()) ? " disabled" : ""}>${busy() ? spin : ""} Connect</button>
+            </div>
+        </div>`;
+    }
+
     function route() {
+        if (showPicker()) {
+            root.innerHTML = headerHtml()
+                + statusHtml()
+                + `<div class="slls-mdl-body">${pickerHtml()}</div>`;
+            wire();
+            return;
+        }
         const screen = model.get("screen") || "analyze";
         root.innerHTML = headerHtml()
             + stepsHtml()
@@ -1150,6 +1239,21 @@ function render({ model, el }) {
         });
         on('[data-r="fullscreen"]', "click", () => setFullscreen(!fsMode));
         on('[data-r="analyze"]', "click", () => runAction("analyze"));
+
+        // Model / workspace picker ("connect" screen).
+        on('[data-r="change-model"]', "click", () => openPicker());
+        on('[data-r="pick-reload"]', "click", () => reloadPickerLists());
+        on('[data-r="pick-ws"]', "change", (e) => { pickWs = e.target.value; pickDs = ""; ensureDatasets(pickWs); route(); });
+        on('[data-r="pick-ds"]', "change", (e) => { pickDs = e.target.value; route(); });
+        on('[data-r="pick-cancel"]', "click", () => { pickerReopen = false; route(); });
+        on('[data-r="pick-connect"]', "click", () => {
+            if (!pickDs) return;
+            const workspaces = model.get("workspaces") || [];
+            const ds = (model.get("datasets") || {})[pickWs] || [];
+            const wsName = (workspaces.find((w) => w.id === pickWs) || {}).name || "";
+            const dsName = (ds.find((d) => d.id === pickDs) || {}).name || "";
+            runAction("connect", { workspace_id: pickWs, dataset_id: pickDs, workspace_name: wsName, dataset_name: dsName });
+        });
 
         on('[data-r="copy-refresh"]', "click", (e) => {
             const btn = e.currentTarget;
@@ -1341,12 +1445,19 @@ function render({ model, el }) {
         "dataset_name", "workspace_name", "conversion_mode",
         "backup_workspace_id", "backup_lakehouse_id",
         "selected_reports", "rebind_result",
+        "connected", "datasets",
     ].forEach((name) => model.on("change:" + name, route));
+
+    // connect_done fires on every successful connect (including switching to a
+    // new model while already connected) so the picker always closes.
+    model.on("change:connect_done", () => { pickerReopen = false; route(); });
 
     route();
 
+    // Only auto-analyze once a model is connected; when launched without a
+    // dataset the picker is shown first and analysis waits for a connect.
     const a0 = model.get("analysis") || {};
-    if (!a0.ready) runAction("analyze");
+    if (connected() && !a0.ready) runAction("analyze");
 }
 export default { render };
 """
@@ -1354,7 +1465,7 @@ export default { render };
 
 @log
 def migrate_to_direct_lake(
-    dataset: str | UUID,
+    dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     dark_mode: bool = False,
 ):
@@ -1373,8 +1484,10 @@ def migrate_to_direct_lake(
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
+    dataset : str | uuid.UUID, default=None
         Name or ID of the import/DirectQuery semantic model to migrate.
+        Defaults to None which opens the wizard on a workspace / semantic model
+        picker so the model to migrate can be chosen interactively.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the source semantic model
         exists. Defaults to None which resolves to the workspace of the attached
@@ -1406,8 +1519,14 @@ def migrate_to_direct_lake(
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     workspace_id = str(workspace_id)
-    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
-    dataset_id = str(dataset_id)
+    # When no dataset is supplied the wizard opens on the model/workspace picker
+    # and stays disconnected until the user chooses a model to migrate.
+    connected = dataset is not None
+    if connected:
+        dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+        dataset_id = str(dataset_id)
+    else:
+        dataset_name, dataset_id = "", ""
 
     # ---------------- Catalog helpers ----------------
     def _pick_columns(df, preferred_id, preferred_name):
@@ -1442,6 +1561,22 @@ def migrate_to_direct_lake(
             return []
         rows = [
             {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfI.iterrows()
+        ]
+        rows.sort(key=lambda x: x["name"].lower())
+        return rows
+
+    def _list_datasets_payload(ws_id):
+        try:
+            dfD = fabric.list_datasets(workspace=ws_id)
+        except Exception:
+            return []
+        id_col, name_col = _pick_columns(
+            dfD, ["Dataset Id", "Dataset ID", "Id"], ["Dataset Name", "Name"]
+        )
+        if id_col is None or name_col is None:
+            return []
+        rows = [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfD.iterrows()
         ]
         rows.sort(key=lambda x: x["name"].lower())
         return rows
@@ -2391,12 +2526,17 @@ def migrate_to_direct_lake(
     # ---------------- Initial widget state ----------------
     workspaces_payload = _list_workspaces_payload()
     default_new_name = f"{dataset_name} (Direct Lake)"
+    # When starting on the picker, prefetch the current workspace's semantic
+    # models so the model dropdown populates at once.
+    initial_datasets = {} if connected else {workspace_id: _list_datasets_payload(workspace_id)}
 
     class MigrateDirectLakeWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
         _css = _WIDGET_CSS
 
         screen = traitlets.Unicode("analyze").tag(sync=True)
+        connected = traitlets.Bool(False).tag(sync=True)
+        connect_done = traitlets.Int(0).tag(sync=True)
         dataset_id = traitlets.Unicode("").tag(sync=True)
         dataset_name = traitlets.Unicode("").tag(sync=True)
         workspace_id = traitlets.Unicode("").tag(sync=True)
@@ -2417,6 +2557,7 @@ def migrate_to_direct_lake(
         template_name = traitlets.Unicode("").tag(sync=True)
         workspaces = traitlets.List().tag(sync=True)
         source_items = traitlets.Dict().tag(sync=True)
+        datasets = traitlets.Dict().tag(sync=True)
         analysis = traitlets.Dict().tag(sync=True)
         preview = traitlets.Dict().tag(sync=True)
         result = traitlets.Dict().tag(sync=True)
@@ -2430,6 +2571,8 @@ def migrate_to_direct_lake(
 
     widget = MigrateDirectLakeWidget(
         screen="analyze",
+        connected=connected,
+        connect_done=0,
         dataset_id=dataset_id,
         dataset_name=dataset_name,
         workspace_id=workspace_id,
@@ -2450,6 +2593,7 @@ def migrate_to_direct_lake(
         template_name=f"{dataset_name} data load",
         workspaces=workspaces_payload,
         source_items={},
+        datasets=initial_datasets,
         analysis={},
         preview={},
         result={},
@@ -2464,6 +2608,7 @@ def migrate_to_direct_lake(
 
     # ---------------- Action dispatcher ----------------
     def _on_run(_change):
+        nonlocal dataset_id, dataset_name, workspace_id, workspace_name
         data = dict(widget.pending_action or {})
         action = data.get("action")
         if not action:
@@ -2473,6 +2618,68 @@ def migrate_to_direct_lake(
             if action == "analyze":
                 widget.status = {}
                 widget.analysis = _analyze_model()
+
+            elif action == "list_workspaces":
+                widget.workspaces = _list_workspaces_payload()
+
+            elif action == "list_datasets":
+                ws_id = data.get("workspace_id")
+                if not ws_id:
+                    return
+                new_map = dict(widget.datasets)
+                if data.get("force") or ws_id not in new_map:
+                    new_map[str(ws_id)] = _list_datasets_payload(ws_id)
+                    widget.datasets = new_map
+
+            elif action == "reload_picker":
+                # Refresh both the workspace list and the selected workspace's
+                # semantic models in a single round-trip (used by the picker's
+                # Reload button).
+                widget.workspaces = _list_workspaces_payload()
+                ws_id = data.get("workspace_id")
+                if ws_id:
+                    new_map = dict(widget.datasets)
+                    new_map[str(ws_id)] = _list_datasets_payload(ws_id)
+                    widget.datasets = new_map
+
+            elif action == "connect":
+                target_ws = data.get("workspace_id")
+                target_ds = data.get("dataset_id")
+                if not target_ws or not target_ds:
+                    widget.status = {
+                        "message": "Select a workspace and semantic model.",
+                        "kind": "error",
+                    }
+                    return
+                # Repoint the closure-captured identifiers so every helper
+                # (analysis, preview, migration, rebind) targets the newly
+                # chosen model / workspace.
+                workspace_id = str(target_ws)
+                dataset_id = str(target_ds)
+                workspace_name = data.get("workspace_name") or workspace_name
+                dataset_name = data.get("dataset_name") or dataset_name
+                widget.status = {}
+                widget.workspace_id = workspace_id
+                widget.workspace_name = workspace_name
+                widget.dataset_id = dataset_id
+                widget.dataset_name = dataset_name
+                # Reset the wizard for the new model and seed sensible defaults.
+                widget.new_model_name = f"{dataset_name} (Direct Lake)"
+                widget.template_name = f"{dataset_name} data load"
+                widget.backup_file_path = f"{dataset_name}.bim"
+                widget.target_workspace_id = workspace_id
+                widget.source_workspace_id = workspace_id
+                widget.backup_workspace_id = workspace_id
+                widget.source_item_id = ""
+                widget.conversion_mode = "new"
+                widget.preview = {}
+                widget.result = {}
+                widget.selected_reports = []
+                widget.rebind_result = {}
+                widget.screen = "analyze"
+                widget.analysis = _analyze_model()
+                widget.connected = True
+                widget.connect_done = widget.connect_done + 1
 
             elif action == "list_source_items":
                 ws_id = data.get("workspace_id")
@@ -2573,4 +2780,6 @@ _WIDGET_JS = (
     .replace("__IC_FIELD_PARAMETER__", _UI_ICONS["field_parameter"])
     .replace("__IC_CALCULATION_GROUP__", _UI_ICONS["calculation_group"])
     .replace("__IC_DATABASE_ZAP__", _UI_ICONS["database_zap"])
+    .replace("__IC_SWAP__", _UI_ICONS["swap"])
+    .replace("__IC_REFRESH__", _UI_ICONS["refresh"])
 )

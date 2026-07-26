@@ -168,6 +168,15 @@ ICONS: dict[str, str] = {
         '<path d="M11.5 2.5l2 2L5 13H3v-2z"/>'
         '<path d="M10 4l2 2"/></svg>'
     ),
+    "swap": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 5.5h9"/>'
+        '<path d="M9.5 3l2.5 2.5L9.5 8"/>'
+        '<path d="M13 10.5H4"/>'
+        '<path d="M6.5 8L4 10.5 6.5 13"/></svg>'
+    ),
     "link": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
