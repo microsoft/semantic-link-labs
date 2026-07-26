@@ -76,6 +76,7 @@ def delta_analyzer(
     schema: Optional[str] = None,
     visualize: bool = True,
     dark_mode: bool = False,
+    _show_progress: bool = True,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
@@ -218,7 +219,7 @@ def delta_analyzer(
     ]
 
     for idx, (file_path, file_size) in enumerate(
-        bar := tqdm(latest_version_files), start=1
+        bar := tqdm(latest_version_files, disable=not _show_progress), start=1
     ):
         file_name = os.path.basename(file_path)
         bar.set_description(
@@ -358,6 +359,7 @@ def delta_analyzer(
                     function=function,
                     lakehouse=lakehouse,
                     workspace=workspace,
+                    schema_name=schema,
                 )
 
                 if "Cardinality" not in column_df.columns:

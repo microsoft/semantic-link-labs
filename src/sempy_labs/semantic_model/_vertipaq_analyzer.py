@@ -172,9 +172,18 @@ function render({ model, el }) {
         });
         const runBtn = dialog.querySelector(".vpx-delta-run");
         if (runBtn) runBtn.addEventListener("click", function () {
+            // Send the full delta-table descriptors (table name, lakehouse,
+            // workspace, entity, schema) so the Python side keeps every
+            // property of each selected table.
+            const byName = {};
+            (model.get("delta_tables") || []).forEach(function (t) {
+                if (t && t.tableName) byName[t.tableName] = t;
+            });
             const selected = [];
-            dialog.querySelectorAll(".vpx-delta-tablecb:checked").forEach(function (cb) {
-                selected.push(cb.getAttribute("data-table"));
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) {
+                if (!cb.checked) return;
+                const name = cb.getAttribute("data-table");
+                selected.push(byName[name] || { tableName: name });
             });
             if (selected.length === 0) return;
             const skip = dialog.querySelector(".vpx-delta-skipcard");
@@ -400,9 +409,10 @@ def _compute_table_delta_stats(info, skip_cardinality=True):
 
     lakehouse = info.get("lakehouse")
     workspace = info.get("workspace")
+    # The entity/schema come from the Direct Lake partition's EntityName and
+    # SchemaName properties; the schema is reconciled with the lakehouse so the
+    # delta path resolves for both schema-enabled and non-schema lakehouses.
     entity = info.get("entity")
-    # The schema comes directly from the Direct Lake partition's SchemaName
-    # property (``None``/empty for non-schema-enabled lakehouses).
     schema = info.get("schema") or None
 
     result = delta_analyzer(
@@ -415,6 +425,7 @@ def _compute_table_delta_stats(info, skip_cardinality=True):
         approx_distinct_count=True,
         visualize=False,
         export=False,
+        _show_progress=False,
     )
 
     summary = result["Summary"].iloc[0]
@@ -2000,6 +2011,12 @@ def visualize_vertipaq(
         color: var(--vpx-accent);
         border-color: var(--vpx-accent);
     }}
+    /* Keep the accent color on hover (do not fall back to the generic
+       .vpx-bar-toggle:hover color). */
+    .vpx-{uid} .vpx-delta-btn:hover {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
     .vpx-{uid} .vpx-delta-iconbtn {{
         padding: 4px 6px;
         gap: 0;
@@ -2133,6 +2150,51 @@ def visualize_vertipaq(
         color: var(--vpx-text-tertiary);
         font-size: 12px;
     }}
+    .vpx-{uid} .vpx-delta-switch {{
+        position: relative;
+        display: inline-block;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 20px;
+    }}
+    .vpx-{uid} .vpx-delta-switch input {{
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-switch .vpx-delta-slider {{
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: var(--vpx-border-strong);
+        pointer-events: none;
+        transition: background var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-delta-switch .vpx-delta-slider::before {{
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: var(--vpx-shadow-sm);
+        transition: transform var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:checked + .vpx-delta-slider {{
+        background: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:checked + .vpx-delta-slider::before {{
+        transform: translateX(14px);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:focus-visible + .vpx-delta-slider {{
+        box-shadow: 0 0 0 3px var(--ui-accent-soft);
+    }}
     .vpx-{uid} .vpx-delta-skiprow {{
         display: flex;
         align-items: center;
@@ -2140,6 +2202,9 @@ def visualize_vertipaq(
         padding: 10px 2px 2px 2px;
         font-size: 13px;
         color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-delta-skiprow > span:first-child {{
+        flex: 1;
     }}
     .vpx-{uid} .vpx-delta-modal-foot {{
         display: flex;
@@ -2475,10 +2540,13 @@ def visualize_vertipaq(
             src = html_escape(str(t.get("deltaTableName", "")))
             rows_html.append(
                 f'<label class="vpx-delta-tablerow">'
-                f'<input type="checkbox" class="vpx-delta-tablecb" checked '
-                f'data-table="{tname}" />'
                 f'<span class="vpx-delta-tablename">{tname}</span>'
                 f'<span class="vpx-delta-tablesrc">{src}</span>'
+                f'<span class="vpx-delta-switch">'
+                f'<input type="checkbox" class="vpx-delta-tablecb" checked '
+                f'role="switch" data-table="{tname}" />'
+                f'<span class="vpx-delta-slider"></span>'
+                f"</span>"
                 f"</label>"
             )
         delta_dialog_icon = _UI_ICONS["delta_stats"].replace(
@@ -2506,9 +2574,13 @@ def visualize_vertipaq(
             f"</div>"
             f'{"".join(rows_html)}'
             f'<label class="vpx-delta-skiprow">'
-            f'<input type="checkbox" class="vpx-delta-skipcard" checked />'
             f"<span>Skip cardinality (faster; skips per-column distinct "
             f"counts)</span>"
+            f'<span class="vpx-delta-switch">'
+            f'<input type="checkbox" class="vpx-delta-skipcard" checked '
+            f'role="switch" />'
+            f'<span class="vpx-delta-slider"></span>'
+            f"</span>"
             f"</label>"
             f"</div>"
             f'<div class="vpx-delta-modal-foot">'
@@ -2789,7 +2861,17 @@ def visualize_vertipaq(
             }
             return
 
-        selected = [t for t in (action.get("tables") or []) if t in _delta_info]
+        # The frontend sends the full delta-table descriptors, but the
+        # Python-side ``_delta_info`` (built from the Direct Lake partitions) is
+        # authoritative, so it is preferred when the table is known.
+        print(_delta_info)
+        selected = []
+        for t in action.get("tables") or []:
+            name = t.get("tableName") if isinstance(t, dict) else t
+            info = _delta_info.get(name) or (t if isinstance(t, dict) else None)
+            if info:
+                selected.append(info)
+        print(selected)
         skip_card = bool(action.get("skip_cardinality", True))
         total = len(selected)
         if total == 0:
@@ -2800,10 +2882,9 @@ def visualize_vertipaq(
         results_tables = dict(prior.get("tables", {}))
         results_columns = dict(prior.get("columns", {}))
         try:
-            for idx, tname in enumerate(selected, start=1):
-                info = _delta_info.get(tname)
-                if not info:
-                    continue
+            for idx, info in enumerate(selected, start=1):
+                tname = info.get("tableName")
+                print(info)
                 widget.status = {
                     "message": (
                         f"Running Delta Analyzer on '{tname}' "
