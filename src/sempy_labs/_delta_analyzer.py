@@ -126,6 +126,9 @@ def delta_analyzer(
     if not skip_cardinality:
         column_stats = True
 
+    if '.' in table_name:
+        schema, table_name = table_name.split('.', 1)
+
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace=workspace)

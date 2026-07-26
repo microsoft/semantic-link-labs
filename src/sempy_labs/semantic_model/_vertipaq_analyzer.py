@@ -6,6 +6,7 @@ import os
 import uuid
 import shutil
 import datetime
+from html import escape as html_escape
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
@@ -34,6 +35,169 @@ from sempy_labs._ui_components import (
     theme_toggle_script as _ui_theme_toggle_script,
     fullscreen_toggle_script as _ui_fullscreen_toggle_script,
 )
+
+# anywidget ESM for the interactive Vertipaq Analyzer (used only when the model
+# has Direct-Lake-over-Lakehouse tables so the "Delta Analyzer" button can run
+# Spark on demand and merge the results). It injects the pre-built static HTML +
+# JS and wires the Delta Analyzer button/dialog to the Python backend.
+_VPX_WIDGET_JS = r"""
+function render({ model, el }) {
+    const uid = model.get("uid");
+
+    function draw() {
+        el.innerHTML = model.get("html_content") || "";
+        // innerHTML-injected <script> tags never execute, so run the collected
+        // widget JS (tab switching, sorting, filtering, resizing, theme +
+        // fullscreen toggles) via a dynamically created <script> element.
+        const s = document.createElement("script");
+        s.textContent = model.get("script_content") || "";
+        el.appendChild(s);
+        wireDelta();
+        mergeDelta();
+        showStatus();
+    }
+
+    // Delta Analyzer merge column definitions (values arrive pre-formatted from
+    // Python).
+    const TABLE_DELTA_COLS = [
+        { k: "deltaTotalSize", l: "Delta Total Size", num: true },
+        { k: "deltaRowCount", l: "Delta Row Count", num: true },
+        { k: "deltaRowGroups", l: "Row Groups", num: true },
+        { k: "deltaParquetFiles", l: "Parquet Files", num: true },
+        { k: "deltaVorder", l: "V-Order", num: false },
+        { k: "deltaZOrder", l: "Z-Order", num: false },
+        { k: "deltaClustering", l: "Liquid Clustering", num: false },
+        { k: "deltaDeletionVectors", l: "Deletion Vectors", num: false },
+        { k: "deltaAutoCompact", l: "Auto-compaction", num: false },
+    ];
+    const COLUMN_DELTA_COLS = [
+        { k: "cardinality", l: "Delta Cardinality", num: true },
+        { k: "compressedSize", l: "Compressed Size", num: true },
+        { k: "uncompressedSize", l: "Uncompressed Size", num: true },
+    ];
+
+    function sortFn() { return window["vpxSort_" + uid]; }
+    function tableByTab(tab) {
+        return el.querySelector('table[data-vpx-tab="' + tab + '"]');
+    }
+
+    function mergeInto(table, colDefs, keyFn, dataMap) {
+        if (!table) return;
+        table.querySelectorAll(".vpx-delta-col").forEach(function (e) { e.remove(); });
+        if (!dataMap || Object.keys(dataMap).length === 0) return;
+        const headRow = table.querySelector("thead tr");
+        if (headRow) {
+            colDefs.forEach(function (cd) {
+                const th = document.createElement("th");
+                th.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
+                th.innerHTML = cd.l + ' <span class="vpx-sort-arrow">&#x25B2;</span>';
+                const fn = sortFn();
+                if (fn) th.addEventListener("click", function () { fn(th); });
+                headRow.appendChild(th);
+            });
+        }
+        table.querySelectorAll("tbody tr").forEach(function (tr) {
+            const stat = dataMap[keyFn(tr)] || {};
+            colDefs.forEach(function (cd) {
+                const td = document.createElement("td");
+                td.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
+                td.textContent = stat[cd.k] != null ? stat[cd.k] : "";
+                tr.appendChild(td);
+            });
+        });
+    }
+
+    function mergeDelta() {
+        const results = model.get("delta_results") || {};
+        const tbls = results.tables || {};
+        const cols = results.columns || {};
+        const loaded = Object.keys(tbls).length > 0;
+        mergeInto(tableByTab("Tables"), TABLE_DELTA_COLS, function (tr) {
+            const c = tr.children[0];
+            return c ? c.textContent.trim() : "";
+        }, tbls);
+        mergeInto(tableByTab("Columns"), COLUMN_DELTA_COLS, function (tr) {
+            const a = tr.children[0], b = tr.children[1];
+            return (a ? a.textContent.trim() : "") + "\u0000" + (b ? b.textContent.trim() : "");
+        }, cols);
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.classList.toggle("vpx-delta-loaded", loaded);
+        });
+    }
+
+    function setRunning(on) {
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.classList.toggle("vpx-delta-running", on);
+            btn.disabled = on;
+        });
+    }
+
+    function showStatus() {
+        const s = model.get("status") || {};
+        const st = el.querySelector(".vpx-delta-status");
+        if (st) {
+            if (s.message) {
+                st.textContent = s.message;
+                st.className = "vpx-delta-status vpx-delta-status-" + (s.kind || "info");
+                st.style.display = "block";
+            } else {
+                st.style.display = "none";
+            }
+        }
+        if (s.done) setRunning(false);
+    }
+
+    function wireDelta() {
+        const dialog = el.querySelector(".vpx-delta-dialog");
+        function openDialog() { if (dialog) dialog.style.display = "flex"; }
+        function closeDialog() { if (dialog) dialog.style.display = "none"; }
+
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.addEventListener("click", openDialog);
+        });
+        if (!dialog) return;
+        dialog.addEventListener("click", function (e) {
+            if (e.target === dialog) closeDialog();
+        });
+        dialog.querySelectorAll(".vpx-delta-close, .vpx-delta-cancel").forEach(function (b) {
+            b.addEventListener("click", closeDialog);
+        });
+        const selectAll = dialog.querySelector(".vpx-delta-selectall");
+        const clearAll = dialog.querySelector(".vpx-delta-clear");
+        if (selectAll) selectAll.addEventListener("click", function () {
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) { cb.checked = true; });
+        });
+        if (clearAll) clearAll.addEventListener("click", function () {
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) { cb.checked = false; });
+        });
+        const runBtn = dialog.querySelector(".vpx-delta-run");
+        if (runBtn) runBtn.addEventListener("click", function () {
+            const selected = [];
+            dialog.querySelectorAll(".vpx-delta-tablecb:checked").forEach(function (cb) {
+                selected.push(cb.getAttribute("data-table"));
+            });
+            if (selected.length === 0) return;
+            const skip = dialog.querySelector(".vpx-delta-skipcard");
+            closeDialog();
+            setRunning(true);
+            model.set("pending_action", {
+                action: "delta",
+                tables: selected,
+                skip_cardinality: skip ? !!skip.checked : true,
+            });
+            model.set("run", (model.get("run") || 0) + 1);
+            model.save_changes();
+        });
+    }
+
+    model.on("change:delta_results", mergeDelta);
+    model.on("change:status", showStatus);
+    model.on("change:html_content", draw);
+
+    draw();
+}
+export default { render };
+"""
 
 
 def get_run_id(lakehouse, schema, workspace, save_table_name):
@@ -158,6 +322,153 @@ def cast_to_type(value, type_):
     return type_mapping[type_](value)
 
 
+def _get_delta_table_metadata(entity, lakehouse, workspace, schema):
+    """Best-effort collection of the delta-table properties that the Delta
+    Analyzer function does not return: liquid-clustering columns, the latest
+    OPTIMIZE Z-Order columns, deletion vectors, and auto-compaction.
+
+    Returns a tuple ``(zorder_cols, clustering_cols, deletion_vectors,
+    auto_compact)``. Any piece that cannot be resolved is returned as its empty
+    default so the caller can still surface the rest of the stats.
+    """
+    zorder: list = []
+    clustering: list = []
+    deletion_vectors = False
+    auto_compact = False
+
+    try:
+        from sempy_labs._helper_functions import (
+            create_abfss_path,
+            resolve_workspace_id,
+            resolve_lakehouse_id,
+            _get_delta_table,
+            _read_delta_table_history,
+        )
+
+        workspace_id = resolve_workspace_id(workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        path = create_abfss_path(lakehouse_id, workspace_id, entity, schema=schema)
+
+        try:
+            detail = _get_delta_table(path).detail().collect()[0].asDict()
+            clustering = list(detail.get("clusteringColumns") or [])
+            props = detail.get("properties") or {}
+            deletion_vectors = (
+                str(props.get("delta.enableDeletionVectors", "")).lower() == "true"
+            )
+            auto_compact = (
+                str(props.get("delta.autoOptimize.autoCompact", "")).lower() == "true"
+            )
+        except Exception:
+            pass
+
+        try:
+            import json
+
+            hist = _read_delta_table_history(path)
+            for _, h in hist.iterrows():
+                if str(h.get("operation")) != "OPTIMIZE":
+                    continue
+                params = h.get("operationParameters") or {}
+                z = params.get("zOrderBy")
+                if z and str(z) not in ("[]", ""):
+                    try:
+                        parsed = json.loads(z) if isinstance(z, str) else list(z)
+                        zorder = [c for c in parsed if c]
+                    except Exception:
+                        zorder = [str(z)]
+                    break
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    return zorder, clustering, deletion_vectors, auto_compact
+
+
+def _compute_table_delta_stats(info, skip_cardinality=True):
+    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
+    table and return the pre-formatted stats to merge into the Vertipaq
+    Analyzer widget.
+
+    Returns a tuple ``(table_stats, column_stats_by_source_column)`` where
+    ``table_stats`` is a dict of formatted table-level values and
+    ``column_stats_by_source_column`` maps each source (delta) column name to a
+    dict of formatted per-column values.
+    """
+    from sempy_labs._delta_analyzer import delta_analyzer
+
+    lakehouse = info.get("lakehouse")
+    workspace = info.get("workspace")
+    entity = info.get("entity")
+    # The schema comes directly from the Direct Lake partition's SchemaName
+    # property (``None``/empty for non-schema-enabled lakehouses).
+    schema = info.get("schema") or None
+
+    result = delta_analyzer(
+        table_name=entity,
+        lakehouse=lakehouse,
+        workspace=workspace,
+        schema=schema,
+        column_stats=True,
+        skip_cardinality=skip_cardinality,
+        approx_distinct_count=True,
+        visualize=False,
+        export=False,
+    )
+
+    summary = result["Summary"].iloc[0]
+
+    def _to_int(v):
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 0
+
+    total_size = _to_int(summary.get("Total Size", 0))
+    row_count = _to_int(summary.get("Row Count", 0))
+    row_groups = _to_int(summary.get("Row Groups", 0))
+    parquet_files = _to_int(summary.get("Parquet Files", 0))
+    vorder = bool(summary.get("VOrder Enabled", False))
+
+    zorder, clustering, deletion_vectors, auto_compact = _get_delta_table_metadata(
+        entity, lakehouse, workspace, schema
+    )
+
+    table_stats = {
+        "deltaTotalSize": format_bytes(total_size),
+        "deltaRowCount": f"{row_count:,}",
+        "deltaRowGroups": f"{row_groups:,}",
+        "deltaParquetFiles": f"{parquet_files:,}",
+        "deltaVorder": "Yes" if vorder else "No",
+        "deltaZOrder": ", ".join(zorder) if zorder else "No",
+        "deltaClustering": ", ".join(clustering) if clustering else "No",
+        "deltaDeletionVectors": "Yes" if deletion_vectors else "No",
+        "deltaAutoCompact": "Yes" if auto_compact else "No",
+    }
+
+    column_stats: dict = {}
+    cols_df = result.get("Columns")
+    if cols_df is not None and not cols_df.empty:
+        has_card = "Cardinality" in cols_df.columns and not skip_cardinality
+        for _, cr in cols_df.iterrows():
+            name = cr.get("Column Name")
+            if name is None:
+                continue
+            entry = {
+                "compressedSize": format_bytes(_to_int(cr.get("Compressed Size", 0))),
+                "uncompressedSize": format_bytes(
+                    _to_int(cr.get("Uncompressed Size", 0))
+                ),
+                "cardinality": (
+                    f"{_to_int(cr.get('Cardinality', 0)):,}" if has_card else ""
+                ),
+            }
+            column_stats[name] = entry
+
+    return table_stats, column_stats
+
+
 @log
 def vertipaq_analyzer(
     dataset: str | UUID,
@@ -173,6 +484,8 @@ def vertipaq_analyzer(
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
 
     `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ is an open-sourced tool built by SQLBI. It provides a detailed analysis of the VertiPaq engine, which is the in-memory engine used by Power BI and Analysis Services Tabular models.
+
+    If the semantic model has any tables in Direct Lake mode which source from a lakehouse, the visualization includes a "Delta Analyzer" button. Clicking it lets you pick which Direct-Lake-over-Lakehouse source tables to analyze on Spark and then merges the resulting `Delta Analyzer <https://github.com/microsoft/Analysis-Services/tree/master/DeltaAnalyzer>`_ statistics (e.g. delta table size, row groups, parquet files, V-Order, Z-Order, liquid clustering, deletion vectors, auto-compaction, and per-column compressed/uncompressed sizes and cardinality) into the Tables and Columns tabs. This interactive feature requires the ``anywidget`` package; if it is not installed the statistics still render without the button.
 
     Parameters
     ----------
@@ -1030,6 +1343,44 @@ def vertipaq_analyzer(
             for items in config.values()
             if items.get("sortby")
         }
+
+        # Direct-Lake-over-Lakehouse source tables that the Delta Analyzer can
+        # run on (needs the source lakehouse + workspace + entity). Only these
+        # tables enable the "Delta Analyzer" button in the widget.
+        delta_tables = []
+        _seen_dl = set()
+        for _p in partitions:
+            if (
+                _p.get("Mode") == "DirectLake"
+                and _p.get("Source Type") == "Lakehouse"
+                and _p.get("Source Name")
+                and _p.get("Source Table Name")
+                and _p.get("Table Name") not in _seen_dl
+            ):
+                _seen_dl.add(_p.get("Table Name"))
+                _schema = _p.get("Source Schema Name")
+                _entity = _p.get("Source Table Name")
+                delta_tables.append(
+                    {
+                        "tableName": _p.get("Table Name"),
+                        "lakehouse": _p.get("Source Name"),
+                        "workspace": _p.get("Source Workspace"),
+                        "entity": _entity,
+                        "schema": _schema,
+                        "deltaTableName": (
+                            f"{_schema}.{_entity}" if _schema else _entity
+                        ),
+                    }
+                )
+
+        # Map each model column to its source (delta) column name so the Delta
+        # Analyzer per-column stats can be matched back to the model columns.
+        column_source_map: dict = {}
+        for _c in columns:
+            column_source_map.setdefault(_c["Table Name"], {})[_c["Column Name"]] = (
+                _c.get("Source Column") or _c["Column Name"]
+            )
+
         visualize_vertipaq(
             dfs,
             dataset_name,
@@ -1037,6 +1388,8 @@ def vertipaq_analyzer(
             default_sort=default_sort,
             workspace_name=workspace_name,
             dark_mode=dark_mode,
+            delta_tables=delta_tables,
+            column_source_map=column_source_map,
         )
 
         return final_dict
@@ -1155,6 +1508,8 @@ def visualize_vertipaq(
     default_sort=None,
     workspace_name=None,
     dark_mode=False,
+    delta_tables=None,
+    column_source_map=None,
 ):
 
     # Build tooltip lookup from vertipaq_map
@@ -1640,6 +1995,185 @@ def visualize_vertipaq(
         color: var(--vpx-text-tertiary);
         font-size: 14px;
     }}
+    /* ── Delta Analyzer button + dialog ── */
+    .vpx-{uid} .vpx-delta-btn {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-iconbtn {{
+        padding: 4px 6px;
+        gap: 0;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-loaded {{
+        background: var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-btn:disabled {{
+        opacity: 0.6;
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-delta-btn .vpx-toggle-icon {{
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running .vpx-toggle-icon {{
+        animation: vpxSpin{uid} 0.9s linear infinite;
+    }}
+    @keyframes vpxSpin{uid} {{
+        to {{ transform: rotate(360deg); }}
+    }}
+    .vpx-{uid} .vpx-delta-col.vpx-delta-num {{
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-delta-status {{
+        display: none;
+        padding: 8px 24px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--vpx-border);
+        color: var(--vpx-text-secondary);
+        background: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} .vpx-delta-status.vpx-delta-status-error {{
+        color: #d70015;
+    }}
+    .vpx-{uid} .vpx-delta-status.vpx-delta-status-success {{
+        color: #248a3d;
+    }}
+    .vpx-{uid} .vpx-delta-dialog {{
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483100;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 24px;
+    }}
+    .vpx-{uid} .vpx-delta-modal {{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 460px;
+        max-height: 80vh;
+        overflow: hidden;
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius);
+        box-shadow: var(--vpx-shadow-lg);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head .vpx-delta-modal-title {{
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head .vpx-delta-modal-sub {{
+        font-size: 12px;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-delta-close {{
+        margin-left: auto;
+        border: 1px solid var(--vpx-border-strong);
+        background: var(--vpx-bg);
+        color: var(--vpx-text-secondary);
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body {{
+        overflow: auto;
+        padding: 12px 20px;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body .vpx-delta-listhead {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--vpx-text-tertiary);
+        margin-bottom: 6px;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body .vpx-delta-listhead button {{
+        border: none;
+        background: none;
+        color: var(--vpx-accent);
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        padding: 0 4px;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--vpx-text);
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow:hover {{
+        background: var(--vpx-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-tablerow .vpx-delta-tablename {{
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow .vpx-delta-tablesrc {{
+        color: var(--vpx-text-tertiary);
+        font-size: 12px;
+    }}
+    .vpx-{uid} .vpx-delta-skiprow {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 2px 2px 2px;
+        font-size: 13px;
+        color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-delta-modal-foot {{
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-delta-modal-foot button {{
+        border-radius: var(--vpx-radius-sm);
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-cancel {{
+        border: 1px solid var(--vpx-border-strong);
+        background: var(--vpx-bg);
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-delta-run {{
+        border: 1px solid var(--vpx-accent);
+        background: var(--vpx-accent);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .vpx-{uid} .vpx-delta-run:disabled {{
+        opacity: 0.5;
+        cursor: default;
+    }}
     {ui_attribution_css_scoped}
     </style>
     """
@@ -1647,6 +2181,15 @@ def visualize_vertipaq(
     # ── Build HTML ────────────────────────────────────────────────────────
     search_svg = _UI_ICONS["search"].replace(
         "<svg ", '<svg class="vpx-search-icon" ', 1
+    )
+
+    # Delta Analyzer availability + button icon. The button is only rendered
+    # (and the widget is only made interactive) when the model has
+    # Direct-Lake-over-Lakehouse source tables to analyze.
+    delta_tables = delta_tables or []
+    has_delta = bool(delta_tables)
+    delta_btn_icon = _UI_ICONS["delta_stats"].replace(
+        "<svg ", '<svg class="vpx-toggle-icon" ', 1
     )
 
     header_html = _ui_render_header_html(
@@ -1746,6 +2289,11 @@ def visualize_vertipaq(
 
     html_parts.append("</div>")
 
+    # Delta Analyzer status/progress bar (shown across tabs while a run is in
+    # progress or when a run reports an error/summary). Wired by the widget.
+    if has_delta:
+        html_parts.append('<div class="vpx-delta-status"></div>')
+
     # Panels
     for i, (title, (df, _)) in enumerate(df_dict.items()):
         visible = " vpx-visible" if i == 0 else ""
@@ -1769,6 +2317,20 @@ def visualize_vertipaq(
             f"</div>"
         )
         html_parts.append('<div class="vpx-toolbar-controls">')
+        # Delta Analyzer button — placed to the left of the Bars button. Only
+        # on the Tables/Columns tabs (the tabs whose rows receive merged Delta
+        # Analyzer stats) and only when the model has Direct-Lake-over-Lakehouse
+        # source tables. Wired in the anywidget frontend (it must call back into
+        # Python to run Spark).
+        if has_delta and title in ("Tables", "Columns"):
+            html_parts.append(
+                f'<button class="vpx-bar-toggle vpx-delta-btn vpx-delta-iconbtn" '
+                f'type="button" aria-label="Delta Analyzer" '
+                f'title="Run Delta Analyzer stats \u2014 pick which Direct Lake '
+                f"source tables to analyze on Spark, then merge the results into "
+                f'the Tables and Columns tabs">{delta_btn_icon}</button>'
+            )
+
         if has_bars:
             bar_toggle_icon = (
                 '<svg class="vpx-toggle-icon" viewBox="0 0 16 16" fill="none" '
@@ -1798,7 +2360,7 @@ def visualize_vertipaq(
         if df.empty:
             html_parts.append('<div class="vpx-empty">No data available</div>')
         else:
-            html_parts.append("<table>")
+            html_parts.append(f'<table data-vpx-tab="{title}">')
 
             # Determine numeric columns
             numeric_cols = set()
@@ -1904,6 +2466,59 @@ def visualize_vertipaq(
             ]
         )
     )
+
+    # Delta Analyzer table-picker dialog (hidden until the button is clicked).
+    if has_delta:
+        rows_html = []
+        for t in delta_tables:
+            tname = html_escape(str(t.get("tableName", "")))
+            src = html_escape(str(t.get("deltaTableName", "")))
+            rows_html.append(
+                f'<label class="vpx-delta-tablerow">'
+                f'<input type="checkbox" class="vpx-delta-tablecb" checked '
+                f'data-table="{tname}" />'
+                f'<span class="vpx-delta-tablename">{tname}</span>'
+                f'<span class="vpx-delta-tablesrc">{src}</span>'
+                f"</label>"
+            )
+        delta_dialog_icon = _UI_ICONS["delta_stats"].replace(
+            "<svg ", '<svg class="vpx-toggle-icon" ', 1
+        )
+        html_parts.append(
+            f'<div class="vpx-delta-dialog">'
+            f'<div class="vpx-delta-modal">'
+            f'<div class="vpx-delta-modal-head">{delta_dialog_icon}'
+            f"<div>"
+            f'<div class="vpx-delta-modal-title">Run Delta Analyzer stats</div>'
+            f'<div class="vpx-delta-modal-sub">Choose the Direct Lake source '
+            f"tables to analyze on Spark.</div>"
+            f"</div>"
+            f'<button type="button" class="vpx-delta-close" '
+            f'aria-label="Close">\u00d7</button>'
+            f"</div>"
+            f'<div class="vpx-delta-modal-body">'
+            f'<div class="vpx-delta-listhead">'
+            f"<span>Tables</span>"
+            f"<span>"
+            f'<button type="button" class="vpx-delta-selectall">Select all</button>'
+            f'<button type="button" class="vpx-delta-clear">Clear</button>'
+            f"</span>"
+            f"</div>"
+            f'{"".join(rows_html)}'
+            f'<label class="vpx-delta-skiprow">'
+            f'<input type="checkbox" class="vpx-delta-skipcard" checked />'
+            f"<span>Skip cardinality (faster; skips per-column distinct "
+            f"counts)</span>"
+            f"</label>"
+            f"</div>"
+            f'<div class="vpx-delta-modal-foot">'
+            f'<button type="button" class="vpx-delta-cancel">Cancel</button>'
+            f'<button type="button" class="vpx-delta-run">Run</button>'
+            f"</div>"
+            f"</div>"
+            f"</div>"
+        )
+
     html_parts.append("</div>")  # root
 
     # ── JavaScript ────────────────────────────────────────────────────────
@@ -2086,7 +2701,155 @@ def visualize_vertipaq(
         fs_class="vpx-fs",
     )
 
-    display(HTML(styles + "\n".join(html_parts) + script + theme_script + fullscreen_script))
+    static_html = styles + "\n".join(html_parts)
+    static_scripts = script + theme_script + fullscreen_script
+
+    # When the model has no Direct-Lake-over-Lakehouse source tables there is
+    # nothing for the Delta Analyzer to run on, so keep the lightweight static
+    # HTML render (no anywidget dependency required).
+    if not has_delta:
+        display(HTML(static_html + static_scripts))
+        return
+
+    # Interactive path: the "Delta Analyzer" button must run Spark in Python on
+    # demand and merge the results back into the widget, which requires an
+    # anywidget (a static HTML button cannot call back into Python). Fall back
+    # to the static render if anywidget is unavailable.
+    try:
+        import anywidget
+        import traitlets
+    except ImportError:
+        display(HTML(static_html + static_scripts))
+        return
+
+    # Raw JS (without the <script> wrappers) so the frontend can execute it via
+    # a dynamically created <script> element (innerHTML-injected scripts do not
+    # run).
+    raw_static_js = "\n".join(
+        s.replace("<script>", "").replace("</script>", "")
+        for s in (script, theme_script, fullscreen_script)
+    )
+
+    class _VertipaqWidget(anywidget.AnyWidget):
+        _esm = _VPX_WIDGET_JS
+        html_content = traitlets.Unicode("").tag(sync=True)
+        script_content = traitlets.Unicode("").tag(sync=True)
+        uid = traitlets.Unicode("").tag(sync=True)
+        delta_tables = traitlets.List().tag(sync=True)
+        pending_action = traitlets.Dict().tag(sync=True)
+        run = traitlets.Int(0).tag(sync=True)
+        delta_results = traitlets.Dict().tag(sync=True)
+        status = traitlets.Dict().tag(sync=True)
+
+    # In a pure-Python (non-Spark) notebook the Delta Analyzer cannot run, so
+    # surface an upfront hint next to the button.
+    from sempy_labs._helper_functions import _pure_python_notebook
+
+    _initial_delta_status = {}
+    if _pure_python_notebook():
+        _initial_delta_status = {
+            "message": (
+                "The Delta Analyzer requires Spark. Run this in a PySpark "
+                "notebook to get the Delta Analyzer stats."
+            ),
+            "kind": "info",
+        }
+
+    widget = _VertipaqWidget(
+        html_content=static_html,
+        script_content=raw_static_js,
+        uid=uid,
+        delta_tables=delta_tables,
+        pending_action={},
+        run=0,
+        delta_results={},
+        status=_initial_delta_status,
+    )
+
+    _delta_info = {t["tableName"]: t for t in delta_tables}
+    _col_src = column_source_map or {}
+
+    def _on_run(change):
+        action = dict(widget.pending_action or {})
+        if action.get("action") != "delta":
+            return
+
+        # The Delta Analyzer relies on Spark (e.g. reading the delta table
+        # detail/history), so it cannot run in a pure-Python notebook.
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        if _pure_python_notebook():
+            widget.status = {
+                "message": (
+                    "The Delta Analyzer requires Spark. Run this in a PySpark "
+                    "notebook to get the Delta Analyzer stats."
+                ),
+                "kind": "error",
+                "done": True,
+            }
+            return
+
+        selected = [t for t in (action.get("tables") or []) if t in _delta_info]
+        skip_card = bool(action.get("skip_cardinality", True))
+        total = len(selected)
+        if total == 0:
+            widget.status = {"message": "", "kind": "info", "done": True}
+            return
+
+        prior = widget.delta_results or {}
+        results_tables = dict(prior.get("tables", {}))
+        results_columns = dict(prior.get("columns", {}))
+        try:
+            for idx, tname in enumerate(selected, start=1):
+                info = _delta_info.get(tname)
+                if not info:
+                    continue
+                widget.status = {
+                    "message": (
+                        f"Running Delta Analyzer on '{tname}' "
+                        f"({idx}/{total})\u2026 a cold Spark session can take a "
+                        f"few minutes."
+                    ),
+                    "kind": "info",
+                }
+                tbl_stats, col_stats_by_src = _compute_table_delta_stats(
+                    info, skip_cardinality=skip_card
+                )
+                results_tables[tname] = tbl_stats
+                src_map = _col_src.get(tname, {})
+                for model_col, src_col in src_map.items():
+                    stat = col_stats_by_src.get(src_col) or col_stats_by_src.get(
+                        model_col
+                    )
+                    if stat:
+                        results_columns[f"{tname}\u0000{model_col}"] = stat
+                # Reassign (new object) so the traitlet change fires and the
+                # frontend merges progressively after each table.
+                widget.delta_results = {
+                    "tables": dict(results_tables),
+                    "columns": dict(results_columns),
+                }
+            widget.status = {
+                "message": (
+                    f"Delta Analyzer complete for {total} "
+                    f"table{'s' if total != 1 else ''}."
+                ),
+                "kind": "success",
+                "done": True,
+            }
+        except Exception as e:  # noqa: BLE001
+            widget.status = {
+                "message": f"Delta Analyzer error: {e}",
+                "kind": "error",
+                "done": True,
+            }
+
+    widget.observe(_on_run, names=["run"])
+
+    # Keep a reference on the widget so the Python-side observer is not garbage
+    # collected after this function returns. We intentionally do NOT return the
+    # widget to avoid Jupyter auto-displaying it a second time after display().
+    display(widget)
 
 
 @log

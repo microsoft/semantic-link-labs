@@ -132,6 +132,17 @@ ICONS: dict[str, str] = {
         '<circle cx="8" cy="8" r="1.5"/>'
         '<circle cx="13" cy="8" r="1.5"/></svg>'
     ),
+    # Delta Analyzer badge: a delta (triangle) with mini bars — marks stats
+    # sourced from the Delta Analyzer, distinct from the plain data-bars icon.
+    "delta_stats": (
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M12 4 20.5 20 3.5 20 Z"/>'
+        '<line x1="9" y1="17.5" x2="9" y2="15"/>'
+        '<line x1="12" y1="17.5" x2="12" y2="12.5"/>'
+        '<line x1="15" y1="17.5" x2="15" y2="14.5"/></svg>'
+    ),
     "sync": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
