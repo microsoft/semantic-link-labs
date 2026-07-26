@@ -18,6 +18,7 @@ def report_rebind(
     dataset: str | UUID,
     report_workspace: Optional[str | UUID] = None,
     dataset_workspace: Optional[str | UUID] = None,
+    verbose: bool = True,
 ):
     """
     Rebinds a report to a semantic model.
@@ -40,6 +41,9 @@ def report_rebind(
         The name or ID of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    verbose : bool, default=True
+        If True, prints a confirmation message for each report that is rebinded.
+        Set to False to suppress the output.
     """
 
     report_workspace_name, report_workspace_id = resolve_workspace_name_and_id(
@@ -72,9 +76,10 @@ def report_rebind(
             client="fabric_sp",
         )
 
-        print(
-            f"{icons.green_dot} The '{report_name}' report within the '{report_workspace_name}' workspace has been successfully rebinded to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
-        )
+        if verbose:
+            print(
+                f"{icons.green_dot} The '{report_name}' report within the '{report_workspace_name}' workspace has been successfully rebinded to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
+            )
 
 
 @log

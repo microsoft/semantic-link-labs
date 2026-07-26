@@ -2146,6 +2146,7 @@ def migrate_to_direct_lake(
                     dataset=new_name,
                     report_workspace=report_ws,
                     dataset_workspace=target_ws,
+                    verbose=False,
                 )
                 results.append({"name": rname, "ok": True, "error": ""})
             except Exception as e:
@@ -2528,7 +2529,9 @@ def migrate_to_direct_lake(
     default_new_name = f"{dataset_name} (Direct Lake)"
     # When starting on the picker, prefetch the current workspace's semantic
     # models so the model dropdown populates at once.
-    initial_datasets = {} if connected else {workspace_id: _list_datasets_payload(workspace_id)}
+    initial_datasets = (
+        {} if connected else {workspace_id: _list_datasets_payload(workspace_id)}
+    )
 
     class MigrateDirectLakeWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
