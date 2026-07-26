@@ -126,6 +126,10 @@ function render({ model, el }) {
                 const td = document.createElement("td");
                 td.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
                 td.textContent = stat[cd.k] != null ? stat[cd.k] : "";
+                // Byte-formatted values ("9 KB", "1.2 MB") carry the raw number
+                // so sorting compares magnitudes instead of the leading digits.
+                const raw = stat[cd.k + "Raw"];
+                if (raw != null) td.setAttribute("data-vpx-sort", raw);
                 tr.appendChild(td);
             });
         });
@@ -594,6 +598,9 @@ def _compute_table_delta_stats(info, skip_cardinality=True):
 
     table_stats = {
         "deltaTotalSize": format_bytes(total_size),
+        # Raw byte counts travel alongside the human-readable values so the
+        # frontend can sort these columns numerically ("9 KB" vs "1.2 MB").
+        "deltaTotalSizeRaw": total_size,
         "deltaRowCount": f"{row_count:,}",
         "deltaRowGroups": f"{row_groups:,}",
         "deltaParquetFiles": f"{parquet_files:,}",
@@ -614,9 +621,11 @@ def _compute_table_delta_stats(info, skip_cardinality=True):
                 continue
             entry = {
                 "compressedSize": format_bytes(_to_int(cr.get("Compressed Size", 0))),
+                "compressedSizeRaw": _to_int(cr.get("Compressed Size", 0)),
                 "uncompressedSize": format_bytes(
                     _to_int(cr.get("Uncompressed Size", 0))
                 ),
+                "uncompressedSizeRaw": _to_int(cr.get("Uncompressed Size", 0)),
                 "cardinality": (
                     f"{_to_int(cr.get('Cardinality', 0)):,}" if has_card else ""
                 ),
@@ -3065,8 +3074,14 @@ def visualize_vertipaq(
             th.querySelector('.vpx-sort-arrow').innerHTML = asc ? '&#x25B2;' : '&#x25BC;';
 
             rows.sort(function(a, b) {{
-                var aVal = a.children[idx] ? a.children[idx].textContent.trim() : '';
-                var bVal = b.children[idx] ? b.children[idx].textContent.trim() : '';
+                /* Cells can carry a raw numeric value in data-vpx-sort (e.g.
+                   byte-formatted Delta Analyzer columns) - prefer it so the
+                   comparison is not thrown off by the unit suffix. */
+                var aCell = a.children[idx], bCell = b.children[idx];
+                var aRaw = aCell ? aCell.getAttribute('data-vpx-sort') : null;
+                var bRaw = bCell ? bCell.getAttribute('data-vpx-sort') : null;
+                var aVal = aRaw !== null ? aRaw : (aCell ? aCell.textContent.trim() : '');
+                var bVal = bRaw !== null ? bRaw : (bCell ? bCell.textContent.trim() : '');
                 /* Try numeric comparison */
                 var aNum = parseFloat(aVal.replace(/,/g, '').replace(/%/g, ''));
                 var bNum = parseFloat(bVal.replace(/,/g, '').replace(/%/g, ''));
