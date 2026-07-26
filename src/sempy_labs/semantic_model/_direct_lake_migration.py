@@ -768,6 +768,20 @@ function render({ model, el }) {
         return map[`${ws}::${type}`];
     }
 
+    function currentBackupItems() {
+        const ws = model.get("backup_workspace_id");
+        const map = model.get("source_items") || {};
+        return map[`${ws}::Lakehouse`];
+    }
+
+    function canConvertInPlace() {
+        return (model.get("analysis") || {}).canConvertInPlace === true;
+    }
+
+    function isInPlace() {
+        return canConvertInPlace() && model.get("conversion_mode") === "in_place";
+    }
+
     function configureHtml() {
         const workspaces = model.get("workspaces") || [];
         const type = model.get("source_type") || "Lakehouse";
@@ -776,16 +790,37 @@ function render({ model, el }) {
         const schemaDisabled = type === "Lakehouse" && model.get("lakehouse_schema_enabled") === false;
         const movement = model.get("data_movement") || "manual";
         const typeLower = type.toLowerCase();
+        const inPlace = isInPlace();
 
-        let out = `<div class="slls-mdl-field">
-            <span class="slls-mdl-label">New model name</span>
-            <input class="slls-mdl-input" data-r="name" value="${esc(model.get("new_model_name") || "")}" placeholder="My model (Direct Lake)" />
-        </div>`;
+        let out = "";
 
-        out += `<div class="slls-mdl-field">
-            <span class="slls-mdl-label">Target workspace</span>
-            <select class="slls-mdl-select" data-r="target_ws">${optionsHtml(workspaces, model.get("target_workspace_id"), "Select a workspace…")}</select>
-        </div>`;
+        // Conversion mode — only offered when nothing is dropped, so the
+        // existing model can be safely converted in place.
+        if (canConvertInPlace()) {
+            const mode = model.get("conversion_mode") || "new";
+            out += `<div class="slls-mdl-sec-title">Conversion mode</div>`;
+            out += `<label class="slls-mdl-radio ${mode === "new" ? "is-selected" : ""}">
+                <input type="radio" name="cm" data-r="cm-new"${mode === "new" ? " checked" : ""} />
+                <span><span class="slls-mdl-radio-title">Create a new Direct Lake model</span><span class="slls-mdl-radio-desc"> Leave the current model untouched and create a brand new Direct Lake semantic model.</span></span>
+            </label>`;
+            out += `<label class="slls-mdl-radio ${mode === "in_place" ? "is-selected" : ""}">
+                <input type="radio" name="cm" data-r="cm-inplace"${mode === "in_place" ? " checked" : ""} />
+                <span><span class="slls-mdl-radio-title">Convert this model in place</span><span class="slls-mdl-radio-desc"> Alter the current model into Direct Lake. A backup of the existing model (.bim) is saved to a lakehouse first. Available because no objects will be dropped.</span></span>
+            </label>`;
+        }
+
+        if (inPlace) {
+            out += `<div class="slls-mdl-note slls-mdl-note-info" style="margin-top:10px;">${IC.alert}<div>The <b>${esc(model.get("dataset_name") || "current model")}</b> model will be converted to Direct Lake in place. A backup of its current definition is saved below before any changes are made.</div></div>`;
+        } else {
+            out += `<div class="slls-mdl-field"${canConvertInPlace() ? ' style="margin-top:10px;"' : ""}>
+                <span class="slls-mdl-label">New model name</span>
+                <input class="slls-mdl-input" data-r="name" value="${esc(model.get("new_model_name") || "")}" placeholder="My model (Direct Lake)" />
+            </div>`;
+            out += `<div class="slls-mdl-field">
+                <span class="slls-mdl-label">Target workspace</span>
+                <select class="slls-mdl-select" data-r="target_ws">${optionsHtml(workspaces, model.get("target_workspace_id"), "Select a workspace…")}</select>
+            </div>`;
+        }
 
         out += `<div class="slls-mdl-grid">
             <div class="slls-mdl-field">
@@ -812,6 +847,28 @@ function render({ model, el }) {
             </div>
         </div>`;
 
+        // Backup destination for the in-place conversion.
+        if (inPlace) {
+            const backupItems = currentBackupItems();
+            const backupPlaceholder = backupItems === undefined ? "Loading…" : "No lakehouses";
+            out += `<div class="slls-mdl-sec-title" style="margin-top:8px;">Backup of the existing model</div>`;
+            out += `<div class="slls-mdl-grid">
+                <div class="slls-mdl-field">
+                    <span class="slls-mdl-label">Backup workspace</span>
+                    <select class="slls-mdl-select" data-r="backup_ws">${optionsHtml(workspaces, model.get("backup_workspace_id"), "Select a workspace…")}</select>
+                </div>
+                <div class="slls-mdl-field">
+                    <span class="slls-mdl-label">Backup lakehouse</span>
+                    <select class="slls-mdl-select" data-r="backup_lh"${backupItems === undefined ? " disabled" : ""}>${optionsHtml(backupItems || [], model.get("backup_lakehouse_id"), backupPlaceholder)}</select>
+                </div>
+            </div>`;
+            out += `<div class="slls-mdl-field">
+                <span class="slls-mdl-label">Backup file name / path</span>
+                <input class="slls-mdl-input" data-r="backup_path" value="${esc(model.get("backup_file_path") || "")}" placeholder="My model.bim" />
+                <span class="slls-mdl-radio-desc">Saved to the lakehouse's Files (e.g. <b>backups/My model.bim</b>).</span>
+            </div>`;
+        }
+
         out += `<div class="slls-mdl-sec-title" style="margin-top:8px;">Load the data</div>`;
         out += `<label class="slls-mdl-radio ${movement === "manual" ? "is-selected" : ""}">
             <input type="radio" name="mv" data-r="mv-manual"${movement === "manual" ? " checked" : ""} />
@@ -837,13 +894,21 @@ function render({ model, el }) {
             return `<div class="slls-mdl-center"><span class="slls-mdl-spin"></span><div>Building the preview…</div></div>`;
         }
         if (!p.ready) return `<div class="slls-mdl-center"><div>No preview yet.</div></div>`;
-        let out = `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>This is the plan for <b>${esc(model.get("new_model_name") || "")}</b>. ${p.pqt ? "A Power Query template (.pqt) will also be saved to the lakehouse to load the data." : "No data is moved — only the model structure is created."}</div></div>`;
+        let out;
+        if (p.inPlace) {
+            out = `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>The <b>${esc(model.get("dataset_name") || "")}</b> model will be <b>converted to Direct Lake in place</b>. ${p.pqt ? "A Power Query template (.pqt) will also be saved to the lakehouse to load the data." : "No data is moved — only the model's storage mode is changed."}</div></div>`;
+            const bkLh = p.backupLakehouse || "the selected lakehouse";
+            const bkPath = p.backupPath || (model.get("dataset_name") + ".bim");
+            out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>A backup of the current model is saved to <b>${esc(bkLh)}</b> at <b>Files/${esc(bkPath)}</b> before it is altered.</div></div>`;
+        } else {
+            out = `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>This is the plan for <b>${esc(model.get("new_model_name") || "")}</b>. ${p.pqt ? "A Power Query template (.pqt) will also be saved to the lakehouse to load the data." : "No data is moved — only the model structure is created."}</div></div>`;
+        }
         if (p.expression) {
             out += `<div class="slls-mdl-sec-title">Source connection (Power Query M)</div>`;
             out += `<div class="slls-mdl-code">${hlCode(p.expression, "m")}</div>`;
         }
         const tables = p.tables || [];
-        out += `<div class="slls-mdl-sec-title">Tables to create (${tables.length})</div>`;
+        out += `<div class="slls-mdl-sec-title">Tables to ${p.inPlace ? "convert" : "create"} (${tables.length})</div>`;
         out += `<div class="slls-mdl-plan">`;
         tables.forEach((t) => {
             const icon = t.kind === "fieldParameter" ? IC.field_parameter
@@ -861,7 +926,15 @@ function render({ model, el }) {
 
     function doneHtml() {
         const r = model.get("result") || {};
-        let out = `<div class="slls-mdl-center"><span class="slls-mdl-success-icon">${IC.check}</span><div class="slls-mdl-big">Model created</div><div><b>${esc(r.createdModel || "")}</b> was created in Direct Lake mode.</div></div>`;
+        let out;
+        if (r.inPlace) {
+            out = `<div class="slls-mdl-center"><span class="slls-mdl-success-icon">${IC.check}</span><div class="slls-mdl-big">Model converted</div><div><b>${esc(r.createdModel || "")}</b> was converted to Direct Lake mode in place.</div></div>`;
+            if (r.backupPath) {
+                out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>A backup of the original model was saved to <b>${esc(r.backupPath)}</b>.</div></div>`;
+            }
+        } else {
+            out = `<div class="slls-mdl-center"><span class="slls-mdl-success-icon">${IC.check}</span><div class="slls-mdl-big">Model created</div><div><b>${esc(r.createdModel || "")}</b> was created in Direct Lake mode.</div></div>`;
+        }
 
         const warnings = r.warnings || [];
         warnings.forEach((w) => {
@@ -936,9 +1009,10 @@ function render({ model, el }) {
             </div>`;
         }
         if (screen === "preview") {
+            const createLabel = isInPlace() ? "Convert to Direct Lake" : "Create Direct Lake model";
             return `<div class="slls-mdl-footer">
                 <button class="slls-mdl-btn" data-r="to-configure2">${IC.back} Back</button>
-                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="create"${b || !p.ready ? " disabled" : ""}>${b ? spin : IC.database} Create Direct Lake model</button>
+                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="create"${b || !p.ready ? " disabled" : ""}>${b ? spin : IC.database} ${createLabel}</button>
             </div>`;
         }
         // Done screen: no footer actions.
@@ -1002,9 +1076,15 @@ function render({ model, el }) {
             }
         });
 
-        on('[data-r="to-configure"]', "click", () => { model.set("screen", "configure"); model.save_changes(); requestSourceItems(); });
+        on('[data-r="to-configure"]', "click", () => { model.set("screen", "configure"); model.save_changes(); requestSourceItems(); if (isInPlace()) requestBackupItems(); });
         on('[data-r="to-analyze"]', "click", () => { model.set("screen", "analyze"); model.save_changes(); });
         on('[data-r="to-configure2"]', "click", () => { model.set("screen", "configure"); model.save_changes(); });
+
+        on('[data-r="cm-new"]', "change", () => { model.set("conversion_mode", "new"); model.save_changes(); route(); });
+        on('[data-r="cm-inplace"]', "change", () => { model.set("conversion_mode", "in_place"); model.save_changes(); requestBackupItems(); route(); });
+        on('[data-r="backup_ws"]', "change", (e) => { model.set("backup_workspace_id", e.target.value); model.set("backup_lakehouse_id", ""); model.save_changes(); requestBackupItems(); route(); });
+        on('[data-r="backup_lh"]', "change", (e) => { model.set("backup_lakehouse_id", e.target.value); model.save_changes(); });
+        on('[data-r="backup_path"]', "input", (e) => { model.set("backup_file_path", e.target.value); model.save_changes(); });
 
         on('[data-r="name"]', "input", (e) => { model.set("new_model_name", e.target.value); model.save_changes(); });
         on('[data-r="target_ws"]', "change", (e) => { model.set("target_workspace_id", e.target.value); model.save_changes(); });
@@ -1052,7 +1132,21 @@ function render({ model, el }) {
             const type = model.get("source_type") || "Lakehouse";
             const schemaVal = (model.get("schema") || "").trim();
             const schemaRequired = type === "Warehouse" || model.get("lakehouse_schema_enabled") !== false;
-            if (!name || !ws || !item) {
+            const inPlace = isInPlace();
+            if (inPlace) {
+                if (!item) {
+                    model.set("status", { message: "A Direct Lake source is required.", kind: "error" });
+                    model.save_changes();
+                    route();
+                    return;
+                }
+                if (!model.get("backup_lakehouse_id") || !(model.get("backup_file_path") || "").trim()) {
+                    model.set("status", { message: "A backup lakehouse and file name/path are required for an in-place conversion.", kind: "error" });
+                    model.save_changes();
+                    route();
+                    return;
+                }
+            } else if (!name || !ws || !item) {
                 model.set("status", { message: "New model name, target workspace, and a source are required.", kind: "error" });
                 model.save_changes();
                 route();
@@ -1065,6 +1159,7 @@ function render({ model, el }) {
                 return;
             }
             runAction("preview", {
+                conversion_mode: inPlace ? "in_place" : "new",
                 new_model_name: name,
                 target_workspace_id: ws,
                 source_type: model.get("source_type"),
@@ -1072,11 +1167,15 @@ function render({ model, el }) {
                 source_item_id: item,
                 schema: model.get("schema") || "",
                 data_movement: model.get("data_movement") || "manual",
+                backup_workspace_id: model.get("backup_workspace_id"),
+                backup_lakehouse_id: model.get("backup_lakehouse_id"),
+                backup_file_path: (model.get("backup_file_path") || "").trim(),
             });
         });
 
         on('[data-r="create"]', "click", () => {
             runAction("create", {
+                conversion_mode: isInPlace() ? "in_place" : "new",
                 new_model_name: (model.get("new_model_name") || "").trim(),
                 target_workspace_id: model.get("target_workspace_id"),
                 source_type: model.get("source_type"),
@@ -1084,6 +1183,9 @@ function render({ model, el }) {
                 source_item_id: model.get("source_item_id"),
                 schema: model.get("schema") || "",
                 data_movement: model.get("data_movement") || "manual",
+                backup_workspace_id: model.get("backup_workspace_id"),
+                backup_lakehouse_id: model.get("backup_lakehouse_id"),
+                backup_file_path: (model.get("backup_file_path") || "").trim(),
                 template_name: (model.get("template_name") || "").trim(),
             });
         });
@@ -1098,11 +1200,20 @@ function render({ model, el }) {
         runAction("list_source_items", { workspace_id: ws, source_type: type });
     }
 
+    function requestBackupItems() {
+        const ws = model.get("backup_workspace_id");
+        if (!ws) return;
+        const map = model.get("source_items") || {};
+        if (map[`${ws}::Lakehouse`] !== undefined) return;
+        runAction("list_source_items", { workspace_id: ws, source_type: "Lakehouse" });
+    }
+
     [
         "screen", "busy", "status", "analysis", "preview", "result",
         "workspaces", "source_items", "source_type", "source_workspace_id",
         "source_item_id", "data_movement", "lakehouse_schema_enabled",
-        "dataset_name", "workspace_name",
+        "dataset_name", "workspace_name", "conversion_mode",
+        "backup_workspace_id", "backup_lakehouse_id",
     ].forEach((name) => model.on("change:" + name, route));
 
     route();
@@ -1218,9 +1329,7 @@ def migrate_to_direct_lake(
             dfD = fabric.list_datasets(workspace=ws_id)
         except Exception:
             return False
-        name_col = next(
-            (c for c in ["Dataset Name", "Name"] if c in dfD.columns), None
-        )
+        name_col = next((c for c in ["Dataset Name", "Name"] if c in dfD.columns), None)
         if name_col is None:
             return False
         existing = {str(v).strip().lower() for v in dfD[name_col]}
@@ -1594,12 +1703,25 @@ def migrate_to_direct_lake(
         dropped = len(plan["removedTables"])
         migrated = total - dropped
 
+        # An in-place conversion (altering the existing model rather than
+        # creating a new one) is only offered when nothing is dropped: no
+        # tables, columns, measures or other objects are lost, so the existing
+        # model can be safely converted to Direct Lake.
+        can_in_place = bool(
+            not is_dl
+            and not plan["removedTables"]
+            and not plan["removedColumns"]
+            and not plan["removedMeasures"]
+            and not plan["unsupported"]
+        )
+
         return {
             "ready": True,
             "isDirectLake": bool(is_dl),
             "totalTables": total,
             "migratedTables": migrated,
             "droppedTables": dropped,
+            "canConvertInPlace": can_in_place,
             "changes": plan["changes"],
             "unsupportedGroups": groups,
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
@@ -1637,9 +1759,7 @@ def migrate_to_direct_lake(
                     continue
                 if tname in field_params:
                     col_count = sum(
-                        1
-                        for c in t.Columns
-                        if c.Type != TOM.ColumnType.RowNumber
+                        1 for c in t.Columns if c.Type != TOM.ColumnType.RowNumber
                     )
                     tables.append(
                         {
@@ -1674,11 +1794,25 @@ def migrate_to_direct_lake(
                     {"name": tname, "columnCount": col_count, "kind": "table"}
                 )
 
+        in_place = data.get("conversion_mode") == "in_place"
+        backup_lh_name = ""
+        if in_place:
+            backup_ws = data.get("backup_workspace_id") or workspace_id
+            backup_lh = data.get("backup_lakehouse_id")
+            key = f"{backup_ws}::Lakehouse"
+            for it in (widget.source_items or {}).get(key, []):
+                if it.get("id") == backup_lh:
+                    backup_lh_name = it.get("name", "")
+                    break
+
         return {
             "ready": True,
             "expression": expression,
             "tables": tables,
             "pqt": data.get("data_movement") == "pqt",
+            "inPlace": in_place,
+            "backupLakehouse": backup_lh_name,
+            "backupPath": (data.get("backup_file_path") or "").strip(),
         }
 
     # ---------------- Create ----------------
@@ -1699,7 +1833,206 @@ def migrate_to_direct_lake(
         rows.sort(key=lambda x: x["objectType"].lower())
         return rows
 
+    def _save_backup_bim(backup_ws, backup_lh, file_path):
+        """Save the existing model's Model.bim to the chosen lakehouse's Files
+        area. Returns the relative path ('Files/...') that was written."""
+        import os
+        import json
+        from sempy_labs._helper_functions import _mount
+        from sempy_labs._generate_semantic_model import (
+            get_semantic_model_definition,
+        )
+
+        bim = get_semantic_model_definition(
+            dataset=dataset_id,
+            workspace=workspace_id,
+            format="TMSL",
+            return_dataframe=False,
+        )
+
+        rel = (file_path or "").strip().lstrip("/")
+        if not rel:
+            rel = f"{dataset_name}.bim"
+        if not rel.lower().endswith(".bim"):
+            rel = f"{rel}.bim"
+
+        local_path = _mount(lakehouse=backup_lh, workspace=backup_ws)
+        full_path = os.path.join(local_path, "Files", rel)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, "w") as f:
+            json.dump(bim, f, indent=4)
+        return f"Files/{rel}"
+
+    def _run_in_place_conversion(data):
+        """Convert the existing import/DirectQuery model to Direct Lake in place,
+        after saving a backup of its Model.bim to a lakehouse. Only offered when
+        nothing is dropped, so every table/column/measure is preserved."""
+        from sempy_labs.migration._create_pqt_file import create_pqt_file
+        import sempy_labs._icons as icons
+
+        target_ws = workspace_id
+        src_type = data.get("source_type") or "Lakehouse"
+        src_ws = data.get("source_workspace_id") or workspace_id
+        src_id = data.get("source_item_id")
+        movement = data.get("data_movement") or "manual"
+        schema = (data.get("schema") or "").strip()
+        template_name = (
+            data.get("template_name") or ""
+        ).strip() or "PowerQueryTemplate"
+        backup_ws = data.get("backup_workspace_id") or workspace_id
+        backup_lh = data.get("backup_lakehouse_id")
+        backup_file_path = (data.get("backup_file_path") or "").strip()
+
+        warnings = []
+        backup_path = ""
+        pqt_file_name = ""
+
+        # 1) Save a backup of the existing model before altering it.
+        try:
+            backup_path = _save_backup_bim(backup_ws, backup_lh, backup_file_path)
+        except Exception as e:
+            # If the backup fails, abort — an in-place conversion without a
+            # backup is not safe.
+            raise RuntimeError(
+                f"The Model.bim backup could not be saved, so the in-place "
+                f"conversion was not performed: {e}"
+            )
+
+        # 2) Optionally generate the Power Query template into the lakehouse.
+        if movement == "pqt":
+            try:
+                create_pqt_file(
+                    dataset=dataset_id,
+                    workspace=workspace_id,
+                    file_name=template_name,
+                    verbose=False,
+                )
+                pqt_file_name = f"{template_name}.pqt"
+            except Exception as e:
+                warnings.append(f"Could not create the Power Query template: {e}")
+
+        # 3) Resolve the shared source expression (DatabaseQuery).
+        expression = generate_shared_expression(
+            item=src_id,
+            item_type=src_type,
+            workspace=src_ws,
+            use_sql_endpoint=False,
+        )
+
+        # 4) Resolve which tables are field parameters / calculation groups so
+        #    they are left unchanged during the conversion.
+        field_parameters = {}
+        calc_groups = set()
+        try:
+            with connect_semantic_model(
+                dataset=dataset_id, workspace=workspace_id, readonly=True
+            ) as src_tom:
+                _plan = _compute_migration_plan(src_tom)
+                field_parameters = _plan["fieldParameters"]
+                calc_groups = set(_plan["calcGroups"])
+        except Exception as e:
+            warnings.append(f"Resolving model objects: {e}")
+
+        # 5) Convert every regular table's partition(s) to a Direct Lake entity
+        #    partition. Field parameters and calculation groups are kept as-is.
+        converted = 0
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=False
+        ) as tom:
+            tom.set_annotation(
+                object=tom.model, name="__PBI_TimeIntelligenceEnabled", value="0"
+            )
+            tom.set_annotation(
+                object=tom.model, name="PBI_QueryOrder", value='["DatabaseQuery"]'
+            )
+            if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
+                tom.add_expression("DatabaseQuery", expression=expression)
+                tom.set_annotation(
+                    object=tom.model.Expressions["DatabaseQuery"],
+                    name="PBI_IncludeFutureArtifacts",
+                    value="False",
+                )
+            else:
+                tom.model.Expressions["DatabaseQuery"].Expression = expression
+
+            for t in tom.model.Tables:
+                tname = t.Name
+                if tname in field_parameters or tname in calc_groups:
+                    continue
+                if t.CalculationGroup is not None:
+                    continue
+                # Skip calculated (DAX) tables — none exist in this scenario.
+                if any(
+                    p.SourceType == TOM.PartitionSourceType.Calculated
+                    for p in t.Partitions
+                ):
+                    continue
+
+                ent_name = tname
+                for char in icons.special_characters:
+                    ent_name = ent_name.replace(char, "")
+
+                # An incremental-refresh policy references the import partitions;
+                # remove it before converting to a Direct Lake entity partition.
+                if getattr(t, "RefreshPolicy", None) is not None:
+                    t.RefreshPolicy = None
+
+                # Align each data column's source column to the delta table's
+                # physical column name (spaces -> underscores, strip specials).
+                for c in t.Columns:
+                    if c.Type != TOM.ColumnType.Data:
+                        continue
+                    src = (c.SourceColumn or "").replace(" ", "_")
+                    for char in icons.special_characters:
+                        src = src.replace(char, "")
+                    if src.endswith("_"):
+                        src = src[:-1]
+                    if src:
+                        c.SourceColumn = src
+
+                # Replace the existing partition(s) with a single entity
+                # partition in Direct Lake mode.
+                for p in list(t.Partitions):
+                    t.Partitions.Remove(p)
+                tom.add_entity_partition(
+                    table_name=tname,
+                    entity_name=ent_name,
+                    schema_name=schema or None,
+                )
+                converted += 1
+
+        target_ws_name = next(
+            (w["name"] for w in (widget.workspaces or []) if w.get("id") == target_ws),
+            target_ws,
+        )
+        refresh_code = (
+            "import sempy_labs as labs\n\n"
+            "labs.refresh_semantic_model(\n"
+            f'    dataset="{dataset_name}",\n'
+            f'    workspace="{target_ws_name}",\n'
+            ")"
+        )
+
+        return {
+            "createdModel": dataset_name,
+            "inPlace": True,
+            "sourceType": src_type,
+            "targetWorkspaceId": target_ws,
+            "convertedTables": converted,
+            "backupPath": backup_path,
+            "pqt": movement == "pqt",
+            "pqtFileName": pqt_file_name,
+            "refreshCode": refresh_code,
+            "warnings": warnings,
+            "validation": [],
+        }
+
     def _run_migration(data):
+        if data.get("conversion_mode") == "in_place":
+            return _run_in_place_conversion(data)
+
         from sempy_labs._generate_semantic_model import create_blank_semantic_model
         from sempy_labs.migration._create_pqt_file import create_pqt_file
         from sempy_labs.migration._migrate_tables_columns_to_semantic_model import (
@@ -1847,11 +2180,7 @@ def migrate_to_direct_lake(
             warnings.append(f"Migration validation: {e}")
 
         target_ws_name = next(
-            (
-                w["name"]
-                for w in (widget.workspaces or [])
-                if w.get("id") == target_ws
-            ),
+            (w["name"] for w in (widget.workspaces or []) if w.get("id") == target_ws),
             target_ws,
         )
         refresh_code = (
@@ -1888,6 +2217,10 @@ def migrate_to_direct_lake(
         workspace_name = traitlets.Unicode("").tag(sync=True)
         new_model_name = traitlets.Unicode("").tag(sync=True)
         target_workspace_id = traitlets.Unicode("").tag(sync=True)
+        conversion_mode = traitlets.Unicode("new").tag(sync=True)
+        backup_workspace_id = traitlets.Unicode("").tag(sync=True)
+        backup_lakehouse_id = traitlets.Unicode("").tag(sync=True)
+        backup_file_path = traitlets.Unicode("").tag(sync=True)
         source_type = traitlets.Unicode("Lakehouse").tag(sync=True)
         source_types = traitlets.List().tag(sync=True)
         source_workspace_id = traitlets.Unicode("").tag(sync=True)
@@ -1915,6 +2248,10 @@ def migrate_to_direct_lake(
         workspace_name=workspace_name or "",
         new_model_name=default_new_name,
         target_workspace_id=workspace_id,
+        conversion_mode="new",
+        backup_workspace_id=workspace_id,
+        backup_lakehouse_id="",
+        backup_file_path=f"{dataset_name}.bim",
         source_type="Lakehouse",
         source_types=list(_MIGRATION_SOURCE_TYPES),
         source_workspace_id=workspace_id,
@@ -1982,17 +2319,22 @@ def migrate_to_direct_lake(
 
             elif action == "preview":
                 widget.status = {}
-                new_name = (data.get("new_model_name") or "").strip()
-                target_ws = data.get("target_workspace_id") or workspace_id
-                if _model_exists(new_name, target_ws):
-                    widget.status = {
-                        "message": (
-                            f"A semantic model named '{new_name}' already exists "
-                            "in the target workspace. Choose a different name."
-                        ),
-                        "kind": "error",
-                    }
-                    return
+                # A new-model migration must not overwrite an existing model; an
+                # in-place conversion alters the current model, so this check is
+                # skipped.
+                if data.get("conversion_mode") != "in_place":
+                    new_name = (data.get("new_model_name") or "").strip()
+                    target_ws = data.get("target_workspace_id") or workspace_id
+                    if _model_exists(new_name, target_ws):
+                        widget.status = {
+                            "message": (
+                                f"A semantic model named '{new_name}' already "
+                                "exists in the target workspace. Choose a "
+                                "different name."
+                            ),
+                            "kind": "error",
+                        }
+                        return
                 widget.preview = _build_preview(data)
                 widget.screen = "preview"
 
