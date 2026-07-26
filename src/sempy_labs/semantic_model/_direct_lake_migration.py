@@ -423,6 +423,23 @@ _WIDGET_CSS = """
 .slls-mdl-plan-row svg { width: 15px; height: 15px; color: var(--slls-text-tertiary); flex-shrink: 0; }
 .slls-mdl-plan-row .slls-mdl-cols { color: var(--slls-text-tertiary); font-size: 12px; margin-left: auto; }
 
+.slls-mdl-rpt-row { padding: 9px 14px; border-top: 1px solid var(--slls-border); display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.slls-mdl-rpt-row:first-child { border-top: none; }
+.slls-mdl-rpt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-mdl-rpt-row .slls-mdl-pill { margin-left: auto; flex-shrink: 0; }
+.slls-mdl-rpt-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 8px 0; }
+.slls-mdl-linkbtn { background: none; border: none; color: var(--slls-accent); font-family: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 0; }
+.slls-mdl-linkbtn:disabled { color: var(--slls-text-tertiary); cursor: default; }
+
+/* iOS-style toggle switch */
+.slls-mdl-switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.slls-mdl-switch input { opacity: 0; width: 0; height: 0; position: absolute; margin: 0; }
+.slls-mdl-switch-slider { position: absolute; inset: 0; background: var(--slls-border-strong); border-radius: 999px; cursor: pointer; transition: background 150ms ease; }
+.slls-mdl-switch-slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform 150ms ease; }
+.slls-mdl-switch input:checked + .slls-mdl-switch-slider { background: var(--slls-accent); }
+.slls-mdl-switch input:checked + .slls-mdl-switch-slider::before { transform: translateX(16px); }
+.slls-mdl-switch input:disabled + .slls-mdl-switch-slider { opacity: 0.5; cursor: default; }
+
 .slls-mdl-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 14px; }
 .slls-mdl-table th, .slls-mdl-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--slls-border); }
 .slls-mdl-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slls-text-tertiary); font-weight: 600; }
@@ -648,20 +665,34 @@ function render({ model, el }) {
         { key: "analyze", label: "Analyze" },
         { key: "configure", label: "Configure" },
         { key: "preview", label: "Preview" },
-        { key: "done", label: "Done" },
+        { key: "done", label: "Created" },
     ];
 
+    // The rebind step is only relevant for a newly created model (not an
+    // in-place conversion) that has downstream reports bound to the original.
+    function hasRebindStep() {
+        const a = model.get("analysis") || {};
+        return !isInPlace() && (a.reports || []).length > 0;
+    }
+
+    function stepList() {
+        const steps = STEPS.slice();
+        if (hasRebindStep()) steps.push({ key: "rebind", label: "Rebind reports" });
+        return steps;
+    }
+
     function stepsHtml() {
+        const steps = stepList();
         const cur = model.get("screen") || "analyze";
-        const curIdx = STEPS.findIndex((s) => s.key === cur);
+        const curIdx = steps.findIndex((s) => s.key === cur);
         let out = '<div class="slls-mdl-steps">';
-        STEPS.forEach((s, i) => {
+        steps.forEach((s, i) => {
             let cls = "slls-mdl-step";
             if (i === curIdx) cls += " is-active";
             else if (i < curIdx) cls += " is-done";
             const dot = i < curIdx ? IC.check : String(i + 1);
             out += `<div class="${cls}"><span class="slls-mdl-step-dot">${dot}</span>${esc(s.label)}</div>`;
-            if (i < STEPS.length - 1) out += '<span class="slls-mdl-step-line"></span>';
+            if (i < steps.length - 1) out += '<span class="slls-mdl-step-line"></span>';
         });
         out += "</div>";
         return out;
@@ -987,6 +1018,59 @@ function render({ model, el }) {
             });
             out += `</tbody></table>`;
         }
+
+        // The rebind reports flow lives on its own step (see rebindHtml); when
+        // the model has downstream reports, the footer offers to continue there.
+        if (!r.inPlace && (r.reports || []).length > 0) {
+            const n = (r.reports || []).length;
+            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.database}<div>${n} report${n === 1 ? " is" : "s are"} bound to <b>${esc(model.get("dataset_name") || "")}</b>. Continue to the <b>Rebind reports</b> step to point ${n === 1 ? "it" : "them"} at <b>${esc(r.createdModel || "")}</b>.</div></div>`;
+        }
+        return out;
+    }
+
+    function rebindHtml() {
+        const r = model.get("result") || {};
+        const reports = r.reports || [];
+        if (reports.length === 0) {
+            return `<div class="slls-mdl-center"><div>No reports are bound to this model.</div></div>`;
+        }
+        const selected = model.get("selected_reports") || [];
+        const rebind = model.get("rebind_result") || {};
+        const resByName = {};
+        (rebind.results || []).forEach((x) => { resByName[x.name] = x; });
+        const b = busy();
+        const allSelected = selected.length === reports.length;
+
+        let out = `<div class="slls-mdl-change-detail" style="margin-bottom:10px;">These reports are currently bound to <b>${esc(model.get("dataset_name") || "")}</b>. Toggle the ones you want to rebind to the new <b>${esc(r.createdModel || "")}</b> Direct Lake model, then select <b>Rebind selected reports</b>.</div>`;
+
+        out += `<div class="slls-mdl-rpt-head">
+            <span class="slls-mdl-sec-title" style="margin:0;">Reports (${reports.length})</span>
+            <button class="slls-mdl-linkbtn" data-r="rpt-toggle-all"${b ? " disabled" : ""}>${allSelected ? "Clear all" : "Select all"}</button>
+        </div>`;
+
+        out += `<div class="slls-mdl-plan">`;
+        reports.forEach((rp) => {
+            const on = selected.indexOf(rp.id) !== -1;
+            const res = resByName[rp.name];
+            let status = "";
+            if (res) status = res.ok
+                ? `<span class="slls-mdl-pill slls-mdl-pill-ok">Rebound</span>`
+                : `<span class="slls-mdl-pill slls-mdl-pill-no">Failed</span>`;
+            out += `<div class="slls-mdl-rpt-row">`
+                + `<label class="slls-mdl-switch"><input type="checkbox" data-rpt="${esc(rp.id)}"${on ? " checked" : ""}${b ? " disabled" : ""} /><span class="slls-mdl-switch-slider"></span></label>`
+                + `<span class="slls-mdl-rpt-name">${esc(rp.name)}</span>`
+                + status
+                + `</div>`;
+        });
+        out += `</div>`;
+
+        (rebind.results || []).forEach((x) => {
+            if (!x.ok && x.error) out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>${esc(x.name)}: ${esc(x.error)}</div></div>`;
+        });
+        if (rebind.done && (rebind.results || []).some((x) => x.ok)) {
+            const okCount = (rebind.results || []).filter((x) => x.ok).length;
+            out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.check}<div>${okCount} report${okCount === 1 ? "" : "s"} rebound to <b>${esc(r.createdModel || "")}</b>.</div></div>`;
+        }
         return out;
     }
 
@@ -1015,7 +1099,22 @@ function render({ model, el }) {
                 <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="create"${b || !p.ready ? " disabled" : ""}>${b ? spin : IC.database} ${createLabel}</button>
             </div>`;
         }
-        // Done screen: no footer actions.
+        if (screen === "done") {
+            // Offer to continue to the rebind step when the model has reports.
+            if (hasRebindStep()) {
+                return `<div class="slls-mdl-footer slls-mdl-footer-end">
+                    <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="to-rebind"${b ? " disabled" : ""}>Rebind reports ${IC.chevron}</button>
+                </div>`;
+            }
+            return "";
+        }
+        if (screen === "rebind") {
+            const selected = model.get("selected_reports") || [];
+            return `<div class="slls-mdl-footer">
+                <button class="slls-mdl-btn" data-r="to-done"${b ? " disabled" : ""}>${IC.back} Back</button>
+                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="rebind"${b || selected.length === 0 ? " disabled" : ""}>${b ? spin : ""} Rebind selected report${selected.length === 1 ? "" : "s"}</button>
+            </div>`;
+        }
         return "";
     }
 
@@ -1024,14 +1123,14 @@ function render({ model, el }) {
         if (screen === "configure") return configureHtml();
         if (screen === "preview") return previewHtml();
         if (screen === "done") return doneHtml();
+        if (screen === "rebind") return rebindHtml();
         return analyzeHtml();
     }
 
     function route() {
         const screen = model.get("screen") || "analyze";
-        const showSteps = screen !== "done";
         root.innerHTML = headerHtml()
-            + (showSteps ? stepsHtml() : "")
+            + stepsHtml()
             + statusHtml()
             + `<div class="slls-mdl-body">${bodyHtml()}</div>`
             + footerHtml();
@@ -1079,6 +1178,33 @@ function render({ model, el }) {
         on('[data-r="to-configure"]', "click", () => { model.set("screen", "configure"); model.save_changes(); requestSourceItems(); if (isInPlace()) requestBackupItems(); });
         on('[data-r="to-analyze"]', "click", () => { model.set("screen", "analyze"); model.save_changes(); });
         on('[data-r="to-configure2"]', "click", () => { model.set("screen", "configure"); model.save_changes(); });
+        on('[data-r="to-rebind"]', "click", () => { model.set("screen", "rebind"); model.save_changes(); });
+        on('[data-r="to-done"]', "click", () => { model.set("screen", "done"); model.save_changes(); });
+
+        root.querySelectorAll('[data-rpt]').forEach((node) => {
+            node.addEventListener("change", (e) => {
+                const id = e.target.getAttribute("data-rpt");
+                let sel = (model.get("selected_reports") || []).slice();
+                if (e.target.checked) { if (sel.indexOf(id) === -1) sel.push(id); }
+                else { sel = sel.filter((x) => x !== id); }
+                model.set("selected_reports", sel);
+                model.save_changes();
+                route();
+            });
+        });
+        on('[data-r="rpt-toggle-all"]', "click", () => {
+            const reports = (model.get("result") || {}).reports || [];
+            const sel = model.get("selected_reports") || [];
+            const all = sel.length === reports.length;
+            model.set("selected_reports", all ? [] : reports.map((rp) => rp.id));
+            model.save_changes();
+            route();
+        });
+        on('[data-r="rebind"]', "click", () => {
+            const sel = model.get("selected_reports") || [];
+            if (!sel.length) return;
+            runAction("rebind_reports", { report_ids: sel });
+        });
 
         on('[data-r="cm-new"]', "change", () => { model.set("conversion_mode", "new"); model.save_changes(); route(); });
         on('[data-r="cm-inplace"]', "change", () => { model.set("conversion_mode", "in_place"); model.save_changes(); requestBackupItems(); route(); });
@@ -1214,6 +1340,7 @@ function render({ model, el }) {
         "source_item_id", "data_movement", "lakehouse_schema_enabled",
         "dataset_name", "workspace_name", "conversion_mode",
         "backup_workspace_id", "backup_lakehouse_id",
+        "selected_reports", "rebind_result",
     ].forEach((name) => model.on("change:" + name, route));
 
     route();
@@ -1724,6 +1851,7 @@ def migrate_to_direct_lake(
             "canConvertInPlace": can_in_place,
             "changes": plan["changes"],
             "unsupportedGroups": groups,
+            "reports": _list_bindable_reports(),
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
         }
 
@@ -1832,6 +1960,62 @@ def migrate_to_direct_lake(
             )
         rows.sort(key=lambda x: x["objectType"].lower())
         return rows
+
+    def _list_bindable_reports():
+        """List the reports (in the source model's workspace) that are currently
+        bound to the original semantic model. These can be rebound to the newly
+        created Direct Lake model. Best-effort: returns [] on any failure."""
+        try:
+            from sempy_labs.report import list_reports
+
+            dfR = list_reports(workspace=workspace_id)
+        except Exception:
+            return []
+        if dfR is None or dfR.empty:
+            return []
+
+        id_col = "Report Id" if "Report Id" in dfR.columns else "Id"
+        name_col = "Report Name" if "Report Name" in dfR.columns else "Name"
+        if id_col not in dfR.columns or "Dataset Id" not in dfR.columns:
+            return []
+        has_dsw = "Dataset Workspace Id" in dfR.columns
+
+        rows = []
+        for _, r in dfR.iterrows():
+            if str(r.get("Dataset Id")) != dataset_id:
+                continue
+            dsw = str(r.get("Dataset Workspace Id") or "") if has_dsw else ""
+            if dsw and dsw != workspace_id:
+                continue
+            rows.append({"id": str(r.get(id_col)), "name": str(r.get(name_col) or "")})
+        rows.sort(key=lambda x: x["name"].lower())
+        return rows
+
+    def _rebind_reports(report_ids):
+        """Rebind the selected reports (by ID) from the original model to the
+        newly created Direct Lake model. Returns a per-report status list."""
+        from sempy_labs.report import report_rebind
+
+        r = dict(widget.result or {})
+        new_name = r.get("createdModel")
+        target_ws = r.get("targetWorkspaceId") or workspace_id
+        report_ws = r.get("reportWorkspaceId") or workspace_id
+        name_by_id = {rp["id"]: rp["name"] for rp in (r.get("reports") or [])}
+
+        results = []
+        for rid in report_ids or []:
+            rname = name_by_id.get(rid, rid)
+            try:
+                report_rebind(
+                    report=rid,
+                    dataset=new_name,
+                    report_workspace=report_ws,
+                    dataset_workspace=target_ws,
+                )
+                results.append({"name": rname, "ok": True, "error": ""})
+            except Exception as e:
+                results.append({"name": rname, "ok": False, "error": str(e)})
+        return {"done": True, "results": results}
 
     def _save_backup_bim(backup_ws, backup_lh, file_path):
         """Save the existing model's Model.bim to the chosen lakehouse's Files
@@ -2195,6 +2379,8 @@ def migrate_to_direct_lake(
             "createdModel": new_name,
             "sourceType": src_type,
             "targetWorkspaceId": target_ws,
+            "reportWorkspaceId": workspace_id,
+            "reports": _list_bindable_reports(),
             "pqt": movement == "pqt",
             "pqtFileName": pqt_file_name,
             "refreshCode": refresh_code,
@@ -2234,6 +2420,8 @@ def migrate_to_direct_lake(
         analysis = traitlets.Dict().tag(sync=True)
         preview = traitlets.Dict().tag(sync=True)
         result = traitlets.Dict().tag(sync=True)
+        selected_reports = traitlets.List().tag(sync=True)
+        rebind_result = traitlets.Dict().tag(sync=True)
         status = traitlets.Dict().tag(sync=True)
         busy = traitlets.Bool(False).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
@@ -2265,6 +2453,8 @@ def migrate_to_direct_lake(
         analysis={},
         preview={},
         result={},
+        selected_reports=[],
+        rebind_result={},
         status={},
         busy=False,
         dark_mode=bool(dark_mode),
@@ -2340,8 +2530,20 @@ def migrate_to_direct_lake(
 
             elif action == "create":
                 widget.status = {}
-                widget.result = _run_migration(data)
+                widget.rebind_result = {}
+                result = _run_migration(data)
+                widget.result = result
+                # Pre-select all reports bound to the original model (only
+                # applies to a new-model migration, not an in-place conversion).
+                reports = result.get("reports") or []
+                widget.selected_reports = [rp["id"] for rp in reports]
                 widget.screen = "done"
+
+            elif action == "rebind_reports":
+                widget.status = {}
+                report_ids = data.get("report_ids") or []
+                if report_ids:
+                    widget.rebind_result = _rebind_reports(report_ids)
 
         except Exception as e:
             widget.status = {"message": f"Error: {e}", "kind": "error"}
