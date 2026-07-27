@@ -80,7 +80,8 @@ _WIDGET_CSS = """
 /* Header */
 .slls-lv-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--slls-border); flex-wrap: wrap; }
 .slls-lv-headicon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: var(--slls-accent-soft); color: var(--slls-accent); flex-shrink: 0; }
-.slls-lv-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.slls-lv-titlewrap { display: flex; flex-direction: column; min-width: 0; }
+.slls-lv-head-spacer { flex: 1 1 auto; }
 .slls-lv-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
 .slls-lv-subtitle { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 540px; }
 .slls-lv-subtitle .slls-lv-sep { color: var(--slls-text-tertiary); margin: 0 6px; }
@@ -122,8 +123,13 @@ _WIDGET_CSS = """
 .slls-lv-node.picked { box-shadow: 0 0 0 2px var(--slls-accent-soft); }
 .slls-lv-node-check { position: absolute; top: 8px; right: 8px; width: 15px; height: 15px; accent-color: var(--slls-accent); cursor: pointer; }
 .slls-lv-node-name { font-size: 13px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 16px; }
+/* Right-edge grip to resize node width; grows all nodes of the same type. */
+.slls-lv-node-resize { position: absolute; top: 6px; bottom: 6px; right: -5px; width: 11px; cursor: ew-resize; z-index: 4; touch-action: none; border-radius: 6px; }
+.slls-lv-node-resize::after { content: ""; position: absolute; top: 50%; right: 4px; width: 3px; height: 26px; transform: translateY(-50%); border-radius: 3px; background: transparent; transition: background 120ms ease; }
+.slls-lv-node:hover .slls-lv-node-resize::after { background: var(--slls-border-strong); }
+.slls-lv-node-resize:hover::after { background: var(--slls-accent); }
 .slls-lv-node-ws { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--slls-text-secondary); overflow: hidden; }
-.slls-lv-node-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lv-node-ws span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-lv-node-status { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; }
 .slls-lv-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .slls-lv-node.broken .slls-lv-dot { background: var(--slls-danger); }
@@ -134,10 +140,10 @@ _WIDGET_CSS = """
 .slls-lv-node.error .slls-lv-node-status { color: var(--slls-text-tertiary); }
 
 .slls-lv-model { align-items: center; text-align: center; border-width: 2px; border-color: var(--slls-accent); background: var(--slls-accent-soft); }
-.slls-lv-model-top { display: flex; align-items: center; gap: 7px; color: var(--slls-accent); font-size: 14px; font-weight: 700; line-height: 1.35; overflow: hidden; }
-.slls-lv-model-top span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lv-model-top { display: flex; align-items: center; gap: 7px; color: var(--slls-accent); font-size: 14px; font-weight: 700; line-height: 1.35; overflow: hidden; max-width: 100%; }
+.slls-lv-model-top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-lv-model-ws { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--slls-text-secondary); overflow: hidden; max-width: 100%; }
-.slls-lv-model-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lv-model-ws span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-lv-model-sub { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slls-text-tertiary); }
 
 /* Zoom controls */
@@ -245,6 +251,18 @@ _WIDGET_CSS = """
 @media (prefers-color-scheme: dark) { .slls-lv.slls-lv-auto .slls-lv-select option { background: #2c2c2e; color: #f5f5f7; } }
 .slls-lv-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
+/* Model / workspace picker ("connect" screen) */
+.slls-lv-picker-wrap { display: flex; align-items: center; justify-content: center; padding: 32px; overflow: auto; }
+.slls-lv-picker { width: 100%; max-width: 900px; background: var(--slls-bg-solid); border: 1px solid var(--slls-border); border-radius: var(--slls-radius); box-shadow: var(--slls-shadow); padding: 24px 28px; }
+.slls-lv-picker-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.slls-lv-picker-head { min-width: 0; }
+.slls-lv-picker-title { font-size: 17px; font-weight: 600; }
+.slls-lv-picker-sub { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 3px; }
+.slls-lv-picker-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+.slls-lv-picker-grid .slls-lv-field { flex: 1 1 260px; margin-bottom: 0; }
+.slls-lv-picker-grid .slls-lv-select { padding-top: 10px; padding-bottom: 10px; font-size: 14px; }
+.slls-lv-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
 .slls-lv-spin { animation: slls-lv-spin 0.8s linear infinite; transform-origin: center; }
 @keyframes slls-lv-spin { to { transform: rotate(360deg); } }
 .slls-lv-scroll::-webkit-scrollbar, .slls-lv-panel-body::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -267,10 +285,15 @@ function render({ model, el }) {
         measure: `__ICON_MEASURE__`, column: `__ICON_COLUMN__`, hierarchy: `__ICON_HIERARCHY__`,
         save: `__ICON_SAVE__`, wrench: `__ICON_WRENCH__`, undo: `__ICON_UNDO__`,
         chevron_left: `__ICON_CHEVRON_LEFT__`, chevron_right: `__ICON_CHEVRON_RIGHT__`,
+        swap: `__ICON_SWAP__`,
     };
 
     const MODEL_KEY = "__model__";
-    const NODE_W = 184, NODE_H = 86, CENTER_W = 204, CENTER_H = 92, MARGIN = 150;
+    const NODE_H = 86, CENTER_H = 92, MARGIN = 150;
+    // Node widths are sized dynamically to fit the longest report / model name
+    // (see computeNodeWidths). They start at their historical defaults so the
+    // first layout pass has sane values before any measurement runs.
+    let NODE_W = 184, CENTER_W = 204;
     const MIN_ZOOM = 0.3, MAX_ZOOM = 2.5;
 
     const root = document.createElement("div");
@@ -337,9 +360,19 @@ function render({ model, el }) {
     let rebindOpen = false;
     let rebindWs = "";
     let rebindDs = "";
-    let workspacesRequested = false;  // full tenant workspace list fetched once
+    let workspacesRequested = (model.get("workspaces") || []).length > 1;  // full tenant workspace list fetched once
+    // Model/workspace picker ("connect" screen). Shown whenever no model is
+    // connected, or when the user reopens it to switch models.
+    let pickerReopen = false;
+    let pickWs = "";
+    let pickDs = "";
     let panelWidth = 360;             // side panel width (px)
     let panelCollapsed = false;       // side panel collapsed to a thin rail
+    // User-set node widths (px). null = auto-fit to the longest name. Set by
+    // dragging a node's right-edge grip; report nodes stay uniform, the model
+    // (center) node is sized independently.
+    let nodeWOverride = null;
+    let centerWOverride = null;
     // Preserved graph scroll offset. viewKey tracks the layout+zoom the view
     // was last centred for, so re-renders that don't change either (e.g.
     // toggling a report checkbox) keep the user's current position.
@@ -354,6 +387,10 @@ function render({ model, el }) {
     const reports = () => model.get("reports") || [];
     const analyzed = () => !!model.get("analyzed");
     const busy = () => !!model.get("busy");
+    const connected = () => !!model.get("connected");
+    // The picker screen replaces the graph whenever no model is connected or
+    // the user has explicitly reopened it to switch models.
+    const showPicker = () => !connected() || pickerReopen;
     // Front-end-local "working" flag: flipped on the instant a button is
     // clicked so the UI reacts immediately, without waiting for the back-end
     // round-trip to set the synced "busy" trait. Cleared once the back-end
@@ -398,6 +435,44 @@ function render({ model, el }) {
         dispatch({ action: "save_fixes", fixes: [...stagedFixes.values()] });
     }
 
+    // Font stack shared with the CSS so off-screen text measurement matches
+    // what the browser actually renders.
+    const NODE_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif';
+    const _measureCtx = document.createElement("canvas").getContext("2d");
+    function textWidth(text, font) {
+        _measureCtx.font = font + " " + NODE_FONT_FAMILY;
+        return _measureCtx.measureText(String(text == null ? "" : text)).width;
+    }
+
+    // Size the report / model node widths so their full name and workspace row
+    // fit inside the panel instead of spilling past the rounded border. Widths
+    // are clamped so a single very long name cannot make the graph unwieldy;
+    // beyond the cap the CSS ellipsis takes over.
+    function computeNodeWidths() {
+        const HPAD = 28;         // node left + right padding (14px each)
+        const ICON_GAP = 16 + 5; // workspace-row icon width + gap
+        const CHECK_PAD = 16;    // report name reserves room for the checkbox
+        const MINW = 184, MAXW = 340;
+
+        let need = MINW;
+        for (const r of reports()) {
+            const nameW = textWidth(r.name, "600 13px") + CHECK_PAD;
+            const wsW = ICON_GAP + textWidth(r.workspaceName, "11px");
+            need = Math.max(need, nameW, wsW);
+        }
+        NODE_W = nodeWOverride != null
+            ? nodeWOverride
+            : Math.min(MAXW, Math.ceil(need + HPAD));
+
+        let cneed = 204;
+        const mTopW = 16 + 7 + textWidth(model.get("dataset_name"), "700 14px");
+        const mWsW = ICON_GAP + textWidth(model.get("workspace_name"), "11.5px");
+        cneed = Math.max(cneed, mTopW, mWsW);
+        CENTER_W = centerWOverride != null
+            ? centerWOverride
+            : Math.min(MAXW + 40, Math.ceil(cneed + HPAD));
+    }
+
     function computePositions() {
         const rs = reports();
         const n = rs.length;
@@ -416,6 +491,7 @@ function render({ model, el }) {
     function syncPositions() {
         const key = reports().map((r) => r.id).join("\u0000");
         if (key !== positionsKey) {
+            computeNodeWidths();
             positions = computePositions();
             positionsKey = key;
         }
@@ -448,8 +524,12 @@ function render({ model, el }) {
         syncPositions();
         root.innerHTML = "";
         root.appendChild(buildHeader());
-        root.appendChild(buildSummary());
-        root.appendChild(buildBody());
+        if (showPicker()) {
+            root.appendChild(buildPickerScreen());
+        } else {
+            root.appendChild(buildSummary());
+            root.appendChild(buildBody());
+        }
         const st = model.get("status") || {};
         if (st.message) {
             const s = document.createElement("div");
@@ -467,26 +547,37 @@ function render({ model, el }) {
         h.className = "slls-lv-header";
         const dm = model.get("dark_mode") === true;
         const nPick = picked.size;
+        const picking = showPicker();
+        const dsName = model.get("dataset_name");
+        const subtitle = connected() && dsName
+            ? `<b>${esc(dsName)}</b><span class="slls-lv-sep">&middot;</span>${esc(model.get("workspace_name"))}`
+            : `Select a semantic model to evaluate`;
         h.innerHTML =
             `<span class="slls-lv-headicon">${ICON.workflow}</span>` +
             `<div class="slls-lv-titlewrap">` +
                 `<div class="slls-lv-title">Lineage view</div>` +
-                `<div class="slls-lv-subtitle"><b>${esc(model.get("dataset_name"))}</b>` +
-                `<span class="slls-lv-sep">&middot;</span>${esc(model.get("workspace_name"))}</div>` +
+                `<div class="slls-lv-subtitle">${subtitle}</div>` +
             `</div>` +
-            (stagedFixes.size > 0
+            (connected() && !picking
+                ? `<button class="slls-lv-btn slls-lv-btn-icon" data-act="change-model" title="Change semantic model / workspace">${ICON.swap}</button>`
+                : "") +
+            `<div class="slls-lv-head-spacer"></div>` +
+            (!picking && stagedFixes.size > 0
                 ? `<button class="slls-lv-btn slls-lv-btn-primary slls-lv-btn-icon" data-act="save" title="Save ${stagedFixes.size} staged fix${stagedFixes.size === 1 ? "" : "es"}" ${working() ? "disabled" : ""}>` +
                     `${working() ? spinner() : ICON.save}</button>`
                 : "") +
-            (nPick > 0
+            (!picking && nPick > 0
                 ? `<button class="slls-lv-btn" data-act="open-rebind">${ICON.link}Rebind ${nPick}</button>`
                 : "") +
-            `<button class="slls-lv-btn slls-lv-btn-icon" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
-                `${working() ? spinner() : ICON.refresh}</button>` +
+            (!picking
+                ? `<button class="slls-lv-btn slls-lv-btn-icon" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
+                    `${working() ? spinner() : ICON.refresh}</button>`
+                : "") +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="slls-lv-btn slls-lv-btn-icon" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
-        h.querySelector('[data-act="refresh"]').onclick = () => dispatch({ action: "refresh" });
+        const rf = h.querySelector('[data-act="refresh"]');
+        if (rf) rf.onclick = () => dispatch({ action: "refresh" });
         h.querySelector('[data-act="fullscreen"]').onclick = () => toggleFullscreen();
         h.querySelector('[data-act="theme"]').onclick = () => {
             model.set("dark_mode", !(model.get("dark_mode") === true));
@@ -495,6 +586,8 @@ function render({ model, el }) {
         };
         const rb = h.querySelector('[data-act="open-rebind"]');
         if (rb) rb.onclick = () => openRebind();
+        const cm = h.querySelector('[data-act="change-model"]');
+        if (cm) cm.onclick = () => openPicker();
         const sv = h.querySelector('[data-act="save"]');
         if (sv) sv.onclick = () => saveFixes();
         return h;
@@ -673,6 +766,7 @@ function render({ model, el }) {
             `<div class="slls-lv-model-ws">${ICON.workflow}<span>${esc(model.get("workspace_name"))}</span></div>` +
             `<div class="slls-lv-model-sub">Semantic model</div>`;
         node.addEventListener("pointerdown", (e) => startDrag(e, MODEL_KEY));
+        node.appendChild(makeResizeGrip(true));
         return node;
     }
 
@@ -703,6 +797,7 @@ function render({ model, el }) {
             if (chk.checked) picked.add(r.id); else picked.delete(r.id);
             renderAll();
         });
+        node.appendChild(makeResizeGrip(false));
         node.addEventListener("pointerdown", (e) => startDrag(e, r.id));
         node.addEventListener("click", () => {
             if (dragMoved) { dragMoved = false; return; }
@@ -1053,6 +1148,92 @@ function render({ model, el }) {
         return f;
     }
 
+    // ---------- Model / workspace picker ("connect" screen) ----------
+    function openPicker() {
+        pickerReopen = true;
+        pickWs = model.get("workspace_id") || "";
+        pickDs = model.get("connected") ? "" : pickDs;
+        ensureWorkspaces();
+        ensureDatasets(pickWs);
+        renderAll();
+    }
+
+    // Force a fresh fetch of the workspace list and the datasets for the
+    // currently-selected workspace (used by the picker's Reload button).
+    function reloadPickerLists() {
+        workspacesRequested = false;
+        ensureWorkspaces();
+        if (pickWs) dispatch({ action: "list_datasets", workspace_id: pickWs });
+    }
+
+    function buildPickerScreen() {
+        const wrap = document.createElement("div");
+        wrap.className = "slls-lv-graphwrap slls-lv-picker-wrap";
+
+        if (!pickWs) pickWs = model.get("workspace_id") || "";
+        const workspaces = model.get("workspaces") || [];
+        const ds = (model.get("datasets") || {})[pickWs] || null;
+
+        const wsOptions =
+            `<option value="">Select a workspace\u2026</option>` +
+            workspaces.map((w) =>
+                `<option value="${esc(w.id)}" ${w.id === pickWs ? "selected" : ""}>${esc(w.name)}</option>`).join("");
+        let dsInner;
+        if (!pickWs) dsInner = `<option value="">Select a workspace first\u2026</option>`;
+        else if (ds === null) dsInner = `<option value="">Loading\u2026</option>`;
+        else if (ds.length === 0) dsInner = `<option value="">No semantic models</option>`;
+        else dsInner = `<option value="">Select a semantic model\u2026</option>` + ds.map((d) =>
+            `<option value="${esc(d.id)}" ${d.id === pickDs ? "selected" : ""}>${esc(d.name)}</option>`).join("");
+
+        const card = document.createElement("div");
+        card.className = "slls-lv-picker";
+        card.innerHTML =
+            `<div class="slls-lv-picker-top">` +
+                `<div class="slls-lv-picker-head">` +
+                    `<div class="slls-lv-picker-title">Choose a semantic model</div>` +
+                    `<div class="slls-lv-picker-sub">Pick a workspace and semantic model to evaluate its lineage.</div>` +
+                `</div>` +
+                `<button class="slls-lv-btn" data-p="reload" title="Reload workspaces and semantic models" ${working() ? "disabled" : ""}>` +
+                    `${working() ? spinner() : ICON.refresh}Reload</button>` +
+            `</div>` +
+            `<div class="slls-lv-picker-grid">` +
+                `<div class="slls-lv-field"><label>Workspace</label>` +
+                    `<select class="slls-lv-select" data-p="ws">${wsOptions}</select></div>` +
+                `<div class="slls-lv-field"><label>Semantic model</label>` +
+                    `<select class="slls-lv-select" data-p="ds" ${(!pickWs || ds === null) ? "disabled" : ""}>${dsInner}</select></div>` +
+            `</div>` +
+            `<div class="slls-lv-picker-actions">` +
+                (connected()
+                    ? `<button class="slls-lv-btn" data-p="cancel">Cancel</button>`
+                    : "") +
+                `<button class="slls-lv-btn slls-lv-btn-primary" data-p="connect" ${(!pickDs || working()) ? "disabled" : ""}>` +
+                    `${working() ? spinner() : ""}Connect</button>` +
+            `</div>`;
+
+        card.querySelector('[data-p="ws"]').onchange = (e) => {
+            pickWs = e.target.value; pickDs = ""; ensureDatasets(pickWs); renderAll();
+        };
+        card.querySelector('[data-p="ds"]').onchange = (e) => { pickDs = e.target.value; renderAll(); };
+        card.querySelector('[data-p="reload"]').onclick = () => reloadPickerLists();
+        const cancel = card.querySelector('[data-p="cancel"]');
+        if (cancel) cancel.onclick = () => { pickerReopen = false; renderAll(); };
+        card.querySelector('[data-p="connect"]').onclick = () => {
+            if (!pickDs) return;
+            const wsName = (workspaces.find((w) => w.id === pickWs) || {}).name || "";
+            const dsName = ((ds || []).find((d) => d.id === pickDs) || {}).name || "";
+            dispatch({
+                action: "connect",
+                workspace_id: pickWs,
+                dataset_id: pickDs,
+                workspace_name: wsName,
+                dataset_name: dsName,
+            });
+        };
+
+        wrap.appendChild(card);
+        return wrap;
+    }
+
     // ---------- Rebind modal ----------
     function openRebind() {
         rebindOpen = true;
@@ -1125,6 +1306,73 @@ function render({ model, el }) {
         return overlay;
     }
 
+    // ---------- Node width resize ----------
+    // A thin grip on each node's right edge lets the user widen / narrow the
+    // nodes. Report nodes share one width and the model (center) node has its
+    // own, so a single grip resizes every node of that type in lockstep.
+    function makeResizeGrip(isModel) {
+        const grip = document.createElement("div");
+        grip.className = "slls-lv-node-resize";
+        grip.title = "Drag to resize width (double-click to auto-fit)";
+        grip.addEventListener("pointerdown", (e) => startNodeResize(e, isModel));
+        grip.addEventListener("click", (e) => e.stopPropagation());
+        grip.addEventListener("dblclick", (e) => {
+            e.stopPropagation();
+            if (isModel) centerWOverride = null; else nodeWOverride = null;
+            computeNodeWidths();
+            applyNodeSizes();
+        });
+        return grip;
+    }
+
+    // Push the current node widths onto the existing DOM in place. Node centres
+    // (positions) are left untouched so resizing never moves a node or shifts
+    // the viewport — the node simply grows / shrinks about its own centre.
+    function applyNodeSizes() {
+        const mp = positions[MODEL_KEY];
+        const mEl = document.getElementById("slls-lv-node-" + MODEL_KEY);
+        if (mEl && mp) {
+            mEl.style.width = CENTER_W + "px";
+            mEl.style.left = (mp.x - CENTER_W / 2) + "px";
+        }
+        reports().forEach((r) => {
+            const el = document.getElementById("slls-lv-node-" + r.id);
+            const p = positions[r.id];
+            if (el && p) {
+                el.style.width = NODE_W + "px";
+                el.style.left = (p.x - NODE_W / 2) + "px";
+            }
+        });
+        updateEdges(MODEL_KEY);
+    }
+
+    function startNodeResize(e, isModel) {
+        if (e.button != null && e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startW = isModel ? CENTER_W : NODE_W;
+        const MINW = 140, MAXW = 720;
+        const move = (ev) => {
+            // Nodes are positioned by their centre, so grow symmetrically and
+            // double the delta so the right edge tracks the pointer. Widths are
+            // applied in place (no re-render) so the node stays put.
+            const w = Math.round(Math.min(MAXW, Math.max(MINW,
+                startW + 2 * (ev.clientX - startX) / zoom)));
+            if (isModel) { CENTER_W = w; centerWOverride = w; }
+            else { NODE_W = w; nodeWOverride = w; }
+            applyNodeSizes();
+        };
+        const up = () => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            document.body.style.userSelect = "";
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        document.body.style.userSelect = "none";
+    }
+
     // ---------- Dragging (nodes) ----------
     let dragMoved = false;
     function startDrag(e, key) {
@@ -1183,8 +1431,31 @@ function render({ model, el }) {
     model.on("change:analyzed", settle);
     model.on("change:busy", settle);
     model.on("change:status", settle);
-    model.on("change:workspaces", () => { if (rebindOpen) renderAll(); });
-    model.on("change:datasets", () => { busyLocal = false; if (rebindOpen) renderAll(); });
+    // A successful connect flips "connected"; drop the picker and reset any
+    // stale per-model selections so the fresh model's graph is shown.
+    model.on("change:connected", () => {
+        busyLocal = false;
+        if (model.get("connected")) {
+            pickerReopen = false;
+            selectedId = null;
+            picked = new Set();
+            stagedFixes = new Map();
+        }
+        renderAll();
+    });
+    // connect_done fires on every successful connect (including switching to a
+    // new model while already connected, where "connected" stays true and the
+    // observer above would not fire) so the picker always closes.
+    model.on("change:connect_done", () => {
+        busyLocal = false;
+        pickerReopen = false;
+        selectedId = null;
+        picked = new Set();
+        stagedFixes = new Map();
+        renderAll();
+    });
+    model.on("change:workspaces", () => { if (rebindOpen || showPicker()) renderAll(); });
+    model.on("change:datasets", () => { busyLocal = false; if (rebindOpen || showPicker()) renderAll(); });
     model.on("change:model_objects", () => { if (selectedId) renderAll(); });
     model.on("change:rebind_done", () => {
         busyLocal = false; rebindOpen = false; picked = new Set(); selectedId = null; renderAll();
@@ -1225,12 +1496,13 @@ _WIDGET_JS = (
     .replace("__ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__ICON_CHEVRON_LEFT__", _UI_ICONS["chevron_left"])
     .replace("__ICON_CHEVRON_RIGHT__", _UI_ICONS["chevron_right"])
+    .replace("__ICON_SWAP__", _UI_ICONS["swap"])
 )
 
 
 @log
 def lineage_view(
-    dataset: str | UUID,
+    dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     dark_mode: bool = False,
 ):
@@ -1253,8 +1525,10 @@ def lineage_view(
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
+    dataset : str | uuid.UUID, default=None
         Name or ID of the semantic model.
+        Defaults to None which opens the view on a workspace / semantic model
+        picker so the model to evaluate can be chosen interactively.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1285,9 +1559,15 @@ def lineage_view(
     from sempy_labs.report._report_rebind import report_rebind
 
     ws_name, ws_id = resolve_workspace_name_and_id(workspace)
-    ds_name, ds_id = resolve_dataset_name_and_id(dataset, ws_id)
     ws_id = str(ws_id)
-    ds_id = str(ds_id)
+    # When no dataset is supplied the view opens on the model/workspace picker
+    # and stays disconnected until the user chooses a model to evaluate.
+    connected = dataset is not None
+    if connected:
+        ds_name, ds_id = resolve_dataset_name_and_id(dataset, ws_id)
+        ds_id = str(ds_id)
+    else:
+        ds_name, ds_id = "", ""
 
     def _web_url_map():
         """Report Id -> Web Url, best effort."""
@@ -1851,13 +2131,27 @@ def lineage_view(
         ]
         return sorted(out, key=lambda x: x["name"].lower())
 
-    # Initial load (downstream reports only, no analysis).
-    try:
-        initial_reports = _build_reports(analyze=False)
-        initial_status = {}
-    except Exception as e:
+    # Initial load (downstream reports only, no analysis). When no model is
+    # connected yet the graph is not built; the picker is shown instead.
+    if connected:
+        try:
+            initial_reports = _build_reports(analyze=False)
+            initial_status = {}
+        except Exception as e:
+            initial_reports = []
+            initial_status = {"message": f"Error loading lineage: {e}", "kind": "error"}
+    else:
         initial_reports = []
-        initial_status = {"message": f"Error loading lineage: {e}", "kind": "error"}
+        initial_status = {}
+
+    # When starting on the picker, prefetch the full tenant workspace list and
+    # the current workspace's semantic models so the dropdowns populate at once.
+    if connected:
+        initial_workspaces = [{"id": ws_id, "name": ws_name or ""}]
+        initial_datasets = {}
+    else:
+        initial_workspaces = _list_workspaces_payload()
+        initial_datasets = {ws_id: _list_datasets_payload(ws_id)}
 
     # Valid model objects (fix targets) require a TOM connection to the model,
     # so they are loaded lazily on the first analysis rather than at load time.
@@ -1872,6 +2166,7 @@ def lineage_view(
         dataset_name = traitlets.Unicode("").tag(sync=True)
         workspace_name = traitlets.Unicode("").tag(sync=True)
         workspace_id = traitlets.Unicode("").tag(sync=True)
+        connected = traitlets.Bool(False).tag(sync=True)
         reports = traitlets.List().tag(sync=True)
         analyzed = traitlets.Bool(False).tag(sync=True)
         model_objects = traitlets.List().tag(sync=True)
@@ -1882,6 +2177,7 @@ def lineage_view(
         run = traitlets.Int(0).tag(sync=True)
         rebind_done = traitlets.Int(0).tag(sync=True)
         fixes_saved = traitlets.Int(0).tag(sync=True)
+        connect_done = traitlets.Int(0).tag(sync=True)
         busy = traitlets.Bool(False).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
 
@@ -1889,23 +2185,26 @@ def lineage_view(
         dataset_name=ds_name,
         workspace_name=ws_name or "",
         workspace_id=ws_id,
+        connected=connected,
         reports=initial_reports,
         analyzed=False,
         model_objects=initial_model_objects,
         # Seed with the current workspace for an immediate default; the full
         # tenant workspace list is fetched lazily when the rebind modal opens.
-        workspaces=[{"id": ws_id, "name": ws_name or ""}],
-        datasets={},
+        workspaces=initial_workspaces,
+        datasets=initial_datasets,
         status=initial_status,
         pending_action={},
         run=0,
         rebind_done=0,
         fixes_saved=0,
+        connect_done=0,
         busy=False,
         dark_mode=bool(dark_mode),
     )
 
     def _on_run(_change):
+        nonlocal ws_id, ds_id, ws_name, ds_name
         data = dict(widget.pending_action or {})
         action = data.get("action")
         if not action:
@@ -1931,6 +2230,32 @@ def lineage_view(
 
             elif action == "list_workspaces":
                 widget.workspaces = _list_workspaces_payload()
+
+            elif action == "connect":
+                target_ws = data.get("workspace_id")
+                target_ds = data.get("dataset_id")
+                if not target_ws or not target_ds:
+                    widget.status = {
+                        "message": "Select a workspace and semantic model.",
+                        "kind": "error",
+                    }
+                    return
+                # Repoint the closure-captured identifiers so every helper
+                # (report loader, TOM connection, fix writer, ...) targets the
+                # newly chosen model / workspace.
+                ws_id = str(target_ws)
+                ds_id = str(target_ds)
+                ws_name = data.get("workspace_name") or ws_name
+                ds_name = data.get("dataset_name") or ds_name
+                widget.dataset_name = ds_name
+                widget.workspace_name = ws_name
+                widget.workspace_id = ws_id
+                widget.model_objects = []
+                widget.analyzed = False
+                widget.reports = _build_reports(analyze=False)
+                widget.connected = True
+                widget.connect_done = widget.connect_done + 1
+                widget.status = {}
 
             elif action == "rebind":
                 report_ids = data.get("report_ids") or []

@@ -17,6 +17,8 @@ from ._lineage_view import (
 )
 from ._direct_lake_migration import (
     migrate_to_direct_lake,
+from ._find_unused_objects import (
+    find_unused_objects,
 )
 
 __all__ = [
@@ -28,4 +30,5 @@ __all__ = [
     "direct_lake_manager",
     "lineage_view",
     "migrate_to_direct_lake",
+    "find_unused_objects",
 ]
