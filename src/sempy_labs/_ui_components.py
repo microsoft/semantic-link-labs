@@ -17,6 +17,7 @@ output, an ``anywidget`` widget, or any other surface that renders raw HTML.
 """
 
 from typing import Dict, List, Optional, Sequence, Tuple
+import uuid
 
 # ---------------------------------------------------------------------------
 # Icons (monochrome SVGs that use currentColor)
@@ -72,6 +73,52 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<circle cx="4" cy="8" r="2.5"/><circle cx="12" cy="8" r="2.5"/>'
         '<line x1="6.5" y1="8" x2="9.5" y2="8"/></svg>'
+    ),
+    "calculated_table": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="3" width="11" height="10" rx="1.8"/>'
+        '<path d="M2.5 6.75h11"/>'
+        '<path d="M9.7 8.1c-1.1-.4-1.9.1-2.1 1.1l-.7 3.6M6.3 9.9h3"/></svg>'
+    ),
+    "calculation_group": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="3" y="1.5" width="10" height="13" rx="2"/>'
+        '<rect x="5" y="3.4" width="6" height="2.3" rx="0.6"/>'
+        '<path d="M5.5 8.5h.01M8 8.5h.01M10.5 8.5h.01M5.5 10.7h.01M8 10.7h.01'
+        'M10.5 10.7h.01M5.5 12.9h.01M8 12.9h.01M10.5 12.9h.01"/></svg>'
+    ),
+    "date_table": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="3.5" width="11" height="10" rx="1.8"/>'
+        '<path d="M2.5 6.75h11"/>'
+        '<path d="M5.5 2v2.6M10.5 2v2.6"/>'
+        '<path d="M5.2 9.2h.01M8 9.2h.01M10.8 9.2h.01M5.2 11.4h.01'
+        'M8 11.4h.01"/></svg>'
+    ),
+    "field_parameter": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.35" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="1.6" y="2" width="8.6" height="8.6" rx="1.2"/>'
+        '<path d="M1.6 4.85h8.6M1.6 7.75h8.6"/>'
+        '<path d="M4.5 2v8.6M7.4 2v8.6"/>'
+        '<path d="M10.8 11.45c.1-1 .9-1.55 1.65-1.4.8.16 1.15.98.72 '
+        '1.7-.27.45-.72.55-.72 1.25"/>'
+        '<path d="M12.45 14.5h.01"/></svg>'
+    ),
+    "calculated_column": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="5" y="2.5" width="6" height="11" rx="1.8"/>'
+        '<path stroke-width="1.3" d="M9.6 5.4c-.4-1.3-1.8-1.3-2.2.2l-1.2 5.8'
+        'M6.3 8h2.8"/></svg>'
     ),
     # UI icons --------------------------------------------------------------
     "sun": (
@@ -197,6 +244,16 @@ ICONS: dict[str, str] = {
         '<path d="M3 3.5v9c0 1 2.24 1.8 5 1.8s5-.8 5-1.8v-9"/>'
         '<path d="M3 8c0 1 2.24 1.8 5 1.8s5-.8 5-1.8"/></svg>'
     ),
+    "database_zap": (
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="12" cy="5" rx="9" ry="3"/>'
+        '<path d="M3 5V19A9 3 0 0 0 15 21.84"/>'
+        '<path d="M21 5V8"/>'
+        '<path d="M21 12L18 17H22L19 22"/>'
+        '<path d="M3 12A9 3 0 0 0 14.59 14.87"/></svg>'
+    ),
     "report": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
@@ -267,6 +324,18 @@ ICONS: dict[str, str] = {
         '<rect x="2" y="2.5" width="4.5" height="4.5" rx="1"/>'
         '<rect x="9.5" y="9" width="4.5" height="4.5" rx="1"/>'
         '<path d="M4.25 7v2.25a1.5 1.5 0 0 0 1.5 1.5h3.75"/></svg>'
+    ),
+    "expand_rows": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M5 6.5l3-3 3 3"/><path d="M5 9.5l3 3 3-3"/></svg>'
+    ),
+    "collapse_rows": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M5 4l3 3 3-3"/><path d="M5 12l3-3 3 3"/></svg>'
     ),
     "scan": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
@@ -657,13 +726,17 @@ def fullscreen_toggle_script(
     ``fs_class`` on the root as a CSS-overlay fallback for hosts that reject the
     native request.
 
-    The native request is issued directly in the click handler, before any DOM
-    mutation, so the browser's user-activation requirement is satisfied (moving
-    the element around beforehand can cause the request to be silently
-    rejected). A sized placeholder is inserted to reserve the widget's original
-    footprint so an auto-height output iframe (VS Code / Fabric) does not
-    collapse — which would otherwise clip the overlay fallback and make the UI
-    appear to vanish.
+    The overlay class and a sized placeholder are applied first, and the native
+    Fullscreen request is issued immediately afterwards within the same click
+    handler. Requesting native fullscreen *before* mutating the DOM causes
+    Chromium to abort the just-issued request (it then silently falls back to
+    the iframe-bound CSS overlay), so the mutate-then-request ordering — which
+    matches the working anywidget tools — is used instead. The widget is never
+    re-parented (moving it across the DOM does disturb the user activation the
+    Fullscreen API requires). A sized placeholder is inserted to reserve the
+    widget's original footprint so an auto-height output iframe (VS Code /
+    Fabric) does not collapse — which would otherwise clip the overlay fallback
+    and make the UI appear to vanish.
 
     The button icon swaps between the enter/exit glyphs and pressing
     ``Escape`` exits.
@@ -730,11 +803,16 @@ def fullscreen_toggle_script(
         render();
     }}
     function requestNative() {{
-        // Request true (native) fullscreen directly in the click gesture and
-        // before any DOM mutation, so the browser honors the user activation.
-        // Notebook output frames generally carry allow="fullscreen"; when the
-        // request is rejected the CSS overlay applied by setFs() is the
-        // guaranteed fallback.
+        // Request true (native) fullscreen within the click gesture so the
+        // browser honors the user activation. This is called AFTER the overlay
+        // class + placeholder have been applied (see the click handler): the
+        // working anywidget tools (perspective_editor, lineage_view) also
+        // mutate the DOM first and then request, whereas requesting *before*
+        // the mutation causes Chromium to abort the just-issued request and
+        // silently fall back to the (iframe-bound) CSS overlay. Notebook output
+        // frames generally carry allow="fullscreen"; when the request is
+        // rejected the CSS overlay applied by setFs() is the guaranteed
+        // fallback.
         var req = root.requestFullscreen || root.webkitRequestFullscreen
             || root.mozRequestFullScreen || root.msRequestFullscreen;
         if (req) {{
@@ -751,8 +829,8 @@ def fullscreen_toggle_script(
         }}
     }}
     btn.addEventListener('click', function() {{
-        if (isOn()) {{ exitNative(); setFs(false); }}
-        else {{ requestNative(); setFs(true); }}
+        if (isOn()) {{ setFs(false); exitNative(); }}
+        else {{ setFs(true); requestNative(); }}
     }});
     // If the user leaves native fullscreen (Esc / F11), drop the overlay too.
     function onFsChange() {{
@@ -843,3 +921,205 @@ def render_attribution_html(
             )
     body = " &bull; ".join(parts)
     return f'<div class="sl-attribution">{body}</div>'
+
+
+# ---------------------------------------------------------------------------
+# Reusable progress bar (in-place updating HTML progress indicator)
+# ---------------------------------------------------------------------------
+class ProgressBar:
+    """A modern, theme-aware HTML/CSS progress bar for notebook output.
+
+    Renders an in-place updating progress bar that matches the visual
+    language of the interactive Semantic Link Labs widgets (shared theme
+    tokens, typography, radii, and motion). Use it as a drop-in replacement
+    for text-based progress indicators (e.g. ``tqdm``) inside long-running
+    loops that run in a notebook cell.
+
+    The bar is displayed as soon as the instance is created and updated in
+    place via :meth:`update`. Call :meth:`close` when the work is done to
+    stop the animation and show the final state.
+
+    Parameters
+    ----------
+    total : int
+        The total number of steps the loop will perform. If ``0`` (or less),
+        the bar renders as complete.
+    title : str, default="Processing…"
+        The label shown above the bar.
+    dark_mode : bool, default=False
+        If True, renders the bar with the dark color palette. A CSS overlay
+        keeps the bar consistent with the surrounding widgets.
+    """
+
+    def __init__(
+        self,
+        total: int,
+        title: str = "Processing…",
+        dark_mode: bool = False,
+    ) -> None:
+        self._total = max(int(total), 0)
+        self._title = title
+        self._dark_mode = dark_mode
+        self._uid = uuid.uuid4().hex[:8]
+        self._current = 0
+        self._closed = False
+        self._handle = self._display(self._render(0, ""))
+
+    @staticmethod
+    def _display(html: str):
+        try:
+            from IPython.display import display, HTML
+
+            return display(HTML(html), display_id=True)
+        except Exception:
+            return None
+
+    def _render(self, current: int, description: str) -> str:
+        uid = self._uid
+        if self._total > 0:
+            pct = min(max(current / self._total * 100.0, 0.0), 100.0)
+        else:
+            pct = 100.0
+        count_text = (
+            f"{current:,} / {self._total:,} &middot; {pct:.0f}%"
+            if self._total > 0
+            else f"{pct:.0f}%"
+        )
+        desc = _escape_html(description) if description else "&nbsp;"
+        root_cls = f"slpb-{uid}-root" + (" slpb-dark" if self._dark_mode else "")
+        return f"""
+<style>
+    .slpb-{uid}-root {{
+        {LIGHT_THEME_VARS}
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                     'Helvetica Neue', Helvetica, Arial, sans-serif;
+        box-sizing: border-box;
+        max-width: 1200px;
+        margin: 12px auto;
+        padding: 16px 18px;
+        background: var(--ui-bg);
+        border: 1px solid var(--ui-border);
+        border-radius: 12px;
+        box-shadow: var(--ui-shadow-sm);
+        color: var(--ui-text);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }}
+    .slpb-{uid}-root.slpb-dark {{
+        {DARK_THEME_VARS}
+    }}
+    .slpb-{uid}-root *, .slpb-{uid}-root *::before, .slpb-{uid}-root *::after {{
+        box-sizing: border-box;
+    }}
+    .slpb-{uid}-head {{
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }}
+    .slpb-{uid}-title {{
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ui-text);
+    }}
+    .slpb-{uid}-count {{
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ui-text-secondary);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }}
+    .slpb-{uid}-track {{
+        position: relative;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--ui-bg-secondary);
+        border: 1px solid var(--ui-border);
+        overflow: hidden;
+    }}
+    .slpb-{uid}-fill {{
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--ui-accent), var(--ui-accent-hover));
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }}
+    .slpb-{uid}-fill::after {{
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background-image: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.28) 50%,
+            rgba(255, 255, 255, 0) 100%);
+        background-size: 200% 100%;
+        animation: slpb-{uid}-shimmer 1.2s linear infinite;
+    }}
+    @keyframes slpb-{uid}-shimmer {{
+        0% {{ background-position: 200% 0; }}
+        100% {{ background-position: -200% 0; }}
+    }}
+    .slpb-{uid}-desc {{
+        margin-top: 9px;
+        font-size: 12px;
+        color: var(--ui-text-tertiary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }}
+</style>
+<div class="{root_cls}">
+    <div class="slpb-{uid}-head">
+        <span class="slpb-{uid}-title">{_escape_html(self._title)}</span>
+        <span class="slpb-{uid}-count">{count_text}</span>
+    </div>
+    <div class="slpb-{uid}-track">
+        <div class="slpb-{uid}-fill" style="width:{pct:.1f}%"></div>
+    </div>
+    <div class="slpb-{uid}-desc">{desc}</div>
+</div>
+"""
+
+    def update(self, current: int, description: str = "") -> None:
+        """Advance the bar to ``current`` and optionally update the caption.
+
+        Parameters
+        ----------
+        current : int
+            The number of completed steps.
+        description : str, default=""
+            Optional caption shown beneath the bar (e.g. the item currently
+            being processed).
+        """
+        if self._closed:
+            return
+        self._current = current
+        html = self._render(current, description)
+        if self._handle is not None:
+            self._handle.update(_HTML(html))
+
+    def close(self, description: str = "") -> None:
+        """Remove the progress bar from the output once the work is done.
+
+        Parameters
+        ----------
+        description : str, default=""
+            Unused; accepted for backward compatibility.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        if self._handle is not None:
+            self._handle.update(_HTML(""))
+
+
+def _HTML(html: str):
+    from IPython.display import HTML
+
+    return HTML(html)
+

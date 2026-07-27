@@ -8,10 +8,12 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional
 from sempy._utils._log import log
+from sempy_labs._helper_functions import _quiet_if_not_verbose
 import sempy_labs._icons as icons
 from uuid import UUID
 
 
+@_quiet_if_not_verbose
 @log
 def migrate_model_objects_to_semantic_model(
     dataset: str,
