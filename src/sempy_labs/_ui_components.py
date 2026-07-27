@@ -388,6 +388,67 @@ ICONS: dict[str, str] = {
         '<path d="M6 4L3 7l3 3"/>'
         '<path d="M3 7h6a3.5 3.5 0 0 1 0 7H5.5"/></svg>'
     ),
+    "error_circle": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/>'
+        '<path d="M6 6l4 4M10 6l-4 4"/></svg>'
+    ),
+    "info": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/>'
+        '<path d="M8 7.4v3.2M8 5.2h.01"/></svg>'
+    ),
+    "shield_check": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M8 1.8l5 1.9v4.1c0 3-2.1 5.2-5 6.4-2.9-1.2-5-3.4-5-6.4V3.7z"/>'
+        '<path d="M5.9 7.9l1.5 1.5 2.7-3"/></svg>'
+    ),
+    "activity": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M1.5 8h3l1.8-4.8 3 9.6L11.1 8h3.4"/></svg>'
+    ),
+    "code": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M5.4 4.5L2 8l3.4 3.5"/><path d="M10.6 4.5L14 8l-3.4 3.5"/>'
+        '<path d="M9.2 3l-2.4 10"/></svg>'
+    ),
+    "settings": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="2.1"/>'
+        '<path d="M12.9 9.8a1.1 1.1 0 0 0 .22 1.21l.04.04a1.33 1.33 0 1 1-1.88 1.88'
+        "l-.04-.04a1.1 1.1 0 0 0-1.21-.22 1.1 1.1 0 0 0-.67 1v.11a1.33 1.33 0 1 1-2.66 0"
+        "v-.06a1.1 1.1 0 0 0-.72-1 1.1 1.1 0 0 0-1.21.22l-.04.04a1.33 1.33 0 1 1-1.88-1.88"
+        "l.04-.04a1.1 1.1 0 0 0 .22-1.21 1.1 1.1 0 0 0-1-.67h-.11a1.33 1.33 0 1 1 0-2.66"
+        "h.06a1.1 1.1 0 0 0 1-.72 1.1 1.1 0 0 0-.22-1.21l-.04-.04a1.33 1.33 0 1 1 1.88-1.88"
+        "l.04.04a1.1 1.1 0 0 0 1.21.22h.05a1.1 1.1 0 0 0 .67-1v-.11a1.33 1.33 0 1 1 2.66 0"
+        "v.06a1.1 1.1 0 0 0 .67 1 1.1 1.1 0 0 0 1.21-.22l.04-.04a1.33 1.33 0 1 1 1.88 1.88"
+        "l-.04.04a1.1 1.1 0 0 0-.22 1.21v.05a1.1 1.1 0 0 0 1 .67h.11a1.33 1.33 0 1 1 0 2.66"
+        'h-.06a1.1 1.1 0 0 0-1 .67z"/></svg>'
+    ),
+    "text_type": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 4.2V3h10v1.2"/><path d="M8 3v10"/><path d="M6 13h4"/></svg>'
+    ),
+    "play": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4.5 3.2l8 4.8-8 4.8z"/></svg>'
+    ),
 }
 
 
@@ -1122,4 +1183,3 @@ def _HTML(html: str):
     from IPython.display import HTML
 
     return HTML(html)
-
