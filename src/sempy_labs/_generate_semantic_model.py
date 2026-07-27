@@ -4,6 +4,7 @@ import json
 import os
 from typing import Optional, List
 from sempy._utils._log import log
+from sempy_labs._helper_functions import _quiet_if_not_verbose
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
@@ -20,6 +21,7 @@ from uuid import UUID
 import time
 
 
+@_quiet_if_not_verbose
 @log
 def create_blank_semantic_model(
     dataset: str,
