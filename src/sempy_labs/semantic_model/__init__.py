@@ -21,6 +21,9 @@ from ._direct_lake_migration import (
 from ._find_unused_objects import (
     find_unused_objects,
 )
+from ._bpa import (
+    bpa,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -32,4 +35,5 @@ __all__ = [
     "lineage_view",
     "migrate_to_direct_lake",
     "find_unused_objects",
+    "bpa",
 ]

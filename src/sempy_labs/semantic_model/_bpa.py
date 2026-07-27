@@ -30,7 +30,15 @@ _WIDGET_CSS = (
     --slls-info-soft: rgba(0, 113, 227, 0.12);
     --slls-success: #34c759;
     --slls-success-soft: rgba(52, 199, 89, 0.14);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    --slls-syn-keyword: #ad3da4;
+    --slls-syn-string: #d12f1b;
+    --slls-syn-number: #272ad8;
+    --slls-syn-comment: #707f8c;
+    --slls-syn-builtin: #3900a0;
+    --slls-syn-fn: #4b21b0;
+    --slls-syn-type: #0b4f79;
+    --slls-syn-prop: #326d74;
+    --slls-syn-op: #6e6e73;
         "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -58,6 +66,15 @@ _WIDGET_CSS = (
         --slls-info-soft: rgba(10, 132, 255, 0.18);
         --slls-success: #30d158;
         --slls-success-soft: rgba(48, 209, 88, 0.18);
+        --slls-syn-keyword: #ff7ab2;
+        --slls-syn-string: #ff8170;
+        --slls-syn-number: #d9c97c;
+        --slls-syn-comment: #7f8c98;
+        --slls-syn-builtin: #dabaff;
+        --slls-syn-fn: #b281eb;
+        --slls-syn-type: #4eb0cc;
+        --slls-syn-prop: #6bdfff;
+        --slls-syn-op: #a5a5ac;
     }
 }
 .slls-bpa.slls-bpa-dark {
@@ -72,6 +89,15 @@ _WIDGET_CSS = (
     --slls-info-soft: rgba(10, 132, 255, 0.18);
     --slls-success: #30d158;
     --slls-success-soft: rgba(48, 209, 88, 0.18);
+    --slls-syn-keyword: #ff7ab2;
+    --slls-syn-string: #ff8170;
+    --slls-syn-number: #d9c97c;
+    --slls-syn-comment: #7f8c98;
+    --slls-syn-builtin: #dabaff;
+    --slls-syn-fn: #b281eb;
+    --slls-syn-type: #4eb0cc;
+    --slls-syn-prop: #6bdfff;
+    --slls-syn-op: #a5a5ac;
 }
 .slls-bpa * { box-sizing: border-box; }
 
@@ -129,6 +155,7 @@ _WIDGET_CSS = (
 .slls-bpa-btn-primary:hover { background: var(--ui-accent-hover); border-color: var(--ui-accent-hover); }
 .slls-bpa-btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 50%; }
 .slls-bpa-btn-sm { font-size: 12.5px; padding: 4px 11px; border-radius: 7px; }
+.slls-bpa-btn-sm.slls-bpa-btn-icon-sm { width: 30px; height: 30px; padding: 0; justify-content: center; border-radius: 7px; }
 
 .slls-bpa-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .slls-bpa-section { border: 1px solid var(--ui-border); border-radius: var(--slls-radius); background: var(--ui-surface); padding: 16px; margin-top: 14px; }
@@ -296,9 +323,7 @@ _WIDGET_CSS = (
 /* Inline detail: the violations of the model selected in the comparison report. */
 .slls-bpa-detail { display: none; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--ui-border); }
 .slls-bpa-detail.show { display: block; }
-.slls-bpa-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.slls-bpa-detail-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.slls-bpa-detail-ws { font-weight: 400; color: var(--ui-text-tertiary); font-size: 12.5px; }
+.slls-bpa-detail-head { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
 
 /* Progress while a multi-model scan runs. */
 .slls-bpa-progress { display: none; margin-top: 14px; margin-bottom: 6px; padding: 12px 14px;
@@ -372,6 +397,26 @@ _WIDGET_CSS = (
 .slls-bpa-rule-name { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 7px; }
 .slls-bpa-rule-meta { font-size: 11.5px; color: var(--ui-text-tertiary); margin-top: 2px; }
 .slls-bpa-rule-desc { font-size: 12px; color: var(--ui-text-secondary); margin-top: 4px; line-height: 1.45; }
+.slls-bpa-rule-exprtoggle { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 2px 6px 2px 2px;
+    background: none; border: none; border-radius: 5px; cursor: pointer; font: inherit; font-size: 11.5px;
+    color: var(--ui-text-tertiary); transition: color 140ms ease, background 140ms ease; }
+.slls-bpa-rule-exprtoggle:hover { color: var(--ui-text); background: var(--ui-bg-secondary); }
+.slls-bpa-rule-expr { display: flex; align-items: flex-start; gap: 6px; margin-top: 5px; padding: 5px 8px; border-radius: 6px;
+    background: var(--ui-bg-secondary); color: var(--ui-text-secondary); font-size: 11.5px; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word; overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+.slls-bpa-rule-expr > .slls-bpa-icon { flex-shrink: 0; margin-top: 2px; }
+.slls-bpa-rule-expr > code { flex: 1; min-width: 0; font: inherit; white-space: pre-wrap; word-break: break-word; }
+.slls-bpa-rule-fixexpr { color: var(--slls-success); background: var(--slls-success-soft); }
+.slls-bpa-syn-kw { color: var(--slls-syn-keyword); }
+.slls-bpa-syn-string { color: var(--slls-syn-string); }
+.slls-bpa-syn-number { color: var(--slls-syn-number); }
+.slls-bpa-syn-comment { color: var(--slls-syn-comment); font-style: italic; }
+.slls-bpa-syn-builtin { color: var(--slls-syn-builtin); }
+.slls-bpa-syn-fn { color: var(--slls-syn-fn); }
+.slls-bpa-syn-type { color: var(--slls-syn-type); }
+.slls-bpa-syn-prop { color: var(--slls-syn-prop); }
+.slls-bpa-syn-op { color: var(--slls-syn-op); }
 .slls-bpa-switch { position: relative; width: 36px; height: 21px; flex-shrink: 0; margin-top: 1px; }
 .slls-bpa-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .slls-bpa-switch i { position: absolute; inset: 0; background: var(--ui-border-strong); border-radius: 999px; cursor: pointer; transition: background 140ms ease; }
@@ -407,9 +452,11 @@ _WIDGET_CSS = (
 .slls-bpa-empty { padding: 40px 16px; text-align: center; color: var(--ui-text-tertiary); font-size: 13.5px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .slls-bpa-empty .slls-bpa-empty-icon { color: var(--slls-success); transform: scale(2.2); margin-bottom: 8px; }
 /* While a scan runs the content dims, but the widget's own background must stay
-   opaque - otherwise the page behind shows through in full-screen mode. */
+   opaque - otherwise the page behind shows through in full-screen mode. The
+   view-only controls (theme, full screen) stay clickable throughout. */
 .slls-bpa-busy { pointer-events: none; }
 .slls-bpa-busy > *:not(.slls-bpa-overlay):not(.slls-bpa-progress) { opacity: 0.55; transition: opacity 120ms ease; }
+.slls-bpa-busy .slls-bpa-view-btn { pointer-events: auto; }
 .slls-bpa-screen { display: none; }
 .slls-bpa-screen.show { display: block; }
 .slls-bpa-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--ui-text-tertiary); }
@@ -448,6 +495,8 @@ function render({ model, el }) {
         wrench: `__SLLS_ICON_WRENCH__`,
         save: `__SLLS_ICON_SAVE__`,
         undo: `__SLLS_ICON_UNDO__`,
+        upload: `__SLLS_ICON_UPLOAD__`,
+        download: `__SLLS_ICON_DOWNLOAD__`,
         info: `__SLLS_ICON_INFO__`,
         alert: `__SLLS_ICON_ALERT__`,
         error: `__SLLS_ICON_ERROR_CIRCLE__`,
@@ -515,6 +564,77 @@ function render({ model, el }) {
         span.innerHTML = svg || "";
         if (title) { span.title = title; span.setAttribute("aria-label", title); }
         return span;
+    }
+
+    // ------------------------------------------------------------------
+    // Minimal Python syntax highlighter, used to colour the rule
+    // expressions shown in the rule editor.
+    // ------------------------------------------------------------------
+    const PY_KEYWORDS = new Set([
+        "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class",
+        "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global",
+        "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise",
+        "return", "try", "while", "with", "yield"]);
+    const PY_BUILTINS = new Set([
+        "abs", "all", "any", "bool", "dict", "enumerate", "float", "getattr", "int", "isinstance",
+        "len", "list", "max", "min", "range", "round", "set", "sorted", "str", "sum", "tuple", "zip"]);
+    // Order matters: comments and strings are matched before identifiers so that a
+    // string prefix such as the `r` of r"..." is not mistaken for a name.
+    const PY_TOKEN_RE = new RegExp([
+        "(#[^\\n]*)",
+        "([rRbBfFuU]{0,2}(?:'''[\\s\\S]*?'''|\"\"\"[\\s\\S]*?\"\"\"|'(?:\\\\.|[^'\\\\\\n])*'|\"(?:\\\\.|[^\"\\\\\\n])*\"))",
+        "(\\b\\d[\\d_]*(?:\\.\\d+)?\\b)",
+        "([A-Za-z_][A-Za-z0-9_]*)",
+        "([+\\-*/%=<>!&|^~]+)",
+    ].join("|"), "g");
+
+    function highlightPython(code) {
+        const frag = document.createDocumentFragment();
+        const push = (text, cls) => {
+            if (!text) return;
+            if (!cls) { frag.appendChild(document.createTextNode(text)); return; }
+            const span = document.createElement("span");
+            span.className = cls;
+            span.textContent = text;
+            frag.appendChild(span);
+        };
+        let last = 0;
+        let m;
+        PY_TOKEN_RE.lastIndex = 0;
+        while ((m = PY_TOKEN_RE.exec(code)) !== null) {
+            push(code.slice(last, m.index), "");
+            last = PY_TOKEN_RE.lastIndex;
+            const text = m[0];
+            if (m[1]) { push(text, "slls-bpa-syn-comment"); }
+            else if (m[2]) { push(text, "slls-bpa-syn-string"); }
+            else if (m[3]) { push(text, "slls-bpa-syn-number"); }
+            else if (m[4]) {
+                const before = code.slice(0, m.index).replace(/\s+$/, "");
+                const after = code.slice(last).replace(/^\s+/, "");
+                const isCall = after.startsWith("(");
+                if (PY_KEYWORDS.has(text)) push(text, "slls-bpa-syn-kw");
+                else if (before.endsWith(".")) push(text, isCall ? "slls-bpa-syn-fn" : "slls-bpa-syn-prop");
+                else if (PY_BUILTINS.has(text)) push(text, "slls-bpa-syn-builtin");
+                else if (isCall) push(text, "slls-bpa-syn-fn");
+                else if (/^[A-Z]/.test(text)) push(text, "slls-bpa-syn-type");
+                else push(text, "");
+            } else {
+                push(text, "slls-bpa-syn-op");
+            }
+        }
+        push(code.slice(last), "");
+        return frag;
+    }
+
+    function codeBlock(code, cls, title, icon) {
+        const wrap = document.createElement("div");
+        wrap.className = cls;
+        if (icon) wrap.appendChild(iconSpan(icon));
+        const el = document.createElement("code");
+        el.appendChild(highlightPython(code));
+        wrap.appendChild(el);
+        if (title) wrap.title = title;
+        return wrap;
     }
     function makeButton(label, cls, icon) {
         const btn = document.createElement("button");
@@ -847,7 +967,7 @@ function render({ model, el }) {
     rerunBtn.addEventListener("click", () => rerun());
     header.appendChild(rerunBtn);
 
-    const themeBtn = makeButton("", "slls-bpa-btn-icon", "");
+    const themeBtn = makeButton("", "slls-bpa-btn-icon slls-bpa-view-btn", "");
     function renderThemeBtn() {
         const isDark = model.get("dark_mode") === true;
         themeBtn.innerHTML = isDark ? ICON.sun : ICON.moon;
@@ -870,7 +990,7 @@ function render({ model, el }) {
     // native fullscreen attempted as a best-effort enhancement.
     // ------------------------------------------------------------------
     let fsMode = false;
-    const fullscreenBtn = makeButton("", "slls-bpa-btn-icon", "");
+    const fullscreenBtn = makeButton("", "slls-bpa-btn-icon slls-bpa-view-btn", "");
     function renderFullscreenBtn() {
         fullscreenBtn.innerHTML = fsMode ? ICON.fullscreen_exit : ICON.fullscreen;
         fullscreenBtn.title = fsMode ? "Exit full screen" : "Full screen";
@@ -1463,15 +1583,17 @@ function render({ model, el }) {
     bulkList.className = "slls-bpa-bulk-list";
     bulkScreen.appendChild(bulkList);
 
+    // Holds the shared search / severity controls while a model is expanded, so
+    // they sit directly under the category panels rather than inside the detail.
+    const bulkFilterSlot = document.createElement("div");
+    bulkScreen.insertBefore(bulkFilterSlot, bulkList);
+
     const bulkDetail = document.createElement("div");
     bulkDetail.className = "slls-bpa-detail";
     bulkScreen.appendChild(bulkDetail);
 
     const bulkDetailHead = document.createElement("div");
     bulkDetailHead.className = "slls-bpa-detail-head";
-    const bulkDetailTitle = document.createElement("div");
-    bulkDetailTitle.className = "slls-bpa-detail-title";
-    bulkDetailHead.appendChild(bulkDetailTitle);
     const bulkDetailClose = makeButton("", "slls-bpa-btn-icon", ICON.close);
     bulkDetailClose.title = "Close these violations";
     bulkDetailClose.setAttribute("aria-label", "Close these violations");
@@ -1523,6 +1645,8 @@ function render({ model, el }) {
     const MAX_BULK = model.get("max_bulk_models") || 10;
     const disabledRules = new Set(model.get("disabled_rules") || []);
     const expandedRules = new Set();
+    // Rule ids whose Expression / FixExpression code is revealed in the rule editor.
+    const expandedRuleExprs = new Set();
     let categoryFilter = null;
     let fixRule = null;
     const fixSelected = new Set();
@@ -2063,6 +2187,11 @@ function render({ model, el }) {
     function closeBulkDetail() {
         bulkDetailKey = null;
         bulkDetail.classList.remove("show");
+        // Restore the shared filter controls to the single-model layout.
+        bulkDetailHead.appendChild(bulkDetailClose);
+        filterBar.appendChild(expandBtn);
+        filterBar.appendChild(collapseBtn);
+        resultsContent.insertBefore(filterBar, groupsWrap);
         resultsScreen.appendChild(resultsContent);
     }
     bulkDetailClose.addEventListener("click", () => {
@@ -2169,14 +2298,12 @@ function render({ model, el }) {
         }
 
         bulkDetail.classList.add("show");
-        clear(bulkDetailTitle);
-        const detailName = document.createElement("span");
-        detailName.textContent = detail.dataset_name;
-        bulkDetailTitle.appendChild(detailName);
-        const detailWs = document.createElement("span");
-        detailWs.className = "slls-bpa-detail-ws";
-        detailWs.textContent = `\u2002\u2022\u2002${detail.workspace_name}`;
-        bulkDetailTitle.appendChild(detailWs);
+        // Search, severity, expand / collapse and close all share one row,
+        // directly under the category panels.
+        bulkFilterSlot.appendChild(filterBar);
+        filterBar.appendChild(expandBtn);
+        filterBar.appendChild(collapseBtn);
+        filterBar.appendChild(bulkDetailClose);
         bulkDetail.appendChild(resultsContent);
         activeViolations = detail.violations || [];
         renderResults();
@@ -2190,6 +2317,41 @@ function render({ model, el }) {
     root.appendChild(overlay);
     overlay.addEventListener("click", (ev) => { if (ev.target === overlay) overlay.classList.remove("show"); });
 
+    // Downloads the effective ruleset in the Best Practice Rules JSON format.
+    const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
+    function exportRuleset() {
+        const entries = (model.get("rules") || []).map((r) => {
+            const entry = {
+                ID: String(r.id || "").toUpperCase(),
+                Name: r.name,
+                Category: r.category,
+                Description: r.description || "",
+                Severity: SEVERITY_CODE[r.severity] || 2,
+                Scope: (r.scopes || []).join(", "),
+                Expression: r.expression || "",
+                Url: r.url || null,
+                Enabled: !disabledRules.has(r.id),
+            };
+            if (r.fixExpression) entry.FixExpression = r.fixExpression;
+            return entry;
+        });
+        const blob = new Blob([JSON.stringify(entries, null, 2)],
+            { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "BPARules.json";
+        anchor.rel = "noopener";
+        anchor.style.display = "none";
+        document.body.appendChild(anchor);
+        anchor.click();
+        // Revoking synchronously can cancel the download in embedded hosts.
+        window.setTimeout(() => {
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        }, 1000);
+    }
+
     function openRulesPanel() {
         clear(overlay);
         const modal = document.createElement("div");
@@ -2200,7 +2362,8 @@ function render({ model, el }) {
         modal.appendChild(heading);
         const sub = document.createElement("div");
         sub.className = "slls-bpa-modal-sub";
-        sub.textContent = "Turn rules on or off. Disabled rules are skipped on the next run.";
+        sub.textContent = "Turn rules on or off. Disabled rules are skipped on the next run. "
+            + "You can also import a ruleset from a .json file, or export the current one.";
         modal.appendChild(sub);
 
         const bar = document.createElement("div");
@@ -2221,6 +2384,47 @@ function render({ model, el }) {
         const disableAll = makeButton("Disable all", "slls-bpa-btn-sm");
         bar.appendChild(enableAll);
         bar.appendChild(disableAll);
+
+        // ---- Import / export the ruleset as .json ----
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "application/json,.json";
+        fileInput.style.display = "none";
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) return;
+            file.text().then((text) => {
+                let parsed;
+                try {
+                    parsed = JSON.parse(text);
+                } catch (e) {
+                    model.set("status", {
+                        message: "The file is not valid JSON.", kind: "error" });
+                    model.save_changes();
+                    return;
+                }
+                overlay.classList.remove("show");
+                runAction("import_rules", { rules: parsed });
+            }).catch(() => {
+                model.set("status", { message: "The file could not be read.", kind: "error" });
+                model.save_changes();
+            });
+            fileInput.value = "";
+        });
+        bar.appendChild(fileInput);
+
+        const importBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.upload);
+        importBtn.title = "Import a ruleset from a .json file";
+        importBtn.setAttribute("aria-label", importBtn.title);
+        importBtn.addEventListener("click", () => fileInput.click());
+        bar.appendChild(importBtn);
+
+        const exportBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.download);
+        exportBtn.title = "Export the current ruleset as a .json file";
+        exportBtn.setAttribute("aria-label", exportBtn.title);
+        exportBtn.addEventListener("click", () => exportRuleset());
+        bar.appendChild(exportBtn);
+
         modal.appendChild(bar);
 
         const list = document.createElement("div");
@@ -2283,6 +2487,45 @@ function render({ model, el }) {
                     desc.className = "slls-bpa-rule-desc";
                     desc.textContent = rule.description;
                     body.appendChild(desc);
+                }
+                if (rule.expression || rule.fixExpression) {
+                    // The code behind a rule is long, so it stays collapsed until asked for.
+                    const isOpen = expandedRuleExprs.has(rule.id);
+                    const toggle = document.createElement("button");
+                    toggle.type = "button";
+                    toggle.className = "slls-bpa-rule-exprtoggle";
+                    toggle.setAttribute("aria-expanded", String(isOpen));
+                    const caret = iconSpan(ICON.caret, `slls-bpa-caret${isOpen ? " open" : ""}`);
+                    toggle.appendChild(caret);
+                    const toggleText = document.createElement("span");
+                    toggleText.textContent = isOpen ? "Hide expression" : "Show expression";
+                    toggle.appendChild(toggleText);
+                    body.appendChild(toggle);
+
+                    const exprWrap = document.createElement("div");
+                    exprWrap.hidden = !isOpen;
+                    if (rule.expression) {
+                        exprWrap.appendChild(codeBlock(
+                            rule.expression, "slls-bpa-rule-expr", "What this rule checks", ICON.code));
+                    }
+                    if (rule.fixExpression) {
+                        exprWrap.appendChild(codeBlock(
+                            rule.fixExpression,
+                            "slls-bpa-rule-expr slls-bpa-rule-fixexpr",
+                            "What the automatic fix does",
+                            ICON.wrench));
+                    }
+                    body.appendChild(exprWrap);
+
+                    toggle.addEventListener("click", () => {
+                        const open = !expandedRuleExprs.has(rule.id);
+                        if (open) expandedRuleExprs.add(rule.id);
+                        else expandedRuleExprs.delete(rule.id);
+                        exprWrap.hidden = !open;
+                        caret.classList.toggle("open", open);
+                        toggle.setAttribute("aria-expanded", String(open));
+                        toggleText.textContent = open ? "Hide expression" : "Show expression";
+                    });
                 }
                 row.appendChild(body);
                 list.appendChild(row);
@@ -2408,6 +2651,8 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_WRENCH__", _UI_ICONS["wrench"])
     .replace("__SLLS_ICON_SAVE__", _UI_ICONS["save"])
     .replace("__SLLS_ICON_UNDO__", _UI_ICONS["undo"])
+    .replace("__SLLS_ICON_UPLOAD__", _UI_ICONS["upload"])
+    .replace("__SLLS_ICON_DOWNLOAD__", _UI_ICONS["download"])
     .replace("__SLLS_ICON_INFO__", _UI_ICONS["info"])
     .replace("__SLLS_ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__SLLS_ICON_ERROR_CIRCLE__", _UI_ICONS["error_circle"])
@@ -2434,6 +2679,7 @@ _WIDGET_JS = (
 def bpa(
     dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
+    rules=None,
     check_dependencies: bool = True,
     dark_mode: bool = False,
 ):
@@ -2443,7 +2689,8 @@ def bpa(
     The analyzer scans one semantic model - or up to 10 semantic models across any
     number of workspaces - against the semantic model best practice rules, groups the
     violations by rule, and lets you preview and apply the automatic fix for the rules
-    which support one.
+    which support one. The rule editor can also import a custom ruleset from a .json
+    file and export the current ruleset back to .json.
 
     The Best Practice Analyzer rules are based on the rules defined `here <https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules>`_. The framework for the Best Practice Analyzer and rules are based on the foundation set by `Tabular Editor <https://github.com/TabularEditor/TabularEditor>`_.
 
@@ -2456,6 +2703,35 @@ def bpa(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    rules : pandas.DataFrame | List[dict] | dict, default=None
+        The rules to evaluate. Accepts either a pandas dataframe in the shape produced
+        by :func:`sempy_labs.model_bpa_rules`, or a list of dictionaries in the
+        `Best Practice Rules <https://github.com/microsoft/Analysis-Services/blob/master/BestPracticeRules/BPARules.json>`_
+        JSON format, for example::
+
+            [
+                {
+                    "ID": "AVOID_FLOATING_POINT_DATA_TYPES",
+                    "Name": "Do not use floating point data types",
+                    "Category": "Performance",
+                    "Description": "...",
+                    "Severity": 2,
+                    "Scope": "Column",
+                    "Expression": "lambda obj, tom: obj.DataType == TOM.DataType.Double",
+                    "FixExpression": "column.DataType = TOM.DataType.Decimal",
+                    "Enabled": true
+                }
+            ]
+
+        Because the rule logic is compiled in Python, each entry is matched to a
+        built-in rule by its ``ID`` or ``Name`` (a leading ``[Category]`` prefix is
+        ignored); entries which do not match a built-in rule are skipped. ``Category``,
+        ``Severity`` (1 = Info, 2 = Warning, 3 = Error, or the name), ``Description``,
+        ``Url``, ``Scope`` and ``Enabled`` may be overridden. ``Expression`` holds the
+        source of the rule's predicate and ``FixExpression`` the code its automatic
+        fix runs; both are informational and are always taken from the current
+        built-in definition.
+        Defaults to None which uses the built-in rules.
     check_dependencies : bool, default=True
         If True, leverages the model dependencies from
         :func:`sempy_labs.get_model_calc_dependencies` to evaluate the rules. Set this
@@ -2471,7 +2747,7 @@ def bpa(
         import traitlets
     except ImportError as e:
         raise ImportError(
-            "The 'best_practice_analyzer' function requires the 'anywidget' package. "
+            "The 'bpa' function requires the 'anywidget' package. "
             "Install it with: pip install anywidget"
         ) from e
 
@@ -2487,6 +2763,8 @@ def bpa(
     from sempy_labs._model_dependencies import get_model_calc_dependencies
     from sempy_labs.semantic_model._bpa_engine import (
         apply_fixes,
+        normalize_rules,
+        parse_rules_json,
         preview_fixes,
         rules_payload,
         scan_model,
@@ -2556,8 +2834,12 @@ def bpa(
         rows.sort(key=lambda x: x["name"].lower())
         return rows
 
-    def _build_rules(workspace_id, dataset_id):
-        """Builds the rules dataframe, optionally including the calc-dependency graph."""
+    # The active ruleset. A dataframe is used as-is; JSON entries are matched to the
+    # built-in rules (which supply the logic) each time the defaults are rebuilt.
+    ruleset = {"custom": rules}
+
+    def _default_rules(workspace_id, dataset_id):
+        """Builds the built-in rules, optionally including the calc-dependency graph."""
 
         dependencies = pd.DataFrame(columns=_DEPENDENCY_COLUMNS)
         if check_dependencies and workspace_id and dataset_id:
@@ -2570,6 +2852,10 @@ def bpa(
                 pass
 
         return model_bpa_rules(dependencies=dependencies)
+
+    def _build_rules(workspace_id, dataset_id):
+        defaults = _default_rules(workspace_id, dataset_id)
+        return normalize_rules(ruleset["custom"], defaults)
 
     # Per-model rules, cached so that scanning, previewing and applying a fix for
     # the same model do not rebuild the (expensive) calc-dependency graph.
@@ -2616,6 +2902,16 @@ def bpa(
         busy = traitlets.Bool(False).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
 
+    # Rule metadata for the editor. Built without a dependency graph because only the
+    # descriptive fields are needed here.
+    _catalog = _default_rules(None, None)
+    _initial_disabled = []
+    if rules is not None and not isinstance(rules, pd.DataFrame):
+        _, _initial_disabled = parse_rules_json(
+            rules if isinstance(rules, list) else (rules.get("rules") or []),
+            _catalog,
+        )
+
     widget = _BestPracticeAnalyzerWidget(
         workspaces=_list_workspaces_payload(),
         datasets=_list_datasets_payload(initial_ws_id),
@@ -2623,9 +2919,8 @@ def bpa(
         workspace_name=str(initial_ws_name or ""),
         dataset_id=initial_ds_id,
         dataset_name=initial_ds_name,
-        rules=rules_payload(
-            model_bpa_rules(dependencies=pd.DataFrame(columns=_DEPENDENCY_COLUMNS))
-        ),
+        rules=rules_payload(normalize_rules(ruleset["custom"], _catalog)),
+        disabled_rules=_initial_disabled,
         dark_mode=bool(dark_mode),
     )
 
@@ -2804,9 +3099,52 @@ def bpa(
                 "kind": "success" if applied else "info",
             }
 
+    def _handle_import_rules(payload):
+        """Adopts a ruleset loaded from a .json file in the rule editor."""
+
+        entries = payload.get("rules")
+        if isinstance(entries, dict):
+            entries = entries.get("rules") or []
+        if not isinstance(entries, list) or not entries:
+            widget.status = {
+                "message": "The file does not contain a recognizable ruleset.",
+                "kind": "error",
+            }
+            return
+
+        catalog = _default_rules(None, None)
+        parsed, disabled = parse_rules_json(entries, catalog)
+        if parsed.empty:
+            widget.status = {
+                "message": (
+                    "None of the rules in the file matched a built-in rule. Rules "
+                    "are matched by their 'ID' or 'Name'."
+                ),
+                "kind": "error",
+            }
+            return
+
+        ruleset["custom"] = entries
+        rules_cache.clear()
+        widget.rules = rules_payload(parsed)
+        widget.disabled_rules = disabled
+        skipped = len(entries) - len(parsed)
+        widget.status = {
+            "message": (
+                f"Loaded {len(parsed)} rule(s)."
+                + (
+                    f" {skipped} unrecognized rule(s) were skipped."
+                    if skipped > 0
+                    else ""
+                )
+            ),
+            "kind": "success",
+        }
+
     handlers = {
         "list_datasets": _handle_list_datasets,
         "load_workspace_datasets": _handle_load_workspace_datasets,
+        "import_rules": _handle_import_rules,
         "run_scan": _handle_run_scan,
         "run_bulk": _handle_run_bulk,
         "preview_fix": _handle_preview_fix,

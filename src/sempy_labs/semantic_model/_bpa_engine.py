@@ -1,4 +1,8 @@
+import ast
+import inspect
+import os
 import re
+import textwrap
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
@@ -35,6 +39,136 @@ CATEGORY_ORDER = {
     "Maintenance": 3,
     "Formatting": 4,
     "Naming Conventions": 5,
+}
+
+# Rule logic is compiled Python, so the source of each rule's predicate is read
+# straight out of the rules module. This keeps the exported ``Expression`` in sync
+# with the code that actually runs, and never needs manual maintenance.
+_RULES_MODULE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "_model_bpa_rules.py",
+)
+_SEVERITIES = ("Error", "Warning", "Info")
+_builtin_expression_cache: Optional[Dict[str, str]] = None
+
+
+def _normalize_lambda_source(source: str) -> str:
+    """Re-indents a multi-line lambda so it reads well outside its original tuple."""
+
+    lines = source.splitlines()
+    if len(lines) == 1:
+        return lines[0].strip()
+
+    continuation = [ln for ln in lines[1:] if ln.strip()]
+    indent = min((len(ln) - len(ln.lstrip()) for ln in continuation), default=0)
+    out = [lines[0].strip()]
+    for line in lines[1:]:
+        out.append("    " + line[indent:].rstrip() if line.strip() else "")
+
+    return "\n".join(out).rstrip()
+
+
+def _builtin_rule_expressions() -> Dict[str, str]:
+    """Maps each built-in rule name to the source code of its predicate."""
+
+    global _builtin_expression_cache
+    if _builtin_expression_cache is not None:
+        return _builtin_expression_cache
+
+    expressions: Dict[str, str] = {}
+    try:
+        with open(_RULES_MODULE, "r", encoding="utf-8") as f:
+            source = f.read()
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Tuple) or len(node.elts) < 5:
+                continue
+            severity, name, predicate = node.elts[2], node.elts[3], node.elts[4]
+            if (
+                isinstance(severity, ast.Constant)
+                and severity.value in _SEVERITIES
+                and isinstance(name, ast.Constant)
+                and isinstance(name.value, str)
+                and isinstance(predicate, ast.Lambda)
+            ):
+                segment = ast.get_source_segment(source, predicate)
+                if segment:
+                    expressions[name.value] = _normalize_lambda_source(segment)
+    except Exception:
+        # Losing the expressions must never break a scan or an export.
+        expressions = {}
+
+    _builtin_expression_cache = expressions
+    return expressions
+
+
+def rule_expression(rule_name: str, predicate=None) -> str:
+    """
+    Returns the source code of a rule's predicate.
+
+    Parameters
+    ----------
+    rule_name : str
+        The name of the rule.
+    predicate : Callable, default=None
+        The rule's compiled predicate, used as a fallback for rules which are not
+        defined in :mod:`sempy_labs._model_bpa_rules` (for example a custom rule
+        supplied as a dataframe).
+
+    Returns
+    -------
+    str
+        The predicate source, or an empty string when it cannot be recovered.
+    """
+
+    source = _builtin_rule_expressions().get(rule_name)
+    if source:
+        return source
+    if predicate is None:
+        return ""
+
+    try:
+        text = textwrap.dedent(inspect.getsource(predicate))
+    except Exception:
+        return ""
+
+    index = text.find("lambda")
+    if index == -1:
+        return ""
+
+    return _normalize_lambda_source(text[index:].rstrip().rstrip(","))
+
+
+# The Python performed by each automatic fix, keyed by rule name (only for
+# FIXABLE_RULES). These mirror the implementations further down this module.
+RULE_FIX_EXPRESSIONS = {
+    "Column references should be fully qualified": (
+        "obj.Expression = re.sub(\n"
+        '    r"(?<![\\w\'\\]])\\[Column\\]", "\'Table\'[Column]", obj.Expression\n'
+        ")"
+    ),
+    "Measure references should be unqualified": (
+        "obj.Expression = re.sub(\n"
+        '    r"(?:\'[^\']+\'|\\w+)\\[Measure\\]", "[Measure]", obj.Expression\n'
+        ")"
+    ),
+    "Set IsAvailableInMdx to false on non-attribute columns": (
+        "column.IsAvailableInMDX = False"
+    ),
+    "Do not summarize numeric columns": (
+        'column.SummarizeBy = System.Enum.Parse(TOM.AggregateFunction, "None")'
+    ),
+    "Do not use floating point data types": "column.DataType = TOM.DataType.Decimal",
+    "Hide foreign keys": "column.IsHidden = True",
+    "Mark primary keys": "column.IsKey = True",
+    "First letter of objects must be capitalized": (
+        "obj.Name = obj.Name[0].upper() + obj.Name[1:]"
+    ),
+    "Partition name should match table name for single partition tables": (
+        "partition.Name = partition.Parent.Name"
+    ),
+    "Remove auto-date table": "table.Model.Tables.Remove(table)",
+    "Remove unnecessary columns": "column.Parent.Columns.Remove(column)",
+    "Remove unnecessary measures": "measure.Parent.Measures.Remove(measure)",
 }
 
 
@@ -99,6 +233,259 @@ def _scope_objects(tom, scope: str) -> Tuple[Iterable, Callable[[Any], str]]:
     return scope_map.get(scope, ([], lambda obj: str(obj)))
 
 
+# The scopes a rule may be evaluated against (the keys of the dispatch table above).
+RULE_SCOPES = [
+    "Model",
+    "Table",
+    "Calculated Table",
+    "Column",
+    "Calculated Column",
+    "Measure",
+    "Hierarchy",
+    "Relationship",
+    "Role",
+    "Row Level Security",
+    "Partition",
+    "Calculation Item",
+    "Function",
+]
+
+# Severity codes used by the Best Practice Rules JSON format.
+SEVERITY_TO_CODE = {"Error": 3, "Warning": 2, "Info": 1}
+CODE_TO_SEVERITY = {3: "Error", 2: "Warning", 1: "Info"}
+
+_RULES_COLUMNS = [
+    "Category",
+    "Scope",
+    "Severity",
+    "Rule Name",
+    "Expression",
+    "Description",
+    "URL",
+]
+
+
+def _strip_category_prefix(name: str) -> str:
+    """Removes a leading ``[Category] `` prefix, as used by BPARules.json names."""
+
+    return re.sub(r"^\s*\[[^\]]+\]\s*", "", str(name))
+
+
+def _entry_value(entry: dict, *names):
+    """Reads the first present key from a rule entry, ignoring key casing."""
+
+    lowered = {str(k).lower(): v for k, v in entry.items()}
+    for name in names:
+        if name.lower() in lowered:
+            return lowered[name.lower()]
+    return None
+
+
+def rules_to_json(
+    rules: pd.DataFrame, disabled_rule_ids: Optional[Iterable[str]] = None
+) -> List[dict]:
+    """
+    Exports a rules dataframe to the `Best Practice Rules
+    <https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules>`_
+    JSON format.
+
+    Each entry also carries an ``Expression`` holding the source code of the rule's
+    predicate and, where an automatic fix exists, a ``FixExpression`` holding the
+    code the fix runs. Both are informational: the rule logic is compiled in Python
+    and is never read back from the file.
+
+    Parameters
+    ----------
+    rules : pandas.DataFrame
+        A rules dataframe in the shape produced by
+        :func:`sempy_labs.model_bpa_rules`.
+    disabled_rule_ids : Iterable[str], default=None
+        Rule ids which should be exported with ``Enabled`` set to False.
+
+    Returns
+    -------
+    List[dict]
+        One dictionary per rule.
+    """
+
+    disabled = set(disabled_rule_ids or [])
+    entries = []
+    for _, r in rules.iterrows():
+        scopes = r["Scope"]
+        if isinstance(scopes, str):
+            scopes = [scopes]
+        rule_name = str(r["Rule Name"])
+        url = r.get("URL")
+        entry = {
+            "ID": _rule_id(rule_name).upper(),
+            "Name": rule_name,
+            "Category": str(r["Category"]),
+            "Description": ("" if pd.isna(r["Description"]) else str(r["Description"])),
+            "Severity": SEVERITY_TO_CODE.get(str(r["Severity"]), 2),
+            "Scope": ", ".join(scopes),
+            "Expression": rule_expression(rule_name, r["Expression"]),
+            "Url": None if url is None or pd.isna(url) else str(url),
+            "Enabled": _rule_id(rule_name) not in disabled,
+        }
+        fix_expression = RULE_FIX_EXPRESSIONS.get(rule_name)
+        if fix_expression:
+            entry["FixExpression"] = fix_expression
+        entries.append(entry)
+
+    return entries
+
+
+def _match_default_rule(entry: dict, by_id: Dict[str, Any]):
+    """Resolves a JSON rule entry to the built-in rule which supplies its logic."""
+
+    candidates = []
+    identifier = _entry_value(entry, "ID", "Id")
+    if identifier:
+        candidates.append(_rule_id(str(identifier)))
+    name = _entry_value(entry, "Name", "Rule Name", "RuleName")
+    if name:
+        candidates.append(_rule_id(str(name)))
+        candidates.append(_rule_id(_strip_category_prefix(str(name))))
+
+    for candidate in candidates:
+        if candidate in by_id:
+            return candidate, by_id[candidate]
+
+    return None, None
+
+
+def parse_rules_json(
+    entries: Iterable[dict], default_rules: pd.DataFrame
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Builds a rules dataframe from Best Practice Rules JSON entries.
+
+    Each entry is matched to a built-in rule by ``ID`` (or by ``Name``, with an
+    optional ``[Category]`` prefix removed) because the rule logic is compiled in
+    Python and cannot be read from the file. ``Category``, ``Severity``,
+    ``Description``, ``Url`` and ``Scope`` may be overridden; ``Expression`` and
+    ``FixExpression`` are informational and are always taken from the current
+    built-in definition. Entries which do not match a built-in rule are ignored.
+
+    Parameters
+    ----------
+    entries : Iterable[dict]
+        The rule entries.
+    default_rules : pandas.DataFrame
+        The built-in rules supplying each rule's logic, in the shape produced by
+        :func:`sempy_labs.model_bpa_rules`.
+
+    Returns
+    -------
+    Tuple[pandas.DataFrame, List[str]]
+        The rules dataframe and the ids of the rules marked as disabled.
+    """
+
+    by_id = {}
+    for _, r in default_rules.iterrows():
+        by_id[_rule_id(str(r["Rule Name"]))] = r
+
+    valid_scopes = {s.lower(): s for s in RULE_SCOPES}
+    rows = []
+    disabled: List[str] = []
+    seen = set()
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        rule_id, base = _match_default_rule(entry, by_id)
+        if base is None or rule_id in seen:
+            continue
+        seen.add(rule_id)
+
+        if _entry_value(entry, "Enabled") is False:
+            disabled.append(rule_id)
+
+        category = _entry_value(entry, "Category") or base["Category"]
+
+        severity = _entry_value(entry, "Severity")
+        if isinstance(severity, bool) or severity is None:
+            severity = base["Severity"]
+        elif isinstance(severity, (int, float)):
+            severity = CODE_TO_SEVERITY.get(int(severity), str(base["Severity"]))
+        elif str(severity).capitalize() in SEVERITY_TO_CODE:
+            severity = str(severity).capitalize()
+        else:
+            severity = base["Severity"]
+
+        # A scope is only honored when every token is one this library can evaluate.
+        scope = base["Scope"]
+        raw_scope = _entry_value(entry, "Scope", "Scopes")
+        if isinstance(raw_scope, str):
+            raw_scope = [s.strip() for s in raw_scope.split(",") if s.strip()]
+        if isinstance(raw_scope, list) and raw_scope:
+            mapped = [valid_scopes.get(str(s).strip().lower()) for s in raw_scope]
+            if all(mapped):
+                scope = mapped
+
+        description = _entry_value(entry, "Description")
+        if description is None:
+            description = base["Description"]
+
+        url = _entry_value(entry, "Url", "URL", "Link")
+        if url is None:
+            url = base.get("URL")
+
+        rows.append(
+            (
+                str(category),
+                scope,
+                str(severity),
+                str(base["Rule Name"]),
+                base["Expression"],
+                "" if description is None else str(description),
+                url,
+            )
+        )
+
+    return pd.DataFrame(rows, columns=_RULES_COLUMNS), disabled
+
+
+def normalize_rules(rules, default_rules: pd.DataFrame) -> pd.DataFrame:
+    """
+    Coerces a user-supplied ruleset into a rules dataframe.
+
+    Parameters
+    ----------
+    rules : pandas.DataFrame | List[dict] | dict | None
+        A rules dataframe, a list of Best Practice Rules JSON entries, or a dict
+        containing such a list under a ``rules`` key. None returns the defaults.
+    default_rules : pandas.DataFrame
+        The built-in rules supplying each rule's logic.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The effective rules dataframe.
+    """
+
+    if rules is None:
+        return default_rules
+    if isinstance(rules, pd.DataFrame):
+        return rules
+    if isinstance(rules, dict):
+        rules = _entry_value(rules, "rules") or []
+    if not isinstance(rules, list):
+        raise ValueError(
+            "The 'rules' parameter must be a pandas dataframe, a list of rule "
+            "dictionaries, or a dict containing a 'rules' list."
+        )
+
+    parsed, _ = parse_rules_json(rules, default_rules)
+    if parsed.empty:
+        raise ValueError(
+            "None of the supplied rules matched a built-in rule. Rules are matched "
+            "by their 'ID' or 'Name'."
+        )
+
+    return parsed
+
+
 def rules_payload(rules: pd.DataFrame) -> List[dict]:
     """
     Converts a BPA rules dataframe into a JSON-serializable descriptor list for the
@@ -114,7 +501,8 @@ def rules_payload(rules: pd.DataFrame) -> List[dict]:
     -------
     List[dict]
         One descriptor per rule containing its id, name, category, severity, scopes,
-        description, url and whether an automatic fix is available.
+        description, url, expression, fix expression and whether an automatic fix is
+        available.
     """
 
     payload = []
@@ -136,6 +524,8 @@ def rules_payload(rules: pd.DataFrame) -> List[dict]:
                 ),
                 "url": None if url is None or pd.isna(url) else str(url),
                 "fixable": rule_name in FIXABLE_RULES,
+                "expression": rule_expression(rule_name, r["Expression"]),
+                "fixExpression": RULE_FIX_EXPRESSIONS.get(rule_name, ""),
             }
         )
 

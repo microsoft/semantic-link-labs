@@ -462,6 +462,20 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M4.5 3.2l8 4.8-8 4.8z"/></svg>'
     ),
+    "upload": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/>'
+        '<path d="M5.2 5.2L8 2.4l2.8 2.8"/><path d="M8 2.6v7.6"/></svg>'
+    ),
+    "download": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/>'
+        '<path d="M5.2 7.4L8 10.2l2.8-2.8"/><path d="M8 10v-7.6"/></svg>'
+    ),
 }
 
 

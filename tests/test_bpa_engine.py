@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from sempy_labs.semantic_model import _bpa_engine as engine
 
@@ -186,3 +187,119 @@ def test_apply_fixes_honors_the_object_name_filter():
 
 def test_collect_fixes_returns_nothing_for_a_rule_without_a_fix():
     assert engine.collect_fixes(_FakeTom(), _rules(), "Rule that raises") == []
+
+
+def test_rules_to_json_round_trips_through_parse_rules_json():
+    defaults = _rules()
+
+    exported = engine.rules_to_json(defaults, disabled_rule_ids=["rule_that_raises"])
+    parsed, disabled = engine.parse_rules_json(exported, defaults)
+
+    assert exported[0]["ID"] == "FIRST_LETTER_OF_OBJECTS_MUST_BE_CAPITALIZED"
+    assert exported[0]["Severity"] == 1
+    assert exported[0]["Scope"] == "Table, Column"
+    assert list(parsed["Rule Name"]) == list(defaults["Rule Name"])
+    assert disabled == ["rule_that_raises"]
+
+
+def test_rules_to_json_includes_the_expression_and_fix_expression():
+    exported = engine.rules_to_json(_rules())
+
+    capitalize = exported[0]
+    # The expression is the source of the rule's predicate, read from the rules
+    # module rather than from the (stubbed) test predicate.
+    assert capitalize["Expression"] == (
+        "lambda obj, tom: obj.Name[0] != obj.Name[0].upper()"
+    )
+    assert capitalize["FixExpression"] == (
+        "obj.Name = obj.Name[0].upper() + obj.Name[1:]"
+    )
+    # A rule without an automatic fix omits FixExpression entirely.
+    assert "FixExpression" not in exported[1]
+
+
+def test_rule_expression_falls_back_to_the_predicate_source():
+    def predicate(obj, tom):
+        return True
+
+    # A rule that is not one of the built-ins still reports its own source.
+    assert engine.rule_expression("Not a built-in rule", predicate) == ""
+    assert engine.rule_expression(
+        "Not a built-in rule", lambda obj, tom: obj.IsHidden
+    ).startswith("lambda obj, tom:")
+
+
+def test_rules_payload_includes_the_expression_and_fix_expression():
+    payload = {r["name"]: r for r in engine.rules_payload(_rules())}
+
+    capitalize = payload["First letter of objects must be capitalized"]
+    assert capitalize["expression"].startswith("lambda obj, tom:")
+    assert capitalize["fixExpression"]
+    assert payload["Rule that raises"]["fixExpression"] == ""
+
+
+def test_every_built_in_rule_has_an_expression():
+    expressions = engine._builtin_rule_expressions()
+
+    # Guards against a rule being added whose logic cannot be recovered.
+    assert len(expressions) > 50
+    assert all(e.startswith("lambda obj, tom:") for e in expressions.values())
+    assert set(engine.RULE_FIX_EXPRESSIONS) == engine.FIXABLE_RULES
+    assert engine.FIXABLE_RULES.issubset(expressions)
+
+
+def test_every_fixable_rule_name_matches_a_real_rule():
+    # A renamed rule would otherwise silently lose its "Apply fix" button and its
+    # FixExpression, because both are keyed by the rule name.
+    assert engine.FIXABLE_RULES.issubset(set(engine._builtin_rule_expressions()))
+
+
+def test_parse_rules_json_matches_names_with_a_category_prefix():
+    parsed, _ = engine.parse_rules_json(
+        [
+            {
+                "ID": "SOME_OTHER_ID",
+                "Name": "[Formatting] First letter of objects must be capitalized",
+                "Severity": 3,
+                "Description": "Overridden.",
+            }
+        ],
+        _rules(),
+    )
+
+    assert list(parsed["Rule Name"]) == ["First letter of objects must be capitalized"]
+    assert parsed.iloc[0]["Severity"] == "Error"
+    assert parsed.iloc[0]["Description"] == "Overridden."
+
+
+def test_parse_rules_json_ignores_unknown_rules_and_scopes():
+    parsed, _ = engine.parse_rules_json(
+        [
+            {"ID": "NOT_A_REAL_RULE", "Name": "[X] Nope"},
+            {
+                "Name": "Rule that raises",
+                # A Tabular Editor scope this library cannot evaluate.
+                "Scope": "DataColumn, CalculatedColumn",
+            },
+        ],
+        _rules(),
+    )
+
+    assert list(parsed["Rule Name"]) == ["Rule that raises"]
+    # Falls back to the built-in scope rather than an unusable one.
+    assert parsed.iloc[0]["Scope"] == "Measure"
+
+
+def test_normalize_rules_accepts_none_dataframe_list_and_dict():
+    defaults = _rules()
+    entries = engine.rules_to_json(defaults)
+
+    assert engine.normalize_rules(None, defaults) is defaults
+    assert engine.normalize_rules(defaults, defaults) is defaults
+    assert len(engine.normalize_rules(entries, defaults)) == len(defaults)
+    assert len(engine.normalize_rules({"rules": entries}, defaults)) == len(defaults)
+
+
+def test_normalize_rules_raises_when_nothing_matches():
+    with pytest.raises(ValueError):
+        engine.normalize_rules([{"ID": "NOT_A_REAL_RULE"}], _rules())
