@@ -113,7 +113,6 @@ _WIDGET_CSS = (
 .slls-bpa-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .slls-bpa-titlewrap { display: flex; flex-direction: column; min-width: 0; }
 .slls-bpa-head-spacer { flex: 1 1 auto; }
-.slls-bpa-pending-btn { border-color: var(--slls-warning); color: var(--slls-warning); }
 .slls-bpa-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 10px; }
 .slls-bpa-title .slls-bpa-title-icon { color: var(--ui-accent); display: inline-flex; flex-shrink: 0; }
 .slls-bpa-title .slls-bpa-title-icon svg { width: 27px; height: 27px; stroke-width: 1.5; }
@@ -231,6 +230,8 @@ _WIDGET_CSS = (
 .slls-bpa-ss.open .slls-bpa-ss-caret { transform: rotate(-90deg); }
 .slls-bpa-ss-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70; min-width: 240px;
     padding: 6px; background: var(--ui-bg-solid); border: 1px solid var(--ui-border); border-radius: 12px; box-shadow: var(--ui-shadow-lg); }
+/* Flipped above the button when there is not enough room below it. */
+.slls-bpa-ss.up .slls-bpa-ss-panel { top: auto; bottom: calc(100% + 6px); }
 .slls-bpa-ss.open .slls-bpa-ss-panel { display: block; }
 .slls-bpa-ss-searchwrap { position: relative; display: flex; align-items: center; margin-bottom: 5px; }
 .slls-bpa-ss-searchwrap .slls-bpa-ss-searchicon { position: absolute; left: 11px; color: var(--ui-text-tertiary); display: inline-flex; pointer-events: none; }
@@ -280,24 +281,20 @@ _WIDGET_CSS = (
 .slls-bpa-fix-after { color: var(--slls-success); }
 .slls-bpa-fix-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
-/* ---------------- Staged fixes + save bar ---------------- */
-/* The dock is pinned to the bottom of the scrollport so that the save button
-   stays reachable no matter how long the violation list is. */
-.slls-bpa-savedock { display: none; position: sticky; bottom: 0; z-index: 6; margin-top: 16px;
-    padding-top: 10px; background: var(--ui-bg-solid); }
-.slls-bpa-savedock.show { display: block; }
-.slls-bpa-savebar { display: none; align-items: center; gap: 10px; padding: 10px 14px;
-    border-radius: var(--slls-radius-sm); background: var(--slls-warning-soft); border: 1px solid var(--slls-warning); color: var(--ui-text);
-    box-shadow: var(--ui-shadow-md); }
-.slls-bpa-savebar.show { display: flex; }
-.slls-bpa-savebar-label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; font-size: 13px; }
+/* ---------------- Staged fixes ---------------- */
+/* A compact pill directly under the header rather than a full-width bar. */
+.slls-bpa-savebar { display: none; align-items: center; gap: 10px; margin-bottom: 14px; padding: 6px 7px 6px 14px;
+    width: fit-content; max-width: 100%; border-radius: 999px;
+    background: var(--slls-warning-soft); border: 1px solid var(--slls-warning); color: var(--ui-text); }
+.slls-bpa-savebar.show { display: inline-flex; }
+.slls-bpa-savebar-label { min-width: 0; display: flex; align-items: center; gap: 9px; font-size: 13px; white-space: nowrap; }
 .slls-bpa-pending-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--slls-warning); flex-shrink: 0;
     box-shadow: 0 0 0 3px var(--slls-warning-soft); }
 .slls-bpa-savebar-review { appearance: none; border: none; background: transparent; color: var(--ui-text); font-family: inherit;
     font-size: 12.5px; font-weight: 500; text-decoration: underline; cursor: pointer; padding: 0; }
-.slls-bpa-staged { display: none; margin-bottom: 8px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
-    background: var(--ui-bg-solid); max-height: 280px; overflow-y: auto; box-shadow: var(--ui-shadow-md); }
-.slls-bpa-staged.show { display: block; }
+.slls-bpa-modal.slls-bpa-staged-modal { max-width: 640px; }
+.slls-bpa-staged { border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
+    background: var(--ui-bg-solid); max-height: 55vh; overflow-y: auto; }
 .slls-bpa-staged-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); font-size: 12.5px; }
 .slls-bpa-staged-row:last-child { border-bottom: none; }
 .slls-bpa-staged-main { flex: 1; min-width: 0; }
@@ -466,6 +463,9 @@ _WIDGET_CSS = (
 .slls-bpa-busy .slls-bpa-view-btn { pointer-events: auto; }
 .slls-bpa-screen { display: none; }
 .slls-bpa-screen.show { display: block; }
+/* Reserve vertical room under the pickers so their dropdowns have somewhere to
+   open without pushing past the bottom of the notebook output area. */
+.slls-bpa-screen.slls-bpa-screen-select.show { min-height: 420px; }
 .slls-bpa-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--ui-text-tertiary); }
 .slls-bpa-attribution a { color: var(--ui-text-tertiary); text-decoration: none; transition: color 120ms ease; }
 .slls-bpa-attribution a:hover { color: var(--ui-accent); }
@@ -795,6 +795,9 @@ function render({ model, el }) {
 
     // Searchable single-select. `options` are `{ value, label }` descriptors.
     // Returns a controller exposing the current value plus option management.
+    // Approximate rendered height of an open panel, used to decide whether it
+    // should drop down or flip up.
+    const PANEL_HEIGHT = 320;
     function createSearchSelect(placeholder, searchPlaceholder, ariaLabel, emptyLabel, onChange) {
         const wrap = document.createElement("div");
         wrap.className = "slls-bpa-ss";
@@ -830,17 +833,28 @@ function render({ model, el }) {
 
         let options = [];
         let value = "";
+        // Index into `shown` (the currently filtered options) for keyboard navigation.
+        let activeIndex = -1;
+        let shown = [];
 
         function close() {
-            wrap.classList.remove("open");
+            wrap.classList.remove("open", "up");
             btn.setAttribute("aria-expanded", "false");
+            activeIndex = -1;
         }
         function open() {
             for (const other of openDropdowns) if (other !== close) other();
             wrap.classList.add("open");
             btn.setAttribute("aria-expanded", "true");
             search.value = "";
+            // Open upwards when the panel would otherwise run off the bottom.
+            const rect = btn.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            wrap.classList.toggle(
+                "up", spaceBelow < PANEL_HEIGHT && rect.top > spaceBelow);
+            activeIndex = -1;
             renderList();
+            setActive(shown.findIndex((o) => o.value === value));
             search.focus();
         }
         openDropdowns.add(close);
@@ -856,10 +870,25 @@ function render({ model, el }) {
             valueLabel.title = option ? option.label : "";
             btn.disabled = options.length === 0;
         }
+        function setActive(index) {
+            const rows = list.querySelectorAll(".slls-bpa-ss-opt");
+            if (rows.length === 0) { activeIndex = -1; return; }
+            activeIndex = Math.max(0, Math.min(index, rows.length - 1));
+            rows.forEach((row, i) => row.classList.toggle("active", i === activeIndex));
+            rows[activeIndex].scrollIntoView({ block: "nearest" });
+        }
+        function commit(option) {
+            const changed = value !== option.value;
+            value = option.value;
+            renderValue();
+            close();
+            btn.focus();
+            if (changed) onChange(option);
+        }
         function renderList() {
             clear(list);
             const term = search.value.trim().toLowerCase();
-            const shown = term
+            shown = term
                 ? options.filter((o) => o.label.toLowerCase().includes(term))
                 : options;
             if (shown.length === 0) {
@@ -867,25 +896,22 @@ function render({ model, el }) {
                 empty.className = "slls-bpa-ss-empty";
                 empty.textContent = options.length === 0 ? "No items" : "No matches";
                 list.appendChild(empty);
+                activeIndex = -1;
                 return;
             }
             for (const option of shown) {
                 const row = document.createElement("button");
                 row.type = "button";
+                row.tabIndex = -1;
                 row.className = "slls-bpa-ss-opt" + (option.value === value ? " selected" : "");
                 row.setAttribute("role", "option");
                 row.setAttribute("aria-selected", String(option.value === value));
                 row.textContent = option.label;
                 row.title = option.label;
-                row.addEventListener("click", () => {
-                    const changed = value !== option.value;
-                    value = option.value;
-                    renderValue();
-                    close();
-                    if (changed) onChange(option);
-                });
+                row.addEventListener("click", () => commit(option));
                 list.appendChild(row);
             }
+            if (activeIndex >= 0) setActive(activeIndex);
         }
 
         btn.addEventListener("click", (ev) => {
@@ -893,10 +919,42 @@ function render({ model, el }) {
             if (wrap.classList.contains("open")) close();
             else open();
         });
+        btn.addEventListener("keydown", (ev) => {
+            if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+                ev.preventDefault();
+                if (!wrap.classList.contains("open")) open();
+            }
+        });
         panel.addEventListener("click", (ev) => ev.stopPropagation());
-        search.addEventListener("input", renderList);
+        search.addEventListener("input", () => { activeIndex = -1; renderList(); setActive(0); });
         search.addEventListener("keydown", (ev) => {
-            if (ev.key === "Escape") { ev.stopPropagation(); close(); }
+            if (ev.key === "ArrowDown") {
+                ev.preventDefault();
+                setActive(activeIndex + 1);
+            } else if (ev.key === "ArrowUp") {
+                ev.preventDefault();
+                setActive(activeIndex <= 0 ? 0 : activeIndex - 1);
+            } else if (ev.key === "Home") {
+                ev.preventDefault();
+                setActive(0);
+            } else if (ev.key === "End") {
+                ev.preventDefault();
+                setActive(shown.length - 1);
+            } else if (ev.key === "Enter") {
+                ev.preventDefault();
+                if (activeIndex >= 0 && shown[activeIndex]) commit(shown[activeIndex]);
+            } else if (ev.key === "Escape") {
+                ev.stopPropagation();
+                ev.preventDefault();
+                close();
+                btn.focus();
+            } else if (ev.key === "Tab") {
+                // Collapse first so Tab continues on to the next picker / button
+                // rather than stepping through the option list.
+                ev.preventDefault();
+                close();
+                btn.focus();
+            }
         });
 
         renderValue();
@@ -960,17 +1018,6 @@ function render({ model, el }) {
     const headSpacer = document.createElement("div");
     headSpacer.className = "slls-bpa-head-spacer";
     header.appendChild(headSpacer);
-
-    // Shown only while fixes are staged, so the pending work is visible from
-    // any screen even when the save bar has been scrolled past.
-    const pendingBtn = makeButton("0 pending", "slls-bpa-btn-sm slls-bpa-pending-btn", ICON.wrench);
-    pendingBtn.style.display = "none";
-    pendingBtn.addEventListener("click", () => {
-        stagedExpanded = true;
-        renderStaged();
-        saveDock.scrollIntoView({ block: "end", behavior: "smooth" });
-    });
-    header.appendChild(pendingBtn);
 
     const rulesBtn = makeButton("", "slls-bpa-btn-icon", ICON.sliders);
     rulesBtn.title = "Edit rules";
@@ -1050,12 +1097,17 @@ function render({ model, el }) {
     }
     function onEscapeKey(e) {
         if (e.key !== "Escape") return;
-        // Close the rules panel first, then leave full screen.
-        if (overlay.classList.contains("show")) overlay.classList.remove("show");
+        // Close whichever modal is open first, then leave full screen.
+        if (stagedOverlay.classList.contains("show")) closeStaged();
+        else if (overlay.classList.contains("show")) overlay.classList.remove("show");
         else if (fsMode) setFullscreen(false);
     }
     renderFullscreenBtn();
     header.appendChild(fullscreenBtn);
+
+    // Sits directly under the header and holds the staged-fixes pill.
+    const topSlot = document.createElement("div");
+    root.appendChild(topSlot);
 
     // ------------------------------------------------------------------
     // Status banner
@@ -1133,7 +1185,7 @@ function render({ model, el }) {
     // SELECT SCREEN
     // ==================================================================
     const selectScreen = document.createElement("div");
-    selectScreen.className = "slls-bpa-screen";
+    selectScreen.className = "slls-bpa-screen slls-bpa-screen-select";
     root.appendChild(selectScreen);
 
     const selectSection = document.createElement("div");
@@ -1619,17 +1671,8 @@ function render({ model, el }) {
     bulkDetail.appendChild(bulkDetailHead);
 
     // ------------------------------------------------------------------
-    // Staged fixes + save bar
+    // Staged fixes pill (rendered into the slot under the header)
     // ------------------------------------------------------------------
-    // The staged list sits above the bar because the whole dock is pinned to
-    // the bottom of the scrollport.
-    const saveDock = document.createElement("div");
-    saveDock.className = "slls-bpa-savedock";
-
-    const stagedList = document.createElement("div");
-    stagedList.className = "slls-bpa-staged";
-    saveDock.appendChild(stagedList);
-
     const saveBar = document.createElement("div");
     saveBar.className = "slls-bpa-savebar";
     const saveBarLabel = document.createElement("div");
@@ -1642,6 +1685,8 @@ function render({ model, el }) {
     const saveBarReview = document.createElement("button");
     saveBarReview.type = "button";
     saveBarReview.className = "slls-bpa-savebar-review";
+    saveBarReview.textContent = "Review";
+    saveBarReview.title = "See the staged changes";
     saveBarLabel.appendChild(saveBarReview);
     saveBar.appendChild(saveBarLabel);
     const discardBtn = makeButton("Discard", "slls-bpa-btn-sm", ICON.undo);
@@ -1650,8 +1695,18 @@ function render({ model, el }) {
     const saveBtn = makeButton("Save", "slls-bpa-btn-sm slls-bpa-btn-primary", ICON.save);
     saveBtn.title = "Apply every staged fix to the semantic model(s)";
     saveBar.appendChild(saveBtn);
-    saveDock.appendChild(saveBar);
-    root.appendChild(saveDock);
+    topSlot.appendChild(saveBar);
+
+    // The staged changes are reviewed in their own modal.
+    const stagedOverlay = document.createElement("div");
+    stagedOverlay.className = "slls-bpa-overlay";
+    root.appendChild(stagedOverlay);
+    stagedOverlay.addEventListener("click", (ev) => {
+        if (ev.target === stagedOverlay) closeStaged();
+    });
+
+    const stagedList = document.createElement("div");
+    stagedList.className = "slls-bpa-staged";
 
     // ------------------------------------------------------------------
     // Attribution
@@ -1677,7 +1732,6 @@ function render({ model, el }) {
     // Fixes staged but not yet written to the model(s), keyed by
     // `${workspaceId}\u0000${datasetId}\u0000${ruleName}\u0000${objectName}`.
     const stagedFixes = new Map();
-    let stagedExpanded = false;
     // Violations currently displayed (single scan, or one model drilled into from bulk).
     let activeViolations = [];
 
@@ -1712,25 +1766,20 @@ function render({ model, el }) {
 
     function renderStaged() {
         const count = stagedFixes.size;
-        saveDock.classList.toggle("show", count > 0);
         saveBar.classList.toggle("show", count > 0);
-        pendingBtn.style.display = count > 0 ? "" : "none";
         if (count === 0) {
-            stagedExpanded = false;
-            stagedList.classList.remove("show");
+            closeStaged();
             return;
         }
         const models = new Set([...stagedFixes.values()].map((f) => f.dataset_id));
         saveBarText.textContent = models.size > 1
             ? `${plural(count, "fix")} staged across ${plural(models.size, "semantic model")}`
             : `${plural(count, "fix")} staged`;
-        saveBarReview.textContent = stagedExpanded ? "Hide" : "Review";
         saveBtn.lastChild.textContent = `Save ${count}`;
-        pendingBtn.lastChild.textContent = `${count} pending`;
-        pendingBtn.title = `${plural(count, "fix")} staged but not yet saved`;
+        if (stagedOverlay.classList.contains("show")) renderStagedList();
+    }
 
-        stagedList.classList.toggle("show", stagedExpanded);
-        if (!stagedExpanded) return;
+    function renderStagedList() {
         clear(stagedList);
         for (const [key, fix] of stagedFixes.entries()) {
             const row = document.createElement("div");
@@ -1764,22 +1813,57 @@ function render({ model, el }) {
         }
     }
 
+    function closeStaged() {
+        stagedOverlay.classList.remove("show");
+    }
+
+    function openStaged() {
+        if (stagedFixes.size === 0) return;
+        clear(stagedOverlay);
+        const modal = document.createElement("div");
+        modal.className = "slls-bpa-modal slls-bpa-staged-modal";
+
+        const heading = document.createElement("h2");
+        heading.textContent = "Staged changes";
+        modal.appendChild(heading);
+        const sub = document.createElement("div");
+        sub.className = "slls-bpa-modal-sub";
+        sub.textContent = "Nothing is written to the semantic model until you save. "
+            + "Hover a row to see the before and after values.";
+        modal.appendChild(sub);
+
+        renderStagedList();
+        modal.appendChild(stagedList);
+
+        const footer = document.createElement("div");
+        footer.className = "slls-bpa-modal-footer";
+        const closeBtn = makeButton("Close", "slls-bpa-btn-sm");
+        closeBtn.addEventListener("click", closeStaged);
+        footer.appendChild(closeBtn);
+        const modalSave = makeButton(
+            `Save ${stagedFixes.size}`, "slls-bpa-btn-sm slls-bpa-btn-primary", ICON.save);
+        modalSave.addEventListener("click", () => { closeStaged(); saveStaged(); });
+        footer.appendChild(modalSave);
+        modal.appendChild(footer);
+
+        stagedOverlay.appendChild(modal);
+        stagedOverlay.classList.add("show");
+    }
+
     // Re-renders whichever violation view is currently visible.
     function refreshViolations() {
         if (model.get("screen") === "bulk") renderBulk();
         else renderResults();
     }
 
-    saveBarReview.addEventListener("click", () => {
-        stagedExpanded = !stagedExpanded;
-        renderStaged();
-    });
+    saveBarReview.addEventListener("click", openStaged);
     discardBtn.addEventListener("click", () => {
         stagedFixes.clear();
+        closeStaged();
         renderStaged();
         refreshViolations();
     });
-    saveBtn.addEventListener("click", () => {
+    function saveStaged() {
         if (stagedFixes.size === 0) return;
         const fixes = [...stagedFixes.values()].map((f) => ({
             workspace_id: f.workspace_id,
@@ -1788,13 +1872,13 @@ function render({ model, el }) {
             object_name: f.object_name,
         }));
         stagedFixes.clear();
-        stagedExpanded = false;
         renderStaged();
         runAction("apply_staged_fixes", {
             fixes,
             disabled_rules: [...disabledRules],
         });
-    });
+    }
+    saveBtn.addEventListener("click", saveStaged);
 
     function rerun() {
         resetFilters();
