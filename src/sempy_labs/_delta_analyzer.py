@@ -77,6 +77,7 @@ def delta_analyzer(
     schema: Optional[str] = None,
     visualize: bool = True,
     dark_mode: bool = False,
+    _show_progress: bool = True,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
@@ -128,8 +129,7 @@ def delta_analyzer(
         column_stats = True
 
     if '.' in table_name:
-        table_name = table_name.replace('.', '/')
-        schema = None
+        schema, table_name = table_name.split('.', 1)
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
@@ -369,6 +369,7 @@ def delta_analyzer(
                     function=function,
                     lakehouse=lakehouse,
                     workspace=workspace,
+                    schema_name=schema,
                 )
 
                 if "Cardinality" not in column_df.columns:
