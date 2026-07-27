@@ -85,15 +85,17 @@ _WIDGET_CSS = (
 
 /* ---------------- Header ---------------- */
 .slls-bpa-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-.slls-bpa-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
-.slls-bpa-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 9px; }
-.slls-bpa-title .slls-bpa-title-icon { color: var(--ui-accent); display: inline-flex; }
+.slls-bpa-titlewrap { display: flex; flex-direction: column; min-width: 0; }
+.slls-bpa-head-spacer { flex: 1 1 auto; }
+.slls-bpa-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 10px; }
+.slls-bpa-title .slls-bpa-title-icon { color: var(--ui-accent); display: inline-flex; flex-shrink: 0; }
+.slls-bpa-title .slls-bpa-title-icon svg { width: 27px; height: 27px; stroke-width: 1.5; }
 .slls-bpa-subtitle { font-size: 12.5px; color: var(--ui-text-secondary); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 640px; }
 .slls-bpa-subtitle b { color: var(--ui-text); font-weight: 500; }
 .slls-bpa-subtitle .slls-bpa-sep { color: var(--ui-text-tertiary); margin: 0 6px; }
 
 /* ---------------- Controls ---------------- */
-.slls-bpa-select, .slls-bpa-input {
+.slls-bpa-input {
     appearance: none; -webkit-appearance: none;
     background: var(--ui-surface);
     border: 1px solid var(--ui-border-strong);
@@ -104,14 +106,8 @@ _WIDGET_CSS = (
     font-family: inherit;
     transition: border-color 120ms ease, box-shadow 120ms ease;
 }
-.slls-bpa-select { cursor: pointer; padding-right: 32px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%236e6e73' d='M0 0l5 6 5-6z'/></svg>");
-    background-repeat: no-repeat; background-position: right 12px center; }
-.slls-bpa-select:hover, .slls-bpa-input:hover { border-color: var(--ui-text-tertiary); }
-.slls-bpa-select:focus, .slls-bpa-input:focus { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 3px var(--ui-accent-soft); }
-.slls-bpa-select option { background: #ffffff; color: #1d1d1f; }
-@media (prefers-color-scheme: dark) { .slls-bpa.slls-bpa-auto .slls-bpa-select option { background: #2c2c2e; color: #f5f5f7; } }
-.slls-bpa.slls-bpa-dark .slls-bpa-select option { background: #2c2c2e; color: #f5f5f7; }
+.slls-bpa-input:hover { border-color: var(--ui-text-tertiary); }
+.slls-bpa-input:focus { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 3px var(--ui-accent-soft); }
 .slls-bpa-input::placeholder { color: var(--ui-text-tertiary); }
 
 .slls-bpa-btn {
@@ -145,15 +141,7 @@ _WIDGET_CSS = (
     padding: 6px 14px; border-radius: 999px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
 .slls-bpa-segmented button.active { background: var(--ui-bg-solid); color: var(--ui-text); box-shadow: var(--ui-shadow-sm); }
 
-/* ---------------- Summary cards ---------------- */
-.slls-bpa-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 4px; }
-.slls-bpa-card { border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); background: var(--ui-bg-tertiary); padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; }
-.slls-bpa-card-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ui-text-tertiary); display: flex; align-items: center; gap: 6px; }
-.slls-bpa-card-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.slls-bpa-card.error .slls-bpa-card-value { color: var(--slls-error); }
-.slls-bpa-card.warning .slls-bpa-card-value { color: var(--slls-warning); }
-.slls-bpa-card.info .slls-bpa-card-value { color: var(--slls-info); }
-
+/* ---------------- Category summary cards (clickable filters) ---------------- */
 .slls-bpa-catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-top: 10px; }
 .slls-bpa-cat { display: flex; align-items: center; gap: 9px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); background: var(--ui-bg-solid);
     padding: 9px 11px; cursor: pointer; text-align: left; font-family: inherit; transition: background 120ms ease, border-color 120ms ease; }
@@ -198,6 +186,38 @@ _WIDGET_CSS = (
 .slls-bpa-ms-clear:hover { background: var(--ui-surface-2); }
 .slls-bpa-ms-empty { padding: 8px 10px; font-size: 12.5px; color: var(--ui-text-tertiary); }
 
+/* ---------------- Searchable select (workspace / model pickers) ---------------- */
+.slls-bpa-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.slls-bpa-field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--ui-text-tertiary); padding-left: 4px; }
+.slls-bpa-ss { position: relative; display: flex; }
+.slls-bpa-ss-btn { appearance: none; width: 100%; background: var(--ui-surface); border: 1px solid var(--ui-border-strong);
+    border-radius: 999px; padding: 7px 12px 7px 15px; font-size: 13.5px; font-family: inherit; color: var(--ui-text);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: border-color 120ms ease, box-shadow 120ms ease; }
+.slls-bpa-ss-btn:hover:not(:disabled) { border-color: var(--ui-text-tertiary); }
+.slls-bpa-ss-btn:focus-visible { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 3px var(--ui-accent-soft); }
+.slls-bpa-ss-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.slls-bpa-ss-value { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-ss-value.placeholder { color: var(--ui-text-tertiary); }
+.slls-bpa-ss-caret { display: inline-flex; color: var(--ui-text-tertiary); transform: rotate(90deg); transition: transform 140ms ease; }
+.slls-bpa-ss.open .slls-bpa-ss-caret { transform: rotate(-90deg); }
+.slls-bpa-ss-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70; min-width: 240px;
+    padding: 6px; background: var(--ui-bg-solid); border: 1px solid var(--ui-border); border-radius: 12px; box-shadow: var(--ui-shadow-lg); }
+.slls-bpa-ss.open .slls-bpa-ss-panel { display: block; }
+.slls-bpa-ss-searchwrap { position: relative; display: flex; align-items: center; margin-bottom: 5px; }
+.slls-bpa-ss-searchwrap .slls-bpa-ss-searchicon { position: absolute; left: 11px; color: var(--ui-text-tertiary); display: inline-flex; pointer-events: none; }
+.slls-bpa-ss-search { width: 100%; appearance: none; background: var(--ui-bg-secondary); border: 1px solid transparent; border-radius: 8px;
+    padding: 7px 10px 7px 31px; font-size: 13px; font-family: inherit; color: var(--ui-text); }
+.slls-bpa-ss-search::placeholder { color: var(--ui-text-tertiary); }
+.slls-bpa-ss-search:focus { outline: none; border-color: var(--ui-accent); }
+.slls-bpa-ss-list { max-height: 240px; overflow-y: auto; }
+.slls-bpa-ss-opt { display: block; width: 100%; padding: 7px 10px; border: none; background: transparent; color: var(--ui-text);
+    font-family: inherit; font-size: 13px; text-align: left; border-radius: 7px; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-ss-opt:hover, .slls-bpa-ss-opt.active { background: var(--ui-surface-2); }
+.slls-bpa-ss-opt.selected { color: var(--ui-accent); font-weight: 500; }
+.slls-bpa-ss-empty { padding: 9px 10px; font-size: 12.5px; color: var(--ui-text-tertiary); }
+
 /* ---------------- Rule groups ---------------- */
 .slls-bpa-groups { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .slls-bpa-group { border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); background: var(--ui-bg-solid); overflow: hidden; }
@@ -221,7 +241,7 @@ _WIDGET_CSS = (
 /* ---------------- Fix preview ---------------- */
 .slls-bpa-fix { border-top: 1px solid var(--ui-border); background: var(--ui-surface-2); padding: 12px; }
 .slls-bpa-fix-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; margin-bottom: 10px; }
-.slls-bpa-fix-item { display: flex; align-items: flex-start; gap: 9px; padding: 6px 8px; border-radius: 6px; font-size: 12.5px; cursor: pointer; }
+.slls-bpa-fix-item { flex: 0 0 auto; display: flex; align-items: flex-start; gap: 9px; padding: 6px 8px; border-radius: 6px; font-size: 12.5px; cursor: pointer; }
 .slls-bpa-fix-item:hover { background: var(--ui-surface-2); }
 .slls-bpa-fix-item input { margin-top: 3px; flex-shrink: 0; }
 .slls-bpa-fix-body { min-width: 0; flex: 1; }
@@ -232,12 +252,35 @@ _WIDGET_CSS = (
 .slls-bpa-fix-after { color: var(--slls-success); }
 .slls-bpa-fix-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------------- Staged fixes + save bar ---------------- */
+.slls-bpa-savebar { display: none; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 14px;
+    border-radius: var(--slls-radius-sm); background: var(--slls-warning-soft); border: 1px solid var(--slls-warning); color: var(--ui-text); }
+.slls-bpa-savebar.show { display: flex; }
+.slls-bpa-savebar-label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.slls-bpa-pending-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--slls-warning); flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--slls-warning-soft); }
+.slls-bpa-savebar-review { appearance: none; border: none; background: transparent; color: var(--ui-text); font-family: inherit;
+    font-size: 12.5px; font-weight: 500; text-decoration: underline; cursor: pointer; padding: 0; }
+.slls-bpa-staged { display: none; margin-top: 8px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
+    background: var(--ui-bg-solid); max-height: 280px; overflow-y: auto; }
+.slls-bpa-staged.show { display: block; }
+.slls-bpa-staged-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); font-size: 12.5px; }
+.slls-bpa-staged-row:last-child { border-bottom: none; }
+.slls-bpa-staged-main { flex: 1; min-width: 0; }
+.slls-bpa-staged-rule { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-staged-obj { color: var(--ui-text-tertiary); font-size: 11.5px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-staged-row button { appearance: none; border: none; background: transparent; color: var(--ui-text-tertiary); cursor: pointer;
+    display: inline-flex; padding: 3px; border-radius: 6px; flex-shrink: 0; transition: color 120ms ease, background 120ms ease; }
+.slls-bpa-staged-row button:hover { color: var(--slls-error); background: var(--slls-error-soft); }
+.slls-bpa-group.staged .slls-bpa-group-name { color: var(--ui-text-tertiary); }
+
 /* ---------------- Bulk report ---------------- */
 .slls-bpa-bulk-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .slls-bpa-bulk-row { display: flex; align-items: center; gap: 12px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
     background: var(--ui-bg-solid); padding: 11px 14px; cursor: pointer; font-family: inherit; text-align: left; color: inherit;
     transition: background 120ms ease, border-color 120ms ease; }
 .slls-bpa-bulk-row:hover { background: var(--ui-surface-2); border-color: var(--ui-border-strong); }
+.slls-bpa-bulk-row.active { border-color: var(--ui-accent); box-shadow: 0 0 0 1px var(--ui-accent); }
 .slls-bpa-bulk-main { min-width: 0; flex: 1.4; display: flex; flex-direction: column; gap: 2px; }
 .slls-bpa-bulk-name { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-bpa-bulk-ws { font-size: 11.5px; color: var(--ui-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -250,24 +293,79 @@ _WIDGET_CSS = (
 .slls-bpa-bar .i { background: var(--slls-info); }
 .slls-bpa-bulk-total { flex-shrink: 0; width: 54px; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-/* ---------------- Selected models (bulk picker) ---------------- */
-.slls-bpa-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-.slls-bpa-modelchip { display: inline-flex; align-items: center; gap: 7px; background: var(--ui-accent-soft); color: var(--ui-accent);
-    border-radius: 999px; padding: 5px 8px 5px 12px; font-size: 12.5px; max-width: 320px; }
-.slls-bpa-modelchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.slls-bpa-modelchip button { appearance: none; border: none; background: transparent; color: inherit; cursor: pointer; display: inline-flex; padding: 1px; border-radius: 50%; opacity: 0.7; }
-.slls-bpa-modelchip button:hover { opacity: 1; }
+/* Inline detail: the violations of the model selected in the comparison report. */
+.slls-bpa-detail { display: none; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--ui-border); }
+.slls-bpa-detail.show { display: block; }
+.slls-bpa-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.slls-bpa-detail-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-detail-ws { font-weight: 400; color: var(--ui-text-tertiary); font-size: 12.5px; }
 
-/* ---------------- Rules panel (overlay) ---------------- */
-.slls-bpa-overlay { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 50; align-items: flex-start; justify-content: center;
-    padding: 24px 16px; border-radius: var(--slls-radius); overflow-y: auto; }
+/* Progress while a multi-model scan runs. */
+.slls-bpa-progress { display: none; margin-top: 14px; margin-bottom: 6px; padding: 12px 14px;
+    border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); background: var(--ui-bg-tertiary); }
+.slls-bpa-progress.show { display: block; }
+.slls-bpa-progress-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px; font-size: 12.5px; }
+.slls-bpa-progress-label { flex: 1; min-width: 0; color: var(--ui-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-progress-count { flex-shrink: 0; font-weight: 600; color: var(--ui-text); font-variant-numeric: tabular-nums; }
+.slls-bpa-progress-track { height: 6px; border-radius: 999px; background: var(--ui-bg-secondary); overflow: hidden; }
+.slls-bpa-progress-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--ui-accent); transition: width 220ms ease; }
+
+/* ---------------- Multi-model picker (workspace / model tree) ----------------
+   The list scrolls, so every row must opt out of flex shrinking - otherwise the
+   cards are squashed to fit the container's max-height and become unreadable. */
+.slls-bpa-tree { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; max-height: 460px; overflow-y: auto; padding-right: 2px; }
+.slls-bpa-tree-ws { flex: 0 0 auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); background: var(--ui-bg-solid); overflow: hidden; }
+.slls-bpa-tree-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 11px 14px; background: transparent; border: none;
+    color: var(--ui-text); font-family: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.35; text-align: left; cursor: pointer; transition: background 120ms ease; }
+.slls-bpa-tree-head:hover { background: var(--ui-surface-2); }
+.slls-bpa-tree-caret { display: inline-flex; color: var(--ui-text-tertiary); flex-shrink: 0; transition: transform 140ms ease; }
+.slls-bpa-tree-caret.open { transform: rotate(90deg); }
+.slls-bpa-tree-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-tree-count { flex-shrink: 0; background: var(--ui-accent-soft); color: var(--ui-accent); border-radius: 999px;
+    padding: 1px 9px; font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.slls-bpa-tree-models { border-top: 1px solid var(--ui-border); }
+.slls-bpa-tree-model { display: flex; align-items: center; gap: 11px; min-height: 40px; padding: 8px 14px 8px 36px;
+    border-bottom: 1px solid var(--ui-border); font-size: 13px; line-height: 1.35; }
+.slls-bpa-tree-model:last-child { border-bottom: none; }
+.slls-bpa-tree-model.selected { background: var(--ui-accent-soft); }
+.slls-bpa-tree-modelname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.slls-bpa-tree-msg { padding: 11px 14px 11px 36px; font-size: 12.5px; color: var(--ui-text-tertiary); }
+.slls-bpa-selcount { font-weight: 600; color: var(--ui-text); }
+
+/* Summary of the models picked for a multi-model scan. */
+.slls-bpa-selected { display: none; margin-top: 12px; padding: 11px 13px; border: 1px solid var(--ui-border);
+    border-radius: var(--slls-radius-sm); background: var(--ui-bg-tertiary); }
+.slls-bpa-selected.show { display: block; }
+.slls-bpa-selected-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.slls-bpa-selected-title { flex: 1; min-width: 0; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--ui-text-tertiary); }
+.slls-bpa-selected-clear { appearance: none; border: none; background: transparent; color: var(--ui-accent);
+    font-family: inherit; font-size: 12px; font-weight: 500; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+.slls-bpa-selected-clear:hover { background: var(--ui-surface-2); }
+.slls-bpa-selected-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.slls-bpa-selchip { display: inline-flex; align-items: center; gap: 6px; max-width: 380px; padding: 4px 6px 4px 12px;
+    border-radius: 999px; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 12.5px; line-height: 1.5; }
+.slls-bpa-selchip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-selchip-model { font-weight: 600; }
+.slls-bpa-selchip-sep { opacity: 0.5; margin: 0 5px; }
+.slls-bpa-selchip-ws { opacity: 0.85; }
+.slls-bpa-selchip button { appearance: none; border: none; background: transparent; color: inherit; cursor: pointer;
+    display: inline-flex; padding: 2px; border-radius: 50%; opacity: 0.6; flex-shrink: 0; transition: opacity 120ms ease; }
+.slls-bpa-selchip button:hover { opacity: 1; }
+
+/* ---------------- Rules panel (overlay) ----------------
+   Fixed to the viewport (not the widget) so the panel is always visible at the
+   top of the screen, however tall the results list is or how far it is scrolled.
+   The z-index sits above the full-screen overlay and the rule-info popover. */
+.slls-bpa-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2147483002;
+    align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
 .slls-bpa-overlay.show { display: flex; }
 .slls-bpa-modal { background: var(--ui-bg-solid); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--slls-radius);
-    box-shadow: var(--ui-shadow-lg); width: 100%; max-width: 760px; padding: 20px; margin: auto; }
+    box-shadow: var(--ui-shadow-lg); width: 100%; max-width: 1040px; padding: 22px 24px; margin: 0 auto; }
 .slls-bpa-modal h2 { margin: 0 0 4px 0; font-size: 17px; font-weight: 600; }
 .slls-bpa-modal-sub { font-size: 12.5px; color: var(--ui-text-secondary); margin-bottom: 14px; }
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-.slls-bpa-rulelist { max-height: 46vh; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
+.slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
 .slls-bpa-rule { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--ui-border); }
 .slls-bpa-rule:last-child { border-bottom: none; }
 .slls-bpa-rule-body { min-width: 0; flex: 1; }
@@ -308,7 +406,10 @@ _WIDGET_CSS = (
 @keyframes slls-bpa-fade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .slls-bpa-empty { padding: 40px 16px; text-align: center; color: var(--ui-text-tertiary); font-size: 13.5px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .slls-bpa-empty .slls-bpa-empty-icon { color: var(--slls-success); transform: scale(2.2); margin-bottom: 8px; }
-.slls-bpa-busy { pointer-events: none; opacity: 0.55; transition: opacity 120ms ease; }
+/* While a scan runs the content dims, but the widget's own background must stay
+   opaque - otherwise the page behind shows through in full-screen mode. */
+.slls-bpa-busy { pointer-events: none; }
+.slls-bpa-busy > *:not(.slls-bpa-overlay):not(.slls-bpa-progress) { opacity: 0.55; transition: opacity 120ms ease; }
 .slls-bpa-screen { display: none; }
 .slls-bpa-screen.show { display: block; }
 .slls-bpa-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--ui-text-tertiary); }
@@ -341,26 +442,27 @@ function render({ model, el }) {
         shield: `__SLLS_ICON_SHIELD_CHECK__`,
         sun: `__SLLS_ICON_SUN__`,
         moon: `__SLLS_ICON_MOON__`,
-        back: `__SLLS_ICON_BACK__`,
         swap: `__SLLS_ICON_SWAP__`,
         refresh: `__SLLS_ICON_REFRESH__`,
         search: `__SLLS_ICON_SEARCH__`,
         wrench: `__SLLS_ICON_WRENCH__`,
+        save: `__SLLS_ICON_SAVE__`,
+        undo: `__SLLS_ICON_UNDO__`,
         info: `__SLLS_ICON_INFO__`,
         alert: `__SLLS_ICON_ALERT__`,
         error: `__SLLS_ICON_ERROR_CIRCLE__`,
-        check: `__SLLS_ICON_CHECK_CIRCLE__`,
+        checkCircle: `__SLLS_ICON_CHECK_CIRCLE__`,
         external: `__SLLS_ICON_EXTERNAL_LINK__`,
         close: `__SLLS_ICON_CLOSE__`,
         caret: `__SLLS_ICON_CARET_RIGHT__`,
         check: `__SLLS_ICON_CHECK__`,
         play: `__SLLS_ICON_PLAY__`,
         settings: `__SLLS_ICON_SETTINGS__`,
+        sliders: `__SLLS_ICON_SLIDERS__`,
         activity: `__SLLS_ICON_ACTIVITY__`,
         code: `__SLLS_ICON_CODE__`,
         pencil: `__SLLS_ICON_PENCIL__`,
         text: `__SLLS_ICON_TEXT_TYPE__`,
-        plus: `__SLLS_ICON_PLUS__`,
         expand: `__SLLS_ICON_EXPAND_ROWS__`,
         collapse: `__SLLS_ICON_COLLAPSE_ROWS__`,
         fullscreen: `__SLLS_ICON_FULLSCREEN__`,
@@ -377,6 +479,18 @@ function render({ model, el }) {
     };
     const SEVERITIES = ["Error", "Warning", "Info"];
     const SEVERITY_ORDER = { Error: 0, Warning: 1, Info: 2 };
+    const CATEGORY_ORDER = {
+        "Performance": 0,
+        "Error Prevention": 1,
+        "DAX Expressions": 2,
+        "Maintenance": 3,
+        "Formatting": 4,
+        "Naming Conventions": 5,
+    };
+    function categoryRank(category) {
+        const rank = CATEGORY_ORDER[category];
+        return rank === undefined ? 99 : rank;
+    }
 
     function severityIcon(severity) {
         if (severity === "Error") return ICON.error;
@@ -552,6 +666,128 @@ function render({ model, el }) {
         for (const close of openDropdowns) close();
     });
 
+    // Searchable single-select. `options` are `{ value, label }` descriptors.
+    // Returns a controller exposing the current value plus option management.
+    function createSearchSelect(placeholder, searchPlaceholder, ariaLabel, emptyLabel, onChange) {
+        const wrap = document.createElement("div");
+        wrap.className = "slls-bpa-ss";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "slls-bpa-ss-btn";
+        btn.setAttribute("aria-haspopup", "listbox");
+        btn.setAttribute("aria-label", ariaLabel);
+        const valueLabel = document.createElement("span");
+        valueLabel.className = "slls-bpa-ss-value";
+        btn.appendChild(valueLabel);
+        btn.appendChild(iconSpan(ICON.caret, "slls-bpa-ss-caret"));
+        wrap.appendChild(btn);
+
+        const panel = document.createElement("div");
+        panel.className = "slls-bpa-ss-panel";
+        const searchWrap = document.createElement("div");
+        searchWrap.className = "slls-bpa-ss-searchwrap";
+        searchWrap.appendChild(iconSpan(ICON.search, "slls-bpa-ss-searchicon"));
+        const search = document.createElement("input");
+        search.className = "slls-bpa-ss-search";
+        search.type = "search";
+        search.placeholder = searchPlaceholder;
+        search.setAttribute("aria-label", searchPlaceholder);
+        searchWrap.appendChild(search);
+        panel.appendChild(searchWrap);
+        const list = document.createElement("div");
+        list.className = "slls-bpa-ss-list";
+        list.setAttribute("role", "listbox");
+        panel.appendChild(list);
+        wrap.appendChild(panel);
+
+        let options = [];
+        let value = "";
+
+        function close() {
+            wrap.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        }
+        function open() {
+            for (const other of openDropdowns) if (other !== close) other();
+            wrap.classList.add("open");
+            btn.setAttribute("aria-expanded", "true");
+            search.value = "";
+            renderList();
+            search.focus();
+        }
+        openDropdowns.add(close);
+
+        function selectedOption() {
+            return options.find((o) => o.value === value) || null;
+        }
+        function renderValue() {
+            const option = selectedOption();
+            const text = option ? option.label : (options.length === 0 ? emptyLabel : placeholder);
+            valueLabel.textContent = text;
+            valueLabel.classList.toggle("placeholder", !option);
+            valueLabel.title = option ? option.label : "";
+            btn.disabled = options.length === 0;
+        }
+        function renderList() {
+            clear(list);
+            const term = search.value.trim().toLowerCase();
+            const shown = term
+                ? options.filter((o) => o.label.toLowerCase().includes(term))
+                : options;
+            if (shown.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "slls-bpa-ss-empty";
+                empty.textContent = options.length === 0 ? "No items" : "No matches";
+                list.appendChild(empty);
+                return;
+            }
+            for (const option of shown) {
+                const row = document.createElement("button");
+                row.type = "button";
+                row.className = "slls-bpa-ss-opt" + (option.value === value ? " selected" : "");
+                row.setAttribute("role", "option");
+                row.setAttribute("aria-selected", String(option.value === value));
+                row.textContent = option.label;
+                row.title = option.label;
+                row.addEventListener("click", () => {
+                    const changed = value !== option.value;
+                    value = option.value;
+                    renderValue();
+                    close();
+                    if (changed) onChange(option);
+                });
+                list.appendChild(row);
+            }
+        }
+
+        btn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (wrap.classList.contains("open")) close();
+            else open();
+        });
+        panel.addEventListener("click", (ev) => ev.stopPropagation());
+        search.addEventListener("input", renderList);
+        search.addEventListener("keydown", (ev) => {
+            if (ev.key === "Escape") { ev.stopPropagation(); close(); }
+        });
+
+        renderValue();
+
+        return {
+            el: wrap,
+            get value() { return value; },
+            get label() { const o = selectedOption(); return o ? o.label : ""; },
+            setOptions(next, nextValue) {
+                options = next;
+                if (nextValue !== undefined) value = nextValue;
+                if (!options.some((o) => o.value === value)) value = "";
+                renderValue();
+                renderList();
+            },
+        };
+    }
+
     function runAction(action, extra) {
         model.set("pending_action", Object.assign({ action }, extra || {}));
         model.set("run", (model.get("run") || 0) + 1);
@@ -581,33 +817,26 @@ function render({ model, el }) {
     subtitle.className = "slls-bpa-subtitle";
     titleWrap.appendChild(subtitle);
 
-    const backBtn = makeButton("", "slls-bpa-btn-icon", ICON.back);
-    backBtn.title = "Back to the comparison report";
-    backBtn.setAttribute("aria-label", "Back to the comparison report");
-    backBtn.style.display = "none";
-    backBtn.addEventListener("click", () => {
-        isBulkDrilldown = false;
-        model.set("screen", "bulk");
-        model.save_changes();
-        renderScreen();
-    });
-    header.appendChild(backBtn);
-
     const changeModelBtn = makeButton("", "slls-bpa-btn-icon", ICON.swap);
     changeModelBtn.title = "Change semantic model / workspace";
     changeModelBtn.setAttribute("aria-label", "Change semantic model / workspace");
     changeModelBtn.style.display = "none";
     changeModelBtn.addEventListener("click", () => {
-        isBulkDrilldown = false;
+        closeBulkDetail();
         model.set("screen", "select");
         model.save_changes();
         renderScreen();
     });
     header.appendChild(changeModelBtn);
 
-    const rulesBtn = makeButton("", "slls-bpa-btn-icon", ICON.settings);
-    rulesBtn.title = "Rules";
-    rulesBtn.setAttribute("aria-label", "Rules");
+    // Pushes the remaining header actions to the right edge.
+    const headSpacer = document.createElement("div");
+    headSpacer.className = "slls-bpa-head-spacer";
+    header.appendChild(headSpacer);
+
+    const rulesBtn = makeButton("", "slls-bpa-btn-icon", ICON.sliders);
+    rulesBtn.title = "Edit rules";
+    rulesBtn.setAttribute("aria-label", "Edit rules");
     rulesBtn.addEventListener("click", () => openRulesPanel());
     header.appendChild(rulesBtn);
 
@@ -696,10 +925,19 @@ function render({ model, el }) {
     const status = document.createElement("div");
     status.className = "slls-bpa-status";
     root.appendChild(status);
+    let statusTimer = null;
     function setStatus(message, kind) {
+        if (statusTimer) { window.clearTimeout(statusTimer); statusTimer = null; }
         if (!message) { status.classList.remove("show"); return; }
         status.className = `slls-bpa-status show ${kind || "info"}`;
         status.textContent = message;
+        // Confirmations are transient; errors stay until the next action.
+        if (kind !== "error") {
+            statusTimer = window.setTimeout(() => {
+                status.classList.remove("show");
+                statusTimer = null;
+            }, 6000);
+        }
     }
     model.on("change:status", () => {
         const s = model.get("status") || {};
@@ -709,6 +947,49 @@ function render({ model, el }) {
         if (model.get("busy") === true) root.classList.add("slls-bpa-busy");
         else root.classList.remove("slls-bpa-busy");
     });
+
+    // ------------------------------------------------------------------
+    // Scan progress (multi-model runs)
+    // ------------------------------------------------------------------
+    const progress = document.createElement("div");
+    progress.className = "slls-bpa-progress";
+    const progressHead = document.createElement("div");
+    progressHead.className = "slls-bpa-progress-head";
+    const progressLabel = document.createElement("span");
+    progressLabel.className = "slls-bpa-progress-label";
+    const progressCount = document.createElement("span");
+    progressCount.className = "slls-bpa-progress-count";
+    progressHead.appendChild(progressLabel);
+    progressHead.appendChild(progressCount);
+    progress.appendChild(progressHead);
+    const progressTrack = document.createElement("div");
+    progressTrack.className = "slls-bpa-progress-track";
+    const progressFill = document.createElement("div");
+    progressFill.className = "slls-bpa-progress-fill";
+    progressFill.setAttribute("role", "progressbar");
+    progressTrack.appendChild(progressFill);
+    progress.appendChild(progressTrack);
+    root.appendChild(progress);
+
+    function renderProgress() {
+        const p = model.get("progress") || {};
+        const total = Number(p.total) || 0;
+        if (!total) {
+            progress.classList.remove("show");
+            return;
+        }
+        const done = Math.min(Number(p.done) || 0, total);
+        progress.classList.add("show");
+        progressLabel.textContent = p.current
+            ? `Analyzing ${p.current}\u2026`
+            : "Analyzing semantic models\u2026";
+        progressCount.textContent = `${done} of ${total}`;
+        progressFill.style.width = `${Math.round((done / total) * 100)}%`;
+        progressFill.setAttribute("aria-valuenow", String(done));
+        progressFill.setAttribute("aria-valuemin", "0");
+        progressFill.setAttribute("aria-valuemax", String(total));
+    }
+    model.on("change:progress", renderProgress);
 
     // ==================================================================
     // SELECT SCREEN
@@ -741,34 +1022,99 @@ function render({ model, el }) {
     let bulkMode = false;
     // key `${workspaceId}\u0000${datasetId}` -> target descriptor
     const bulkSelection = new Map();
+    // Workspace ids whose model list has been expanded (and therefore loaded).
+    const bulkExpanded = new Set();
 
     const pickerBar = document.createElement("div");
     pickerBar.className = "slls-bpa-toolbar";
+    pickerBar.style.alignItems = "flex-end";
     selectSection.appendChild(pickerBar);
 
-    const wsSelect = document.createElement("select");
-    wsSelect.className = "slls-bpa-select";
-    wsSelect.style.minWidth = "230px";
-    wsSelect.setAttribute("aria-label", "Workspace");
-    pickerBar.appendChild(wsSelect);
+    function pickerField(labelText, control, minWidth) {
+        const field = document.createElement("div");
+        field.className = "slls-bpa-field";
+        field.style.minWidth = minWidth;
+        const label = document.createElement("span");
+        label.className = "slls-bpa-field-label";
+        label.textContent = labelText;
+        field.appendChild(label);
+        field.appendChild(control);
+        return field;
+    }
 
-    const dsSelect = document.createElement("select");
-    dsSelect.className = "slls-bpa-select";
-    dsSelect.style.minWidth = "250px";
-    dsSelect.setAttribute("aria-label", "Semantic model");
-    pickerBar.appendChild(dsSelect);
+    const wsSelect = createSearchSelect(
+        "Select a workspace\u2026", "Filter workspaces\u2026", "Workspace", "No workspaces",
+        (option) => {
+            model.set("workspace_id", option.value);
+            model.set("dataset_id", "");
+            model.save_changes();
+            runAction("list_datasets", { workspace_id: option.value });
+        });
+    pickerBar.appendChild(pickerField("Workspace", wsSelect.el, "240px"));
+
+    const dsSelect = createSearchSelect(
+        "Select a semantic model\u2026", "Filter models\u2026", "Semantic model",
+        "No semantic models in workspace",
+        (option) => {
+            model.set("dataset_id", option.value);
+            model.save_changes();
+            updateSelectState();
+        });
+    pickerBar.appendChild(pickerField("Semantic model", dsSelect.el, "260px"));
 
     const runBtn = makeButton("Run analysis", "slls-bpa-btn-primary", ICON.play);
     pickerBar.appendChild(runBtn);
 
-    const addBtn = makeButton("Add", "", ICON.plus);
-    addBtn.title = "Add this model to the scan";
-    addBtn.style.display = "none";
-    pickerBar.appendChild(addBtn);
+    // ---- Multi-model picker: expandable workspaces with their models ----
+    const bulkPane = document.createElement("div");
+    bulkPane.style.display = "none";
+    selectSection.appendChild(bulkPane);
 
-    const chipsWrap = document.createElement("div");
-    chipsWrap.className = "slls-bpa-chips";
-    selectSection.appendChild(chipsWrap);
+    const bulkBar = document.createElement("div");
+    bulkBar.className = "slls-bpa-toolbar";
+    bulkPane.appendChild(bulkBar);
+
+    const bulkSearchWrap = document.createElement("div");
+    bulkSearchWrap.className = "slls-bpa-searchwrap";
+    bulkSearchWrap.style.flex = "1";
+    bulkSearchWrap.appendChild(iconSpan(ICON.search, "slls-bpa-searchicon"));
+    const bulkSearch = document.createElement("input");
+    bulkSearch.className = "slls-bpa-input";
+    bulkSearch.type = "search";
+    bulkSearch.style.width = "100%";
+    bulkSearch.placeholder = "Search workspaces and models\u2026";
+    bulkSearch.setAttribute("aria-label", "Search workspaces and models");
+    bulkSearchWrap.appendChild(bulkSearch);
+    bulkBar.appendChild(bulkSearchWrap);
+
+    const bulkRunBtn = makeButton("Run analysis", "slls-bpa-btn-primary", ICON.play);
+    bulkBar.appendChild(bulkRunBtn);
+
+    // Summary of everything picked so far, so the chosen models (and the
+    // workspace each one lives in) stay visible while browsing other workspaces.
+    const bulkSelected = document.createElement("div");
+    bulkSelected.className = "slls-bpa-selected";
+    bulkPane.appendChild(bulkSelected);
+
+    const bulkSelectedHead = document.createElement("div");
+    bulkSelectedHead.className = "slls-bpa-selected-head";
+    const bulkSelectedTitle = document.createElement("span");
+    bulkSelectedTitle.className = "slls-bpa-selected-title";
+    bulkSelectedHead.appendChild(bulkSelectedTitle);
+    const bulkClearBtn = document.createElement("button");
+    bulkClearBtn.type = "button";
+    bulkClearBtn.className = "slls-bpa-selected-clear";
+    bulkClearBtn.textContent = "Clear all";
+    bulkSelectedHead.appendChild(bulkClearBtn);
+    bulkSelected.appendChild(bulkSelectedHead);
+
+    const bulkSelectedList = document.createElement("div");
+    bulkSelectedList.className = "slls-bpa-selected-list";
+    bulkSelected.appendChild(bulkSelectedList);
+
+    const bulkTree = document.createElement("div");
+    bulkTree.className = "slls-bpa-tree";
+    bulkPane.appendChild(bulkTree);
 
     const selectHint = document.createElement("div");
     selectHint.className = "slls-bpa-hint";
@@ -776,109 +1122,230 @@ function render({ model, el }) {
 
     function renderWorkspaces() {
         const items = model.get("workspaces") || [];
-        const current = model.get("workspace_id") || "";
-        clear(wsSelect);
-        if (items.length === 0) {
-            const o = document.createElement("option");
-            o.value = ""; o.textContent = "No workspaces"; o.disabled = true; o.selected = true;
-            wsSelect.appendChild(o);
-            return;
-        }
-        for (const ws of items) {
-            const o = document.createElement("option");
-            o.value = ws.id;
-            o.textContent = ws.name;
-            if (ws.id === current) o.selected = true;
-            wsSelect.appendChild(o);
-        }
+        wsSelect.setOptions(
+            items.map((ws) => ({ value: ws.id, label: ws.name })),
+            model.get("workspace_id") || "",
+        );
+        renderBulkTree();
     }
     function renderDatasets() {
         const items = model.get("datasets") || [];
-        const current = model.get("dataset_id") || "";
-        clear(dsSelect);
-        if (items.length === 0) {
-            const o = document.createElement("option");
-            o.value = ""; o.textContent = "No semantic models in workspace"; o.disabled = true; o.selected = true;
-            dsSelect.appendChild(o);
-        } else {
-            for (const ds of items) {
-                const o = document.createElement("option");
-                o.value = ds.id;
-                o.textContent = ds.name;
-                if (ds.id === current) o.selected = true;
-                dsSelect.appendChild(o);
-            }
-        }
+        dsSelect.setOptions(
+            items.map((ds) => ({ value: ds.id, label: ds.name })),
+            model.get("dataset_id") || "",
+        );
         updateSelectState();
     }
-    function renderBulkChips() {
-        clear(chipsWrap);
-        for (const [key, target] of bulkSelection.entries()) {
+
+    function bulkKey(workspaceId, datasetId) {
+        return `${workspaceId}\u0000${datasetId}`;
+    }
+
+    function toggleBulkModel(workspace, dataset) {
+        const key = bulkKey(workspace.id, dataset.id);
+        if (bulkSelection.has(key)) {
+            bulkSelection.delete(key);
+        } else {
+            if (bulkSelection.size >= MAX_BULK) return;
+            bulkSelection.set(key, {
+                workspace_id: workspace.id,
+                workspace_name: workspace.name,
+                dataset_id: dataset.id,
+                dataset_name: dataset.name,
+            });
+        }
+        renderBulkTree();
+        updateSelectState();
+    }
+
+    function renderBulkTree() {
+        clear(bulkTree);
+        const term = bulkSearch.value.trim().toLowerCase();
+        const workspaces = model.get("workspaces") || [];
+        const loaded = model.get("workspace_datasets") || {};
+        const maxReached = bulkSelection.size >= MAX_BULK;
+
+        const shown = workspaces.filter((ws) => {
+            if (!term) return true;
+            if (ws.name.toLowerCase().includes(term)) return true;
+            const models = loaded[ws.id];
+            return Array.isArray(models)
+                && models.some((ds) => ds.name.toLowerCase().includes(term));
+        });
+
+        if (shown.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "slls-bpa-tree-msg";
+            empty.style.paddingLeft = "14px";
+            empty.textContent = workspaces.length === 0
+                ? "No workspaces available."
+                : "No workspaces or models match the search.";
+            bulkTree.appendChild(empty);
+            return;
+        }
+
+        for (const ws of shown) {
+            const box = document.createElement("div");
+            box.className = "slls-bpa-tree-ws";
+
+            const isOpen = bulkExpanded.has(ws.id);
+            const head = document.createElement("button");
+            head.type = "button";
+            head.className = "slls-bpa-tree-head";
+            head.setAttribute("aria-expanded", String(isOpen));
+            head.appendChild(iconSpan(ICON.caret, `slls-bpa-tree-caret${isOpen ? " open" : ""}`));
+            const name = document.createElement("span");
+            name.className = "slls-bpa-tree-name";
+            name.textContent = ws.name;
+            name.title = ws.name;
+            head.appendChild(name);
+            const selectedHere = [...bulkSelection.keys()]
+                .filter((k) => k.startsWith(`${ws.id}\u0000`)).length;
+            if (selectedHere > 0) {
+                const count = document.createElement("span");
+                count.className = "slls-bpa-tree-count";
+                count.textContent = `${selectedHere} selected`;
+                head.appendChild(count);
+            }
+            head.addEventListener("click", () => {
+                if (bulkExpanded.has(ws.id)) {
+                    bulkExpanded.delete(ws.id);
+                } else {
+                    bulkExpanded.add(ws.id);
+                    // Models are only listed the first time a workspace is expanded.
+                    if (!Array.isArray((model.get("workspace_datasets") || {})[ws.id])) {
+                        runAction("load_workspace_datasets", { workspace_id: ws.id });
+                    }
+                }
+                renderBulkTree();
+            });
+            box.appendChild(head);
+
+            if (isOpen) {
+                const models = loaded[ws.id];
+                const list = document.createElement("div");
+                list.className = "slls-bpa-tree-models";
+                if (!Array.isArray(models)) {
+                    const msg = document.createElement("div");
+                    msg.className = "slls-bpa-tree-msg";
+                    msg.textContent = "Loading semantic models\u2026";
+                    list.appendChild(msg);
+                } else {
+                    const visible = term
+                        ? models.filter((ds) => ds.name.toLowerCase().includes(term)
+                            || ws.name.toLowerCase().includes(term))
+                        : models;
+                    if (visible.length === 0) {
+                        const msg = document.createElement("div");
+                        msg.className = "slls-bpa-tree-msg";
+                        msg.textContent = models.length === 0
+                            ? "No semantic models in this workspace."
+                            : "No models match the search.";
+                        list.appendChild(msg);
+                    }
+                    for (const ds of visible) {
+                        const key = bulkKey(ws.id, ds.id);
+                        const selected = bulkSelection.has(key);
+                        const row = document.createElement("div");
+                        row.className = "slls-bpa-tree-model" + (selected ? " selected" : "");
+
+                        const toggle = document.createElement("label");
+                        toggle.className = "slls-bpa-switch";
+                        const box2 = document.createElement("input");
+                        box2.type = "checkbox";
+                        box2.checked = selected;
+                        box2.disabled = !selected && maxReached;
+                        box2.setAttribute("aria-label", `Select ${ds.name}`);
+                        box2.addEventListener("change", () => toggleBulkModel(ws, ds));
+                        toggle.appendChild(box2);
+                        toggle.appendChild(document.createElement("i"));
+                        toggle.title = !selected && maxReached
+                            ? `Maximum of ${MAX_BULK} models selected`
+                            : `Include "${ds.name}" in the analysis`;
+                        row.appendChild(toggle);
+
+                        const modelName = document.createElement("span");
+                        modelName.className = "slls-bpa-tree-modelname";
+                        modelName.textContent = ds.name;
+                        modelName.title = ds.name;
+                        modelName.addEventListener("click", () => {
+                            if (!selected && maxReached) return;
+                            toggleBulkModel(ws, ds);
+                        });
+                        row.appendChild(modelName);
+                        list.appendChild(row);
+                    }
+                }
+                box.appendChild(list);
+            }
+
+            bulkTree.appendChild(box);
+        }
+    }
+
+    function renderBulkSelection() {
+        bulkSelected.classList.toggle("show", bulkSelection.size > 0);
+        bulkSelectedTitle.textContent =
+            `${plural(bulkSelection.size, "model")} selected`;
+        clear(bulkSelectedList);
+        // Group by workspace so the same workspace is not repeated needlessly,
+        // then list one chip per model showing both names.
+        const targets = [...bulkSelection.entries()].sort((a, b) =>
+            a[1].workspace_name.localeCompare(b[1].workspace_name)
+            || a[1].dataset_name.localeCompare(b[1].dataset_name));
+        for (const [key, target] of targets) {
             const chip = document.createElement("div");
-            chip.className = "slls-bpa-modelchip";
-            const label = document.createElement("span");
-            label.textContent = target.dataset_name;
-            label.title = `${target.dataset_name} \u2022 ${target.workspace_name}`;
-            chip.appendChild(label);
+            chip.className = "slls-bpa-selchip";
+            const text = document.createElement("span");
+            text.className = "slls-bpa-selchip-text";
+            text.title = `${target.dataset_name} \u2022 ${target.workspace_name}`;
+            const modelName = document.createElement("span");
+            modelName.className = "slls-bpa-selchip-model";
+            modelName.textContent = target.dataset_name;
+            const sep = document.createElement("span");
+            sep.className = "slls-bpa-selchip-sep";
+            sep.textContent = "\u2022";
+            const wsName = document.createElement("span");
+            wsName.className = "slls-bpa-selchip-ws";
+            wsName.textContent = target.workspace_name;
+            text.appendChild(modelName);
+            text.appendChild(sep);
+            text.appendChild(wsName);
+            chip.appendChild(text);
+
             const remove = document.createElement("button");
             remove.type = "button";
             remove.innerHTML = ICON.close;
-            remove.title = "Remove";
+            remove.title = `Remove ${target.dataset_name}`;
             remove.setAttribute("aria-label", `Remove ${target.dataset_name}`);
             remove.addEventListener("click", () => {
                 bulkSelection.delete(key);
-                renderBulkChips();
+                renderBulkTree();
                 updateSelectState();
             });
             chip.appendChild(remove);
-            chipsWrap.appendChild(chip);
+            bulkSelectedList.appendChild(chip);
         }
     }
+
     function updateSelectState() {
         singleModeBtn.classList.toggle("active", !bulkMode);
         bulkModeBtn.classList.toggle("active", bulkMode);
-        addBtn.style.display = bulkMode ? "" : "none";
-        chipsWrap.style.display = bulkMode ? "" : "none";
-        const maxReached = bulkSelection.size >= MAX_BULK;
-        addBtn.disabled = !dsSelect.value || maxReached;
+        pickerBar.style.display = bulkMode ? "none" : "";
+        bulkPane.style.display = bulkMode ? "" : "none";
         if (bulkMode) {
-            runBtn.disabled = bulkSelection.size === 0;
-            selectHint.textContent = maxReached
-                ? `Maximum of ${MAX_BULK} models selected.`
-                : `Add up to ${MAX_BULK} semantic models, from any workspace, then run the analysis.`;
+            bulkRunBtn.disabled = bulkSelection.size === 0;
+            selectHint.innerHTML =
+                `Select up to ${MAX_BULK} semantic models across workspaces. ` +
+                `<span class="slls-bpa-selcount">${bulkSelection.size}/${MAX_BULK} selected</span>`;
+            renderBulkSelection();
         } else {
             runBtn.disabled = !dsSelect.value;
             selectHint.textContent = "";
         }
     }
 
-    singleModeBtn.addEventListener("click", () => { bulkMode = false; updateSelectState(); });
-    bulkModeBtn.addEventListener("click", () => { bulkMode = true; updateSelectState(); });
-
-    wsSelect.addEventListener("change", () => {
-        model.set("workspace_id", wsSelect.value);
-        model.set("dataset_id", "");
-        model.save_changes();
-        runAction("list_datasets", { workspace_id: wsSelect.value });
-    });
-    dsSelect.addEventListener("change", () => {
-        model.set("dataset_id", dsSelect.value);
-        model.save_changes();
-        updateSelectState();
-    });
-    addBtn.addEventListener("click", () => {
-        if (!dsSelect.value || bulkSelection.size >= MAX_BULK) return;
-        const key = `${wsSelect.value}\u0000${dsSelect.value}`;
-        bulkSelection.set(key, {
-            workspace_id: wsSelect.value,
-            workspace_name: wsSelect.options[wsSelect.selectedIndex].textContent,
-            dataset_id: dsSelect.value,
-            dataset_name: dsSelect.options[dsSelect.selectedIndex].textContent,
-        });
-        renderBulkChips();
-        updateSelectState();
-    });
-    runBtn.addEventListener("click", () => {
+    function startRun() {
         resetFilters();
         if (bulkMode) {
             runAction("run_bulk", {
@@ -888,16 +1355,32 @@ function render({ model, el }) {
         } else {
             runAction("run_scan", {
                 workspace_id: wsSelect.value,
-                workspace_name: wsSelect.options[wsSelect.selectedIndex].textContent,
+                workspace_name: wsSelect.label,
                 dataset_id: dsSelect.value,
-                dataset_name: dsSelect.options[dsSelect.selectedIndex].textContent,
+                dataset_name: dsSelect.label,
                 disabled_rules: [...disabledRules],
             });
         }
+    }
+
+    singleModeBtn.addEventListener("click", () => { bulkMode = false; updateSelectState(); });
+    bulkModeBtn.addEventListener("click", () => {
+        bulkMode = true;
+        updateSelectState();
+        renderBulkTree();
     });
+    bulkSearch.addEventListener("input", renderBulkTree);
+    bulkClearBtn.addEventListener("click", () => {
+        bulkSelection.clear();
+        renderBulkTree();
+        updateSelectState();
+    });
+    runBtn.addEventListener("click", startRun);
+    bulkRunBtn.addEventListener("click", startRun);
 
     model.on("change:workspaces", renderWorkspaces);
     model.on("change:datasets", renderDatasets);
+    model.on("change:workspace_datasets", renderBulkTree);
 
     // ==================================================================
     // RESULTS SCREEN
@@ -906,15 +1389,21 @@ function render({ model, el }) {
     resultsScreen.className = "slls-bpa-screen";
     root.appendChild(resultsScreen);
 
+    // The category cards, filter bar and rule groups are built once and
+    // re-parented, so the comparison report can show a model's violations
+    // inline using exactly the same controls as the single-model view.
+    const resultsContent = document.createElement("div");
+    resultsScreen.appendChild(resultsContent);
+
     const catGrid = document.createElement("div");
     catGrid.className = "slls-bpa-catgrid";
     catGrid.style.marginTop = "0";
-    resultsScreen.appendChild(catGrid);
+    resultsContent.appendChild(catGrid);
 
     const filterBar = document.createElement("div");
     filterBar.className = "slls-bpa-toolbar";
     filterBar.style.marginTop = "16px";
-    resultsScreen.appendChild(filterBar);
+    resultsContent.appendChild(filterBar);
 
     const searchWrap = document.createElement("div");
     searchWrap.className = "slls-bpa-searchwrap";
@@ -938,10 +1427,6 @@ function render({ model, el }) {
     })));
     filterBar.appendChild(severityFilterSelect.el);
 
-    const objectTypeFilterSelect = createMultiSelect(
-        "All object types", "Object type", () => renderResults());
-    filterBar.appendChild(objectTypeFilterSelect.el);
-
     const expandBtn = makeButton("", "slls-bpa-btn-icon", ICON.expand);
     expandBtn.title = "Expand all rules";
     expandBtn.setAttribute("aria-label", "Expand all rules");
@@ -954,7 +1439,7 @@ function render({ model, el }) {
 
     const groupsWrap = document.createElement("div");
     groupsWrap.className = "slls-bpa-groups";
-    resultsScreen.appendChild(groupsWrap);
+    resultsContent.appendChild(groupsWrap);
 
     // ==================================================================
     // BULK SCREEN
@@ -969,13 +1454,58 @@ function render({ model, el }) {
     bulkHeading.textContent = "Select a model to review its violations.";
     bulkScreen.appendChild(bulkHeading);
 
-    const bulkCards = document.createElement("div");
-    bulkCards.className = "slls-bpa-cards";
-    bulkScreen.appendChild(bulkCards);
+    const bulkCatGrid = document.createElement("div");
+    bulkCatGrid.className = "slls-bpa-catgrid";
+    bulkCatGrid.style.marginTop = "0";
+    bulkScreen.appendChild(bulkCatGrid);
 
     const bulkList = document.createElement("div");
     bulkList.className = "slls-bpa-bulk-list";
     bulkScreen.appendChild(bulkList);
+
+    const bulkDetail = document.createElement("div");
+    bulkDetail.className = "slls-bpa-detail";
+    bulkScreen.appendChild(bulkDetail);
+
+    const bulkDetailHead = document.createElement("div");
+    bulkDetailHead.className = "slls-bpa-detail-head";
+    const bulkDetailTitle = document.createElement("div");
+    bulkDetailTitle.className = "slls-bpa-detail-title";
+    bulkDetailHead.appendChild(bulkDetailTitle);
+    const bulkDetailClose = makeButton("", "slls-bpa-btn-icon", ICON.close);
+    bulkDetailClose.title = "Close these violations";
+    bulkDetailClose.setAttribute("aria-label", "Close these violations");
+    bulkDetailHead.appendChild(bulkDetailClose);
+    bulkDetail.appendChild(bulkDetailHead);
+
+    // ------------------------------------------------------------------
+    // Staged fixes + save bar
+    // ------------------------------------------------------------------
+    const saveBar = document.createElement("div");
+    saveBar.className = "slls-bpa-savebar";
+    const saveBarLabel = document.createElement("div");
+    saveBarLabel.className = "slls-bpa-savebar-label";
+    const pendingDot = document.createElement("span");
+    pendingDot.className = "slls-bpa-pending-dot";
+    saveBarLabel.appendChild(pendingDot);
+    const saveBarText = document.createElement("span");
+    saveBarLabel.appendChild(saveBarText);
+    const saveBarReview = document.createElement("button");
+    saveBarReview.type = "button";
+    saveBarReview.className = "slls-bpa-savebar-review";
+    saveBarLabel.appendChild(saveBarReview);
+    saveBar.appendChild(saveBarLabel);
+    const discardBtn = makeButton("Discard", "slls-bpa-btn-sm", ICON.undo);
+    discardBtn.title = "Discard every staged fix";
+    saveBar.appendChild(discardBtn);
+    const saveBtn = makeButton("Save", "slls-bpa-btn-sm slls-bpa-btn-primary", ICON.save);
+    saveBtn.title = "Apply every staged fix to the semantic model(s)";
+    saveBar.appendChild(saveBtn);
+    root.appendChild(saveBar);
+
+    const stagedList = document.createElement("div");
+    stagedList.className = "slls-bpa-staged";
+    root.appendChild(stagedList);
 
     // ------------------------------------------------------------------
     // Attribution
@@ -996,18 +1526,123 @@ function render({ model, el }) {
     let categoryFilter = null;
     let fixRule = null;
     const fixSelected = new Set();
+    // Fixes staged but not yet written to the model(s), keyed by
+    // `${workspaceId}\u0000${datasetId}\u0000${ruleName}\u0000${objectName}`.
+    const stagedFixes = new Map();
+    let stagedExpanded = false;
     // Violations currently displayed (single scan, or one model drilled into from bulk).
     let activeViolations = [];
 
     function resetFilters() {
         expandedRules.clear();
         severityFilterSelect.reset();
-        objectTypeFilterSelect.reset();
         categoryFilter = null;
         searchInput.value = "";
         fixRule = null;
         fixSelected.clear();
     }
+
+    // ------------------------------------------------------------------
+    // Staged fixes
+    // ------------------------------------------------------------------
+    // The model whose violations are currently on screen (single scan or the
+    // model expanded in the comparison report).
+    function currentTarget() {
+        return {
+            workspace_id: model.get("workspace_id") || "",
+            dataset_id: model.get("dataset_id") || "",
+            dataset_name: model.get("dataset_name") || "",
+        };
+    }
+    function stagedKey(datasetId, ruleName, objectName) {
+        return `${datasetId}\u0000${ruleName}\u0000${objectName}`;
+    }
+    function isStaged(ruleName, objectName) {
+        return stagedFixes.has(
+            stagedKey(model.get("dataset_id") || "", ruleName, objectName));
+    }
+
+    function renderStaged() {
+        const count = stagedFixes.size;
+        saveBar.classList.toggle("show", count > 0);
+        if (count === 0) {
+            stagedExpanded = false;
+            stagedList.classList.remove("show");
+            return;
+        }
+        const models = new Set([...stagedFixes.values()].map((f) => f.dataset_id));
+        saveBarText.textContent = models.size > 1
+            ? `${plural(count, "fix")} staged across ${plural(models.size, "semantic model")}`
+            : `${plural(count, "fix")} staged`;
+        saveBarReview.textContent = stagedExpanded ? "Hide" : "Review";
+        saveBtn.lastChild.textContent = `Save ${count}`;
+
+        stagedList.classList.toggle("show", stagedExpanded);
+        if (!stagedExpanded) return;
+        clear(stagedList);
+        for (const [key, fix] of stagedFixes.entries()) {
+            const row = document.createElement("div");
+            row.className = "slls-bpa-staged-row";
+            const main = document.createElement("div");
+            main.className = "slls-bpa-staged-main";
+            const rule = document.createElement("div");
+            rule.className = "slls-bpa-staged-rule";
+            rule.textContent = fix.rule_name;
+            rule.title = fix.rule_name;
+            main.appendChild(rule);
+            const object = document.createElement("div");
+            object.className = "slls-bpa-staged-obj";
+            object.textContent = `${fix.object_name} \u2022 ${fix.dataset_name}`;
+            object.title = `${fix.before || "\u2014"} \u2192 ${fix.after || "\u2014"}`;
+            main.appendChild(object);
+            row.appendChild(main);
+
+            const unstage = document.createElement("button");
+            unstage.type = "button";
+            unstage.innerHTML = ICON.close;
+            unstage.title = "Unstage this fix";
+            unstage.setAttribute("aria-label", `Unstage the fix for ${fix.object_name}`);
+            unstage.addEventListener("click", () => {
+                stagedFixes.delete(key);
+                renderStaged();
+                refreshViolations();
+            });
+            row.appendChild(unstage);
+            stagedList.appendChild(row);
+        }
+    }
+
+    // Re-renders whichever violation view is currently visible.
+    function refreshViolations() {
+        if (model.get("screen") === "bulk") renderBulk();
+        else renderResults();
+    }
+
+    saveBarReview.addEventListener("click", () => {
+        stagedExpanded = !stagedExpanded;
+        renderStaged();
+    });
+    discardBtn.addEventListener("click", () => {
+        stagedFixes.clear();
+        renderStaged();
+        refreshViolations();
+    });
+    saveBtn.addEventListener("click", () => {
+        if (stagedFixes.size === 0) return;
+        const fixes = [...stagedFixes.values()].map((f) => ({
+            workspace_id: f.workspace_id,
+            dataset_id: f.dataset_id,
+            rule_name: f.rule_name,
+            object_name: f.object_name,
+        }));
+        stagedFixes.clear();
+        stagedExpanded = false;
+        renderStaged();
+        runAction("apply_staged_fixes", {
+            fixes,
+            disabled_rules: [...disabledRules],
+        });
+    });
 
     function rerun() {
         resetFilters();
@@ -1086,11 +1721,12 @@ function render({ model, el }) {
     function visibleViolations() {
         const term = searchInput.value.trim().toLowerCase();
         const severities = severityFilterSelect.selected;
-        const objectTypes = objectTypeFilterSelect.selected;
         return activeViolations.filter((v) => {
+            // A staged fix removes its violation optimistically; it comes back
+            // if the fix is unstaged.
+            if (isStaged(v.ruleName, v.objectName)) return false;
             if (categoryFilter && v.category !== categoryFilter) return false;
             if (severities.size > 0 && !severities.has(v.severity)) return false;
-            if (objectTypes.size > 0 && !objectTypes.has(v.objectType)) return false;
             if (term
                 && !String(v.ruleName).toLowerCase().includes(term)
                 && !String(v.objectName).toLowerCase().includes(term)) return false;
@@ -1098,46 +1734,19 @@ function render({ model, el }) {
         });
     }
 
-    function renderCards(container, violations) {
+    // Clickable per-category summary cards. Used both for a single model's
+    // results and for the aggregate across a multi-model comparison report.
+    function renderCategoryCards(container, violations, onSelect) {
         clear(container);
-        const counts = { Error: 0, Warning: 0, Info: 0 };
-        for (const v of violations) {
-            if (counts[v.severity] !== undefined) counts[v.severity] += 1;
-        }
-        const entries = [
-            ["Violations", violations.length, "", ""],
-            ["Errors", counts.Error, "error", ICON.error],
-            ["Warnings", counts.Warning, "warning", ICON.alert],
-            ["Info", counts.Info, "info", ICON.info],
-        ];
-        for (const [label, value, cls, icon] of entries) {
-            const card = document.createElement("div");
-            card.className = `slls-bpa-card${cls ? " " + cls : ""}`;
-            const l = document.createElement("div");
-            l.className = "slls-bpa-card-label";
-            if (icon) l.appendChild(iconSpan(icon));
-            const lt = document.createElement("span");
-            lt.textContent = label;
-            l.appendChild(lt);
-            const v = document.createElement("div");
-            v.className = "slls-bpa-card-value";
-            v.textContent = String(value);
-            card.appendChild(l);
-            card.appendChild(v);
-            container.appendChild(card);
-        }
-    }
-
-    function renderCategoryCards() {
-        clear(catGrid);
         const map = new Map();
-        for (const v of activeViolations) {
+        for (const v of violations) {
             const entry = map.get(v.category) || { total: 0, Error: 0, Warning: 0, Info: 0 };
             entry.total += 1;
             if (entry[v.severity] !== undefined) entry[v.severity] += 1;
             map.set(v.category, entry);
         }
-        const rows = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+        const rows = [...map.entries()].sort(
+            (a, b) => categoryRank(a[0]) - categoryRank(b[0]) || a[0].localeCompare(b[0]));
         for (const [category, counts] of rows) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -1165,16 +1774,17 @@ function render({ model, el }) {
             btn.appendChild(body);
             btn.addEventListener("click", () => {
                 categoryFilter = categoryFilter === category ? null : category;
-                renderResults();
+                onSelect();
             });
-            catGrid.appendChild(btn);
+            container.appendChild(btn);
         }
     }
 
-    function renderObjectTypeOptions() {
-        const types = [...new Set(activeViolations.map((v) => v.objectType))].sort();
-        objectTypeFilterSelect.setOptions(
-            types.map((t) => ({ value: t, label: t })));
+    // A category picked while a comparison-report model is expanded also
+    // re-filters the per-model totals, so both views stay in step.
+    function onCategoryChange() {
+        if (bulkDetailKey) renderBulk();
+        else renderResults();
     }
 
     function buildGroups(violations) {
@@ -1197,6 +1807,7 @@ function render({ model, el }) {
         }
         return [...byRule.values()].sort((a, b) =>
             (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
+            || categoryRank(a.category) - categoryRank(b.category)
             || a.ruleName.localeCompare(b.ruleName));
     }
 
@@ -1204,8 +1815,14 @@ function render({ model, el }) {
         const panel = document.createElement("div");
         panel.className = "slls-bpa-fix";
         const preview = model.get("fix_preview") || {};
-        const loading = preview.ruleName !== group.ruleName;
-        const items = loading ? [] : (preview.items || []);
+        const target = currentTarget();
+        const loading = preview.ruleName !== group.ruleName
+            || preview.datasetId !== target.dataset_id;
+        // Items already staged are hidden so the panel only offers new changes.
+        const items = loading
+            ? []
+            : (preview.items || []).filter(
+                (i) => !isStaged(group.ruleName, i.objectName));
 
         if (loading) {
             const msg = document.createElement("div");
@@ -1219,7 +1836,7 @@ function render({ model, el }) {
             const msg = document.createElement("div");
             msg.style.fontSize = "12.5px";
             msg.style.color = "var(--ui-text-tertiary)";
-            msg.textContent = "No changes can be applied for this rule.";
+            msg.textContent = "No further changes can be staged for this rule.";
             panel.appendChild(msg);
         } else {
             const list = document.createElement("div");
@@ -1233,9 +1850,9 @@ function render({ model, el }) {
                 box.addEventListener("change", () => {
                     if (box.checked) fixSelected.add(item.objectName);
                     else fixSelected.delete(item.objectName);
-                    applyFixBtn.disabled = fixSelected.size === 0;
-                    applyFixBtn.lastChild.textContent = fixSelected.size > 0
-                        ? `Apply fix (${fixSelected.size})` : "Apply fix";
+                    stageFixBtn.disabled = fixSelected.size === 0;
+                    stageFixBtn.lastChild.textContent = fixSelected.size > 0
+                        ? `Stage fix (${fixSelected.size})` : "Stage fix";
                 });
                 label.appendChild(box);
                 const body = document.createElement("div");
@@ -1270,25 +1887,36 @@ function render({ model, el }) {
         cancelBtn.addEventListener("click", () => {
             fixRule = null;
             fixSelected.clear();
-            renderResults();
+            refreshViolations();
         });
         actions.appendChild(cancelBtn);
-        const applyFixBtn = makeButton(
-            fixSelected.size > 0 ? `Apply fix (${fixSelected.size})` : "Apply fix",
+        const stageFixBtn = makeButton(
+            fixSelected.size > 0 ? `Stage fix (${fixSelected.size})` : "Stage fix",
             "slls-bpa-btn-sm slls-bpa-btn-primary",
             ICON.wrench,
         );
-        applyFixBtn.disabled = fixSelected.size === 0;
-        applyFixBtn.addEventListener("click", () => {
-            runAction("apply_fix", {
-                rule_name: group.ruleName,
-                object_names: [...fixSelected],
-                disabled_rules: [...disabledRules],
-            });
+        stageFixBtn.title = "Stage these changes; nothing is written until you save";
+        stageFixBtn.disabled = fixSelected.size === 0;
+        stageFixBtn.addEventListener("click", () => {
+            for (const item of items) {
+                if (!fixSelected.has(item.objectName)) continue;
+                stagedFixes.set(
+                    stagedKey(target.dataset_id, group.ruleName, item.objectName), {
+                        workspace_id: target.workspace_id,
+                        dataset_id: target.dataset_id,
+                        dataset_name: target.dataset_name,
+                        rule_name: group.ruleName,
+                        object_name: item.objectName,
+                        before: item.before,
+                        after: item.after,
+                    });
+            }
             fixRule = null;
             fixSelected.clear();
+            renderStaged();
+            refreshViolations();
         });
-        actions.appendChild(applyFixBtn);
+        actions.appendChild(stageFixBtn);
         panel.appendChild(actions);
         return panel;
     }
@@ -1299,7 +1927,7 @@ function render({ model, el }) {
         if (groups.length === 0) {
             const empty = document.createElement("div");
             empty.className = "slls-bpa-empty";
-            empty.appendChild(iconSpan(ICON.check, "slls-bpa-empty-icon"));
+            empty.appendChild(iconSpan(ICON.checkCircle, "slls-bpa-empty-icon"));
             const text = document.createElement("div");
             text.textContent = activeViolations.length > 0
                 ? "No violations match the current filters."
@@ -1330,17 +1958,39 @@ function render({ model, el }) {
             name.className = "slls-bpa-group-name";
             name.textContent = group.ruleName;
             toggle.appendChild(name);
-            const badge = document.createElement("span");
-            badge.className = "slls-bpa-badge";
-            badge.textContent = String(group.violations.length);
-            badge.title = plural(group.violations.length, "violation");
-            toggle.appendChild(badge);
             toggle.addEventListener("click", () => {
                 if (expandedRules.has(group.ruleName)) expandedRules.delete(group.ruleName);
                 else expandedRules.add(group.ruleName);
                 renderResults();
             });
             head.appendChild(toggle);
+
+            // "Apply fix" sits to the left of the violation count so the rule
+            // name, its action and its count read left-to-right.
+            if (group.fixable) {
+                const fixBtn = makeButton("Apply fix", "slls-bpa-btn-sm", ICON.wrench);
+                fixBtn.title = "Preview and stage the automatic fix for this rule";
+                fixBtn.addEventListener("click", () => {
+                    fixRule = group.ruleName;
+                    fixSelected.clear();
+                    model.set("fix_preview", {});
+                    model.save_changes();
+                    const target = currentTarget();
+                    runAction("preview_fix", {
+                        rule_name: group.ruleName,
+                        workspace_id: target.workspace_id,
+                        dataset_id: target.dataset_id,
+                    });
+                    refreshViolations();
+                });
+                head.appendChild(fixBtn);
+            }
+
+            const badge = document.createElement("span");
+            badge.className = "slls-bpa-badge";
+            badge.textContent = String(group.violations.length);
+            badge.title = plural(group.violations.length, "violation");
+            head.appendChild(badge);
 
             const infoBtn = document.createElement("button");
             infoBtn.type = "button";
@@ -1353,19 +2003,6 @@ function render({ model, el }) {
             infoBtn.addEventListener("blur", hidePopover);
             head.appendChild(infoBtn);
 
-            if (group.fixable && !isBulkDrilldown) {
-                const fixBtn = makeButton("Apply fix", "slls-bpa-btn-sm", ICON.wrench);
-                fixBtn.title = "Preview and apply the automatic fix for this rule";
-                fixBtn.addEventListener("click", () => {
-                    fixRule = group.ruleName;
-                    fixSelected.clear();
-                    model.set("fix_preview", {});
-                    model.save_changes();
-                    runAction("preview_fix", { rule_name: group.ruleName });
-                    renderResults();
-                });
-                head.appendChild(fixBtn);
-            }
             box.appendChild(head);
 
             if (fixRule === group.ruleName) box.appendChild(renderFixPanel(group));
@@ -1396,8 +2033,14 @@ function render({ model, el }) {
 
     function renderResults() {
         const visible = visibleViolations();
-        renderCategoryCards();
-        renderObjectTypeOptions();
+        // In the comparison report the category panels live above the model list,
+        // so the copy inside the inline detail is redundant.
+        if (bulkDetailKey) {
+            catGrid.style.display = "none";
+        } else {
+            catGrid.style.display = "";
+            renderCategoryCards(catGrid, activeViolations, onCategoryChange);
+        }
         renderGroups(visible);
     }
 
@@ -1414,24 +2057,48 @@ function render({ model, el }) {
     // ------------------------------------------------------------------
     // Bulk report rendering
     // ------------------------------------------------------------------
-    let isBulkDrilldown = false;
+    // `${workspaceId}\u0000${datasetId}` of the model expanded inline, or null.
+    let bulkDetailKey = null;
+
+    function closeBulkDetail() {
+        bulkDetailKey = null;
+        bulkDetail.classList.remove("show");
+        resultsScreen.appendChild(resultsContent);
+    }
+    bulkDetailClose.addEventListener("click", () => {
+        closeBulkDetail();
+        renderBulk();
+    });
 
     function renderBulk() {
         const results = model.get("bulk_results") || [];
-        const all = [];
-        for (const r of results) for (const v of (r.violations || [])) all.push(v);
-        renderCards(bulkCards, all);
+        const detail = results.find(
+            (r) => `${r.workspace_id}\u0000${r.dataset_id}` === bulkDetailKey) || null;
+
+        // The category panels summarize the selected model when one is expanded,
+        // and every analyzed model otherwise.
+        const summarized = [];
+        if (detail) {
+            for (const v of (detail.violations || [])) summarized.push(v);
+        } else {
+            for (const r of results) for (const v of (r.violations || [])) summarized.push(v);
+        }
+        renderCategoryCards(bulkCatGrid, summarized, renderBulk);
 
         clear(bulkList);
-        const maxTotal = Math.max(1, ...results.map((r) => (r.violations || []).length));
+        // Selecting a category narrows the per-model totals as well.
+        const forModel = (result) => (result.violations || []).filter(
+            (v) => !categoryFilter || v.category === categoryFilter);
+        const maxTotal = Math.max(1, ...results.map((r) => forModel(r).length));
         for (const result of results) {
-            const violations = result.violations || [];
+            const violations = forModel(result);
+            const key = `${result.workspace_id}\u0000${result.dataset_id}`;
             const counts = { Error: 0, Warning: 0, Info: 0 };
             for (const v of violations) if (counts[v.severity] !== undefined) counts[v.severity] += 1;
 
             const row = document.createElement("button");
             row.type = "button";
-            row.className = "slls-bpa-bulk-row";
+            row.className = "slls-bpa-bulk-row" + (bulkDetailKey === key ? " active" : "");
 
             const main = document.createElement("div");
             main.className = "slls-bpa-bulk-main";
@@ -1476,20 +2143,43 @@ function render({ model, el }) {
             row.appendChild(total);
 
             row.addEventListener("click", () => {
-                activeViolations = violations;
-                isBulkDrilldown = true;
-                resetFilters();
-                // Make the drilled-into model the active one so "re-run" targets it.
-                model.set("workspace_id", result.workspace_id);
-                model.set("workspace_name", result.workspace_name);
-                model.set("dataset_id", result.dataset_id);
-                model.set("dataset_name", result.dataset_name);
-                model.set("screen", "results");
-                model.save_changes();
-                renderScreen();
+                if (bulkDetailKey === key) {
+                    closeBulkDetail();
+                } else {
+                    bulkDetailKey = key;
+                    // The category picked in the report carries into the detail.
+                    const keepCategory = categoryFilter;
+                    resetFilters();
+                    categoryFilter = keepCategory;
+                    // Make the inspected model the active one so "re-run" targets it.
+                    model.set("workspace_id", result.workspace_id);
+                    model.set("workspace_name", result.workspace_name);
+                    model.set("dataset_id", result.dataset_id);
+                    model.set("dataset_name", result.dataset_name);
+                    model.save_changes();
+                }
+                renderBulk();
             });
             bulkList.appendChild(row);
         }
+
+        if (!detail) {
+            closeBulkDetail();
+            return;
+        }
+
+        bulkDetail.classList.add("show");
+        clear(bulkDetailTitle);
+        const detailName = document.createElement("span");
+        detailName.textContent = detail.dataset_name;
+        bulkDetailTitle.appendChild(detailName);
+        const detailWs = document.createElement("span");
+        detailWs.className = "slls-bpa-detail-ws";
+        detailWs.textContent = `\u2002\u2022\u2002${detail.workspace_name}`;
+        bulkDetailTitle.appendChild(detailWs);
+        bulkDetail.appendChild(resultsContent);
+        activeViolations = detail.violations || [];
+        renderResults();
     }
 
     // ------------------------------------------------------------------
@@ -1634,19 +2324,18 @@ function render({ model, el }) {
         selectScreen.classList.toggle("show", screen === "select");
         resultsScreen.classList.toggle("show", screen === "results");
         bulkScreen.classList.toggle("show", screen === "bulk");
-        backBtn.style.display = screen === "results" && isBulkDrilldown ? "" : "none";
         changeModelBtn.style.display = screen === "select" ? "none" : "";
         rerunBtn.style.display = screen === "select" ? "none" : "";
 
         if (screen === "select") {
             subtitle.textContent = "Scan semantic models against the best practice rules.";
-            isBulkDrilldown = false;
+            closeBulkDetail();
         } else if (screen === "bulk") {
             const n = (model.get("bulk_results") || []).length;
             subtitle.textContent = `${plural(n, "semantic model")} analyzed`;
-            isBulkDrilldown = false;
             renderBulk();
         } else {
+            closeBulkDetail();
             subtitle.innerHTML =
                 `<b>${escapeHtml(model.get("dataset_name") || "")}</b>` +
                 `<span class="slls-bpa-sep">\u2022</span>${escapeHtml(model.get("workspace_name") || "")}`;
@@ -1661,9 +2350,10 @@ function render({ model, el }) {
     }
 
     model.on("change:violations", () => {
-        activeViolations = model.get("violations") || [];
-        isBulkDrilldown = false;
-        if (model.get("screen") === "results") renderResults();
+        if (model.get("screen") !== "bulk") {
+            activeViolations = model.get("violations") || [];
+            if (model.get("screen") === "results") renderResults();
+        }
     });
     model.on("change:bulk_results", () => {
         if (model.get("screen") === "bulk") renderBulk();
@@ -1672,17 +2362,22 @@ function render({ model, el }) {
         const preview = model.get("fix_preview") || {};
         if (preview.ruleName && preview.ruleName === fixRule) {
             fixSelected.clear();
-            for (const item of (preview.items || [])) fixSelected.add(item.objectName);
+            for (const item of (preview.items || [])) {
+                if (!isStaged(preview.ruleName, item.objectName)) {
+                    fixSelected.add(item.objectName);
+                }
+            }
         }
-        if (model.get("screen") === "results") renderResults();
+        refreshViolations();
     });
     model.on("change:screen", renderScreen);
     model.on("change:render_token", () => {
         // A completed scan always refreshes the view, even when the resulting
         // violation list happens to be identical to the previous one.
-        if (model.get("screen") !== "bulk") {
+        if (model.get("screen") === "bulk") {
+            closeBulkDetail();
+        } else {
             activeViolations = model.get("violations") || [];
-            isBulkDrilldown = false;
         }
         renderScreen();
     });
@@ -1693,8 +2388,9 @@ function render({ model, el }) {
 
     renderWorkspaces();
     renderDatasets();
-    renderBulkChips();
     updateSelectState();
+    renderProgress();
+    renderStaged();
     activeViolations = model.get("violations") || [];
     renderScreen();
 }
@@ -1706,11 +2402,12 @@ _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_SHIELD_CHECK__", _UI_ICONS["shield_check"])
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
-    .replace("__SLLS_ICON_BACK__", _UI_ICONS["back"])
     .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
     .replace("__SLLS_ICON_REFRESH__", _UI_ICONS["refresh"])
     .replace("__SLLS_ICON_SEARCH__", _UI_ICONS["search"])
     .replace("__SLLS_ICON_WRENCH__", _UI_ICONS["wrench"])
+    .replace("__SLLS_ICON_SAVE__", _UI_ICONS["save"])
+    .replace("__SLLS_ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__SLLS_ICON_INFO__", _UI_ICONS["info"])
     .replace("__SLLS_ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__SLLS_ICON_ERROR_CIRCLE__", _UI_ICONS["error_circle"])
@@ -1721,11 +2418,11 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_CHECK__", _UI_ICONS["check"])
     .replace("__SLLS_ICON_PLAY__", _UI_ICONS["play"])
     .replace("__SLLS_ICON_SETTINGS__", _UI_ICONS["settings"])
+    .replace("__SLLS_ICON_SLIDERS__", _UI_ICONS["sliders"])
     .replace("__SLLS_ICON_ACTIVITY__", _UI_ICONS["activity"])
     .replace("__SLLS_ICON_CODE__", _UI_ICONS["code"])
     .replace("__SLLS_ICON_PENCIL__", _UI_ICONS["pencil"])
     .replace("__SLLS_ICON_TEXT_TYPE__", _UI_ICONS["text_type"])
-    .replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])
     .replace("__SLLS_ICON_EXPAND_ROWS__", _UI_ICONS["expand_rows"])
     .replace("__SLLS_ICON_COLLAPSE_ROWS__", _UI_ICONS["collapse_rows"])
     .replace("__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
@@ -1874,12 +2571,20 @@ def bpa(
 
         return model_bpa_rules(dependencies=dependencies)
 
-    # Rules currently in effect for the open model; reused by the fix actions.
-    state = {"rules": None}
+    # Per-model rules, cached so that scanning, previewing and applying a fix for
+    # the same model do not rebuild the (expensive) calc-dependency graph.
+    rules_cache = {}
+
+    def _rules_for(workspace_id, dataset_id):
+        key = (str(workspace_id or ""), str(dataset_id or ""))
+        rules = rules_cache.get(key)
+        if rules is None:
+            rules = _build_rules(workspace_id, dataset_id)
+            rules_cache[key] = rules
+        return rules
 
     def _scan(workspace_id, dataset_id, disabled_rules):
-        rules = _build_rules(workspace_id, dataset_id)
-        state["rules"] = rules
+        rules = _rules_for(workspace_id, dataset_id)
         with connect_semantic_model(
             dataset=dataset_id, workspace=workspace_id, readonly=True
         ) as tom:
@@ -1892,6 +2597,7 @@ def bpa(
         screen = traitlets.Unicode("select").tag(sync=True)
         workspaces = traitlets.List().tag(sync=True)
         datasets = traitlets.List().tag(sync=True)
+        workspace_datasets = traitlets.Dict().tag(sync=True)
         workspace_id = traitlets.Unicode("").tag(sync=True)
         workspace_name = traitlets.Unicode("").tag(sync=True)
         dataset_id = traitlets.Unicode("").tag(sync=True)
@@ -1901,6 +2607,7 @@ def bpa(
         violations = traitlets.List().tag(sync=True)
         bulk_results = traitlets.List().tag(sync=True)
         fix_preview = traitlets.Dict().tag(sync=True)
+        progress = traitlets.Dict().tag(sync=True)
         render_token = traitlets.Int(0).tag(sync=True)
         max_bulk_models = traitlets.Int(_MAX_BULK_MODELS).tag(sync=True)
         status = traitlets.Dict().tag(sync=True)
@@ -1924,6 +2631,15 @@ def bpa(
 
     def _handle_list_datasets(payload):
         widget.datasets = _list_datasets_payload(payload.get("workspace_id"))
+
+    def _handle_load_workspace_datasets(payload):
+        workspace_id = str(payload.get("workspace_id") or "")
+        if not workspace_id:
+            return
+        # A new dict is assigned so the traitlet change event fires.
+        loaded = dict(widget.workspace_datasets)
+        loaded[workspace_id] = _list_datasets_payload(workspace_id)
+        widget.workspace_datasets = loaded
 
     def _handle_run_scan(payload):
         workspace_id = payload.get("workspace_id") or widget.workspace_id
@@ -1959,8 +2675,9 @@ def bpa(
 
         targets = targets[:_MAX_BULK_MODELS]
         disabled_rules = payload.get("disabled_rules")
+        total = len(targets)
         results = []
-        for target in targets:
+        for index, target in enumerate(targets):
             entry = {
                 "workspace_id": str(target.get("workspace_id") or ""),
                 "workspace_name": str(target.get("workspace_name") or ""),
@@ -1968,6 +2685,13 @@ def bpa(
                 "dataset_name": str(target.get("dataset_name") or ""),
                 "violations": [],
                 "error": "",
+            }
+            # Reported before the scan so the progress bar names the model
+            # currently being analyzed.
+            widget.progress = {
+                "done": index,
+                "total": total,
+                "current": entry["dataset_name"],
             }
             try:
                 entry["violations"] = _scan(
@@ -1977,58 +2701,116 @@ def bpa(
                 entry["error"] = f"Could not analyze this model: {e}"
             results.append(entry)
 
+        widget.progress = {"done": total, "total": total, "current": ""}
         widget.bulk_results = results
         widget.screen = "bulk"
         widget.render_token += 1
-        total = sum(len(r["violations"]) for r in results)
+        widget.progress = {}
+        total_violations = sum(len(r["violations"]) for r in results)
         widget.status = {
-            "message": f"Analyzed {len(results)} semantic model(s); {total} violation(s) found.",
+            "message": (
+                f"Analyzed {len(results)} semantic model(s); "
+                f"{total_violations} violation(s) found."
+            ),
             "kind": "info",
         }
 
     def _handle_preview_fix(payload):
         rule_name = payload.get("rule_name")
-        rules = state["rules"]
-        if rules is None or not rule_name:
+        if not rule_name:
             return
+        workspace_id = str(payload.get("workspace_id") or widget.workspace_id)
+        dataset_id = str(payload.get("dataset_id") or widget.dataset_id)
+        rules = _rules_for(workspace_id, dataset_id)
         with connect_semantic_model(
-            dataset=widget.dataset_id, workspace=widget.workspace_id, readonly=True
+            dataset=dataset_id, workspace=workspace_id, readonly=True
         ) as tom:
             items = preview_fixes(tom, rules, rule_name)
-        widget.fix_preview = {"ruleName": rule_name, "items": items}
+        widget.fix_preview = {
+            "ruleName": rule_name,
+            "datasetId": dataset_id,
+            "items": items,
+        }
 
-    def _handle_apply_fix(payload):
-        rule_name = payload.get("rule_name")
-        object_names = payload.get("object_names") or []
-        rules = state["rules"]
-        if rules is None or not rule_name:
+    def _handle_apply_staged_fixes(payload):
+        """Applies every staged fix, grouped so each model is opened only once."""
+
+        staged = payload.get("fixes") or []
+        disabled_rules = payload.get("disabled_rules")
+        if not staged:
             return
 
-        with connect_semantic_model(
-            dataset=widget.dataset_id, workspace=widget.workspace_id, readonly=False
-        ) as tom:
-            applied = apply_fixes(tom, rules, rule_name, object_names)
+        grouped = {}
+        for fix in staged:
+            key = (
+                str(fix.get("workspace_id") or ""),
+                str(fix.get("dataset_id") or ""),
+            )
+            grouped.setdefault(key, {}).setdefault(
+                str(fix.get("rule_name") or ""), []
+            ).append(str(fix.get("object_name") or ""))
+
+        applied = 0
+        failures = []
+        for (workspace_id, dataset_id), by_rule in grouped.items():
+            try:
+                rules = _rules_for(workspace_id, dataset_id)
+                with connect_semantic_model(
+                    dataset=dataset_id, workspace=workspace_id, readonly=False
+                ) as tom:
+                    for rule_name, object_names in by_rule.items():
+                        applied += apply_fixes(tom, rules, rule_name, object_names)
+            except Exception as e:
+                failures.append(str(e))
+            finally:
+                # The model changed, so its dependency graph must be rebuilt.
+                rules_cache.pop((workspace_id, dataset_id), None)
+
+        # Re-scan whatever is on screen so the violations reflect the saved model.
+        if widget.screen == "bulk":
+            results = [dict(r) for r in widget.bulk_results]
+            for result in results:
+                key = (result.get("workspace_id"), result.get("dataset_id"))
+                if key not in grouped:
+                    continue
+                try:
+                    result["violations"] = _scan(key[0], key[1], disabled_rules)
+                    result["error"] = ""
+                except Exception as e:
+                    result["error"] = f"Could not analyze this model: {e}"
+            widget.bulk_results = results
+        elif widget.dataset_id:
+            widget.violations = _scan(
+                widget.workspace_id, widget.dataset_id, disabled_rules
+            )
 
         widget.fix_preview = {}
-        widget.violations = _scan(
-            widget.workspace_id, widget.dataset_id, payload.get("disabled_rules")
-        )
         widget.render_token += 1
-        widget.status = {
-            "message": (
-                f"Applied the fix for '{rule_name}' to {applied} object(s)."
-                if applied
-                else f"No objects were changed for '{rule_name}'."
-            ),
-            "kind": "success" if applied else "info",
-        }
+        if failures:
+            widget.status = {
+                "message": (
+                    f"Applied {applied} fix(es); "
+                    f"{len(failures)} model(s) failed: {'; '.join(failures)}"
+                ),
+                "kind": "error",
+            }
+        else:
+            widget.status = {
+                "message": (
+                    f"Saved {applied} fix(es) across {len(grouped)} semantic model(s)."
+                    if applied
+                    else "No objects were changed."
+                ),
+                "kind": "success" if applied else "info",
+            }
 
     handlers = {
         "list_datasets": _handle_list_datasets,
+        "load_workspace_datasets": _handle_load_workspace_datasets,
         "run_scan": _handle_run_scan,
         "run_bulk": _handle_run_bulk,
         "preview_fix": _handle_preview_fix,
-        "apply_fix": _handle_apply_fix,
+        "apply_staged_fixes": _handle_apply_staged_fixes,
     }
 
     def _on_run(_change):

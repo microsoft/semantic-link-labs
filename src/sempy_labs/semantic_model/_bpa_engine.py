@@ -27,6 +27,16 @@ FIXABLE_RULES = {
 # Presentation order for severities (most severe first).
 SEVERITY_ORDER = {"Error": 0, "Warning": 1, "Info": 2}
 
+# Presentation order for rule categories.
+CATEGORY_ORDER = {
+    "Performance": 0,
+    "Error Prevention": 1,
+    "DAX Expressions": 2,
+    "Maintenance": 3,
+    "Formatting": 4,
+    "Naming Conventions": 5,
+}
+
 
 def _rule_id(rule_name: str) -> str:
     """
@@ -129,7 +139,13 @@ def rules_payload(rules: pd.DataFrame) -> List[dict]:
             }
         )
 
-    payload.sort(key=lambda x: (x["category"].lower(), x["name"].lower()))
+    payload.sort(
+        key=lambda x: (
+            CATEGORY_ORDER.get(x["category"], 99),
+            SEVERITY_ORDER.get(x["severity"], 9),
+            x["name"].lower(),
+        )
+    )
     return payload
 
 
@@ -203,8 +219,8 @@ def scan_model(
 
     violations.sort(
         key=lambda v: (
-            v["category"].lower(),
             SEVERITY_ORDER.get(v["severity"], 9),
+            CATEGORY_ORDER.get(v["category"], 99),
             v["ruleName"].lower(),
             v["objectType"].lower(),
             v["objectName"].lower(),

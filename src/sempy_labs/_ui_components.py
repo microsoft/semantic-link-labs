@@ -401,6 +401,13 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M3.2 8.4l3.2 3.2 6.4-7"/></svg>'
     ),
+    "sliders": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="4.5" cy="5" r="1.9"/><path d="M6.8 5h6.7"/>'
+        '<circle cx="11.5" cy="11" r="1.9"/><path d="M9.2 11H2.5"/></svg>'
+    ),
     "info": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
