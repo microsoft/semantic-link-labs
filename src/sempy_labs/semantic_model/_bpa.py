@@ -403,6 +403,7 @@ _WIDGET_CSS = (
 .slls-bpa-modal-sub { font-size: 12.5px; color: var(--ui-text-secondary); margin-bottom: 14px; }
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
+.slls-bpa-rule-count { font-size: 11.5px; color: var(--ui-text-tertiary); margin-bottom: 7px; }
 .slls-bpa-rule { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--ui-border); }
 .slls-bpa-rule:last-child { border-bottom: none; }
 .slls-bpa-rule-body { min-width: 0; flex: 1; }
@@ -2522,11 +2523,12 @@ function render({ model, el }) {
     // Set while the rules panel is open, so the list can be re-rendered when the
     // catalog finishes loading or a ruleset is imported.
     let activeRuleListRender = null;
-    model.on("change:rules", () => {
+    function refreshRuleList() {
         if (activeRuleListRender && overlay.classList.contains("show")) {
             activeRuleListRender();
         }
-    });
+    }
+    model.on("change:rules", refreshRuleList);
 
     // Downloads the effective ruleset in the Best Practice Rules JSON format.
     const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
@@ -2614,7 +2616,8 @@ function render({ model, el }) {
                     model.save_changes();
                     return;
                 }
-                overlay.classList.remove("show");
+                // The panel stays open: the list re-renders once the imported
+                // ruleset arrives.
                 runAction("import_rules", { rules: parsed });
             }).catch(() => {
                 model.set("status", { message: "The file could not be read.", kind: "error" });
@@ -2638,9 +2641,29 @@ function render({ model, el }) {
 
         modal.appendChild(bar);
 
+        const countLine = document.createElement("div");
+        countLine.className = "slls-bpa-rule-count";
+        modal.appendChild(countLine);
+
         const list = document.createElement("div");
         list.className = "slls-bpa-rulelist";
         modal.appendChild(list);
+
+        // The number of rules currently passing the search filter.
+        let shownCount = 0;
+
+        function renderRuleCount() {
+            const rules = model.get("rules") || [];
+            if (rules.length === 0) {
+                countLine.textContent = "";
+                return;
+            }
+            const enabled = rules.filter((r) => !disabledRules.has(r.id)).length;
+            const scope = shownCount === rules.length
+                ? plural(rules.length, "rule")
+                : `${shownCount} of ${plural(rules.length, "rule")} shown`;
+            countLine.textContent = `${scope} \u2022 ${enabled} enabled`;
+        }
 
         function renderRuleList() {
             clear(list);
@@ -2648,6 +2671,8 @@ function render({ model, el }) {
             const rules = model.get("rules") || [];
             if (rules.length === 0) {
                 // The catalog is fetched the first time the editor is opened.
+                shownCount = 0;
+                renderRuleCount();
                 const empty = document.createElement("div");
                 empty.className = "slls-bpa-empty";
                 empty.textContent = "Loading rules\u2026";
@@ -2658,6 +2683,8 @@ function render({ model, el }) {
                 !term
                 || r.name.toLowerCase().includes(term)
                 || r.category.toLowerCase().includes(term));
+            shownCount = shown.length;
+            renderRuleCount();
             if (shown.length === 0) {
                 const empty = document.createElement("div");
                 empty.className = "slls-bpa-empty";
@@ -2679,6 +2706,7 @@ function render({ model, el }) {
                 box.addEventListener("change", () => {
                     if (box.checked) disabledRules.delete(rule.id);
                     else disabledRules.add(rule.id);
+                    renderRuleCount();
                 });
                 toggleLabel.appendChild(box);
                 toggleLabel.appendChild(document.createElement("i"));
@@ -2855,8 +2883,11 @@ function render({ model, el }) {
         renderScreen();
     });
     model.on("change:disabled_rules", () => {
+        // An imported ruleset brings its own enabled/disabled state, and the scans
+        // are driven from the local set, so it has to follow.
         disabledRules.clear();
         for (const id of (model.get("disabled_rules") || [])) disabledRules.add(id);
+        refreshRuleList();
     });
 
     renderWorkspaces();
