@@ -113,6 +113,7 @@ _WIDGET_CSS = (
 .slls-bpa-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .slls-bpa-titlewrap { display: flex; flex-direction: column; min-width: 0; }
 .slls-bpa-head-spacer { flex: 1 1 auto; }
+.slls-bpa-pending-btn { border-color: var(--slls-warning); color: var(--slls-warning); }
 .slls-bpa-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 10px; }
 .slls-bpa-title .slls-bpa-title-icon { color: var(--ui-accent); display: inline-flex; flex-shrink: 0; }
 .slls-bpa-title .slls-bpa-title-icon svg { width: 27px; height: 27px; stroke-width: 1.5; }
@@ -280,16 +281,22 @@ _WIDGET_CSS = (
 .slls-bpa-fix-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ---------------- Staged fixes + save bar ---------------- */
-.slls-bpa-savebar { display: none; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 14px;
-    border-radius: var(--slls-radius-sm); background: var(--slls-warning-soft); border: 1px solid var(--slls-warning); color: var(--ui-text); }
+/* The dock is pinned to the bottom of the scrollport so that the save button
+   stays reachable no matter how long the violation list is. */
+.slls-bpa-savedock { display: none; position: sticky; bottom: 0; z-index: 6; margin-top: 16px;
+    padding-top: 10px; background: var(--ui-bg-solid); }
+.slls-bpa-savedock.show { display: block; }
+.slls-bpa-savebar { display: none; align-items: center; gap: 10px; padding: 10px 14px;
+    border-radius: var(--slls-radius-sm); background: var(--slls-warning-soft); border: 1px solid var(--slls-warning); color: var(--ui-text);
+    box-shadow: var(--ui-shadow-md); }
 .slls-bpa-savebar.show { display: flex; }
 .slls-bpa-savebar-label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; font-size: 13px; }
 .slls-bpa-pending-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--slls-warning); flex-shrink: 0;
     box-shadow: 0 0 0 3px var(--slls-warning-soft); }
 .slls-bpa-savebar-review { appearance: none; border: none; background: transparent; color: var(--ui-text); font-family: inherit;
     font-size: 12.5px; font-weight: 500; text-decoration: underline; cursor: pointer; padding: 0; }
-.slls-bpa-staged { display: none; margin-top: 8px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
-    background: var(--ui-bg-solid); max-height: 280px; overflow-y: auto; }
+.slls-bpa-staged { display: none; margin-bottom: 8px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
+    background: var(--ui-bg-solid); max-height: 280px; overflow-y: auto; box-shadow: var(--ui-shadow-md); }
 .slls-bpa-staged.show { display: block; }
 .slls-bpa-staged-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); font-size: 12.5px; }
 .slls-bpa-staged-row:last-child { border-bottom: none; }
@@ -954,6 +961,17 @@ function render({ model, el }) {
     headSpacer.className = "slls-bpa-head-spacer";
     header.appendChild(headSpacer);
 
+    // Shown only while fixes are staged, so the pending work is visible from
+    // any screen even when the save bar has been scrolled past.
+    const pendingBtn = makeButton("0 pending", "slls-bpa-btn-sm slls-bpa-pending-btn", ICON.wrench);
+    pendingBtn.style.display = "none";
+    pendingBtn.addEventListener("click", () => {
+        stagedExpanded = true;
+        renderStaged();
+        saveDock.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
+    header.appendChild(pendingBtn);
+
     const rulesBtn = makeButton("", "slls-bpa-btn-icon", ICON.sliders);
     rulesBtn.title = "Edit rules";
     rulesBtn.setAttribute("aria-label", "Edit rules");
@@ -1603,6 +1621,15 @@ function render({ model, el }) {
     // ------------------------------------------------------------------
     // Staged fixes + save bar
     // ------------------------------------------------------------------
+    // The staged list sits above the bar because the whole dock is pinned to
+    // the bottom of the scrollport.
+    const saveDock = document.createElement("div");
+    saveDock.className = "slls-bpa-savedock";
+
+    const stagedList = document.createElement("div");
+    stagedList.className = "slls-bpa-staged";
+    saveDock.appendChild(stagedList);
+
     const saveBar = document.createElement("div");
     saveBar.className = "slls-bpa-savebar";
     const saveBarLabel = document.createElement("div");
@@ -1623,11 +1650,8 @@ function render({ model, el }) {
     const saveBtn = makeButton("Save", "slls-bpa-btn-sm slls-bpa-btn-primary", ICON.save);
     saveBtn.title = "Apply every staged fix to the semantic model(s)";
     saveBar.appendChild(saveBtn);
-    root.appendChild(saveBar);
-
-    const stagedList = document.createElement("div");
-    stagedList.className = "slls-bpa-staged";
-    root.appendChild(stagedList);
+    saveDock.appendChild(saveBar);
+    root.appendChild(saveDock);
 
     // ------------------------------------------------------------------
     // Attribution
@@ -1688,7 +1712,9 @@ function render({ model, el }) {
 
     function renderStaged() {
         const count = stagedFixes.size;
+        saveDock.classList.toggle("show", count > 0);
         saveBar.classList.toggle("show", count > 0);
+        pendingBtn.style.display = count > 0 ? "" : "none";
         if (count === 0) {
             stagedExpanded = false;
             stagedList.classList.remove("show");
@@ -1700,6 +1726,8 @@ function render({ model, el }) {
             : `${plural(count, "fix")} staged`;
         saveBarReview.textContent = stagedExpanded ? "Hide" : "Review";
         saveBtn.lastChild.textContent = `Save ${count}`;
+        pendingBtn.lastChild.textContent = `${count} pending`;
+        pendingBtn.title = `${plural(count, "fix")} staged but not yet saved`;
 
         stagedList.classList.toggle("show", stagedExpanded);
         if (!stagedExpanded) return;
