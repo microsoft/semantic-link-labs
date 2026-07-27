@@ -395,6 +395,12 @@ ICONS: dict[str, str] = {
         '<circle cx="8" cy="8" r="6"/>'
         '<path d="M6 6l4 4M10 6l-4 4"/></svg>'
     ),
+    "check": (
+        '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3.2 8.4l3.2 3.2 6.4-7"/></svg>'
+    ),
     "info": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '

@@ -170,11 +170,33 @@ _WIDGET_CSS = (
 .slls-bpa-sev-error { color: var(--slls-error); }
 .slls-bpa-sev-warning { color: var(--slls-warning); }
 .slls-bpa-sev-info { color: var(--slls-info); }
-.slls-bpa-chip { appearance: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ui-border-strong); background: var(--ui-surface);
-    color: var(--ui-text-secondary); font-family: inherit; font-size: 12.5px; font-weight: 500; padding: 5px 12px; border-radius: 999px; cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease, color 120ms ease; }
-.slls-bpa-chip:hover { background: var(--ui-surface-2); }
-.slls-bpa-chip.active { border-color: var(--ui-accent); color: var(--ui-text); background: var(--ui-accent-soft); }
+
+/* ---------------- Multi-select dropdown filter ---------------- */
+.slls-bpa-ms { position: relative; display: inline-flex; }
+.slls-bpa-ms-btn { appearance: none; background: var(--ui-surface); border: 1px solid var(--ui-border-strong); border-radius: 999px;
+    padding: 7px 12px 7px 15px; font-size: 13.5px; font-family: inherit; color: var(--ui-text); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; transition: border-color 120ms ease, box-shadow 120ms ease; }
+.slls-bpa-ms-btn:hover { border-color: var(--ui-text-tertiary); }
+.slls-bpa-ms-btn:focus-visible { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 3px var(--ui-accent-soft); }
+.slls-bpa-ms-btn.filtered { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.slls-bpa-ms-label { white-space: nowrap; }
+.slls-bpa-ms-caret { display: inline-flex; color: var(--ui-text-tertiary); transform: rotate(90deg); transition: transform 140ms ease; }
+.slls-bpa-ms.open .slls-bpa-ms-caret { transform: rotate(-90deg); }
+.slls-bpa-ms-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 210px;
+    max-height: 300px; overflow-y: auto; padding: 5px; background: var(--ui-bg-solid); border: 1px solid var(--ui-border);
+    border-radius: 10px; box-shadow: var(--ui-shadow-lg); }
+.slls-bpa-ms.open .slls-bpa-ms-panel { display: block; }
+.slls-bpa-ms-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 9px; border: none; background: transparent;
+    color: var(--ui-text); font-family: inherit; font-size: 13px; text-align: left; border-radius: 6px; cursor: pointer; }
+.slls-bpa-ms-opt:hover { background: var(--ui-surface-2); }
+.slls-bpa-ms-check { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--ui-border-strong); flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; color: transparent; transition: background 120ms ease, border-color 120ms ease; }
+.slls-bpa-ms-opt.checked .slls-bpa-ms-check { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
+.slls-bpa-ms-opt-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+.slls-bpa-ms-clear { width: 100%; padding: 6px 9px; margin-bottom: 3px; border: none; background: transparent; color: var(--ui-accent);
+    font-family: inherit; font-size: 12.5px; font-weight: 500; text-align: left; border-radius: 6px; cursor: pointer; }
+.slls-bpa-ms-clear:hover { background: var(--ui-surface-2); }
+.slls-bpa-ms-empty { padding: 8px 10px; font-size: 12.5px; color: var(--ui-text-tertiary); }
 
 /* ---------------- Rule groups ---------------- */
 .slls-bpa-groups { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
@@ -320,6 +342,7 @@ function render({ model, el }) {
         sun: `__SLLS_ICON_SUN__`,
         moon: `__SLLS_ICON_MOON__`,
         back: `__SLLS_ICON_BACK__`,
+        swap: `__SLLS_ICON_SWAP__`,
         refresh: `__SLLS_ICON_REFRESH__`,
         search: `__SLLS_ICON_SEARCH__`,
         wrench: `__SLLS_ICON_WRENCH__`,
@@ -330,6 +353,7 @@ function render({ model, el }) {
         external: `__SLLS_ICON_EXTERNAL_LINK__`,
         close: `__SLLS_ICON_CLOSE__`,
         caret: `__SLLS_ICON_CARET_RIGHT__`,
+        check: `__SLLS_ICON_CHECK__`,
         play: `__SLLS_ICON_PLAY__`,
         settings: `__SLLS_ICON_SETTINGS__`,
         activity: `__SLLS_ICON_ACTIVITY__`,
@@ -392,6 +416,142 @@ function render({ model, el }) {
     }
     function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+    // Multi-select dropdown filter. `options` are `{ value, label, icon, iconClass }`
+    // descriptors; an empty selection means "all".
+    const openDropdowns = new Set();
+    function createMultiSelect(allLabel, ariaLabel, onChange) {
+        const wrap = document.createElement("div");
+        wrap.className = "slls-bpa-ms";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "slls-bpa-ms-btn";
+        btn.setAttribute("aria-haspopup", "listbox");
+        btn.setAttribute("aria-label", ariaLabel);
+        const label = document.createElement("span");
+        label.className = "slls-bpa-ms-label";
+        btn.appendChild(label);
+        btn.appendChild(iconSpan(ICON.caret, "slls-bpa-ms-caret"));
+        wrap.appendChild(btn);
+
+        const panel = document.createElement("div");
+        panel.className = "slls-bpa-ms-panel";
+        panel.setAttribute("role", "listbox");
+        wrap.appendChild(panel);
+
+        const selected = new Set();
+        let options = [];
+        let signature = null;
+
+        function close() {
+            wrap.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        }
+        function open() {
+            for (const other of openDropdowns) if (other !== close) other();
+            wrap.classList.add("open");
+            btn.setAttribute("aria-expanded", "true");
+        }
+        openDropdowns.add(close);
+
+        function renderLabel() {
+            if (selected.size === 0) label.textContent = allLabel;
+            else if (selected.size === 1) label.textContent = [...selected][0];
+            else label.textContent = `${selected.size} selected`;
+            btn.classList.toggle("filtered", selected.size > 0);
+        }
+
+        function renderPanel() {
+            clear(panel);
+            if (selected.size > 0) {
+                const clearBtn = document.createElement("button");
+                clearBtn.type = "button";
+                clearBtn.className = "slls-bpa-ms-clear";
+                clearBtn.textContent = "Clear selection";
+                clearBtn.addEventListener("click", () => {
+                    selected.clear();
+                    renderLabel();
+                    renderPanel();
+                    onChange();
+                });
+                panel.appendChild(clearBtn);
+            }
+            if (options.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "slls-bpa-ms-empty";
+                empty.textContent = "No options";
+                panel.appendChild(empty);
+                return;
+            }
+            for (const option of options) {
+                const row = document.createElement("button");
+                row.type = "button";
+                row.className = "slls-bpa-ms-opt" + (selected.has(option.value) ? " checked" : "");
+                row.setAttribute("role", "option");
+                row.setAttribute("aria-selected", String(selected.has(option.value)));
+                const box = document.createElement("span");
+                box.className = "slls-bpa-ms-check";
+                box.innerHTML = ICON.check;
+                row.appendChild(box);
+                const text = document.createElement("span");
+                text.className = "slls-bpa-ms-opt-label";
+                if (option.icon) text.appendChild(iconSpan(option.icon, option.iconClass));
+                const name = document.createElement("span");
+                name.textContent = option.label;
+                text.appendChild(name);
+                row.appendChild(text);
+                if (option.title) row.title = option.title;
+                row.addEventListener("click", () => {
+                    if (selected.has(option.value)) selected.delete(option.value);
+                    else selected.add(option.value);
+                    renderLabel();
+                    renderPanel();
+                    onChange();
+                });
+                panel.appendChild(row);
+            }
+        }
+
+        btn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (wrap.classList.contains("open")) close();
+            else open();
+        });
+        panel.addEventListener("click", (ev) => ev.stopPropagation());
+
+        renderLabel();
+        renderPanel();
+
+        return {
+            el: wrap,
+            selected,
+            close,
+            setOptions(next) {
+                const nextSignature = next.map((o) => o.value).join("\u0000");
+                if (nextSignature === signature) return;
+                signature = nextSignature;
+                options = next;
+                // Drop selections whose option no longer exists.
+                const valid = new Set(next.map((o) => o.value));
+                let changed = false;
+                for (const value of [...selected]) {
+                    if (!valid.has(value)) { selected.delete(value); changed = true; }
+                }
+                if (changed) renderLabel();
+                renderPanel();
+            },
+            reset() {
+                if (selected.size === 0) return;
+                selected.clear();
+                renderLabel();
+                renderPanel();
+            },
+        };
+    }
+    document.addEventListener("click", () => {
+        for (const close of openDropdowns) close();
+    });
+
     function runAction(action, extra) {
         model.set("pending_action", Object.assign({ action }, extra || {}));
         model.set("run", (model.get("run") || 0) + 1);
@@ -422,17 +582,28 @@ function render({ model, el }) {
     titleWrap.appendChild(subtitle);
 
     const backBtn = makeButton("", "slls-bpa-btn-icon", ICON.back);
-    backBtn.title = "Back to model selection";
-    backBtn.setAttribute("aria-label", "Back to model selection");
+    backBtn.title = "Back to the comparison report";
+    backBtn.setAttribute("aria-label", "Back to the comparison report");
     backBtn.style.display = "none";
     backBtn.addEventListener("click", () => {
-        const target = isBulkDrilldown ? "bulk" : "select";
         isBulkDrilldown = false;
-        model.set("screen", target);
+        model.set("screen", "bulk");
         model.save_changes();
         renderScreen();
     });
     header.appendChild(backBtn);
+
+    const changeModelBtn = makeButton("", "slls-bpa-btn-icon", ICON.swap);
+    changeModelBtn.title = "Change semantic model / workspace";
+    changeModelBtn.setAttribute("aria-label", "Change semantic model / workspace");
+    changeModelBtn.style.display = "none";
+    changeModelBtn.addEventListener("click", () => {
+        isBulkDrilldown = false;
+        model.set("screen", "select");
+        model.save_changes();
+        renderScreen();
+    });
+    header.appendChild(changeModelBtn);
 
     const rulesBtn = makeButton("", "slls-bpa-btn-icon", ICON.settings);
     rulesBtn.title = "Rules";
@@ -735,12 +906,9 @@ function render({ model, el }) {
     resultsScreen.className = "slls-bpa-screen";
     root.appendChild(resultsScreen);
 
-    const cards = document.createElement("div");
-    cards.className = "slls-bpa-cards";
-    resultsScreen.appendChild(cards);
-
     const catGrid = document.createElement("div");
     catGrid.className = "slls-bpa-catgrid";
+    catGrid.style.marginTop = "0";
     resultsScreen.appendChild(catGrid);
 
     const filterBar = document.createElement("div");
@@ -759,30 +927,20 @@ function render({ model, el }) {
     searchWrap.appendChild(searchInput);
     filterBar.appendChild(searchWrap);
 
-    const severityChips = {};
-    for (const sev of SEVERITIES) {
-        const chip = document.createElement("button");
-        chip.type = "button";
-        chip.className = "slls-bpa-chip";
-        chip.appendChild(iconSpan(severityIcon(sev), severityClass(sev)));
-        const label = document.createElement("span");
-        label.textContent = sev;
-        chip.appendChild(label);
-        chip.title = severityTitle(sev);
-        chip.addEventListener("click", () => {
-            if (severityFilter.has(sev)) severityFilter.delete(sev);
-            else severityFilter.add(sev);
-            renderResults();
-        });
-        severityChips[sev] = chip;
-        filterBar.appendChild(chip);
-    }
+    const severityFilterSelect = createMultiSelect(
+        "All severities", "Severity", () => renderResults());
+    severityFilterSelect.setOptions(SEVERITIES.map((sev) => ({
+        value: sev,
+        label: sev,
+        icon: severityIcon(sev),
+        iconClass: severityClass(sev),
+        title: severityTitle(sev),
+    })));
+    filterBar.appendChild(severityFilterSelect.el);
 
-    const objectTypeSelect = document.createElement("select");
-    objectTypeSelect.className = "slls-bpa-select";
-    objectTypeSelect.setAttribute("aria-label", "Object type");
-    objectTypeSelect.addEventListener("change", () => renderResults());
-    filterBar.appendChild(objectTypeSelect);
+    const objectTypeFilterSelect = createMultiSelect(
+        "All object types", "Object type", () => renderResults());
+    filterBar.appendChild(objectTypeFilterSelect.el);
 
     const expandBtn = makeButton("", "slls-bpa-btn-icon", ICON.expand);
     expandBtn.title = "Expand all rules";
@@ -835,7 +993,6 @@ function render({ model, el }) {
     const MAX_BULK = model.get("max_bulk_models") || 10;
     const disabledRules = new Set(model.get("disabled_rules") || []);
     const expandedRules = new Set();
-    const severityFilter = new Set();
     let categoryFilter = null;
     let fixRule = null;
     const fixSelected = new Set();
@@ -844,10 +1001,10 @@ function render({ model, el }) {
 
     function resetFilters() {
         expandedRules.clear();
-        severityFilter.clear();
+        severityFilterSelect.reset();
+        objectTypeFilterSelect.reset();
         categoryFilter = null;
         searchInput.value = "";
-        objectTypeSelect.value = "";
         fixRule = null;
         fixSelected.clear();
     }
@@ -928,11 +1085,12 @@ function render({ model, el }) {
     // ------------------------------------------------------------------
     function visibleViolations() {
         const term = searchInput.value.trim().toLowerCase();
-        const objectType = objectTypeSelect.value;
+        const severities = severityFilterSelect.selected;
+        const objectTypes = objectTypeFilterSelect.selected;
         return activeViolations.filter((v) => {
             if (categoryFilter && v.category !== categoryFilter) return false;
-            if (severityFilter.size > 0 && !severityFilter.has(v.severity)) return false;
-            if (objectType && v.objectType !== objectType) return false;
+            if (severities.size > 0 && !severities.has(v.severity)) return false;
+            if (objectTypes.size > 0 && !objectTypes.has(v.objectType)) return false;
             if (term
                 && !String(v.ruleName).toLowerCase().includes(term)
                 && !String(v.objectName).toLowerCase().includes(term)) return false;
@@ -1014,20 +1172,9 @@ function render({ model, el }) {
     }
 
     function renderObjectTypeOptions() {
-        const previous = objectTypeSelect.value;
         const types = [...new Set(activeViolations.map((v) => v.objectType))].sort();
-        clear(objectTypeSelect);
-        const all = document.createElement("option");
-        all.value = "";
-        all.textContent = "All object types";
-        objectTypeSelect.appendChild(all);
-        for (const t of types) {
-            const o = document.createElement("option");
-            o.value = t;
-            o.textContent = t;
-            if (t === previous) o.selected = true;
-            objectTypeSelect.appendChild(o);
-        }
+        objectTypeFilterSelect.setOptions(
+            types.map((t) => ({ value: t, label: t })));
     }
 
     function buildGroups(violations) {
@@ -1249,12 +1396,8 @@ function render({ model, el }) {
 
     function renderResults() {
         const visible = visibleViolations();
-        renderCards(cards, visible);
         renderCategoryCards();
         renderObjectTypeOptions();
-        for (const sev of SEVERITIES) {
-            severityChips[sev].classList.toggle("active", severityFilter.has(sev));
-        }
         renderGroups(visible);
     }
 
@@ -1491,7 +1634,8 @@ function render({ model, el }) {
         selectScreen.classList.toggle("show", screen === "select");
         resultsScreen.classList.toggle("show", screen === "results");
         bulkScreen.classList.toggle("show", screen === "bulk");
-        backBtn.style.display = screen === "select" ? "none" : "";
+        backBtn.style.display = screen === "results" && isBulkDrilldown ? "" : "none";
+        changeModelBtn.style.display = screen === "select" ? "none" : "";
         rerunBtn.style.display = screen === "select" ? "none" : "";
 
         if (screen === "select") {
@@ -1563,6 +1707,7 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
     .replace("__SLLS_ICON_BACK__", _UI_ICONS["back"])
+    .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
     .replace("__SLLS_ICON_REFRESH__", _UI_ICONS["refresh"])
     .replace("__SLLS_ICON_SEARCH__", _UI_ICONS["search"])
     .replace("__SLLS_ICON_WRENCH__", _UI_ICONS["wrench"])
@@ -1573,6 +1718,7 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_EXTERNAL_LINK__", _UI_ICONS["external_link"])
     .replace("__SLLS_ICON_CLOSE__", _UI_ICONS["close"])
     .replace("__SLLS_ICON_CARET_RIGHT__", _UI_ICONS["caret_right"])
+    .replace("__SLLS_ICON_CHECK__", _UI_ICONS["check"])
     .replace("__SLLS_ICON_PLAY__", _UI_ICONS["play"])
     .replace("__SLLS_ICON_SETTINGS__", _UI_ICONS["settings"])
     .replace("__SLLS_ICON_ACTIVITY__", _UI_ICONS["activity"])
@@ -1801,14 +1947,6 @@ def bpa(
         widget.fix_preview = {}
         widget.screen = "results"
         widget.render_token += 1
-        widget.status = {
-            "message": (
-                f"No best practice violations found in '{widget.dataset_name}'."
-                if not violations
-                else f"Found {len(violations)} violation(s) in '{widget.dataset_name}'."
-            ),
-            "kind": "success" if not violations else "info",
-        }
 
     def _handle_run_bulk(payload):
         targets = payload.get("targets") or []
