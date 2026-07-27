@@ -156,6 +156,12 @@ _WIDGET_CSS = (
 .slls-bpa-btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 50%; }
 .slls-bpa-btn-sm { font-size: 12.5px; padding: 4px 11px; border-radius: 7px; }
 .slls-bpa-btn-sm.slls-bpa-btn-icon-sm { width: 30px; height: 30px; padding: 0; justify-content: center; border-radius: 7px; }
+/* Anything that offers or advertises an automatic fix. */
+.slls-bpa-btn-fix { color: var(--slls-success); border-color: transparent; background: var(--slls-success-soft); }
+.slls-bpa-btn-fix:hover { color: var(--slls-success); border-color: var(--slls-success); background: var(--slls-success-soft); }
+.slls-bpa-fix-badge { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; cursor: default;
+    padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 500;
+    color: var(--slls-success); background: var(--slls-success-soft); }
 
 .slls-bpa-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .slls-bpa-section { border: 1px solid var(--ui-border); border-radius: var(--slls-radius); background: var(--ui-surface); padding: 16px; margin-top: 14px; }
@@ -230,8 +236,6 @@ _WIDGET_CSS = (
 .slls-bpa-ss.open .slls-bpa-ss-caret { transform: rotate(-90deg); }
 .slls-bpa-ss-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70; min-width: 240px;
     padding: 6px; background: var(--ui-bg-solid); border: 1px solid var(--ui-border); border-radius: 12px; box-shadow: var(--ui-shadow-lg); }
-/* Flipped above the button when there is not enough room below it. */
-.slls-bpa-ss.up .slls-bpa-ss-panel { top: auto; bottom: calc(100% + 6px); }
 .slls-bpa-ss.open .slls-bpa-ss-panel { display: block; }
 .slls-bpa-ss-searchwrap { position: relative; display: flex; align-items: center; margin-bottom: 5px; }
 .slls-bpa-ss-searchwrap .slls-bpa-ss-searchicon { position: absolute; left: 11px; color: var(--ui-text-tertiary); display: inline-flex; pointer-events: none; }
@@ -329,15 +333,19 @@ _WIDGET_CSS = (
 .slls-bpa-detail.show { display: block; }
 .slls-bpa-detail-head { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
 
-/* Progress while a multi-model scan runs. */
+/* Progress while an analysis runs. */
 .slls-bpa-progress { display: none; margin-top: 14px; margin-bottom: 6px; padding: 12px 14px;
     border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); background: var(--ui-bg-tertiary); }
 .slls-bpa-progress.show { display: block; }
-.slls-bpa-progress-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px; font-size: 12.5px; }
+.slls-bpa-progress-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 12.5px; }
 .slls-bpa-progress-label { flex: 1; min-width: 0; color: var(--ui-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-bpa-progress-count { flex-shrink: 0; font-weight: 600; color: var(--ui-text); font-variant-numeric: tabular-nums; }
+.slls-bpa-progress-cancel { flex-shrink: 0; }
 .slls-bpa-progress-track { height: 6px; border-radius: 999px; background: var(--ui-bg-secondary); overflow: hidden; }
 .slls-bpa-progress-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--ui-accent); transition: width 220ms ease; }
+/* Used for a single-model run, where there are no steps to count. */
+.slls-bpa-progress-fill.slls-bpa-progress-pending { width: 35%; transition: none; animation: slls-bpa-sweep 1.2s ease-in-out infinite; }
+@keyframes slls-bpa-sweep { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
 
 /* ---------------- Multi-model picker (workspace / model tree) ----------------
    The list scrolls, so every row must opt out of flex shrinking - otherwise the
@@ -460,6 +468,8 @@ _WIDGET_CSS = (
    view-only controls (theme, full screen) stay clickable throughout. */
 .slls-bpa-busy { pointer-events: none; }
 .slls-bpa-busy > *:not(.slls-bpa-overlay):not(.slls-bpa-progress) { opacity: 0.55; transition: opacity 120ms ease; }
+/* The progress panel keeps its cancel button live while everything else is inert. */
+.slls-bpa-busy .slls-bpa-progress { pointer-events: auto; }
 .slls-bpa-busy .slls-bpa-view-btn { pointer-events: auto; }
 .slls-bpa-screen { display: none; }
 .slls-bpa-screen.show { display: block; }
@@ -499,7 +509,9 @@ function render({ model, el }) {
         swap: `__SLLS_ICON_SWAP__`,
         refresh: `__SLLS_ICON_REFRESH__`,
         search: `__SLLS_ICON_SEARCH__`,
-        wrench: `__SLLS_ICON_WRENCH__`,
+        wand: `__SLLS_ICON_WAND__`,
+        eye: `__SLLS_ICON_EYE__`,
+        eyeOff: `__SLLS_ICON_EYE_OFF__`,
         save: `__SLLS_ICON_SAVE__`,
         undo: `__SLLS_ICON_UNDO__`,
         upload: `__SLLS_ICON_UPLOAD__`,
@@ -795,9 +807,10 @@ function render({ model, el }) {
 
     // Searchable single-select. `options` are `{ value, label }` descriptors.
     // Returns a controller exposing the current value plus option management.
-    // Approximate rendered height of an open panel, used to decide whether it
-    // should drop down or flip up.
-    const PANEL_HEIGHT = 320;
+    // The option list never grows past this, and shrinks further when the space
+    // below the picker is tight.
+    const MAX_LIST_HEIGHT = 240;
+    const MIN_LIST_HEIGHT = 120;
     function createSearchSelect(placeholder, searchPlaceholder, ariaLabel, emptyLabel, onChange) {
         const wrap = document.createElement("div");
         wrap.className = "slls-bpa-ss";
@@ -838,7 +851,7 @@ function render({ model, el }) {
         let shown = [];
 
         function close() {
-            wrap.classList.remove("open", "up");
+            wrap.classList.remove("open");
             btn.setAttribute("aria-expanded", "false");
             activeIndex = -1;
         }
@@ -847,11 +860,12 @@ function render({ model, el }) {
             wrap.classList.add("open");
             btn.setAttribute("aria-expanded", "true");
             search.value = "";
-            // Open upwards when the panel would otherwise run off the bottom.
+            // Always drops downward; the list is capped to whatever room is left
+            // below the picker so it scrolls instead of overflowing the widget.
             const rect = btn.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            wrap.classList.toggle(
-                "up", spaceBelow < PANEL_HEIGHT && rect.top > spaceBelow);
+            const room = window.innerHeight - rect.bottom - 70;
+            list.style.maxHeight =
+                `${Math.max(MIN_LIST_HEIGHT, Math.min(MAX_LIST_HEIGHT, room))}px`;
             activeIndex = -1;
             renderList();
             setActive(shown.findIndex((o) => o.value === value));
@@ -973,7 +987,11 @@ function render({ model, el }) {
         };
     }
 
+    // Set while a scan is the action in flight, so that quick background calls
+    // (loading models, loading rules) do not raise the progress bar.
+    let scanRunning = false;
     function runAction(action, extra) {
+        scanRunning = action === "run_scan" || action === "run_bulk";
         model.set("pending_action", Object.assign({ action }, extra || {}));
         model.set("run", (model.get("run") || 0) + 1);
         model.save_changes();
@@ -1151,6 +1169,16 @@ function render({ model, el }) {
     progressCount.className = "slls-bpa-progress-count";
     progressHead.appendChild(progressLabel);
     progressHead.appendChild(progressCount);
+    const cancelRunBtn = makeButton("Cancel", "slls-bpa-btn-sm slls-bpa-progress-cancel", ICON.close);
+    cancelRunBtn.title = "Stop the analysis";
+    cancelRunBtn.addEventListener("click", () => {
+        // The scan stops at its next checkpoint and keeps whatever it has found.
+        cancelRunBtn.disabled = true;
+        cancelRunBtn.lastChild.textContent = "Cancelling\u2026";
+        model.set("cancel_requested", true);
+        model.save_changes();
+    });
+    progressHead.appendChild(cancelRunBtn);
     progress.appendChild(progressHead);
     const progressTrack = document.createElement("div");
     progressTrack.className = "slls-bpa-progress-track";
@@ -1164,12 +1192,25 @@ function render({ model, el }) {
     function renderProgress() {
         const p = model.get("progress") || {};
         const total = Number(p.total) || 0;
-        if (!total) {
+        const running = scanRunning && model.get("busy") === true;
+        if (!total && !running) {
             progress.classList.remove("show");
             return;
         }
-        const done = Math.min(Number(p.done) || 0, total);
         progress.classList.add("show");
+        if (!total) {
+            // A single model, or a run that has not reported a step count yet:
+            // there is nothing to count, so the bar just sweeps.
+            progressLabel.textContent = p.current
+                ? `Analyzing ${p.current}\u2026`
+                : "Analyzing\u2026";
+            progressCount.textContent = "";
+            progressFill.classList.add("slls-bpa-progress-pending");
+            progressFill.style.width = "";
+            return;
+        }
+        const done = Math.min(Number(p.done) || 0, total);
+        progressFill.classList.remove("slls-bpa-progress-pending");
         progressLabel.textContent = p.current
             ? `Analyzing ${p.current}\u2026`
             : "Analyzing semantic models\u2026";
@@ -1180,6 +1221,13 @@ function render({ model, el }) {
         progressFill.setAttribute("aria-valuemax", String(total));
     }
     model.on("change:progress", renderProgress);
+    model.on("change:busy", () => {
+        if (model.get("busy") === true) {
+            cancelRunBtn.disabled = false;
+            cancelRunBtn.lastChild.textContent = "Cancel";
+        }
+        renderProgress();
+    });
 
     // ==================================================================
     // SELECT SCREEN
@@ -1732,6 +1780,8 @@ function render({ model, el }) {
     // Fixes staged but not yet written to the model(s), keyed by
     // `${workspaceId}\u0000${datasetId}\u0000${ruleName}\u0000${objectName}`.
     const stagedFixes = new Map();
+    // Whether the staged changes modal spells out the before/after values.
+    let showStagedDiff = true;
     // Violations currently displayed (single scan, or one model drilled into from bulk).
     let activeViolations = [];
 
@@ -1794,8 +1844,25 @@ function render({ model, el }) {
             const object = document.createElement("div");
             object.className = "slls-bpa-staged-obj";
             object.textContent = `${fix.object_name} \u2022 ${fix.dataset_name}`;
-            object.title = `${fix.before || "\u2014"} \u2192 ${fix.after || "\u2014"}`;
+            object.title = `${fix.object_name} \u2022 ${fix.dataset_name}`;
             main.appendChild(object);
+            if (showStagedDiff) {
+                // Same before/after treatment as the "Apply fix" preview.
+                const diff = document.createElement("span");
+                diff.className = "slls-bpa-fix-diff";
+                const before = document.createElement("span");
+                before.className = "slls-bpa-fix-before";
+                before.textContent = fix.before || "\u2014";
+                const arrow = document.createElement("span");
+                arrow.textContent = " \u2192 ";
+                const after = document.createElement("span");
+                after.className = "slls-bpa-fix-after";
+                after.textContent = fix.after || "\u2014";
+                diff.appendChild(before);
+                diff.appendChild(arrow);
+                diff.appendChild(after);
+                main.appendChild(diff);
+            }
             row.appendChild(main);
 
             const unstage = document.createElement("button");
@@ -1828,9 +1895,32 @@ function render({ model, el }) {
         modal.appendChild(heading);
         const sub = document.createElement("div");
         sub.className = "slls-bpa-modal-sub";
-        sub.textContent = "Nothing is written to the semantic model until you save. "
-            + "Hover a row to see the before and after values.";
+        sub.textContent = "Nothing is written to the semantic model until you save.";
         modal.appendChild(sub);
+
+        const bar = document.createElement("div");
+        bar.className = "slls-bpa-toolbar";
+        bar.style.marginBottom = "12px";
+        const diffToggle = makeButton("Changes", "slls-bpa-btn-sm");
+        function renderDiffToggle() {
+            clear(diffToggle);
+            diffToggle.appendChild(iconSpan(showStagedDiff ? ICON.eye : ICON.eyeOff));
+            const text = document.createElement("span");
+            text.textContent = "Changes";
+            diffToggle.appendChild(text);
+            diffToggle.title = showStagedDiff
+                ? "Hide the before and after values"
+                : "Show the before and after values";
+            diffToggle.setAttribute("aria-pressed", String(showStagedDiff));
+        }
+        renderDiffToggle();
+        diffToggle.addEventListener("click", () => {
+            showStagedDiff = !showStagedDiff;
+            renderDiffToggle();
+            renderStagedList();
+        });
+        bar.appendChild(diffToggle);
+        modal.appendChild(bar);
 
         renderStagedList();
         modal.appendChild(stagedList);
@@ -2129,7 +2219,7 @@ function render({ model, el }) {
         const stageFixBtn = makeButton(
             fixSelected.size > 0 ? `Stage fix (${fixSelected.size})` : "Stage fix",
             "slls-bpa-btn-sm slls-bpa-btn-primary",
-            ICON.wrench,
+            ICON.wand,
         );
         stageFixBtn.title = "Stage these changes; nothing is written until you save";
         stageFixBtn.disabled = fixSelected.size === 0;
@@ -2204,7 +2294,7 @@ function render({ model, el }) {
             // "Apply fix" sits to the left of the violation count so the rule
             // name, its action and its count read left-to-right.
             if (group.fixable) {
-                const fixBtn = makeButton("Apply fix", "slls-bpa-btn-sm", ICON.wrench);
+                const fixBtn = makeButton("Apply fix", "slls-bpa-btn-sm slls-bpa-btn-fix", ICON.wand);
                 fixBtn.title = "Preview and stage the automatic fix for this rule";
                 fixBtn.addEventListener("click", () => {
                     fixRule = group.ruleName;
@@ -2429,6 +2519,15 @@ function render({ model, el }) {
     root.appendChild(overlay);
     overlay.addEventListener("click", (ev) => { if (ev.target === overlay) overlay.classList.remove("show"); });
 
+    // Set while the rules panel is open, so the list can be re-rendered when the
+    // catalog finishes loading or a ruleset is imported.
+    let activeRuleListRender = null;
+    model.on("change:rules", () => {
+        if (activeRuleListRender && overlay.classList.contains("show")) {
+            activeRuleListRender();
+        }
+    });
+
     // Downloads the effective ruleset in the Best Practice Rules JSON format.
     const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
     function exportRuleset() {
@@ -2547,6 +2646,14 @@ function render({ model, el }) {
             clear(list);
             const term = ruleSearch.value.trim().toLowerCase();
             const rules = model.get("rules") || [];
+            if (rules.length === 0) {
+                // The catalog is fetched the first time the editor is opened.
+                const empty = document.createElement("div");
+                empty.className = "slls-bpa-empty";
+                empty.textContent = "Loading rules\u2026";
+                list.appendChild(empty);
+                return;
+            }
             const shown = rules.filter((r) =>
                 !term
                 || r.name.toLowerCase().includes(term)
@@ -2587,7 +2694,15 @@ function render({ model, el }) {
                 nameText.textContent = rule.name;
                 name.appendChild(nameText);
                 if (rule.fixable) {
-                    name.appendChild(iconSpan(ICON.wrench, "", "An automatic fix is available"));
+                    // Mirrors the "Apply fix" button shown on a violation group.
+                    const badge = document.createElement("span");
+                    badge.className = "slls-bpa-fix-badge";
+                    badge.appendChild(iconSpan(ICON.wand));
+                    const badgeText = document.createElement("span");
+                    badgeText.textContent = "Apply fix";
+                    badge.appendChild(badgeText);
+                    badge.title = "This rule can be fixed automatically";
+                    name.appendChild(badge);
                 }
                 body.appendChild(name);
                 const meta = document.createElement("div");
@@ -2625,7 +2740,7 @@ function render({ model, el }) {
                             rule.fixExpression,
                             "slls-bpa-rule-expr slls-bpa-rule-fixexpr",
                             "What the automatic fix does",
-                            ICON.wrench));
+                            ICON.wand));
                     }
                     body.appendChild(exprWrap);
 
@@ -2668,7 +2783,10 @@ function render({ model, el }) {
 
         overlay.appendChild(modal);
         overlay.classList.add("show");
+        activeRuleListRender = renderRuleList;
         renderRuleList();
+        // The catalog is loaded on demand, so ask for it the first time.
+        if ((model.get("rules") || []).length === 0) runAction("load_rules", {});
     }
 
     // ------------------------------------------------------------------
@@ -2760,7 +2878,9 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
     .replace("__SLLS_ICON_REFRESH__", _UI_ICONS["refresh"])
     .replace("__SLLS_ICON_SEARCH__", _UI_ICONS["search"])
-    .replace("__SLLS_ICON_WRENCH__", _UI_ICONS["wrench"])
+    .replace("__SLLS_ICON_WAND__", _UI_ICONS["wand"])
+    .replace("__SLLS_ICON_EYE_OFF__", _UI_ICONS["eye_off"])
+    .replace("__SLLS_ICON_EYE__", _UI_ICONS["eye"])
     .replace("__SLLS_ICON_SAVE__", _UI_ICONS["save"])
     .replace("__SLLS_ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__SLLS_ICON_UPLOAD__", _UI_ICONS["upload"])
@@ -2871,8 +2991,6 @@ def bpa(
         resolve_workspace_name_and_id,
         resolve_dataset_name_and_id,
     )
-    from sempy_labs._model_bpa_rules import model_bpa_rules
-    from sempy_labs._model_dependencies import get_model_calc_dependencies
     from sempy_labs.semantic_model._bpa_engine import (
         apply_fixes,
         normalize_rules,
@@ -2881,7 +2999,16 @@ def bpa(
         rules_payload,
         scan_model,
     )
-    from sempy_labs.tom import connect_semantic_model
+
+    # `sempy_labs.tom`, the rules module and the dependency graph all pull in the
+    # Analysis Services client, which is slow to initialize. They are imported at
+    # the point of use so that displaying the analyzer stays fast.
+    def _connect(dataset_id, workspace_id, readonly):
+        from sempy_labs.tom import connect_semantic_model
+
+        return connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=readonly
+        )
 
     _DEPENDENCY_COLUMNS = [
         "Table Name",
@@ -2953,9 +3080,13 @@ def bpa(
     def _default_rules(workspace_id, dataset_id):
         """Builds the built-in rules, optionally including the calc-dependency graph."""
 
+        from sempy_labs._model_bpa_rules import model_bpa_rules
+
         dependencies = pd.DataFrame(columns=_DEPENDENCY_COLUMNS)
         if check_dependencies and workspace_id and dataset_id:
             try:
+                from sempy_labs._model_dependencies import get_model_calc_dependencies
+
                 dependencies = get_model_calc_dependencies(
                     dataset=dataset_id, workspace=workspace_id
                 )
@@ -2969,6 +3100,15 @@ def bpa(
         defaults = _default_rules(workspace_id, dataset_id)
         return normalize_rules(ruleset["custom"], defaults)
 
+    # Building the catalog initializes the Analysis Services client, which is slow.
+    # It is therefore created on first use rather than when the widget is displayed.
+    _catalog_cache = {}
+
+    def _catalog():
+        if "value" not in _catalog_cache:
+            _catalog_cache["value"] = _default_rules(None, None)
+        return _catalog_cache["value"]
+
     # Per-model rules, cached so that scanning, previewing and applying a fix for
     # the same model do not rebuild the (expensive) calc-dependency graph.
     rules_cache = {}
@@ -2981,12 +3121,22 @@ def bpa(
             rules_cache[key] = rules
         return rules
 
+    def _cancelled():
+        """
+        Reports whether the user asked to stop the run that is in progress.
+
+        This only sees a cancel request on hosts which deliver comm messages while
+        a cell is executing. Deliberately no attempt is made to pump the kernel's
+        event loop from here: doing so blocks waiting for the next message, which
+        hangs the run and can re-enter the action handler.
+        """
+
+        return bool(widget.cancel_requested)
+
     def _scan(workspace_id, dataset_id, disabled_rules):
         rules = _rules_for(workspace_id, dataset_id)
-        with connect_semantic_model(
-            dataset=dataset_id, workspace=workspace_id, readonly=True
-        ) as tom:
-            return scan_model(tom, rules, disabled_rules)
+        with _connect(dataset_id, workspace_id, True) as tom:
+            return scan_model(tom, rules, disabled_rules, should_cancel=_cancelled)
 
     class _BestPracticeAnalyzerWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
@@ -3012,17 +3162,25 @@ def bpa(
         pending_action = traitlets.Dict().tag(sync=True)
         run = traitlets.Int(0).tag(sync=True)
         busy = traitlets.Bool(False).tag(sync=True)
+        cancel_requested = traitlets.Bool(False).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
 
-    # Rule metadata for the editor. Built without a dependency graph because only the
-    # descriptive fields are needed here.
-    _catalog = _default_rules(None, None)
+    # Rule metadata for the editor. When the defaults are used it is loaded on
+    # demand (see the "load_rules" action) so that nothing expensive happens before
+    # the workspace picker is on screen.
     _initial_disabled = []
-    if rules is not None and not isinstance(rules, pd.DataFrame):
+    if rules is None:
+        _initial_rules = []
+    elif isinstance(rules, pd.DataFrame):
+        _initial_rules = rules_payload(rules)
+    else:
+        # A custom ruleset has to be matched against the built-in rules up front,
+        # otherwise the rules it disables would not be known to the first scan.
         _, _initial_disabled = parse_rules_json(
             rules if isinstance(rules, list) else (rules.get("rules") or []),
-            _catalog,
+            _catalog(),
         )
+        _initial_rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
     widget = _BestPracticeAnalyzerWidget(
         workspaces=_list_workspaces_payload(),
@@ -3031,10 +3189,15 @@ def bpa(
         workspace_name=str(initial_ws_name or ""),
         dataset_id=initial_ds_id,
         dataset_name=initial_ds_name,
-        rules=rules_payload(normalize_rules(ruleset["custom"], _catalog)),
+        rules=_initial_rules,
         disabled_rules=_initial_disabled,
         dark_mode=bool(dark_mode),
     )
+
+    def _handle_load_rules(payload):
+        if widget.rules:
+            return
+        widget.rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
     def _handle_list_datasets(payload):
         widget.datasets = _list_datasets_payload(payload.get("workspace_id"))
@@ -3064,12 +3227,22 @@ def bpa(
         )
         widget.dataset_id = str(dataset_id)
         widget.dataset_name = str(payload.get("dataset_name") or widget.dataset_name)
+        widget.progress = {"done": 0, "total": 0, "current": widget.dataset_name}
 
         violations = _scan(workspace_id, dataset_id, payload.get("disabled_rules"))
+        widget.progress = {}
         widget.violations = violations
         widget.fix_preview = {}
         widget.screen = "results"
         widget.render_token += 1
+        if widget.cancel_requested:
+            widget.status = {
+                "message": (
+                    "Analysis cancelled; showing the violations found before it "
+                    "was stopped."
+                ),
+                "kind": "info",
+            }
 
     def _handle_run_bulk(payload):
         targets = payload.get("targets") or []
@@ -3085,6 +3258,8 @@ def bpa(
         total = len(targets)
         results = []
         for index, target in enumerate(targets):
+            if _cancelled():
+                break
             entry = {
                 "workspace_id": str(target.get("workspace_id") or ""),
                 "workspace_name": str(target.get("workspace_name") or ""),
@@ -3114,9 +3289,11 @@ def bpa(
         widget.render_token += 1
         widget.progress = {}
         total_violations = sum(len(r["violations"]) for r in results)
+        cancelled = widget.cancel_requested
         widget.status = {
             "message": (
-                f"Analyzed {len(results)} semantic model(s); "
+                ("Analysis cancelled after " if cancelled else "Analyzed ")
+                + f"{len(results)} of {total} semantic model(s); "
                 f"{total_violations} violation(s) found."
             ),
             "kind": "info",
@@ -3128,11 +3305,17 @@ def bpa(
             return
         workspace_id = str(payload.get("workspace_id") or widget.workspace_id)
         dataset_id = str(payload.get("dataset_id") or widget.dataset_id)
-        rules = _rules_for(workspace_id, dataset_id)
-        with connect_semantic_model(
-            dataset=dataset_id, workspace=workspace_id, readonly=True
-        ) as tom:
-            items = preview_fixes(tom, rules, rule_name)
+        items = []
+        try:
+            rules = _rules_for(workspace_id, dataset_id)
+            with _connect(dataset_id, workspace_id, True) as tom:
+                items = preview_fixes(tom, rules, rule_name)
+        except Exception as e:
+            widget.status = {
+                "message": f"Could not compute the fix: {e}",
+                "kind": "error",
+            }
+        # Always published, otherwise the panel would wait for a result forever.
         widget.fix_preview = {
             "ruleName": rule_name,
             "datasetId": dataset_id,
@@ -3162,9 +3345,7 @@ def bpa(
         for (workspace_id, dataset_id), by_rule in grouped.items():
             try:
                 rules = _rules_for(workspace_id, dataset_id)
-                with connect_semantic_model(
-                    dataset=dataset_id, workspace=workspace_id, readonly=False
-                ) as tom:
+                with _connect(dataset_id, workspace_id, False) as tom:
                     for rule_name, object_names in by_rule.items():
                         applied += apply_fixes(tom, rules, rule_name, object_names)
             except Exception as e:
@@ -3224,7 +3405,7 @@ def bpa(
             }
             return
 
-        catalog = _default_rules(None, None)
+        catalog = _catalog()
         parsed, disabled = parse_rules_json(entries, catalog)
         if parsed.empty:
             widget.status = {
@@ -3256,6 +3437,7 @@ def bpa(
     handlers = {
         "list_datasets": _handle_list_datasets,
         "load_workspace_datasets": _handle_load_workspace_datasets,
+        "load_rules": _handle_load_rules,
         "import_rules": _handle_import_rules,
         "run_scan": _handle_run_scan,
         "run_bulk": _handle_run_bulk,
@@ -3263,13 +3445,21 @@ def bpa(
         "apply_staged_fixes": _handle_apply_staged_fixes,
     }
 
+    _running = [False]
+
     def _on_run(_change):
         payload = dict(widget.pending_action or {})
         handler = handlers.get(payload.get("action"))
         if handler is None:
             return
+        # A handler must never be entered from inside another one, otherwise the
+        # busy state and the traitlet updates interleave.
+        if _running[0]:
+            return
 
+        _running[0] = True
         widget.busy = True
+        widget.cancel_requested = False
         widget.status = {}
         try:
             handler(payload)
@@ -3277,6 +3467,8 @@ def bpa(
             widget.status = {"message": f"Error: {e}", "kind": "error"}
         finally:
             widget.busy = False
+            widget.cancel_requested = False
+            _running[0] = False
 
     widget.observe(_on_run, names=["run"])
 

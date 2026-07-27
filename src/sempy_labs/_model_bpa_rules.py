@@ -134,7 +134,6 @@ def _uses_sum_or_average_on_string_column(obj, tom) -> bool:
 @log
 def model_bpa_rules(
     dependencies: Optional[pd.DataFrame] = None,
-    **kwargs,
 ) -> pd.DataFrame:
     """
     Shows the default rules for the semantic model BPA used by the run_model_bpa function.
@@ -152,17 +151,6 @@ def model_bpa_rules(
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
-
-    if "dataset" in kwargs:
-        print(
-            "The 'dataset' parameter has been deprecated. Please remove this parameter from the function going forward."
-        )
-        del kwargs["dataset"]
-    if "workspace" in kwargs:
-        print(
-            "The 'workspace' parameter has been deprecated. Please remove this parameter from the function going forward."
-        )
-        del kwargs["workspace"]
 
     rules = pd.DataFrame(
         [

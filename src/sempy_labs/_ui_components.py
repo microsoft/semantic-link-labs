@@ -381,6 +381,32 @@ ICONS: dict[str, str] = {
         '<path d="M11.6 2.6a3 3 0 0 0-3.85 3.85l-4.9 4.9a1.25 1.25 0 0 0 '
         '1.77 1.77l4.9-4.9a3 3 0 0 0 3.85-3.85l-1.9 1.9-1.47-.3-.3-1.47z"/></svg>'
     ),
+    "eye": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4-6.5-4-6.5-4z"/>'
+        '<circle cx="8" cy="8" r="1.9"/></svg>'
+    ),
+    "eye_off": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6.3 3.7A6.9 6.9 0 0 1 8 3.5c4.1 0 6.5 4 6.5 4a12 12 0 0 1-2 2.5"/>'
+        '<path d="M11.2 11.2A6.6 6.6 0 0 1 8 12c-4.1 0-6.5-4-6.5-4a12 12 0 0 1 '
+        '3.2-3.4"/>'
+        '<path d="M6.7 6.7a1.9 1.9 0 0 0 2.6 2.6"/>'
+        '<path d="M2 2l12 12"/></svg>'
+    ),
+    "wand": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9.6 4.3l2.1 2.1-7 7-2.1-2.1z"/>'
+        '<path d="M11 2.9l.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1L9.4 4.5l1.1-.5z"/>'
+        '<path d="M13.4 8.1l.35.8.8.35-.8.35-.35.8-.35-.8-.8-.35.8-.35z"/>'
+        '<path d="M4.3 2.2l.35.8.8.35-.8.35-.35.8-.35-.8-.8-.35.8-.35z"/></svg>'
+    ),
     "undo": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '

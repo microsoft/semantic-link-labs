@@ -142,6 +142,26 @@ def test_scan_model_skips_disabled_rules():
     assert violations == []
 
 
+def test_scan_model_stops_when_cancelled():
+    calls = []
+
+    def should_cancel():
+        calls.append(1)
+        # Stops before the first rule is evaluated.
+        return True
+
+    violations = engine.scan_model(_FakeTom(), _rules(), should_cancel=should_cancel)
+
+    assert violations == []
+    assert len(calls) == 1
+
+
+def test_scan_model_runs_to_completion_when_not_cancelled():
+    violations = engine.scan_model(_FakeTom(), _rules(), should_cancel=lambda: False)
+
+    assert [v["objectName"] for v in violations] == ["date"]
+
+
 def test_qualify_column_references_only_qualifies_unambiguous_columns():
     fixes = engine._qualify_column_references(_FakeTom())
 

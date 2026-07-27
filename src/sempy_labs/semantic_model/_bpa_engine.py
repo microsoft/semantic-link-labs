@@ -543,6 +543,7 @@ def scan_model(
     tom,
     rules: pd.DataFrame,
     disabled_rule_ids: Optional[Iterable[str]] = None,
+    should_cancel: Optional[Callable[[], bool]] = None,
 ) -> List[dict]:
     """
     Evaluates the best practice rules against a connected semantic model.
@@ -557,6 +558,9 @@ def scan_model(
         :func:`sempy_labs.model_bpa_rules`.
     disabled_rule_ids : Iterable[str], default=None
         Rule ids (see :func:`rules_payload`) which should be skipped.
+    should_cancel : Callable[[], bool], default=None
+        Called before each rule is evaluated. Returning True stops the scan early
+        and returns the violations found so far.
 
     Returns
     -------
@@ -572,6 +576,8 @@ def scan_model(
         return violations
 
     for _, r in rules.iterrows():
+        if should_cancel is not None and should_cancel():
+            break
         rule_name = str(r["Rule Name"])
         if _rule_id(rule_name) in disabled:
             continue
