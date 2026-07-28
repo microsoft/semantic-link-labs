@@ -2947,6 +2947,10 @@ def bpa(
     check_dependencies: bool = True,
     dark_mode: bool = False,
     return_dataframe: bool = False,
+    export: bool = False,
+    export_table: str = "modelbparesults",
+    export_lakehouse: Optional[str | UUID] = None,
+    export_workspace: Optional[str | UUID] = None,
 ):
     """
     Generates an interactive Best Practice Analyzer for semantic models.
@@ -3008,6 +3012,21 @@ def bpa(
     return_dataframe : bool, default=False
         If True, no user interface is shown; the rule violations of the semantic model
         given by the 'dataset' parameter are returned as a pandas dataframe instead.
+    export : bool, default=False
+        If True, no user interface is shown; the rule violations of the semantic model
+        given by the 'dataset' parameter are saved to a delta table in a lakehouse
+        instead. The exported rows also carry the Capacity Name, Capacity Id, Workspace
+        Name, Workspace Id, Dataset Name, Dataset Id, Configured By, Timestamp and
+        RunId columns.
+    export_table : str, default="modelbparesults"
+        The name of the delta table the results are appended to.
+    export_lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID to export to.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    export_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID of the lakehouse to export to.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -3174,11 +3193,17 @@ def bpa(
     # Set once the widget exists; the dataframe path below runs without one.
     _widget_ref = {}
 
-    if return_dataframe:
-        if not initial_ds_id:
-            raise ValueError(
-                "The 'dataset' parameter is required when 'return_dataframe' is True."
-            )
+    _VIOLATION_COLUMNS = [
+        "Category",
+        "Rule Name",
+        "Severity",
+        "Object Type",
+        "Object Name",
+        "Description",
+        "URL",
+    ]
+
+    def _violations_dataframe(violations):
         return pd.DataFrame(
             [
                 {
@@ -3190,18 +3215,84 @@ def bpa(
                     "Description": v["description"],
                     "URL": v["url"],
                 }
-                for v in _scan(initial_ws_id, initial_ds_id, None)
+                for v in violations
             ],
-            columns=[
-                "Category",
-                "Rule Name",
-                "Severity",
-                "Object Type",
-                "Object Name",
-                "Description",
-                "URL",
-            ],
+            columns=_VIOLATION_COLUMNS,
         )
+
+    def _require_dataset(parameter):
+        if not initial_ds_id:
+            raise ValueError(
+                f"The 'dataset' parameter is required when '{parameter}' is True."
+            )
+
+    def _export_violations(df):
+        """Appends the violations to a delta table, stamped with the run's context."""
+
+        import datetime
+
+        import sempy_labs._icons as icons
+        from sempy_labs._helper_functions import (
+            _get_column_aggregate,
+            resolve_workspace_capacity,
+            save_as_delta_table,
+        )
+        from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+
+        # A new run gets the next id, so successive exports stay comparable.
+        tables = get_lakehouse_tables(
+            lakehouse=export_lakehouse, workspace=export_workspace
+        )
+        if tables[tables["Table Name"] == export_table].empty:
+            run_id = 1
+        else:
+            run_id = (
+                _get_column_aggregate(
+                    table_name=export_table,
+                    lakehouse=export_lakehouse,
+                    workspace=export_workspace,
+                )
+                + 1
+            )
+
+        datasets = fabric.list_datasets(workspace=initial_ws_id, mode="rest")
+        matching = datasets[datasets["Dataset Id"] == initial_ds_id]
+        configured_by = "" if matching.empty else matching["Configured By"].iloc[0]
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=initial_ws_id)
+
+        df = df.copy()
+        df["Capacity Name"] = capacity_name
+        df["Capacity Id"] = capacity_id
+        df["Workspace Name"] = str(initial_ws_name or "")
+        df["Workspace Id"] = initial_ws_id
+        df["Dataset Name"] = initial_ds_name
+        df["Dataset Id"] = initial_ds_id
+        df["Configured By"] = configured_by
+        df["Timestamp"] = datetime.datetime.now()
+        df["RunId"] = run_id
+        df["RunId"] = df["RunId"].astype("int")
+
+        df = df[list(icons.bpa_schema.keys())]
+        save_as_delta_table(
+            dataframe=df,
+            delta_table_name=export_table,
+            write_mode="append",
+            schema={k.replace(" ", "_"): v for k, v in icons.bpa_schema.items()},
+            merge_schema=True,
+            lakehouse=export_lakehouse,
+            workspace=export_workspace,
+        )
+
+    if return_dataframe:
+        _require_dataset("return_dataframe")
+        return _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
+
+    if export:
+        _require_dataset("export")
+        _export_violations(
+            _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
+        )
+        return
 
     try:
         import anywidget
