@@ -396,7 +396,11 @@ def delta_analyzer(
             column_df["Compressed Size"] / column_df["Table Size"] * 100.0
         )
     if not skip_cardinality and column_stats:
-        column_df["Cardinality"] = column_df["Cardinality"].fillna(0).astype(int)
+        column_df["Cardinality"] = (
+            pd.to_numeric(column_df["Cardinality"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+        )
         column_df["Cardinality Of Total Rows"] = (
             column_df["Cardinality"] / column_df["Total Table Rows"] * 100.0
         )

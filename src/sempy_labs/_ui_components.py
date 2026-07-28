@@ -381,12 +381,126 @@ ICONS: dict[str, str] = {
         '<path d="M11.6 2.6a3 3 0 0 0-3.85 3.85l-4.9 4.9a1.25 1.25 0 0 0 '
         '1.77 1.77l4.9-4.9a3 3 0 0 0 3.85-3.85l-1.9 1.9-1.47-.3-.3-1.47z"/></svg>'
     ),
+    "eye": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4-6.5-4-6.5-4z"/>'
+        '<circle cx="8" cy="8" r="1.9"/></svg>'
+    ),
+    "eye_off": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M6.3 3.7A6.9 6.9 0 0 1 8 3.5c4.1 0 6.5 4 6.5 4a12 12 0 0 1-2 2.5"/>'
+        '<path d="M11.2 11.2A6.6 6.6 0 0 1 8 12c-4.1 0-6.5-4-6.5-4a12 12 0 0 1 '
+        '3.2-3.4"/>'
+        '<path d="M6.7 6.7a1.9 1.9 0 0 0 2.6 2.6"/>'
+        '<path d="M2 2l12 12"/></svg>'
+    ),
+    "wand": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9.6 4.3l2.1 2.1-7 7-2.1-2.1z"/>'
+        '<path d="M11 2.9l.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1L9.4 4.5l1.1-.5z"/>'
+        '<path d="M13.4 8.1l.35.8.8.35-.8.35-.35.8-.35-.8-.8-.35.8-.35z"/>'
+        '<path d="M4.3 2.2l.35.8.8.35-.8.35-.35.8-.35-.8-.8-.35.8-.35z"/></svg>'
+    ),
     "undo": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M6 4L3 7l3 3"/>'
         '<path d="M3 7h6a3.5 3.5 0 0 1 0 7H5.5"/></svg>'
+    ),
+    "error_circle": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/>'
+        '<path d="M6 6l4 4M10 6l-4 4"/></svg>'
+    ),
+    "check": (
+        '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3.2 8.4l3.2 3.2 6.4-7"/></svg>'
+    ),
+    "sliders": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="4.5" cy="5" r="1.9"/><path d="M6.8 5h6.7"/>'
+        '<circle cx="11.5" cy="11" r="1.9"/><path d="M9.2 11H2.5"/></svg>'
+    ),
+    "info": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/>'
+        '<path d="M8 7.4v3.2M8 5.2h.01"/></svg>'
+    ),
+    "shield_check": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M8 1.8l5 1.9v4.1c0 3-2.1 5.2-5 6.4-2.9-1.2-5-3.4-5-6.4V3.7z"/>'
+        '<path d="M5.9 7.9l1.5 1.5 2.7-3"/></svg>'
+    ),
+    "activity": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M1.5 8h3l1.8-4.8 3 9.6L11.1 8h3.4"/></svg>'
+    ),
+    "code": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M5.4 4.5L2 8l3.4 3.5"/><path d="M10.6 4.5L14 8l-3.4 3.5"/>'
+        '<path d="M9.2 3l-2.4 10"/></svg>'
+    ),
+    "settings": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="2.1"/>'
+        '<path d="M12.9 9.8a1.1 1.1 0 0 0 .22 1.21l.04.04a1.33 1.33 0 1 1-1.88 1.88'
+        "l-.04-.04a1.1 1.1 0 0 0-1.21-.22 1.1 1.1 0 0 0-.67 1v.11a1.33 1.33 0 1 1-2.66 0"
+        "v-.06a1.1 1.1 0 0 0-.72-1 1.1 1.1 0 0 0-1.21.22l-.04.04a1.33 1.33 0 1 1-1.88-1.88"
+        "l.04-.04a1.1 1.1 0 0 0 .22-1.21 1.1 1.1 0 0 0-1-.67h-.11a1.33 1.33 0 1 1 0-2.66"
+        "h.06a1.1 1.1 0 0 0 1-.72 1.1 1.1 0 0 0-.22-1.21l-.04-.04a1.33 1.33 0 1 1 1.88-1.88"
+        "l.04.04a1.1 1.1 0 0 0 1.21.22h.05a1.1 1.1 0 0 0 .67-1v-.11a1.33 1.33 0 1 1 2.66 0"
+        "v.06a1.1 1.1 0 0 0 .67 1 1.1 1.1 0 0 0 1.21-.22l.04-.04a1.33 1.33 0 1 1 1.88 1.88"
+        "l-.04.04a1.1 1.1 0 0 0-.22 1.21v.05a1.1 1.1 0 0 0 1 .67h.11a1.33 1.33 0 1 1 0 2.66"
+        'h-.06a1.1 1.1 0 0 0-1 .67z"/></svg>'
+    ),
+    "text_type": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 4.2V3h10v1.2"/><path d="M8 3v10"/><path d="M6 13h4"/></svg>'
+    ),
+    "play": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4.5 3.2l8 4.8-8 4.8z"/></svg>'
+    ),
+    "upload": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/>'
+        '<path d="M5.2 5.2L8 2.4l2.8 2.8"/><path d="M8 2.6v7.6"/></svg>'
+    ),
+    "download": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/>'
+        '<path d="M5.2 7.4L8 10.2l2.8-2.8"/><path d="M8 10v-7.6"/></svg>'
     ),
 }
 
@@ -1122,4 +1236,3 @@ def _HTML(html: str):
     from IPython.display import HTML
 
     return HTML(html)
-

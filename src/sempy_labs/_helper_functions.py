@@ -1075,6 +1075,7 @@ def save_as_delta_table(
 
         writer.save(file_path)
 
+    delta_table_name = delta_table_name.replace('/', '.')
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
@@ -1967,8 +1968,13 @@ def _get_column_aggregate(
     schema_name: Optional[str] = None,
 ) -> int | Dict[str, int]:
 
+    from sempy_labs.lakehouse._schemas import is_schema_enabled
+
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
+
+    if is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id) and schema_name is None:
+        schema_name = "dbo"
     path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
     function = function.lower()
 
@@ -1978,8 +1984,13 @@ def _get_column_aggregate(
     if _pure_python_notebook():
         import polars as pl
         from polars.datatypes import Datetime, Decimal
+        from deltalake import DeltaTable
 
-        lf = pl.scan_delta(path)
+        dt = DeltaTable(path)
+        # Only the columns being aggregated are read, preserving the projection
+        # pushdown that scanning the table lazily used to provide.
+        df = dt.to_pyarrow_dataset().to_table(columns=column_name)
+        lf = pl.from_arrow(df).lazy()
         schema = lf.collect_schema()
 
         def get_expr(col):
