@@ -1246,9 +1246,13 @@ function render({ model, el }) {
     selectHeading.textContent = "Analyze a semantic model";
     selectSection.appendChild(selectHeading);
 
+    const modeRow = document.createElement("div");
+    modeRow.className = "slls-bpa-toolbar";
+    modeRow.style.marginBottom = "14px";
+    selectSection.appendChild(modeRow);
+
     const modeToggle = document.createElement("div");
     modeToggle.className = "slls-bpa-segmented";
-    modeToggle.style.marginBottom = "14px";
     const singleModeBtn = document.createElement("button");
     singleModeBtn.type = "button";
     singleModeBtn.textContent = "Single model";
@@ -1257,7 +1261,17 @@ function render({ model, el }) {
     bulkModeBtn.textContent = "Multiple models";
     modeToggle.appendChild(singleModeBtn);
     modeToggle.appendChild(bulkModeBtn);
-    selectSection.appendChild(modeToggle);
+    modeRow.appendChild(modeToggle);
+
+    // Refetches the workspaces, the models of the selected workspace and any
+    // workspace already expanded in the multi-model picker.
+    const reloadBtn = makeButton("", "slls-bpa-btn-icon", ICON.refresh);
+    reloadBtn.title = "Reload workspaces and semantic models";
+    reloadBtn.setAttribute("aria-label", reloadBtn.title);
+    reloadBtn.addEventListener("click", () => {
+        runAction("reload_lists", { workspace_id: model.get("workspace_id") || "" });
+    });
+    modeRow.appendChild(reloadBtn);
 
     let bulkMode = false;
     // key `${workspaceId}\u0000${datasetId}` -> target descriptor
@@ -3379,6 +3393,22 @@ def bpa(
         loaded[workspace_id] = _list_datasets_payload(workspace_id)
         widget.workspace_datasets = loaded
 
+    def _handle_reload_lists(payload):
+        """Refetches the workspaces and the model lists currently on screen."""
+
+        workspace_id = str(payload.get("workspace_id") or "")
+        widget.workspaces = _list_workspaces_payload()
+        widget.datasets = _list_datasets_payload(workspace_id) if workspace_id else []
+        # Only the workspaces already expanded in the multi-model picker are
+        # refetched; the rest are still loaded on demand.
+        widget.workspace_datasets = {
+            ws_id: _list_datasets_payload(ws_id) for ws_id in widget.workspace_datasets
+        }
+        widget.status = {
+            "message": "Workspaces and semantic models reloaded.",
+            "kind": "success",
+        }
+
     def _handle_run_scan(payload):
         workspace_id = payload.get("workspace_id") or widget.workspace_id
         dataset_id = payload.get("dataset_id") or widget.dataset_id
@@ -3605,6 +3635,7 @@ def bpa(
     handlers = {
         "list_datasets": _handle_list_datasets,
         "load_workspace_datasets": _handle_load_workspace_datasets,
+        "reload_lists": _handle_reload_lists,
         "load_rules": _handle_load_rules,
         "import_rules": _handle_import_rules,
         "run_scan": _handle_run_scan,

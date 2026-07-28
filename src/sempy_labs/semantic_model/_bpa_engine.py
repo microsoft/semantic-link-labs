@@ -23,6 +23,7 @@ FIXABLE_RULES = {
     "Mark primary keys",
     "First letter of objects must be capitalized",
     "Partition name should match table name for single partition tables",
+    "Ensure Direct Lake source tables are V-Ordered",
     "Remove auto-date table",
     "Remove unnecessary columns",
     "Remove unnecessary measures",
@@ -165,6 +166,16 @@ RULE_FIX_EXPRESSIONS = {
     ),
     "Partition name should match table name for single partition tables": (
         "obj.Name = obj.Parent.Name"
+    ),
+    "Ensure Direct Lake source tables are V-Ordered": (
+        "run_table_maintenance(\n"
+        "    table_name=obj.Source.EntityName,\n"
+        "    schema=obj.Source.SchemaName,\n"
+        "    optimize=False,\n"
+        "    v_order=True,\n"
+        "    lakehouse=<Direct Lake lakehouse>,\n"
+        "    workspace=<Direct Lake workspace>,\n"
+        ")"
     ),
     "Remove auto-date table": "obj.Model.Tables.Remove(obj)",
     "Remove unnecessary columns": "obj.Parent.Columns.Remove(obj)",
@@ -846,6 +857,63 @@ def _partition_name_fixes(tom, rules: pd.DataFrame, rule_name: str) -> List[dict
     return fixes
 
 
+def _direct_lake_lakehouse(tom) -> Optional[dict]:
+    """Returns the lakehouse source descriptor of a Direct Lake model, if it has one."""
+
+    try:
+        sources = tom.get_direct_lake_sources()
+    except Exception:
+        return None
+
+    return next((s for s in sources if s.get("itemType") == "Lakehouse"), None)
+
+
+def _apply_v_order(table_name: str, schema: Optional[str], source: dict) -> None:
+    """Re-writes a lakehouse delta table with V-Order enabled."""
+
+    from sempy_labs.lakehouse._lakehouse import run_table_maintenance
+
+    run_table_maintenance(
+        table_name=table_name,
+        optimize=True,
+        v_order=True,
+        schema=schema,
+        lakehouse=source.get("itemId"),
+        workspace=source.get("workspaceId"),
+    )
+
+
+def _v_order_fixes(tom, rules: pd.DataFrame, rule_name: str) -> List[dict]:
+    """
+    Builds a V-Order table maintenance fix for the lakehouse table behind every
+    flagged Direct Lake partition.
+    """
+
+    source = _direct_lake_lakehouse(tom)
+    if source is None:
+        return []
+
+    fixes = []
+    for _scope, partition, display_name in _violating_objects(tom, rules, rule_name):
+        table_name = (
+            getattr(partition.Source, "EntityName", None) or partition.Parent.Name
+        )
+        schema_name = getattr(partition.Source, "SchemaName", None) or None
+        fixes.append(
+            {
+                "objectType": "Partition",
+                "objectName": display_name,
+                "before": f"{table_name} is not V-Ordered",
+                "after": f"{table_name} is V-Ordered",
+                "_apply": (
+                    lambda t=table_name, s=schema_name: _apply_v_order(t, s, source)
+                ),
+            }
+        )
+
+    return fixes
+
+
 def _delete_object(obj) -> None:
     """Removes a supported model object from its parent collection."""
 
@@ -968,6 +1036,8 @@ def collect_fixes(tom, rules: pd.DataFrame, rule_name: str) -> List[dict]:
         == "Partition name should match table name for single partition tables"
     ):
         return _partition_name_fixes(tom, rules, rule_name)
+    if rule_name == "Ensure Direct Lake source tables are V-Ordered":
+        return _v_order_fixes(tom, rules, rule_name)
 
     return _delete_fixes(tom, rules, rule_name)
 
