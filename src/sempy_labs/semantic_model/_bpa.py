@@ -2571,7 +2571,7 @@ function render({ model, el }) {
         modal.className = "slls-bpa-modal";
 
         const heading = document.createElement("h2");
-        heading.textContent = "Rules";
+        heading.textContent = "Rule Editor";
         modal.appendChild(heading);
         const sub = document.createElement("div");
         sub.className = "slls-bpa-modal-sub";
