@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
     delete_item,
+    _conv_b64,
     _decode_b64,
     create_item,
     resolve_workspace_name_and_id,
@@ -417,6 +418,19 @@ def _encode_b64(content: Any) -> str:
 
     return base64.b64encode(json_content.encode("utf-8")).decode("utf-8")
 
+
+def _is_b64(content: str) -> bool:
+    # Determines whether a definition part payload is already Base64-encoded.
+    import base64
+
+    try:
+        return (
+            base64.b64encode(base64.b64decode(content, validate=True)).decode("utf-8")
+            == content
+        )
+    except Exception:
+        return False
+
     # if isinstance(content, (dict, list)):
     #    content = json.dumps(content, ensure_ascii=False)
 
@@ -662,6 +676,107 @@ def update_variable_library(
 
     print(
         f"{icons.green_dot} The '{item_name}' variable library within the '{workspace_name}' workspace has been updated."
+    )
+
+
+@log
+def update_variable_library_definition(
+    variable_library: str | UUID,
+    definition: dict,
+    update_metadata: bool = False,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Overrides the definition of an existing variable library.
+
+    This is a wrapper function for the following API: `Items - Update Variable Library Definition <https://learn.microsoft.com/rest/api/fabric/variablelibrary/items/update-variable-library-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    variable_library : str | uuid.UUID
+        Name or ID of the variable library.
+    definition : dict
+        The variable library definition, in the format returned by
+        :func:`sempy_labs.variable_library.get_variable_library_definition`. The dictionary may either contain a
+        'definition' key or be the definition object itself (i.e. containing the 'parts' key). The payload of each
+        part may be provided either as decoded content (a dictionary or a string) or as a Base64-encoded string.
+        Decoded payloads are encoded to Base64 automatically.
+
+        Example:
+
+        definition = {
+            "definition": {
+                "parts": [
+                    {
+                        "path": "variables.json",
+                        "payload": {"variables": [{"name": "variable1", "type": "String", "value": "abc"}]},
+                        "payloadType": "InlineBase64",
+                    }
+                ]
+            }
+        }
+    update_metadata : bool, default=False
+        If True and the '.platform' file is provided as part of the definition, the item's metadata is updated
+        using the metadata in the '.platform' file.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
+        item=variable_library, type="VariableLibrary", workspace=workspace_id
+    )
+
+    definition_object = definition.get("definition", definition)
+    parts = definition_object.get("parts")
+
+    if not parts:
+        raise ValueError(
+            f"{icons.red_dot} The 'definition' parameter must contain a non-empty list of definition parts."
+        )
+
+    new_parts = []
+    for part in parts:
+        payload = part.get("payload")
+        if isinstance(payload, (dict, list)):
+            payload = _encode_b64(payload)
+        elif isinstance(payload, str) and not _is_b64(payload):
+            payload = _conv_b64(payload, json_dumps=False)
+
+        new_parts.append(
+            {
+                "path": part.get("path"),
+                "payload": payload,
+                "payloadType": part.get("payloadType", "InlineBase64"),
+            }
+        )
+
+    payload = {
+        "definition": {
+            "format": definition_object.get("format", "VariableLibraryV1"),
+            "parts": new_parts,
+        }
+    }
+
+    url = f"/v1/workspaces/{workspace_id}/variableLibraries/{item_id}/updateDefinition"
+    if update_metadata:
+        url = f"{url}?updateMetadata=True"
+
+    _base_api(
+        request=url,
+        method="post",
+        payload=payload,
+        client="fabric_sp",
+        lro_return_status_code=True,
+        status_codes=[200, 202],
+    )
+
+    print(
+        f"{icons.green_dot} The definition of the '{item_name}' variable library within the '{workspace_name}' workspace has been updated."
     )
 
 
