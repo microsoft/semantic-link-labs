@@ -152,23 +152,23 @@ RULE_FIX_EXPRESSIONS = {
         ")"
     ),
     "Set IsAvailableInMdx to false on non-attribute columns": (
-        "column.IsAvailableInMDX = False"
+        "obj.IsAvailableInMDX = False"
     ),
     "Do not summarize numeric columns": (
-        'column.SummarizeBy = System.Enum.Parse(TOM.AggregateFunction, "None")'
+        'obj.SummarizeBy = System.Enum.Parse(TOM.AggregateFunction, "None")'
     ),
-    "Do not use floating point data types": "column.DataType = TOM.DataType.Decimal",
-    "Hide foreign keys": "column.IsHidden = True",
-    "Mark primary keys": "column.IsKey = True",
+    "Do not use floating point data types": "obj.DataType = TOM.DataType.Decimal",
+    "Hide foreign keys": "obj.IsHidden = True",
+    "Mark primary keys": "obj.IsKey = True",
     "First letter of objects must be capitalized": (
         "obj.Name = obj.Name[0].upper() + obj.Name[1:]"
     ),
     "Partition name should match table name for single partition tables": (
-        "partition.Name = partition.Parent.Name"
+        "obj.Name = obj.Parent.Name"
     ),
-    "Remove auto-date table": "table.Model.Tables.Remove(table)",
-    "Remove unnecessary columns": "column.Parent.Columns.Remove(column)",
-    "Remove unnecessary measures": "measure.Parent.Measures.Remove(measure)",
+    "Remove auto-date table": "obj.Model.Tables.Remove(obj)",
+    "Remove unnecessary columns": "obj.Parent.Columns.Remove(obj)",
+    "Remove unnecessary measures": "obj.Parent.Measures.Remove(obj)",
 }
 
 
