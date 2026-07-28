@@ -1020,6 +1020,11 @@ function render({ model, el }) {
                 renderValue();
                 renderList();
             },
+            setEmptyLabel(text) {
+                emptyLabel = text;
+                renderValue();
+                renderList();
+            },
         };
     }
 
@@ -1332,18 +1337,21 @@ function render({ model, el }) {
     }
 
     const wsSelect = createSearchSelect(
-        "Select a workspace\u2026", "Filter workspaces\u2026", "Workspace", "No workspaces",
+        "Select a workspace\u2026", "Filter workspaces\u2026", "Workspace",
+        "Loading workspaces\u2026",
         (option) => {
             model.set("workspace_id", option.value);
             model.set("dataset_id", "");
             model.save_changes();
+            dsSelect.setOptions([], "");
+            dsSelect.setEmptyLabel("Loading semantic models\u2026");
             runAction("list_datasets", { workspace_id: option.value });
         });
     pickerBar.appendChild(pickerField("Workspace", wsSelect.el, "240px"));
 
     const dsSelect = createSearchSelect(
         "Select a semantic model\u2026", "Filter models\u2026", "Semantic model",
-        "No semantic models in workspace",
+        "Select a workspace first\u2026",
         (option) => {
             model.set("dataset_id", option.value);
             model.save_changes();
@@ -1411,6 +1419,7 @@ function render({ model, el }) {
 
     function renderWorkspaces() {
         const items = model.get("workspaces") || [];
+        if (items.length > 0) wsSelect.setEmptyLabel("No workspaces");
         wsSelect.setOptions(
             items.map((ws) => ({ value: ws.id, label: ws.name })),
             model.get("workspace_id") || "",
@@ -1419,6 +1428,9 @@ function render({ model, el }) {
     }
     function renderDatasets() {
         const items = model.get("datasets") || [];
+        dsSelect.setEmptyLabel(model.get("workspace_id")
+            ? "No semantic models in workspace"
+            : "Select a workspace first\u2026");
         dsSelect.setOptions(
             items.map((ds) => ({ value: ds.id, label: ds.name })),
             model.get("dataset_id") || "",
@@ -2770,14 +2782,21 @@ function render({ model, el }) {
 
         const footer = document.createElement("div");
         footer.className = "slls-bpa-modal-footer";
-        const undoLast = makeButton("Undo last change", "slls-bpa-btn-sm", ICON.undo);
-        undoLast.disabled = ruleHistory.length === 0;
-        const redoLast = makeButton("Redo", "slls-bpa-btn-sm", ICON.redo);
-        redoLast.disabled = ruleRedoStack.length === 0;
+        const undoLast = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.undo);
+        const redoLast = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.redo);
         function syncHistoryFooter() {
             undoLast.disabled = ruleHistory.length === 0;
+            undoLast.title = ruleHistory.length === 0
+                ? "No rule changes to undo"
+                : `Undo: ${ruleHistory[ruleHistory.length - 1].label}`;
+            undoLast.setAttribute("aria-label", undoLast.title);
             redoLast.disabled = ruleRedoStack.length === 0;
+            redoLast.title = ruleRedoStack.length === 0
+                ? "No undone rule changes to redo"
+                : `Redo: ${ruleRedoStack[ruleRedoStack.length - 1].label}`;
+            redoLast.setAttribute("aria-label", redoLast.title);
         }
+        syncHistoryFooter();
         undoLast.addEventListener("click", () => {
             undoRuleChange();
             syncHistoryFooter();
@@ -3285,6 +3304,13 @@ function render({ model, el }) {
     renderStaged();
     activeViolations = model.get("violations") || [];
     renderScreen();
+
+    // The workspace / semantic model lists are fetched after this first render
+    // (through the run/observe channel) so that the widget appears immediately
+    // instead of waiting for the tenant workspace list.
+    if ((model.get("workspaces") || []).length === 0) {
+        runAction("load_lists", { workspace_id: model.get("workspace_id") || "" });
+    }
 }
 export default { render };
 """
@@ -3487,35 +3513,62 @@ def bpa(
         name_col = next((c for c in preferred_name if c in cols), cols[-1])
         return id_col, name_col
 
+    def _api_items(request):
+        """Collects ``{id, name}`` entries from a paginated Fabric list endpoint.
+
+        These endpoints only return the item identity, which makes them
+        considerably faster than the equivalent semantic-link dataframes.
+        """
+
+        from sempy_labs._helper_functions import _base_api
+
+        responses = _base_api(request=request, uses_pagination=True, client="fabric_sp")
+        return [
+            {"id": str(v.get("id")), "name": str(v.get("displayName"))}
+            for r in responses
+            for v in r.get("value", [])
+            if v.get("id")
+        ]
+
+    def _df_items(df, id_names, name_names):
+        id_col, name_col = _pick_columns(df, id_names, name_names)
+        if id_col is None or name_col is None:
+            return []
+        return [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
+        ]
+
     def _list_workspaces_payload():
         try:
-            df = fabric.list_workspaces()
+            rows = _api_items("/v1/workspaces")
         except Exception:
+            rows = []
+        if not rows:
+            try:
+                rows = _df_items(fabric.list_workspaces(), ["Id", "ID"], ["Name"])
+            except Exception:
+                rows = []
+        if not rows:
             return [{"id": initial_ws_id, "name": str(initial_ws_name or "")}]
-        id_col, name_col = _pick_columns(df, ["Id"], ["Name"])
-        if id_col is None or name_col is None:
-            return [{"id": initial_ws_id, "name": str(initial_ws_name or "")}]
-        rows = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
-        ]
-        rows.sort(key=lambda x: x["name"].lower())
-        return rows
+        return sorted(rows, key=lambda x: x["name"].lower())
 
     def _list_datasets_payload(workspace_id):
+        if not workspace_id:
+            return []
         try:
-            df = fabric.list_datasets(workspace=workspace_id, mode="rest")
+            rows = _api_items(f"/v1/workspaces/{workspace_id}/semanticModels")
         except Exception:
-            return []
-        id_col, name_col = _pick_columns(
-            df, ["Dataset Id", "Dataset ID"], ["Dataset Name"]
-        )
-        if id_col is None or name_col is None:
-            return []
-        rows = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
-        ]
-        rows.sort(key=lambda x: x["name"].lower())
-        return rows
+            rows = []
+        if not rows:
+            try:
+                rows = _df_items(
+                    fabric.list_datasets(workspace=workspace_id, mode="rest"),
+                    ["Dataset Id", "Dataset ID", "Id"],
+                    ["Dataset Name", "Name"],
+                )
+            except Exception:
+                rows = []
+        return sorted(rows, key=lambda x: x["name"].lower())
 
     # The active ruleset. A dataframe is used as-is; JSON entries are matched to the
     # built-in rules (which supply the logic) each time the defaults are rebuilt.
@@ -3752,9 +3805,10 @@ def bpa(
         _, _initial_disabled = parse_rules_json(_entries, _catalog())
         _initial_rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
+    # Nothing is fetched before the widget is displayed: the workspace / semantic
+    # model lists are requested by the frontend right after the first render, so
+    # the analyzer appears immediately.
     widget = _BestPracticeAnalyzerWidget(
-        workspaces=_list_workspaces_payload(),
-        datasets=_list_datasets_payload(initial_ws_id),
         workspace_id=initial_ws_id,
         workspace_name=str(initial_ws_name or ""),
         dataset_id=initial_ds_id,
@@ -3772,6 +3826,20 @@ def bpa(
 
     def _handle_list_datasets(payload):
         widget.datasets = _list_datasets_payload(payload.get("workspace_id"))
+
+    def _handle_load_lists(payload):
+        """Initial (deferred) load of the workspace and semantic model lists."""
+
+        workspace_id = str(payload.get("workspace_id") or "")
+        if workspace_id:
+            # The current workspace and its models are published first, so a
+            # model can be picked while the tenant workspace list is still
+            # loading.
+            widget.workspaces = [
+                {"id": workspace_id, "name": str(initial_ws_name or "")}
+            ]
+            widget.datasets = _list_datasets_payload(workspace_id)
+        widget.workspaces = _list_workspaces_payload()
 
     def _handle_load_workspace_datasets(payload):
         workspace_id = str(payload.get("workspace_id") or "")
@@ -4049,6 +4117,7 @@ def bpa(
 
     handlers = {
         "list_datasets": _handle_list_datasets,
+        "load_lists": _handle_load_lists,
         "load_workspace_datasets": _handle_load_workspace_datasets,
         "reload_lists": _handle_reload_lists,
         "load_rules": _handle_load_rules,
@@ -4062,9 +4131,19 @@ def bpa(
 
     _running = [False]
 
+    # Lightweight lookups which fill a picker in the background: they must not
+    # dim / block the user interface.
+    _background_actions = {
+        "load_lists",
+        "list_datasets",
+        "load_workspace_datasets",
+        "load_rules",
+    }
+
     def _on_run(_change):
         payload = dict(widget.pending_action or {})
-        handler = handlers.get(payload.get("action"))
+        action = payload.get("action")
+        handler = handlers.get(action)
         if handler is None:
             return
         # A handler must never be entered from inside another one, otherwise the
@@ -4072,10 +4151,12 @@ def bpa(
         if _running[0]:
             return
 
+        background = action in _background_actions
         _running[0] = True
-        widget.busy = True
+        if not background:
+            widget.busy = True
+            widget.status = {}
         widget.cancel_requested = False
-        widget.status = {}
         try:
             handler(payload)
         except Exception as e:
