@@ -992,6 +992,28 @@ def save_as_delta_table(
                 ]
             )
 
+    def resolve_null_columns(arrow_table):
+        # Columns which are entirely null are inferred by pyarrow as the 'null' data type,
+        # which is not supported by Delta Lake. Cast those columns to the data type specified
+        # in the 'schema' parameter (or string if not specified).
+        null_columns = [f.name for f in arrow_table.schema if pa.types.is_null(f.type)]
+        if not null_columns:
+            return arrow_table
+
+        type_mapping = get_type_mapping(pure_python=True)
+        normalized_schema = {
+            k.replace(" ", "_"): v for k, v in (schema or {}).items() if v is not None
+        }
+        new_schema = arrow_table.schema
+        for name in null_columns:
+            data_type = type_mapping.get(
+                str(normalized_schema.get(name, "string")).lower(), pa.string()
+            )
+            index = new_schema.get_field_index(name)
+            new_schema = new_schema.set(index, pa.field(name, data_type))
+
+        return arrow_table.cast(new_schema)
+
     # Main logic
     schema_map = None
     if schema is not None:
@@ -1028,9 +1050,15 @@ def save_as_delta_table(
     if _pure_python_notebook():
         from deltalake import write_deltalake
 
+        data = spark_df
+        if isinstance(data, pd.DataFrame):
+            data = pa.Table.from_pandas(data, preserve_index=False)
+        if isinstance(data, pa.Table):
+            data = resolve_null_columns(data)
+
         write_args = {
             "table_or_uri": file_path,
-            "data": spark_df,
+            "data": data,
             "mode": write_mode,
             # "schema": schema_map,
         }
