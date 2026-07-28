@@ -310,6 +310,19 @@ _WIDGET_CSS = (
 .slls-bpa-staged-row button:hover { color: var(--slls-error); background: var(--slls-error-soft); }
 .slls-bpa-group.staged .slls-bpa-group-name { color: var(--ui-text-tertiary); }
 
+/* ---------------- Rule change history ---------------- */
+.slls-bpa-history-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    border-bottom: 1px solid var(--ui-border); font-size: 12.5px; }
+.slls-bpa-history-row:last-child { border-bottom: none; }
+.slls-bpa-history-index { flex-shrink: 0; min-width: 22px; text-align: right;
+    color: var(--ui-text-tertiary); font-variant-numeric: tabular-nums; }
+.slls-bpa-history-main { flex: 1; min-width: 0; }
+.slls-bpa-history-label { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-bpa-history-time { color: var(--ui-text-tertiary); font-size: 11.5px; margin-top: 1px;
+    font-variant-numeric: tabular-nums; }
+.slls-bpa-history-latest { flex-shrink: 0; padding: 2px 9px; border-radius: 7px; font-size: 11.5px;
+    font-weight: 500; color: var(--ui-accent); background: var(--ui-accent-soft); }
+
 /* ---------------- Bulk report ---------------- */
 .slls-bpa-bulk-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .slls-bpa-bulk-row { display: flex; align-items: center; gap: 12px; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm);
@@ -398,9 +411,14 @@ _WIDGET_CSS = (
 .slls-bpa-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2147483002;
     align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
 .slls-bpa-overlay.show { display: flex; }
+/* A modal opened from another modal (e.g. the rule change history, opened from
+   the rule editor) has to sit above it. */
+.slls-bpa-overlay-top { z-index: 2147483004; }
 .slls-bpa-modal { background: var(--ui-bg-solid); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--slls-radius);
     box-shadow: var(--ui-shadow-lg); width: 100%; max-width: 1040px; padding: 22px 24px; margin: 0 auto; }
-.slls-bpa-modal h2 { margin: 0 0 4px 0; font-size: 17px; font-weight: 600; }
+.slls-bpa-modal h2 { margin: 0 0 4px 0; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 9px; }
+.slls-bpa-modal h2 .slls-bpa-icon { color: var(--ui-accent); }
+.slls-bpa-modal h2 .slls-bpa-icon svg { width: 18px; height: 18px; }
 .slls-bpa-modal-sub { font-size: 12.5px; color: var(--ui-text-secondary); margin-bottom: 14px; }
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
@@ -529,6 +547,9 @@ function render({ model, el }) {
         eyeOff: `__SLLS_ICON_EYE_OFF__`,
         save: `__SLLS_ICON_SAVE__`,
         undo: `__SLLS_ICON_UNDO__`,
+        redo: `__SLLS_ICON_REDO__`,
+        history: `__SLLS_ICON_HISTORY__`,
+        reset: `__SLLS_ICON_RESET__`,
         upload: `__SLLS_ICON_UPLOAD__`,
         download: `__SLLS_ICON_DOWNLOAD__`,
         info: `__SLLS_ICON_INFO__`,
@@ -1131,7 +1152,8 @@ function render({ model, el }) {
     function onEscapeKey(e) {
         if (e.key !== "Escape") return;
         // Close whichever modal is open first, then leave full screen.
-        if (stagedOverlay.classList.contains("show")) closeStaged();
+        if (historyOverlay.classList.contains("show")) closeHistory();
+        else if (stagedOverlay.classList.contains("show")) closeStaged();
         else if (overlay.classList.contains("show")) overlay.classList.remove("show");
         else if (fsMode) setFullscreen(false);
     }
@@ -1785,6 +1807,15 @@ function render({ model, el }) {
     const stagedList = document.createElement("div");
     stagedList.className = "slls-bpa-staged";
 
+    // The rule change history is reviewed in its own modal, opened from the rule
+    // editor, so it is stacked above it.
+    const historyOverlay = document.createElement("div");
+    historyOverlay.className = "slls-bpa-overlay slls-bpa-overlay-top";
+    root.appendChild(historyOverlay);
+    historyOverlay.addEventListener("click", (ev) => {
+        if (ev.target === historyOverlay) closeHistory();
+    });
+
     // ------------------------------------------------------------------
     // Attribution
     // ------------------------------------------------------------------
@@ -1800,6 +1831,17 @@ function render({ model, el }) {
     // ==================================================================
     const MAX_BULK = model.get("max_bulk_models") || 10;
     const disabledRules = new Set(model.get("disabled_rules") || []);
+    // Rule editor change history. Every entry snapshots the state *before* a
+    // change so it can be undone, and is listed in the change-history popup.
+    const ruleHistory = [];
+    // Changes which were undone, so they can be redone. Making a new change
+    // clears it.
+    const ruleRedoStack = [];
+    // Which ruleset the backend currently holds: "initial" (whatever was passed
+    // to the function), "default" (the built-in rules) or an imported ruleset.
+    let rulesetRef = { source: "initial", rules: null };
+    // A ruleset change awaiting the backend's confirmation.
+    let pendingRulesetChange = null;
     const expandedRules = new Set();
     // Rule ids whose Expression / FixExpression code is revealed in the rule editor.
     const expandedRuleExprs = new Set();
@@ -2554,17 +2596,207 @@ function render({ model, el }) {
     // Set while the rules panel is open, so the problems reported by an imported
     // ruleset can be re-rendered when they arrive from the backend.
     let activeIssuesRender = null;
+    // Set while the rules panel is open, so the undo / history buttons can follow
+    // the history stack.
+    let activeRuleCtrlsRender = null;
     function refreshRuleList() {
         if (activeRuleListRender && overlay.classList.contains("show")) {
             activeRuleListRender();
         }
+        if (activeRuleCtrlsRender && overlay.classList.contains("show")) {
+            activeRuleCtrlsRender();
+        }
     }
-    model.on("change:rules", refreshRuleList);
+    model.on("change:rules", () => {
+        // A ruleset change is only recorded once the backend has adopted it.
+        if (pendingRulesetChange) {
+            rulesetRef = pendingRulesetChange.ruleset;
+            if (pendingRulesetChange.history) {
+                ruleHistory.push({
+                    time: new Date(),
+                    label: pendingRulesetChange.history.label,
+                    state: pendingRulesetChange.history.state,
+                });
+                ruleRedoStack.length = 0;
+            }
+            pendingRulesetChange = null;
+            renderHistoryList();
+        }
+        refreshRuleList();
+    });
     model.on("change:import_issues", () => {
+        // A rejected ruleset changed nothing, so it never enters the history.
+        if ((model.get("import_issues") || {}).kind === "error") {
+            pendingRulesetChange = null;
+        }
         if (activeIssuesRender && overlay.classList.contains("show")) {
             activeIssuesRender();
         }
     });
+
+    // ------------------------------------------------------------------
+    // Rule change history
+    // ------------------------------------------------------------------
+    function ruleStateSnapshot() {
+        return { disabled: [...disabledRules], ruleset: rulesetRef };
+    }
+    // Records a change which is applied entirely in the browser (a rule toggled
+    // on or off); ruleset changes are recorded when the backend confirms them.
+    function recordRuleChange(label) {
+        ruleHistory.push({ time: new Date(), label, state: ruleStateSnapshot() });
+        // A new change invalidates anything that was undone.
+        ruleRedoStack.length = 0;
+        renderHistoryList();
+    }
+    function applyRuleState(state) {
+        disabledRules.clear();
+        for (const id of state.disabled) disabledRules.add(id);
+    }
+    // Restores a snapshot, asking the backend to reinstate the ruleset when the
+    // ruleset itself (not just the enabled/disabled state) changed.
+    function applyRuleSnapshot(state, message) {
+        applyRuleState(state);
+        renderHistoryList();
+        if (state.ruleset !== rulesetRef) {
+            pendingRulesetChange = { ruleset: state.ruleset, history: null };
+            runAction("set_ruleset", {
+                source: state.ruleset.source,
+                rules: state.ruleset.rules,
+                disabled_rules: [...disabledRules],
+                message,
+            });
+        } else {
+            // A local toggle: nothing has to be written back, the editor just
+            // returns to the other enabled/disabled state.
+            model.set("status", { message, kind: "info" });
+            model.save_changes();
+            refreshRuleList();
+        }
+    }
+    function undoRuleChange() {
+        const entry = ruleHistory.pop();
+        if (!entry) return;
+        // The state being left behind is what a redo restores.
+        ruleRedoStack.push({
+            time: new Date(), label: entry.label, state: ruleStateSnapshot(),
+        });
+        applyRuleSnapshot(entry.state, `Undid: ${entry.label}`);
+    }
+    function redoRuleChange() {
+        const entry = ruleRedoStack.pop();
+        if (!entry) return;
+        ruleHistory.push({
+            time: new Date(), label: entry.label, state: ruleStateSnapshot(),
+        });
+        applyRuleSnapshot(entry.state, `Redid: ${entry.label}`);
+    }
+    function resetRulesToDefault() {
+        const target = { source: "default", rules: null };
+        pendingRulesetChange = {
+            ruleset: target,
+            history: { label: "Reverted to the default rules", state: ruleStateSnapshot() },
+        };
+        disabledRules.clear();
+        runAction("set_ruleset", {
+            source: "default",
+            rules: null,
+            disabled_rules: [],
+            message: "Reverted to the default rules.",
+        });
+    }
+
+    function closeHistory() { historyOverlay.classList.remove("show"); }
+
+    function renderHistoryList() {
+        if (!historyOverlay.classList.contains("show")) return;
+        const body = historyOverlay.querySelector("[data-history-list]");
+        if (!body) return;
+        clear(body);
+        if (ruleHistory.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "slls-bpa-empty";
+            empty.textContent = "No rule changes have been made yet.";
+            body.appendChild(empty);
+            return;
+        }
+        // Newest first.
+        for (let i = ruleHistory.length - 1; i >= 0; i--) {
+            const entry = ruleHistory[i];
+            const row = document.createElement("div");
+            row.className = "slls-bpa-history-row";
+            const index = document.createElement("span");
+            index.className = "slls-bpa-history-index";
+            index.textContent = String(i + 1);
+            row.appendChild(index);
+            const main = document.createElement("div");
+            main.className = "slls-bpa-history-main";
+            const label = document.createElement("div");
+            label.className = "slls-bpa-history-label";
+            label.textContent = entry.label;
+            main.appendChild(label);
+            const time = document.createElement("div");
+            time.className = "slls-bpa-history-time";
+            time.textContent = entry.time.toLocaleTimeString();
+            main.appendChild(time);
+            row.appendChild(main);
+            if (i === ruleHistory.length - 1) {
+                const latest = document.createElement("span");
+                latest.className = "slls-bpa-history-latest";
+                latest.textContent = "Most recent";
+                row.appendChild(latest);
+            }
+            body.appendChild(row);
+        }
+    }
+
+    function openHistory() {
+        clear(historyOverlay);
+        const modal = document.createElement("div");
+        modal.className = "slls-bpa-modal slls-bpa-staged-modal";
+
+        const heading = document.createElement("h2");
+        heading.textContent = "Rule change history";
+        modal.appendChild(heading);
+        const sub = document.createElement("div");
+        sub.className = "slls-bpa-modal-sub";
+        sub.textContent = "The changes made to the rules in this session, newest first. "
+            + "Use Undo to step back through them.";
+        modal.appendChild(sub);
+
+        const body = document.createElement("div");
+        body.className = "slls-bpa-staged";
+        body.setAttribute("data-history-list", "");
+        modal.appendChild(body);
+
+        const footer = document.createElement("div");
+        footer.className = "slls-bpa-modal-footer";
+        const undoLast = makeButton("Undo last change", "slls-bpa-btn-sm", ICON.undo);
+        undoLast.disabled = ruleHistory.length === 0;
+        const redoLast = makeButton("Redo", "slls-bpa-btn-sm", ICON.redo);
+        redoLast.disabled = ruleRedoStack.length === 0;
+        function syncHistoryFooter() {
+            undoLast.disabled = ruleHistory.length === 0;
+            redoLast.disabled = ruleRedoStack.length === 0;
+        }
+        undoLast.addEventListener("click", () => {
+            undoRuleChange();
+            syncHistoryFooter();
+        });
+        redoLast.addEventListener("click", () => {
+            redoRuleChange();
+            syncHistoryFooter();
+        });
+        footer.appendChild(undoLast);
+        footer.appendChild(redoLast);
+        const closeBtn = makeButton("Close", "slls-bpa-btn-sm");
+        closeBtn.addEventListener("click", closeHistory);
+        footer.appendChild(closeBtn);
+        modal.appendChild(footer);
+
+        historyOverlay.appendChild(modal);
+        historyOverlay.classList.add("show");
+        renderHistoryList();
+    }
 
     // Downloads the effective ruleset in the Best Practice Rules JSON format.
     const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
@@ -2607,7 +2839,10 @@ function render({ model, el }) {
         modal.className = "slls-bpa-modal";
 
         const heading = document.createElement("h2");
-        heading.textContent = "Rule Editor";
+        heading.appendChild(iconSpan(ICON.sliders));
+        const headingText = document.createElement("span");
+        headingText.textContent = "Rule Editor";
+        heading.appendChild(headingText);
         modal.appendChild(heading);
         const sub = document.createElement("div");
         sub.className = "slls-bpa-modal-sub";
@@ -2634,6 +2869,44 @@ function render({ model, el }) {
         bar.appendChild(enableAll);
         bar.appendChild(disableAll);
 
+        const resetBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.reset);
+        resetBtn.title = "Restore the default rules (discards any imported ruleset)";
+        resetBtn.setAttribute("aria-label", resetBtn.title);
+        resetBtn.addEventListener("click", () => resetRulesToDefault());
+        bar.appendChild(resetBtn);
+
+        const undoBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.undo);
+        undoBtn.title = "Undo the last rule change";
+        undoBtn.setAttribute("aria-label", undoBtn.title);
+        undoBtn.addEventListener("click", () => undoRuleChange());
+        bar.appendChild(undoBtn);
+
+        const redoBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.redo);
+        redoBtn.title = "Redo the last undone rule change";
+        redoBtn.setAttribute("aria-label", redoBtn.title);
+        redoBtn.addEventListener("click", () => redoRuleChange());
+        bar.appendChild(redoBtn);
+
+        const historyBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.history);
+        historyBtn.title = "Show the rule change history";
+        historyBtn.setAttribute("aria-label", historyBtn.title);
+        historyBtn.addEventListener("click", () => openHistory());
+        bar.appendChild(historyBtn);
+
+        function renderRuleCtrls() {
+            undoBtn.disabled = ruleHistory.length === 0;
+            undoBtn.title = ruleHistory.length === 0
+                ? "No rule changes to undo"
+                : `Undo: ${ruleHistory[ruleHistory.length - 1].label}`;
+            redoBtn.disabled = ruleRedoStack.length === 0;
+            redoBtn.title = ruleRedoStack.length === 0
+                ? "No undone rule changes to redo"
+                : `Redo: ${ruleRedoStack[ruleRedoStack.length - 1].label}`;
+            historyBtn.title = ruleHistory.length === 0
+                ? "Show the rule change history (no changes yet)"
+                : `Show the rule change history (${plural(ruleHistory.length, "change")})`;
+        }
+
         // ---- Import / export the ruleset as .json ----
         const fileInput = document.createElement("input");
         fileInput.type = "file";
@@ -2657,6 +2930,13 @@ function render({ model, el }) {
                 // The panel stays open: the list re-renders once the imported
                 // ruleset arrives, and any problems are reported above it.
                 setIssues("", "", []);
+                pendingRulesetChange = {
+                    ruleset: { source: "custom", rules: parsed },
+                    history: {
+                        label: `Imported the ruleset "${file.name}"`,
+                        state: ruleStateSnapshot(),
+                    },
+                };
                 runAction("import_rules", { rules: parsed });
             }).catch(() => {
                 setIssues("error", "The file could not be read.", []);
@@ -2797,9 +3077,12 @@ function render({ model, el }) {
                 box.checked = !disabledRules.has(rule.id);
                 box.setAttribute("aria-label", `Enable ${rule.name}`);
                 box.addEventListener("change", () => {
+                    recordRuleChange(
+                        `${box.checked ? "Enabled" : "Disabled"} "${rule.name}"`);
                     if (box.checked) disabledRules.delete(rule.id);
                     else disabledRules.add(rule.id);
                     renderRuleCount();
+                    renderRuleCtrls();
                 });
                 toggleLabel.appendChild(box);
                 toggleLabel.appendChild(document.createElement("i"));
@@ -2881,9 +3164,17 @@ function render({ model, el }) {
         }
 
         ruleSearch.addEventListener("input", renderRuleList);
-        enableAll.addEventListener("click", () => { disabledRules.clear(); renderRuleList(); });
+        enableAll.addEventListener("click", () => {
+            if (disabledRules.size === 0) return;
+            recordRuleChange("Enabled all rules");
+            disabledRules.clear();
+            renderRuleList();
+        });
         disableAll.addEventListener("click", () => {
-            for (const r of (model.get("rules") || [])) disabledRules.add(r.id);
+            const rules = model.get("rules") || [];
+            if (rules.length > 0 && rules.every((r) => disabledRules.has(r.id))) return;
+            recordRuleChange("Disabled all rules");
+            for (const r of rules) disabledRules.add(r.id);
             renderRuleList();
         });
 
@@ -2906,7 +3197,9 @@ function render({ model, el }) {
         overlay.classList.add("show");
         activeRuleListRender = renderRuleList;
         activeIssuesRender = renderIssues;
+        activeRuleCtrlsRender = renderRuleCtrls;
         renderIssues();
+        renderRuleCtrls();
         renderRuleList();
         // The catalog is loaded on demand, so ask for it the first time.
         if ((model.get("rules") || []).length === 0) runAction("load_rules", {});
@@ -3009,6 +3302,9 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_EYE__", _UI_ICONS["eye"])
     .replace("__SLLS_ICON_SAVE__", _UI_ICONS["save"])
     .replace("__SLLS_ICON_UNDO__", _UI_ICONS["undo"])
+    .replace("__SLLS_ICON_REDO__", _UI_ICONS["redo"])
+    .replace("__SLLS_ICON_HISTORY__", _UI_ICONS["history"])
+    .replace("__SLLS_ICON_RESET__", _UI_ICONS["reset"])
     .replace("__SLLS_ICON_UPLOAD__", _UI_ICONS["upload"])
     .replace("__SLLS_ICON_DOWNLOAD__", _UI_ICONS["download"])
     .replace("__SLLS_ICON_INFO__", _UI_ICONS["info"])
@@ -3088,7 +3384,9 @@ def bpa(
 
         Because the rule logic is compiled in Python, each entry is matched to a
         built-in rule by its ``ID`` or ``Name`` (a leading ``[Category]`` prefix is
-        ignored); entries which do not match a built-in rule are skipped. ``Category``,
+        ignored). The ruleset is validated first and is rejected as a whole if any
+        entry does not match a built-in rule or has a malformed property; the
+        problems found are reported so they can be corrected. ``Category``,
         ``Severity`` (1 = Info, 2 = Warning, 3 = Error, or the name), ``Description``,
         ``Url``, ``Scope`` and ``Enabled`` may be overridden. ``Expression`` holds the
         source of the rule's predicate and ``FixExpression`` the code its automatic
@@ -3221,7 +3519,9 @@ def bpa(
 
     # The active ruleset. A dataframe is used as-is; JSON entries are matched to the
     # built-in rules (which supply the logic) each time the defaults are rebuilt.
-    ruleset = {"custom": rules}
+    # "initial" keeps whatever was supplied to the function so that an undo in the
+    # rule editor can restore it.
+    ruleset = {"custom": rules, "initial": rules}
 
     def _default_rules(workspace_id, dataset_id):
         """Builds the built-in rules, optionally including the calc-dependency graph."""
@@ -3443,13 +3743,12 @@ def bpa(
 
         _entries = rules if isinstance(rules, list) else (rules.get("rules") or [])
         _errors, _warnings = validate_rules_json(_entries, _catalog())
-        if _errors:
+        _problems = _errors + _warnings
+        if _problems:
             raise ValueError(
-                f"{icons.red_dot} The 'rules' parameter is not a valid ruleset:\n- "
-                + "\n- ".join(_errors)
+                f"{icons.red_dot} The 'rules' parameter is not a valid ruleset and "
+                "was not used:\n- " + "\n- ".join(_problems)
             )
-        for _warning in _warnings:
-            print(f"{icons.warning} {_warning}")
         _, _initial_disabled = parse_rules_json(_entries, _catalog())
         _initial_rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
@@ -3689,17 +3988,23 @@ def bpa(
 
         catalog = _catalog()
         errors, warnings = validate_rules_json(entries, catalog)
-        if errors:
-            # Nothing is adopted: the file has to be corrected first.
+        problems = errors + warnings
+        if problems:
+            # An invalid ruleset is never adopted, even partially: the file has
+            # to be corrected and imported again.
+            count = len(problems)
             widget.import_issues = {
                 "kind": "error",
-                "title": "The ruleset was not imported.",
-                "items": errors + warnings,
+                "title": (
+                    f"The ruleset was not imported ({count} problem"
+                    f"{'' if count == 1 else 's'} found)."
+                ),
+                "items": problems,
             }
             widget.status = {
                 "message": (
-                    "The ruleset could not be imported. See the problems listed in "
-                    "the rule editor."
+                    "The ruleset was not imported. See the problems listed in the "
+                    "rule editor."
                 ),
                 "kind": "error",
             }
@@ -3710,23 +4015,35 @@ def bpa(
         rules_cache.clear()
         widget.rules = rules_payload(parsed)
         widget.disabled_rules = disabled
-        widget.import_issues = (
-            {
-                "kind": "warning",
-                "title": (
-                    f"The ruleset was imported, but {len(warnings)} entr"
-                    f"{'y' if len(warnings) == 1 else 'ies'} need attention."
-                ),
-                "items": warnings,
-            }
-            if warnings
-            else {}
-        )
+        widget.import_issues = {}
         widget.status = {
-            "message": (
-                f"Loaded {len(parsed)} rule(s)."
-                + (f" {len(warnings)} problem(s) were reported." if warnings else "")
-            ),
+            "message": f"Loaded {len(parsed)} rule(s).",
+            "kind": "success",
+        }
+
+    def _handle_set_ruleset(payload):
+        """
+        Replaces the active ruleset without validating it again.
+
+        Used by the rule editor's undo and "Reset to defaults" actions, which
+        restore a ruleset that was already accepted once (or the built-in rules).
+        """
+
+        source = str(payload.get("source") or "default")
+        if source == "default":
+            entries = None
+        elif source == "initial":
+            entries = ruleset["initial"]
+        else:
+            entries = payload.get("rules") or []
+
+        ruleset["custom"] = entries
+        rules_cache.clear()
+        widget.rules = rules_payload(normalize_rules(entries, _catalog()))
+        widget.disabled_rules = [str(r) for r in (payload.get("disabled_rules") or [])]
+        widget.import_issues = {}
+        widget.status = {
+            "message": str(payload.get("message") or "The ruleset was restored."),
             "kind": "success",
         }
 
@@ -3736,6 +4053,7 @@ def bpa(
         "reload_lists": _handle_reload_lists,
         "load_rules": _handle_load_rules,
         "import_rules": _handle_import_rules,
+        "set_ruleset": _handle_set_ruleset,
         "run_scan": _handle_run_scan,
         "run_bulk": _handle_run_bulk,
         "preview_fix": _handle_preview_fix,

@@ -372,9 +372,9 @@ def validate_rules_json(
     Checks a Best Practice Rules JSON ruleset before it is imported.
 
     The rule logic is compiled in Python, so an entry is only usable when it can be
-    matched to a built-in rule and its overridable properties are well-formed. This
-    reports both the problems which make the ruleset unusable and the ones which
-    cause an entry to be skipped or to fall back to its built-in definition.
+    matched to a built-in rule and its overridable properties are well-formed. Both
+    the problems which make the whole file unusable and the ones found on an
+    individual entry are reported, so they can be corrected in the file.
 
     Parameters
     ----------
@@ -388,8 +388,8 @@ def validate_rules_json(
     Returns
     -------
     Tuple[List[str], List[str]]
-        The errors (the ruleset cannot be imported) and the warnings (the entry is
-        skipped, or the built-in value is used instead).
+        The problems with the file as a whole, and the problems found on individual
+        rule entries. A ruleset is only valid when both lists are empty.
     """
 
     if isinstance(entries, dict):
@@ -415,7 +415,7 @@ def validate_rules_json(
     for index, entry in enumerate(entries, start=1):
         label = f"Rule {index}"
         if not isinstance(entry, dict):
-            warnings.append(f"{label}: is not a rule object; it was skipped.")
+            warnings.append(f"{label}: is not a rule object.")
             continue
 
         name = _entry_value(entry, "Name", "Rule Name", "RuleName")
@@ -425,21 +425,18 @@ def validate_rules_json(
         elif identifier:
             label = f"'{identifier}'"
         else:
-            warnings.append(f"{label}: has no 'ID' or 'Name'; it was skipped.")
+            warnings.append(f"{label}: has no 'ID' or 'Name'.")
             continue
 
         rule_id, base = _match_default_rule(entry, by_id)
         if base is None:
             warnings.append(
                 f"{label}: does not match a built-in rule (rules are matched by "
-                "their 'ID' or 'Name'); it was skipped."
+                "their 'ID' or 'Name')."
             )
             continue
         if rule_id in seen:
-            warnings.append(
-                f"{label}: is a duplicate of '{seen[rule_id]}'; only the first "
-                "entry is used."
-            )
+            warnings.append(f"{label}: is a duplicate of '{seen[rule_id]}'.")
             continue
         seen[rule_id] = str(base["Rule Name"])
 
@@ -455,7 +452,7 @@ def validate_rules_json(
             if not valid_severity:
                 warnings.append(
                     f"{label}: 'Severity' must be 1, 2 or 3 (or Info, Warning, "
-                    f"Error) but is {severity!r}; the built-in severity is used."
+                    f"Error) but is {severity!r}."
                 )
 
         raw_scope = _entry_value(entry, "Scope", "Scopes")
@@ -475,21 +472,18 @@ def validate_rules_json(
             ):
                 warnings.append(
                     f"{label}: 'Scope' contains a value which is not one of "
-                    f"{', '.join(RULE_SCOPES)}; the built-in scope is used."
+                    f"{', '.join(RULE_SCOPES)}."
                 )
 
         enabled = _entry_value(entry, "Enabled")
         if enabled is not None and not isinstance(enabled, bool):
             warnings.append(
-                f"{label}: 'Enabled' must be true or false but is {enabled!r}; "
-                "the rule is treated as enabled."
+                f"{label}: 'Enabled' must be true or false but is {enabled!r}."
             )
 
         description = _entry_value(entry, "Description")
         if description is not None and not isinstance(description, str):
-            warnings.append(
-                f"{label}: 'Description' must be text; the value is converted to text."
-            )
+            warnings.append(f"{label}: 'Description' must be text.")
 
     if not seen:
         errors.append(

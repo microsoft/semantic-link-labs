@@ -349,7 +349,7 @@ def test_validate_rules_json_reports_an_unusable_file():
     assert len(warnings) == 1
 
 
-def test_validate_rules_json_warns_about_entries_it_cannot_honor():
+def test_validate_rules_json_reports_every_problem_it_finds():
     defaults = _rules()
 
     errors, warnings = engine.validate_rules_json(
