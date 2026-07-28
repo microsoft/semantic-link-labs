@@ -9,6 +9,9 @@ from ._caching import (
 from ._perspective_editor import (
     perspective_editor,
 )
+from ._mini_model_manager import (
+    mini_model_manager,
+)
 from ._direct_lake_manager import (
     direct_lake_manager,
 )
@@ -28,6 +31,7 @@ __all__ = [
     "make_discoverable",
     "enable_query_caching",
     "perspective_editor",
+    "mini_model_manager",
     "direct_lake_manager",
     "lineage_view",
     "migrate_to_direct_lake",

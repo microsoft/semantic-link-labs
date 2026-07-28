@@ -278,6 +278,7 @@ def deploy_semantic_model(
     overwrite: bool = False,
     perspective: Optional[str] = None,
     filters: Optional[dict] = None,
+    metadata_only: bool = False,
 ):
     """
     Deploys a semantic model based on an existing semantic model.
@@ -313,6 +314,10 @@ def deploy_semantic_model(
             "Geography": "City = 'Verdery' ",
             "Sales": "SaleKey > 100",
         }
+    metadata_only : bool, default=False
+        If set to True, the materialized lake views which back the filtered tables are not (re)created; only the semantic model
+        metadata is deployed. This is useful when the materialized lake views already exist and only the model has changed.
+        Only relevant when filters are specified.
     """
     from datetime import datetime
 
@@ -360,9 +365,14 @@ def deploy_semantic_model(
 
             df_added = tom._reduce_model(perspective_name=perspective)
             if filters is not None:
-                queries = tom._create_mlvs_based_on_filters(
-                    filters=filters, schema=perspective
-                )
+                if metadata_only:
+                    queries, _, _ = tom._generate_mlv_queries(
+                        filters=filters, schema=perspective
+                    )
+                else:
+                    queries = tom._create_mlvs_based_on_filters(
+                        filters=filters, schema=perspective
+                    )
             bim = tom.get_bim()
 
     else:
