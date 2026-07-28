@@ -405,6 +405,19 @@ _WIDGET_CSS = (
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
 .slls-bpa-rule-count { font-size: 11.5px; color: var(--ui-text-tertiary); margin-bottom: 7px; }
+
+/* Problems reported by an imported ruleset. */
+.slls-bpa-issues { display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: var(--slls-radius-sm); font-size: 12.5px; }
+.slls-bpa-issues.show { display: block; }
+.slls-bpa-issues.error { background: var(--slls-error-soft); color: var(--slls-error); }
+.slls-bpa-issues.warning { background: var(--slls-warning-soft); color: var(--slls-warning); }
+.slls-bpa-issues-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.slls-bpa-issues-title { flex: 1; min-width: 0; }
+.slls-bpa-issues-dismiss { appearance: none; border: none; background: transparent; color: inherit; cursor: pointer;
+    display: inline-flex; padding: 2px; border-radius: 6px; opacity: 0.7; flex-shrink: 0; }
+.slls-bpa-issues-dismiss:hover { opacity: 1; }
+.slls-bpa-issues-list { margin: 8px 0 0 0; padding-left: 20px; max-height: 170px; overflow-y: auto; color: var(--ui-text); }
+.slls-bpa-issues-list li { margin-bottom: 3px; line-height: 1.45; }
 .slls-bpa-rule { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--ui-border); }
 .slls-bpa-rule:last-child { border-bottom: none; }
 .slls-bpa-rule-body { min-width: 0; flex: 1; }
@@ -2538,12 +2551,20 @@ function render({ model, el }) {
     // Set while the rules panel is open, so the list can be re-rendered when the
     // catalog finishes loading or a ruleset is imported.
     let activeRuleListRender = null;
+    // Set while the rules panel is open, so the problems reported by an imported
+    // ruleset can be re-rendered when they arrive from the backend.
+    let activeIssuesRender = null;
     function refreshRuleList() {
         if (activeRuleListRender && overlay.classList.contains("show")) {
             activeRuleListRender();
         }
     }
     model.on("change:rules", refreshRuleList);
+    model.on("change:import_issues", () => {
+        if (activeIssuesRender && overlay.classList.contains("show")) {
+            activeIssuesRender();
+        }
+    });
 
     // Downloads the effective ruleset in the Best Practice Rules JSON format.
     const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
@@ -2626,15 +2647,19 @@ function render({ model, el }) {
                 try {
                     parsed = JSON.parse(text);
                 } catch (e) {
+                    setIssues("error", "The file is not valid JSON.",
+                        [String((e && e.message) || e)]);
                     model.set("status", {
                         message: "The file is not valid JSON.", kind: "error" });
                     model.save_changes();
                     return;
                 }
                 // The panel stays open: the list re-renders once the imported
-                // ruleset arrives.
+                // ruleset arrives, and any problems are reported above it.
+                setIssues("", "", []);
                 runAction("import_rules", { rules: parsed });
             }).catch(() => {
+                setIssues("error", "The file could not be read.", []);
                 model.set("status", { message: "The file could not be read.", kind: "error" });
                 model.save_changes();
             });
@@ -2655,6 +2680,59 @@ function render({ model, el }) {
         bar.appendChild(exportBtn);
 
         modal.appendChild(bar);
+
+        // Problems found in an imported ruleset, so they can be corrected in the file.
+        const issuesBox = document.createElement("div");
+        issuesBox.className = "slls-bpa-issues";
+        modal.appendChild(issuesBox);
+
+        function renderIssues() {
+            clear(issuesBox);
+            const issues = model.get("import_issues") || {};
+            const items = issues.items || [];
+            if (items.length === 0 && !issues.title) {
+                issuesBox.className = "slls-bpa-issues";
+                return;
+            }
+            const kind = issues.kind === "error" ? "error" : "warning";
+            issuesBox.className = `slls-bpa-issues show ${kind}`;
+
+            const head = document.createElement("div");
+            head.className = "slls-bpa-issues-head";
+            head.appendChild(iconSpan(kind === "error" ? ICON.error : ICON.alert));
+            const title = document.createElement("span");
+            title.className = "slls-bpa-issues-title";
+            title.textContent = issues.title
+                || "The ruleset reported some problems.";
+            head.appendChild(title);
+            const dismiss = document.createElement("button");
+            dismiss.type = "button";
+            dismiss.className = "slls-bpa-issues-dismiss";
+            dismiss.innerHTML = ICON.close;
+            dismiss.title = "Dismiss";
+            dismiss.setAttribute("aria-label", "Dismiss the reported problems");
+            dismiss.addEventListener("click", () => setIssues("", "", []));
+            head.appendChild(dismiss);
+            issuesBox.appendChild(head);
+
+            if (items.length > 0) {
+                const list = document.createElement("ul");
+                list.className = "slls-bpa-issues-list";
+                for (const item of items) {
+                    const li = document.createElement("li");
+                    li.textContent = item;
+                    list.appendChild(li);
+                }
+                issuesBox.appendChild(list);
+            }
+        }
+
+        function setIssues(kind, title, items) {
+            model.set("import_issues",
+                items.length === 0 && !title ? {} : { kind, title, items });
+            model.save_changes();
+            renderIssues();
+        }
 
         const countLine = document.createElement("div");
         countLine.className = "slls-bpa-rule-count";
@@ -2827,6 +2905,8 @@ function render({ model, el }) {
         overlay.appendChild(modal);
         overlay.classList.add("show");
         activeRuleListRender = renderRuleList;
+        activeIssuesRender = renderIssues;
+        renderIssues();
         renderRuleList();
         // The catalog is loaded on demand, so ask for it the first time.
         if ((model.get("rules") || []).length === 0) runAction("load_rules", {});
@@ -3063,6 +3143,7 @@ def bpa(
         preview_fixes,
         rules_payload,
         scan_model,
+        validate_rules_json,
     )
 
     # `sempy_labs.tom`, the rules module and the dependency graph all pull in the
@@ -3333,6 +3414,7 @@ def bpa(
         dataset_name = traitlets.Unicode("").tag(sync=True)
         rules = traitlets.List().tag(sync=True)
         disabled_rules = traitlets.List().tag(sync=True)
+        import_issues = traitlets.Dict().tag(sync=True)
         violations = traitlets.List().tag(sync=True)
         bulk_results = traitlets.List().tag(sync=True)
         fix_preview = traitlets.Dict().tag(sync=True)
@@ -3357,10 +3439,18 @@ def bpa(
     else:
         # A custom ruleset has to be matched against the built-in rules up front,
         # otherwise the rules it disables would not be known to the first scan.
-        _, _initial_disabled = parse_rules_json(
-            rules if isinstance(rules, list) else (rules.get("rules") or []),
-            _catalog(),
-        )
+        import sempy_labs._icons as icons
+
+        _entries = rules if isinstance(rules, list) else (rules.get("rules") or [])
+        _errors, _warnings = validate_rules_json(_entries, _catalog())
+        if _errors:
+            raise ValueError(
+                f"{icons.red_dot} The 'rules' parameter is not a valid ruleset:\n- "
+                + "\n- ".join(_errors)
+            )
+        for _warning in _warnings:
+            print(f"{icons.warning} {_warning}")
+        _, _initial_disabled = parse_rules_json(_entries, _catalog())
         _initial_rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
     widget = _BestPracticeAnalyzerWidget(
@@ -3596,38 +3686,46 @@ def bpa(
         entries = payload.get("rules")
         if isinstance(entries, dict):
             entries = entries.get("rules") or []
-        if not isinstance(entries, list) or not entries:
-            widget.status = {
-                "message": "The file does not contain a recognizable ruleset.",
-                "kind": "error",
-            }
-            return
 
         catalog = _catalog()
-        parsed, disabled = parse_rules_json(entries, catalog)
-        if parsed.empty:
+        errors, warnings = validate_rules_json(entries, catalog)
+        if errors:
+            # Nothing is adopted: the file has to be corrected first.
+            widget.import_issues = {
+                "kind": "error",
+                "title": "The ruleset was not imported.",
+                "items": errors + warnings,
+            }
             widget.status = {
                 "message": (
-                    "None of the rules in the file matched a built-in rule. Rules "
-                    "are matched by their 'ID' or 'Name'."
+                    "The ruleset could not be imported. See the problems listed in "
+                    "the rule editor."
                 ),
                 "kind": "error",
             }
             return
 
+        parsed, disabled = parse_rules_json(entries, catalog)
         ruleset["custom"] = entries
         rules_cache.clear()
         widget.rules = rules_payload(parsed)
         widget.disabled_rules = disabled
-        skipped = len(entries) - len(parsed)
+        widget.import_issues = (
+            {
+                "kind": "warning",
+                "title": (
+                    f"The ruleset was imported, but {len(warnings)} entr"
+                    f"{'y' if len(warnings) == 1 else 'ies'} need attention."
+                ),
+                "items": warnings,
+            }
+            if warnings
+            else {}
+        )
         widget.status = {
             "message": (
                 f"Loaded {len(parsed)} rule(s)."
-                + (
-                    f" {skipped} unrecognized rule(s) were skipped."
-                    if skipped > 0
-                    else ""
-                )
+                + (f" {len(warnings)} problem(s) were reported." if warnings else "")
             ),
             "kind": "success",
         }

@@ -365,6 +365,141 @@ def _match_default_rule(entry: dict, by_id: Dict[str, Any]):
     return None, None
 
 
+def validate_rules_json(
+    entries: Any, default_rules: pd.DataFrame
+) -> Tuple[List[str], List[str]]:
+    """
+    Checks a Best Practice Rules JSON ruleset before it is imported.
+
+    The rule logic is compiled in Python, so an entry is only usable when it can be
+    matched to a built-in rule and its overridable properties are well-formed. This
+    reports both the problems which make the ruleset unusable and the ones which
+    cause an entry to be skipped or to fall back to its built-in definition.
+
+    Parameters
+    ----------
+    entries : Any
+        The parsed contents of the ruleset file. A list of rule entries, or a dict
+        containing such a list under a ``rules`` key.
+    default_rules : pandas.DataFrame
+        The built-in rules supplying each rule's logic, in the shape produced by
+        :func:`sempy_labs.model_bpa_rules`.
+
+    Returns
+    -------
+    Tuple[List[str], List[str]]
+        The errors (the ruleset cannot be imported) and the warnings (the entry is
+        skipped, or the built-in value is used instead).
+    """
+
+    if isinstance(entries, dict):
+        entries = _entry_value(entries, "rules")
+    if not isinstance(entries, list):
+        return (
+            [
+                "The file must contain a list of rules, or an object with a 'rules' "
+                "list."
+            ],
+            [],
+        )
+    if not entries:
+        return (["The file does not contain any rules."], [])
+
+    by_id = {_rule_id(str(r["Rule Name"])): r for _, r in default_rules.iterrows()}
+    valid_scopes = {s.lower() for s in RULE_SCOPES}
+
+    errors: List[str] = []
+    warnings: List[str] = []
+    seen: Dict[str, str] = {}
+
+    for index, entry in enumerate(entries, start=1):
+        label = f"Rule {index}"
+        if not isinstance(entry, dict):
+            warnings.append(f"{label}: is not a rule object; it was skipped.")
+            continue
+
+        name = _entry_value(entry, "Name", "Rule Name", "RuleName")
+        identifier = _entry_value(entry, "ID", "Id")
+        if name:
+            label = f"'{_strip_category_prefix(str(name))}'"
+        elif identifier:
+            label = f"'{identifier}'"
+        else:
+            warnings.append(f"{label}: has no 'ID' or 'Name'; it was skipped.")
+            continue
+
+        rule_id, base = _match_default_rule(entry, by_id)
+        if base is None:
+            warnings.append(
+                f"{label}: does not match a built-in rule (rules are matched by "
+                "their 'ID' or 'Name'); it was skipped."
+            )
+            continue
+        if rule_id in seen:
+            warnings.append(
+                f"{label}: is a duplicate of '{seen[rule_id]}'; only the first "
+                "entry is used."
+            )
+            continue
+        seen[rule_id] = str(base["Rule Name"])
+
+        severity = _entry_value(entry, "Severity")
+        if severity is not None:
+            valid_severity = (
+                not isinstance(severity, bool)
+                and isinstance(severity, (int, float))
+                and int(severity) in CODE_TO_SEVERITY
+            ) or (
+                isinstance(severity, str) and severity.capitalize() in SEVERITY_TO_CODE
+            )
+            if not valid_severity:
+                warnings.append(
+                    f"{label}: 'Severity' must be 1, 2 or 3 (or Info, Warning, "
+                    f"Error) but is {severity!r}; the built-in severity is used."
+                )
+
+        raw_scope = _entry_value(entry, "Scope", "Scopes")
+        if raw_scope is not None:
+            tokens = (
+                [s.strip() for s in raw_scope.split(",") if s.strip()]
+                if isinstance(raw_scope, str)
+                else raw_scope
+            )
+            if (
+                not isinstance(tokens, list)
+                or not tokens
+                or any(
+                    not isinstance(s, str) or s.strip().lower() not in valid_scopes
+                    for s in tokens
+                )
+            ):
+                warnings.append(
+                    f"{label}: 'Scope' contains a value which is not one of "
+                    f"{', '.join(RULE_SCOPES)}; the built-in scope is used."
+                )
+
+        enabled = _entry_value(entry, "Enabled")
+        if enabled is not None and not isinstance(enabled, bool):
+            warnings.append(
+                f"{label}: 'Enabled' must be true or false but is {enabled!r}; "
+                "the rule is treated as enabled."
+            )
+
+        description = _entry_value(entry, "Description")
+        if description is not None and not isinstance(description, str):
+            warnings.append(
+                f"{label}: 'Description' must be text; the value is converted to text."
+            )
+
+    if not seen:
+        errors.append(
+            "None of the rules in the file matched a built-in rule. Rules are "
+            "matched by their 'ID' or 'Name'."
+        )
+
+    return errors, warnings
+
+
 def parse_rules_json(
     entries: Iterable[dict], default_rules: pd.DataFrame
 ) -> Tuple[pd.DataFrame, List[str]]:
