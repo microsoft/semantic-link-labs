@@ -1,6 +1,6 @@
 from typing import Optional
 from uuid import UUID
-
+import pandas as pd
 from sempy._utils._log import log
 
 from sempy_labs._ui_components import (
@@ -39,6 +39,7 @@ _WIDGET_CSS = (
     --slls-syn-type: #0b4f79;
     --slls-syn-prop: #326d74;
     --slls-syn-op: #6e6e73;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -2942,9 +2943,10 @@ _WIDGET_JS = (
 def bpa(
     dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
-    rules=None,
+    rules: Optional[pd.DataFrame | list[dict] | dict] = None,
     check_dependencies: bool = True,
     dark_mode: bool = False,
+    return_dataframe: bool = False,
 ):
     """
     Generates an interactive Best Practice Analyzer for semantic models.
@@ -3003,20 +3005,19 @@ def bpa(
     dark_mode : bool, default=False
         If True, renders the analyzer with a dark color theme. If False, renders with a
         light color theme.
-    """
+    return_dataframe : bool, default=False
+        If True, no user interface is shown; the rule violations of the semantic model
+        given by the 'dataset' parameter are returned as a pandas dataframe instead.
 
-    try:
-        import anywidget
-        import traitlets
-    except ImportError as e:
-        raise ImportError(
-            "The 'bpa' function requires the 'anywidget' package. "
-            "Install it with: pip install anywidget"
-        ) from e
+    Returns
+    -------
+    pandas.DataFrame | None
+        A pandas dataframe of the rule violations if 'return_dataframe' is True,
+        otherwise None.
+    """
 
     import pandas as pd
     import sempy.fabric as fabric
-    from IPython.display import display
 
     from sempy_labs._helper_functions import (
         resolve_workspace_name_and_id,
@@ -3162,12 +3163,56 @@ def bpa(
         hangs the run and can re-enter the action handler.
         """
 
-        return bool(widget.cancel_requested)
+        widget = _widget_ref.get("value")
+        return bool(widget is not None and widget.cancel_requested)
 
     def _scan(workspace_id, dataset_id, disabled_rules):
         rules = _rules_for(workspace_id, dataset_id)
         with _connect(dataset_id, workspace_id, True) as tom:
             return scan_model(tom, rules, disabled_rules, should_cancel=_cancelled)
+
+    # Set once the widget exists; the dataframe path below runs without one.
+    _widget_ref = {}
+
+    if return_dataframe:
+        if not initial_ds_id:
+            raise ValueError(
+                "The 'dataset' parameter is required when 'return_dataframe' is True."
+            )
+        return pd.DataFrame(
+            [
+                {
+                    "Category": v["category"],
+                    "Rule Name": v["ruleName"],
+                    "Severity": v["severity"],
+                    "Object Type": v["objectType"],
+                    "Object Name": v["objectName"],
+                    "Description": v["description"],
+                    "URL": v["url"],
+                }
+                for v in _scan(initial_ws_id, initial_ds_id, None)
+            ],
+            columns=[
+                "Category",
+                "Rule Name",
+                "Severity",
+                "Object Type",
+                "Object Name",
+                "Description",
+                "URL",
+            ],
+        )
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError as e:
+        raise ImportError(
+            "The 'bpa' function requires the 'anywidget' package. "
+            "Install it with: pip install anywidget"
+        ) from e
+
+    from IPython.display import display
 
     class _BestPracticeAnalyzerWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
@@ -3224,6 +3269,7 @@ def bpa(
         disabled_rules=_initial_disabled,
         dark_mode=bool(dark_mode),
     )
+    _widget_ref["value"] = widget
 
     def _handle_load_rules(payload):
         if widget.rules:
