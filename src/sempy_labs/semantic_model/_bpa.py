@@ -160,6 +160,9 @@ _WIDGET_CSS = (
 /* Anything that offers or advertises an automatic fix. */
 .slls-bpa-btn-fix { color: var(--slls-success); border-color: transparent; background: var(--slls-success-soft); }
 .slls-bpa-btn-fix:hover { color: var(--slls-success); border-color: var(--slls-success); background: var(--slls-success-soft); }
+/* Destructive confirmations (e.g. discarding the staged fixes). */
+.slls-bpa-btn-danger { color: var(--slls-error); border-color: transparent; background: var(--slls-error-soft); }
+.slls-bpa-btn-danger:hover { color: var(--slls-error); border-color: var(--slls-error); background: var(--slls-error-soft); }
 .slls-bpa-fix-badge { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; cursor: default;
     padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 500;
     color: var(--slls-success); background: var(--slls-success-soft); }
@@ -1066,10 +1069,10 @@ function render({ model, el }) {
     changeModelBtn.setAttribute("aria-label", "Change semantic model / workspace");
     changeModelBtn.style.display = "none";
     changeModelBtn.addEventListener("click", () => {
-        closeBulkDetail();
-        model.set("screen", "select");
-        model.save_changes();
-        renderScreen();
+        // Staged fixes belong to the model they were staged against, so warn
+        // before switching (which throws them away).
+        if (stagedFixes.size > 0) openDiscardConfirm();
+        else goToSelectScreen();
     });
     header.appendChild(changeModelBtn);
 
@@ -1159,6 +1162,7 @@ function render({ model, el }) {
         // Close whichever modal is open first, then leave full screen.
         if (historyOverlay.classList.contains("show")) closeHistory();
         else if (stagedOverlay.classList.contains("show")) closeStaged();
+        else if (discardOverlay.classList.contains("show")) closeDiscardConfirm();
         else if (overlay.classList.contains("show")) overlay.classList.remove("show");
         else if (fsMode) setFullscreen(false);
     }
@@ -1819,6 +1823,14 @@ function render({ model, el }) {
     const stagedList = document.createElement("div");
     stagedList.className = "slls-bpa-staged";
 
+    // Warns that the staged fixes are lost before changing the model/workspace.
+    const discardOverlay = document.createElement("div");
+    discardOverlay.className = "slls-bpa-overlay";
+    root.appendChild(discardOverlay);
+    discardOverlay.addEventListener("click", (ev) => {
+        if (ev.target === discardOverlay) closeDiscardConfirm();
+    });
+
     // The rule change history is reviewed in its own modal, opened from the rule
     // editor, so it is stacked above it.
     const historyOverlay = document.createElement("div");
@@ -1965,6 +1977,69 @@ function render({ model, el }) {
 
     function closeStaged() {
         stagedOverlay.classList.remove("show");
+    }
+
+    function goToSelectScreen() {
+        closeBulkDetail();
+        model.set("screen", "select");
+        model.save_changes();
+        renderScreen();
+    }
+
+    function closeDiscardConfirm() {
+        discardOverlay.classList.remove("show");
+    }
+
+    // The staged fixes are tied to the model they were staged against, so
+    // changing the semantic model / workspace throws them away. Ask first,
+    // offering a look at what would be lost.
+    function openDiscardConfirm() {
+        if (stagedFixes.size === 0) {
+            goToSelectScreen();
+            return;
+        }
+        clear(discardOverlay);
+        const modal = document.createElement("div");
+        modal.className = "slls-bpa-modal";
+
+        const heading = document.createElement("h2");
+        heading.textContent = "Discard staged changes?";
+        modal.appendChild(heading);
+        const sub = document.createElement("div");
+        sub.className = "slls-bpa-modal-sub";
+        const count = stagedFixes.size;
+        sub.textContent = count === 1
+            ? "1 staged fix has not been saved yet. Changing the semantic model / workspace discards it."
+            : `${count} staged fixes have not been saved yet. Changing the semantic model / workspace discards them.`;
+        modal.appendChild(sub);
+
+        const footer = document.createElement("div");
+        footer.className = "slls-bpa-modal-footer";
+        const cancelBtn = makeButton("Cancel", "slls-bpa-btn-sm");
+        cancelBtn.addEventListener("click", closeDiscardConfirm);
+        footer.appendChild(cancelBtn);
+        const reviewBtn = makeButton("Review", "slls-bpa-btn-sm");
+        reviewBtn.title = "See the staged changes";
+        reviewBtn.addEventListener("click", () => {
+            closeDiscardConfirm();
+            openStaged();
+        });
+        footer.appendChild(reviewBtn);
+        const discardChangeBtn = makeButton(
+            "Discard and change", "slls-bpa-btn-sm slls-bpa-btn-danger", ICON.undo);
+        discardChangeBtn.addEventListener("click", () => {
+            stagedFixes.clear();
+            closeDiscardConfirm();
+            // Hides the save bar (and closes the staged changes modal).
+            renderStaged();
+            refreshViolations();
+            goToSelectScreen();
+        });
+        footer.appendChild(discardChangeBtn);
+        modal.appendChild(footer);
+
+        discardOverlay.appendChild(modal);
+        discardOverlay.classList.add("show");
     }
 
     function openStaged() {
