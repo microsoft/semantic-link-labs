@@ -594,6 +594,15 @@ _WIDGET_CSS = """
     font-size: 12.5px;
 }
 .slls-mmm-verifyprogress.show { display: flex; }
+.slls-mmm-updateprogress {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    color: var(--slls-text-secondary);
+    font-size: 12.5px;
+}
+.slls-mmm-updateprogress.show { display: flex; }
 .slls-mmm-verifytrack {
     position: relative;
     flex: 1 1 auto;
@@ -726,7 +735,7 @@ _WIDGET_CSS = """
     to { opacity: 1; transform: translateY(0); }
 }
 .slls-mmm > * { transition: opacity 120ms ease; }
-.slls-mmm-busy > :not(.slls-mmm-header) {
+.slls-mmm-busy > :not(.slls-mmm-header):not(.slls-mmm-updateprogress) {
     pointer-events: none;
     opacity: 0.55;
 }
@@ -788,6 +797,7 @@ function render({ model, el }) {
     let step = "objects";
     let metadataOnly = false;
     let verifyingFilters = false;
+    let updatingFromMaster = false;
     let fsMode = false;
     let objectsFsMode = false;
     let pickWs = model.get("workspace_id") || "";
@@ -1417,6 +1427,23 @@ function render({ model, el }) {
     deployPanel.className = "slls-mmm-panel";
     root.appendChild(deployPanel);
 
+    const updateProgress = document.createElement("div");
+    updateProgress.className = "slls-mmm-updateprogress";
+    updateProgress.setAttribute("role", "progressbar");
+    updateProgress.setAttribute("aria-label", "Updating mini model from master");
+    const updateProgressLabel = document.createElement("span");
+    updateProgress.appendChild(updateProgressLabel);
+    const updateProgressTrack = document.createElement("div");
+    updateProgressTrack.className = "slls-mmm-verifytrack";
+    updateProgress.appendChild(updateProgressTrack);
+    root.appendChild(updateProgress);
+
+    function renderUpdateProgress() {
+        updateProgressLabel.textContent =
+            model.get("update_progress") || "Preparing update from master...";
+    }
+    renderUpdateProgress();
+
     // ---------------- Footer ----------------
     const footer = document.createElement("div");
     footer.className = "slls-mmm-footer";
@@ -1626,6 +1653,7 @@ function render({ model, el }) {
 
     function setBusy(b) {
         root.classList.toggle("slls-mmm-busy", !!b);
+        updateProgress.classList.toggle("show", updatingFromMaster && !!b);
     }
 
     function send(action) {
@@ -1633,6 +1661,7 @@ function render({ model, el }) {
             verifyingFilters = true;
             renderVerifyBar();
         }
+        updatingFromMaster = action.action === "deploy" && getMode() === "manage";
         setBusy(true);
         model.set("pending_action", action);
         model.set("run", (model.get("run") || 0) + 1);
@@ -1962,6 +1991,9 @@ function render({ model, el }) {
             `<div class="slls-mmm-note success" style="margin-top:0">${CHECK_SVG}<div>` +
             `<b>Mini model deployed.</b> '${escapeHtml(d.name)}' is now available in ` +
             `${escapeHtml(d.workspaceName || "")}.` +
+            (d.refreshRecommended
+                ? "<div style=\"margin-top:6px\">The model was not refreshed. You may want to refresh it now.</div>"
+                : "") +
             (d.url
                 ? `<div style="margin-top:6px"><a class="slls-mmm-link" href="${escapeHtml(d.url)}" ` +
                   `target="_blank" rel="noopener noreferrer">View in Fabric${LINK_SVG}</a></div>`
@@ -2037,6 +2069,7 @@ function render({ model, el }) {
     model.on("change:status", () => {
         const s = model.get("status") || {};
         verifyingFilters = false;
+        updatingFromMaster = false;
         setBusy(false);
         setStatus(s.message || "", s.kind || "info");
         renderFooter();
@@ -2044,6 +2077,7 @@ function render({ model, el }) {
     });
     model.on("change:busy", () => {
         if (!isBusy()) verifyingFilters = false;
+        if (!isBusy()) updatingFromMaster = false;
         setBusy(isBusy());
         renderFooter();
         renderPicker();
@@ -2071,6 +2105,7 @@ function render({ model, el }) {
         renderVerifyBar();
     });
     model.on("change:deploy_result", renderDeployPanel);
+    model.on("change:update_progress", renderUpdateProgress);
 
     reloadFromModel();
 }
@@ -2294,6 +2329,7 @@ def mini_model_manager(
         datasets = traitlets.Dict().tag(sync=True)
         verify_results = traitlets.Dict().tag(sync=True)
         deploy_result = traitlets.Dict().tag(sync=True)
+        update_progress = traitlets.Unicode("").tag(sync=True)
         mini_error = traitlets.Unicode("").tag(sync=True)
         status = traitlets.Dict().tag(sync=True)
         pending_action = traitlets.Dict().tag(sync=True)
@@ -2328,6 +2364,10 @@ def mini_model_manager(
     def _set_status(message: str, kind: str = "info"):
         status_counter["n"] += 1
         widget.status = {"message": message, "kind": kind, "id": status_counter["n"]}
+
+    def _set_update_progress(message: str):
+        if widget.mode == "manage":
+            widget.update_progress = message
 
     def _master_reference() -> dict:
         """The master model of the current mode (the model itself in 'create' mode)."""
@@ -2585,19 +2625,30 @@ def mini_model_manager(
             overwrite = False
 
         perspective_name = _perspective_name(mini_name)
+        _set_update_progress("Updating the model perspective on the master...")
         _save_perspective(master, perspective_name, selection)
 
+        if data.get("metadata_only"):
+            _set_update_progress("Deploying semantic model metadata...")
+        elif filters:
+            _set_update_progress(
+                "Creating materialized lake views and deploying the semantic model..."
+            )
+        else:
+            _set_update_progress("Deploying the semantic model...")
         deploy_semantic_model(
             source_dataset=master.get("datasetId"),
             source_workspace=master.get("workspaceId"),
             target_dataset=mini_name,
             target_workspace=target_workspace_id,
+            refresh_target_dataset=widget.mode != "manage",
             overwrite=overwrite,
             perspective=perspective_name,
             filters=filters or None,
             metadata_only=bool(data.get("metadata_only")),
         )
 
+        _set_update_progress("Finalizing the deployment...")
         _, mini_id = resolve_item_name_and_id(
             item=mini_name, type="SemanticModel", workspace=target_workspace_id
         )
@@ -2605,11 +2656,15 @@ def mini_model_manager(
             "name": mini_name,
             "workspaceName": target_workspace_name,
             "url": f"https://app.powerbi.com/onelake/details/{target_workspace_id}/dataset/{mini_id}/overview",
+            "refreshRecommended": widget.mode == "manage",
         }
-        _set_status(
-            f"The '{mini_name}' mini model has been deployed to the '{target_workspace_name}' workspace.",
-            "success",
+        status_message = (
+            f"The '{mini_name}' mini model has been deployed to the "
+            f"'{target_workspace_name}' workspace."
         )
+        if widget.mode == "manage":
+            status_message += " The model was not refreshed; you may want to refresh it now."
+        _set_status(status_message, "success")
 
     def _on_run(_change):
         nonlocal workspace_id, dataset_id, workspace_name, dataset_name
