@@ -79,9 +79,31 @@ _WIDGET_CSS = """
     border: none;
     border-radius: 0;
     box-shadow: none;
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--slls-bg-solid);
 }
-.slls-mmm.slls-mmm-fs .slls-mmm-tree { max-height: calc(100vh - 420px); }
+.slls-mmm:fullscreen,
+.slls-mmm:-webkit-full-screen { background: var(--slls-bg-solid); }
+.slls-mmm::backdrop { background: var(--slls-bg-solid); }
+.slls-mmm.slls-mmm-fs .slls-mmm-objects-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+.slls-mmm.slls-mmm-fs .slls-mmm-tree {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 180px;
+}
+.slls-mmm.slls-mmm-fs .slls-mmm-filters-page {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
+}
 
 /* ---------------- Header ---------------- */
 .slls-mmm-header {
@@ -91,12 +113,21 @@ _WIDGET_CSS = """
     margin-bottom: 16px;
     flex-wrap: wrap;
 }
+.slls-mmm-title-icon {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    color: var(--slls-accent);
+    flex-shrink: 0;
+}
+.slls-mmm-title-icon svg { display: block; width: 40px; height: 40px; }
 .slls-mmm-titlewrap {
     display: flex;
     flex-direction: column;
     margin-right: auto;
     min-width: 0;
 }
+.slls-mmm-title-row { display: flex; align-items: center; gap: 8px; }
 .slls-mmm-title {
     font-size: 22px;
     font-weight: 600;
@@ -229,6 +260,82 @@ _WIDGET_CSS = """
     color: var(--slls-text-secondary);
 }
 
+/* ---------------- Model picker ---------------- */
+.slls-mmm-picker-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+    padding: 24px 0;
+}
+.slls-mmm-picker {
+    width: 100%;
+    max-width: 760px;
+    border: 1px solid var(--slls-border);
+    border-radius: var(--slls-radius);
+    background: var(--slls-surface-2);
+    padding: 22px 24px;
+}
+.slls-mmm-picker-title { font-size: 17px; font-weight: 600; }
+.slls-mmm-picker-sub {
+    margin-top: 3px;
+    color: var(--slls-text-secondary);
+    font-size: 12.5px;
+}
+.slls-mmm-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+.slls-mmm-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.slls-mmm-picker-combo { position: relative; }
+.slls-mmm-picker-combo-input { padding-right: 14px; }
+.slls-mmm-picker-combo-list {
+    display: none;
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px solid var(--slls-border-strong);
+    border-radius: var(--slls-radius-sm);
+    background: var(--slls-bg-solid);
+    box-shadow: var(--slls-shadow);
+}
+.slls-mmm-picker-combo.open .slls-mmm-picker-combo-list { display: block; }
+.slls-mmm-picker-combo-option {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--slls-text);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.slls-mmm-picker-combo-option:hover,
+.slls-mmm-picker-combo-option.active { background: var(--slls-accent-soft); }
+.slls-mmm-picker-combo-option.selected { color: var(--slls-accent); font-weight: 600; }
+.slls-mmm-picker-combo-empty {
+    padding: 8px 10px;
+    color: var(--slls-text-tertiary);
+    font-size: 12.5px;
+}
+@media (max-width: 620px) {
+    .slls-mmm-picker-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---------------- Panels / cards ---------------- */
 .slls-mmm-panel {
     border: 1px solid var(--slls-border);
@@ -312,6 +419,23 @@ _WIDGET_CSS = """
     background: var(--slls-surface);
     max-height: 460px;
     overflow-y: auto;
+}
+.slls-mmm-objects-page.slls-mmm-objects-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483001;
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    min-height: 0;
+    padding: 24px;
+    background: var(--slls-bg-solid);
+}
+.slls-mmm-objects-page.slls-mmm-objects-fs .slls-mmm-tree {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
 }
 .slls-mmm-tree::-webkit-scrollbar { width: 10px; height: 10px; }
 .slls-mmm-tree::-webkit-scrollbar-thumb {
@@ -411,6 +535,8 @@ _WIDGET_CSS = """
 .slls-mmm-table.expanded .slls-mmm-children { display: block; }
 .slls-mmm-child { padding-left: 56px; padding-top: 5px; padding-bottom: 5px; }
 .slls-mmm-child.filtered-out { display: none; }
+.slls-mmm-child.slls-mmm-disabled { cursor: default; opacity: 0.65; }
+.slls-mmm-child.slls-mmm-disabled:hover { background: transparent; }
 .slls-mmm-dirty {
     display: inline-block;
     width: 7px;
@@ -568,7 +694,9 @@ _WIDGET_CSS = """
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
 }
-.slls-mmm-busy { pointer-events: none; opacity: 0.55; transition: opacity 120ms ease; }
+.slls-mmm-busy { pointer-events: none; }
+.slls-mmm > * { transition: opacity 120ms ease; }
+.slls-mmm-busy > * { opacity: 0.55; }
 
 .slls-mmm-attribution {
     margin-top: 18px;
@@ -597,6 +725,8 @@ function render({ model, el }) {
         calc_group: `__SLLS_ICON_CALC_GROUP__`,
     };
     const CARET = `__SLLS_ICON_CARET__`;
+    const EXPAND_ROWS_SVG = `__SLLS_ICON_EXPAND_ROWS__`;
+    const COLLAPSE_ROWS_SVG = `__SLLS_ICON_COLLAPSE_ROWS__`;
     const SUN_SVG = `__SLLS_ICON_SUN__`;
     const MOON_SVG = `__SLLS_ICON_MOON__`;
     const FS_SVG = `__SLLS_ICON_FULLSCREEN__`;
@@ -610,6 +740,10 @@ function render({ model, el }) {
     const SYNC_SVG = `__SLLS_ICON_SYNC__`;
     const PREV_SVG = `__SLLS_ICON_CHEVRON_LEFT__`;
     const NEXT_SVG = `__SLLS_ICON_CHEVRON_RIGHT__`;
+    const APP_SVG = `__SLLS_ICON_MINI_MODEL_MANAGER__`;
+    const SWAP_SVG = `__SLLS_ICON_SWAP__`;
+    const OBJECT_EXPAND_SVG = `__SLLS_ICON_EXPAND_DIAGONAL__`;
+    const OBJECT_COLLAPSE_SVG = `__SLLS_ICON_COLLAPSE_DIAGONAL__`;
 
     // ---------------- Local state ----------------
     let selection = {};
@@ -621,6 +755,10 @@ function render({ model, el }) {
     let step = "objects";
     let metadataOnly = false;
     let fsMode = false;
+    let objectsFsMode = false;
+    let pickWs = model.get("workspace_id") || "";
+    let pickDs = "";
+    let pickerReopen = false;
 
     function getMode() { return model.get("mode") || "create"; }
     function getMetadata() { return model.get("metadata") || {}; }
@@ -628,6 +766,8 @@ function render({ model, el }) {
     function getVerify() { return verifyResults; }
     function getDeploy() { return model.get("deploy_result") || {}; }
     function isBusy() { return model.get("busy") === true; }
+    function isConnected() { return model.get("connected") === true; }
+    function showPicker() { return !isConnected() || pickerReopen; }
 
     function escapeHtml(s) {
         return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
@@ -653,14 +793,23 @@ function render({ model, el }) {
     header.className = "slls-mmm-header";
     root.appendChild(header);
 
+    const titleIcon = document.createElement("span");
+    titleIcon.className = "slls-mmm-title-icon";
+    titleIcon.innerHTML = APP_SVG;
+    header.appendChild(titleIcon);
+
     const titleWrap = document.createElement("div");
     titleWrap.className = "slls-mmm-titlewrap";
     header.appendChild(titleWrap);
 
+    const titleRow = document.createElement("div");
+    titleRow.className = "slls-mmm-title-row";
+    titleWrap.appendChild(titleRow);
+
     const title = document.createElement("div");
     title.className = "slls-mmm-title";
     title.textContent = "Mini Model Manager";
-    titleWrap.appendChild(title);
+    titleRow.appendChild(title);
 
     const subtitle = document.createElement("div");
     subtitle.className = "slls-mmm-subtitle";
@@ -669,11 +818,30 @@ function render({ model, el }) {
     function renderSubtitle() {
         const ds = model.get("dataset_name") || "";
         const ws = model.get("workspace_name") || "";
-        subtitle.innerHTML =
-            (ds ? `<b>${escapeHtml(ds)}</b>` : "") +
-            (ds && ws ? `<span class="slls-mmm-sep">·</span>` : "") +
-            (ws ? escapeHtml(ws) : "");
+        subtitle.innerHTML = isConnected() && !showPicker()
+            ? (ds ? `<b>${escapeHtml(ds)}</b>` : "") +
+                (ds && ws ? `<span class="slls-mmm-sep">·</span>` : "") +
+                (ws ? escapeHtml(ws) : "")
+            : "Select a semantic model to manage";
     }
+
+    const changeModelBtn = document.createElement("button");
+    changeModelBtn.className = "slls-mmm-btn slls-mmm-btn-icon";
+    changeModelBtn.type = "button";
+    changeModelBtn.innerHTML = SWAP_SVG;
+    changeModelBtn.title = "Change semantic model / workspace";
+    changeModelBtn.setAttribute("aria-label", changeModelBtn.title);
+    changeModelBtn.addEventListener("click", () => {
+        pickerReopen = true;
+        pickWs = model.get("workspace_id") || "";
+        pickDs = "";
+        if (pickWs && !(model.get("datasets") || {})[pickWs]) {
+            send({ action: "list_datasets", workspace_id: pickWs });
+        }
+        renderConnectionState();
+        renderSubtitle();
+    });
+    titleRow.appendChild(changeModelBtn);
 
     const fsBtn = document.createElement("button");
     fsBtn.className = "slls-mmm-btn slls-mmm-btn-icon";
@@ -705,7 +873,8 @@ function render({ model, el }) {
         if (!nativeOn && fsMode) { fsMode = false; root.classList.remove("slls-mmm-fs"); renderFsBtn(); }
     });
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && fsMode) setFullscreen(false);
+        if (e.key === "Escape" && objectsFsMode) setObjectsFullscreen(false);
+        else if (e.key === "Escape" && fsMode) setFullscreen(false);
     });
     renderFsBtn();
     header.appendChild(fsBtn);
@@ -726,6 +895,220 @@ function render({ model, el }) {
     model.on("change:dark_mode", renderThemeBtn);
     renderThemeBtn();
     header.appendChild(themeBtn);
+
+    // ---------------- Model picker ----------------
+    const pickerPage = document.createElement("div");
+    pickerPage.className = "slls-mmm-picker-wrap";
+    root.appendChild(pickerPage);
+
+    function createPickerCombo(host, options, value, placeholder, disabled, onChoose, onClear) {
+        const combo = document.createElement("div");
+        combo.className = "slls-mmm-picker-combo";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "slls-mmm-input slls-mmm-picker-combo-input";
+        input.placeholder = placeholder;
+        input.autocomplete = "off";
+        input.spellcheck = false;
+        input.disabled = disabled;
+        input.setAttribute("role", "combobox");
+        input.setAttribute("aria-autocomplete", "list");
+        input.setAttribute("aria-expanded", "false");
+
+        const selected = options.find((option) => option.id === value);
+        input.value = selected ? selected.name : "";
+
+        const list = document.createElement("div");
+        list.className = "slls-mmm-picker-combo-list";
+        list.setAttribute("role", "listbox");
+        combo.appendChild(input);
+        combo.appendChild(list);
+        host.appendChild(combo);
+
+        let shown = [];
+        let activeIndex = -1;
+
+        function close() {
+            combo.classList.remove("open");
+            input.setAttribute("aria-expanded", "false");
+            activeIndex = -1;
+        }
+
+        function setActive(index) {
+            const rows = list.querySelectorAll(".slls-mmm-picker-combo-option");
+            if (rows.length === 0) { activeIndex = -1; return; }
+            activeIndex = Math.max(0, Math.min(index, rows.length - 1));
+            rows.forEach((row, rowIndex) => row.classList.toggle("active", rowIndex === activeIndex));
+            rows[activeIndex].scrollIntoView({ block: "nearest" });
+        }
+
+        function choose(option, focusNext = false) {
+            input.value = option.name;
+            close();
+            onChoose(option, focusNext);
+        }
+
+        function renderList() {
+            const query = input.value.trim().toLowerCase();
+            shown = query
+                ? options.filter((option) => option.name.toLowerCase().includes(query))
+                : options;
+            list.innerHTML = "";
+            if (shown.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "slls-mmm-picker-combo-empty";
+                empty.textContent = options.length === 0 ? "No items" : "No matches";
+                list.appendChild(empty);
+                activeIndex = -1;
+                return;
+            }
+            for (const option of shown) {
+                const row = document.createElement("button");
+                row.type = "button";
+                row.tabIndex = -1;
+                row.className = "slls-mmm-picker-combo-option" + (option.id === value ? " selected" : "");
+                row.setAttribute("role", "option");
+                row.setAttribute("aria-selected", String(option.id === value));
+                row.textContent = option.name;
+                row.title = option.name;
+                row.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    choose(option);
+                });
+                list.appendChild(row);
+            }
+        }
+
+        input.addEventListener("focus", () => {
+            input.select();
+            renderList();
+            combo.classList.add("open");
+            input.setAttribute("aria-expanded", "true");
+        });
+        input.addEventListener("input", () => {
+            onClear();
+            activeIndex = -1;
+            renderList();
+            setActive(0);
+            combo.classList.add("open");
+            input.setAttribute("aria-expanded", "true");
+        });
+        input.addEventListener("blur", () => { setTimeout(close, 100); });
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setActive(activeIndex + 1);
+            } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setActive(activeIndex <= 0 ? 0 : activeIndex - 1);
+            } else if (event.key === "Enter") {
+                event.preventDefault();
+                if (activeIndex >= 0 && shown[activeIndex]) choose(shown[activeIndex]);
+                else if (shown.length === 1) choose(shown[0]);
+            } else if (event.key === "Escape") {
+                event.preventDefault();
+                close();
+            } else if (event.key === "Tab") {
+                if (activeIndex >= 0 && shown[activeIndex]) {
+                    event.preventDefault();
+                    choose(shown[activeIndex], true);
+                } else {
+                    close();
+                }
+            }
+        });
+
+        return input;
+    }
+
+    function renderPicker() {
+        if (!showPicker()) {
+            pickerPage.classList.add("slls-mmm-hide");
+            return;
+        }
+        pickerPage.classList.remove("slls-mmm-hide");
+        if (!pickWs) pickWs = model.get("workspace_id") || "";
+        const workspaces = model.get("workspaces") || [];
+        const datasets = (model.get("datasets") || {})[pickWs] || null;
+
+        pickerPage.innerHTML =
+            `<div class="slls-mmm-picker">` +
+                `<div class="slls-mmm-picker-title">Choose a semantic model</div>` +
+                `<div class="slls-mmm-picker-sub">Pick the master or mini model you want to work with.</div>` +
+                `<div class="slls-mmm-picker-grid">` +
+                    `<div class="slls-mmm-field"><label class="slls-mmm-label">Workspace</label>` +
+                        `<div data-picker="workspace"></div></div>` +
+                    `<div class="slls-mmm-field"><label class="slls-mmm-label">Semantic model</label>` +
+                        `<div data-picker="dataset"></div></div>` +
+                `</div>` +
+                `<div class="slls-mmm-picker-actions">` +
+                    `<button class="slls-mmm-btn slls-mmm-btn-primary" data-picker="connect" ${(!pickDs || isBusy()) ? "disabled" : ""}>Connect</button>` +
+                    (isConnected()
+                        ? `<button class="slls-mmm-btn" data-picker="cancel">Cancel</button>`
+                        : "") +
+                `</div>` +
+            `</div>`;
+
+        const connectBtn = pickerPage.querySelector('[data-picker="connect"]');
+        createPickerCombo(
+            pickerPage.querySelector('[data-picker="workspace"]'),
+            workspaces,
+            pickWs,
+            "Search workspaces…",
+            isBusy(),
+            (workspace, focusNext) => {
+                pickWs = workspace.id;
+                pickDs = "";
+                if (!(model.get("datasets") || {})[pickWs]) {
+                    send({ action: "list_datasets", workspace_id: pickWs });
+                }
+                renderPicker();
+                if (focusNext) {
+                    const modelInput = pickerPage.querySelector('[data-picker="dataset"] input');
+                    if (modelInput) modelInput.focus();
+                }
+            },
+            () => {
+                pickWs = "";
+                pickDs = "";
+                connectBtn.disabled = true;
+            }
+        );
+        createPickerCombo(
+            pickerPage.querySelector('[data-picker="dataset"]'),
+            datasets || [],
+            pickDs,
+            !pickWs ? "Select a workspace first…" : datasets === null ? "Loading…" : "Search semantic models…",
+            !pickWs || datasets === null || isBusy(),
+            (dataset, focusNext) => {
+                pickDs = dataset.id;
+                connectBtn.disabled = false;
+                if (focusNext) connectBtn.focus();
+            },
+            () => {
+                pickDs = "";
+                connectBtn.disabled = true;
+            }
+        );
+        const cancelBtn = pickerPage.querySelector('[data-picker="cancel"]');
+        if (cancelBtn) cancelBtn.onclick = () => {
+            pickerReopen = false;
+            reloadFromModel();
+        };
+        connectBtn.onclick = () => {
+            if (!pickWs || !pickDs) return;
+            const workspace = workspaces.find((w) => w.id === pickWs) || {};
+            const dataset = (datasets || []).find((d) => d.id === pickDs) || {};
+            send({
+                action: "connect",
+                workspace_id: pickWs,
+                dataset_id: pickDs,
+                workspace_name: workspace.name || "",
+                dataset_name: dataset.name || "",
+            });
+        };
+    }
 
     // ---------------- Mode toggle ----------------
     const segment = document.createElement("div");
@@ -857,6 +1240,7 @@ function render({ model, el }) {
 
     // ---------------- Objects page ----------------
     const objectsPage = document.createElement("div");
+    objectsPage.className = "slls-mmm-objects-page";
     root.appendChild(objectsPage);
 
     const toolbar = document.createElement("div");
@@ -870,16 +1254,39 @@ function render({ model, el }) {
     toolbar.appendChild(search);
 
     const expandAllBtn = document.createElement("button");
-    expandAllBtn.className = "slls-mmm-btn";
+    expandAllBtn.className = "slls-mmm-btn slls-mmm-btn-icon";
     expandAllBtn.type = "button";
-    expandAllBtn.textContent = "Expand All";
+    expandAllBtn.innerHTML = EXPAND_ROWS_SVG;
+    expandAllBtn.title = "Expand all tables";
+    expandAllBtn.setAttribute("aria-label", expandAllBtn.title);
     toolbar.appendChild(expandAllBtn);
 
     const collapseAllBtn = document.createElement("button");
-    collapseAllBtn.className = "slls-mmm-btn";
+    collapseAllBtn.className = "slls-mmm-btn slls-mmm-btn-icon";
     collapseAllBtn.type = "button";
-    collapseAllBtn.textContent = "Collapse All";
+    collapseAllBtn.innerHTML = COLLAPSE_ROWS_SVG;
+    collapseAllBtn.title = "Collapse all tables";
+    collapseAllBtn.setAttribute("aria-label", collapseAllBtn.title);
     toolbar.appendChild(collapseAllBtn);
+
+    const objectsFsBtn = document.createElement("button");
+    objectsFsBtn.className = "slls-mmm-btn slls-mmm-btn-icon";
+    objectsFsBtn.type = "button";
+    function renderObjectsFsBtn() {
+        objectsFsBtn.innerHTML = objectsFsMode ? OBJECT_COLLAPSE_SVG : OBJECT_EXPAND_SVG;
+        objectsFsBtn.title = objectsFsMode
+            ? "Exit object selection full screen"
+            : "Expand object selection to full screen";
+        objectsFsBtn.setAttribute("aria-label", objectsFsBtn.title);
+    }
+    function setObjectsFullscreen(on) {
+        objectsFsMode = on;
+        objectsPage.classList.toggle("slls-mmm-objects-fs", on);
+        renderObjectsFsBtn();
+    }
+    objectsFsBtn.addEventListener("click", () => setObjectsFullscreen(!objectsFsMode));
+    renderObjectsFsBtn();
+    toolbar.appendChild(objectsFsBtn);
 
     const summaryEl = document.createElement("div");
     summaryEl.className = "slls-mmm-summary";
@@ -904,6 +1311,7 @@ function render({ model, el }) {
 
     // ---------------- Filters page ----------------
     const filtersPage = document.createElement("div");
+    filtersPage.className = "slls-mmm-filters-page";
     root.appendChild(filtersPage);
 
     const filtersDesc = document.createElement("div");
@@ -928,6 +1336,10 @@ function render({ model, el }) {
     const verifySummary = document.createElement("div");
     verifySummary.className = "slls-mmm-verifysummary";
     verifyBar.appendChild(verifySummary);
+
+    const filtersStatus = document.createElement("div");
+    filtersStatus.className = "slls-mmm-status";
+    filtersPage.appendChild(filtersStatus);
 
     verifyBtn.addEventListener("click", () => {
         const active = activeFilters();
@@ -1021,6 +1433,12 @@ function render({ model, el }) {
 
     function emptySelection() { return { columns: {}, measures: {}, hierarchies: {} }; }
 
+    function setCalculationGroupColumns(tbl, selected, target = selection) {
+        const metadata = getMetadata()[tbl] || {};
+        if (!metadata.calculation_group || !target[tbl]) return;
+        for (const name of (metadata.columns || [])) target[tbl].columns[name] = selected;
+    }
+
     function buildSelectionFromPreset() {
         const md = getMetadata();
         const preset = model.get("preset_selection") || {};
@@ -1031,6 +1449,11 @@ function render({ model, el }) {
             for (const t of TYPES) {
                 const set = new Set(chosen[t] || []);
                 for (const n of (md[tbl][t] || [])) sel[tbl][t][n] = set.has(n);
+            }
+            if (md[tbl].calculation_group) {
+                const groupSelected = TYPES.some((type) =>
+                    Object.values(sel[tbl][type] || {}).some(Boolean));
+                setCalculationGroupColumns(tbl, groupSelected, sel);
             }
         }
         return sel;
@@ -1130,6 +1553,10 @@ function render({ model, el }) {
                     if (selection[tbl][t][name]) { picked[t].push(name); n++; }
                 }
             }
+            if (md[tbl].calculation_group && n > 0) {
+                picked.columns = [...(md[tbl].columns || [])];
+                n = picked.columns.length + picked.measures.length + picked.hierarchies.length;
+            }
             if (n > 0) out[tbl] = picked;
         }
         return out;
@@ -1145,9 +1572,12 @@ function render({ model, el }) {
     }
 
     function setStatus(message, kind) {
-        if (!message) { status.classList.remove("show"); return; }
-        status.className = `slls-mmm-status show ${kind || "info"}`;
-        status.textContent = message;
+        status.className = "slls-mmm-status";
+        filtersStatus.className = "slls-mmm-status";
+        if (!message) return;
+        const target = step === "filters" ? filtersStatus : status;
+        target.className = `slls-mmm-status show ${kind || "info"}`;
+        target.textContent = message;
     }
 
     function setBusy(b) {
@@ -1170,6 +1600,19 @@ function render({ model, el }) {
 
     function renderConfig() {
         configPanel.classList.toggle("slls-mmm-hide", getMode() !== "create");
+    }
+
+    function renderConnectionState() {
+        const picking = showPicker();
+        renderPicker();
+        changeModelBtn.classList.toggle("slls-mmm-hide", !isConnected() || picking);
+        const managedElements = [segment, configPanel, masterPanel, objectsPage, filtersPage, deployPanel, footer];
+        if (picking) {
+            for (const element of managedElements) element.classList.add("slls-mmm-hide");
+        } else {
+            segment.classList.remove("slls-mmm-hide");
+            footer.classList.remove("slls-mmm-hide");
+        }
     }
 
     function renderTree() {
@@ -1252,6 +1695,12 @@ function render({ model, el }) {
                     const childRow = document.createElement("div");
                     childRow.className = "slls-mmm-row slls-mmm-child";
                     if (objHidden) childRow.classList.add("is-hidden");
+                    const lockedCalculationGroupColumn = data.calculation_group && t === "columns";
+                    if (lockedCalculationGroupColumn) {
+                        childRow.classList.add("slls-mmm-disabled");
+                        childRow.setAttribute("aria-disabled", "true");
+                        childRow.title = "Calculation group columns are included automatically.";
+                    }
                     childRow.dataset.type = t;
                     childRow.dataset.name = n;
 
@@ -1279,13 +1728,20 @@ function render({ model, el }) {
                     if (q && !matches) childRow.classList.add("filtered-out");
                     else visibleChildren++;
 
-                    childRow.addEventListener("click", (e) => {
-                        e.stopPropagation();
-                        if (!selection[tblName]) selection[tblName] = emptySelection();
-                        selection[tblName][t][n] = !selection[tblName][t][n];
-                        updateRow();
-                        renderFooter();
-                    });
+                    if (!lockedCalculationGroupColumn) {
+                        childRow.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            if (!selection[tblName]) selection[tblName] = emptySelection();
+                            selection[tblName][t][n] = !selection[tblName][t][n];
+                            if (data.calculation_group) {
+                                const groupSelected = ["measures", "hierarchies"].some((type) =>
+                                    Object.values(selection[tblName][type] || {}).some(Boolean));
+                                setCalculationGroupColumns(tblName, groupSelected);
+                            }
+                            updateRow();
+                            renderFooter();
+                        });
+                    }
 
                     childWrap.appendChild(childRow);
                 }
@@ -1327,6 +1783,7 @@ function render({ model, el }) {
                 for (const t of TYPES) {
                     for (const n of (data[t] || [])) selection[tblName][t][n] = turnOn;
                 }
+                if (data.calculation_group) setCalculationGroupColumns(tblName, turnOn);
                 updateRow();
                 renderFooter();
             });
@@ -1469,6 +1926,8 @@ function render({ model, el }) {
         objectsPage.classList.toggle("slls-mmm-hide", onFilters);
         filtersPage.classList.toggle("slls-mmm-hide", !onFilters);
         if (onFilters) { renderMetadataSwitch(); renderFilterList(); renderVerifyBar(); }
+        const currentStatus = model.get("status") || {};
+        setStatus(currentStatus.message || "", currentStatus.kind || "info");
         renderFooter();
     }
 
@@ -1522,6 +1981,7 @@ function render({ model, el }) {
         renderTree();
         renderDeployPanel();
         renderPages();
+        renderConnectionState();
     }
 
     // ================= Model observers =================
@@ -1532,7 +1992,7 @@ function render({ model, el }) {
         renderFooter();
         renderVerifyBar();
     });
-    model.on("change:busy", () => { setBusy(isBusy()); renderFooter(); });
+    model.on("change:busy", () => { setBusy(isBusy()); renderFooter(); renderPicker(); });
     model.on("change:metadata", reloadFromModel);
     model.on("change:mode", reloadFromModel);
     model.on("change:preset_selection", reloadFromModel);
@@ -1540,6 +2000,15 @@ function render({ model, el }) {
     model.on("change:broken_objects", renderMasterPanel);
     model.on("change:mini_error", () => { renderMasterPanel(); renderFooter(); });
     model.on("change:workspaces", renderWorkspaces);
+    model.on("change:datasets", renderPicker);
+    model.on("change:connected", reloadFromModel);
+    model.on("change:connect_done", () => {
+        pickerReopen = false;
+        pickDs = "";
+        reloadFromModel();
+    });
+    model.on("change:dataset_name", renderSubtitle);
+    model.on("change:workspace_name", renderSubtitle);
     model.on("change:verify_results", () => {
         verifyResults = Object.assign({}, model.get("verify_results") || {});
         renderFilterList();
@@ -1564,6 +2033,8 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_TABLE__", _UI_ICONS["table"])
     .replace("__SLLS_ICON_CALC_GROUP__", _UI_ICONS["calculation_group"])
     .replace("__SLLS_ICON_CARET__", _UI_ICONS["caret_right"])
+    .replace("__SLLS_ICON_EXPAND_ROWS__", _UI_ICONS["expand_rows"])
+    .replace("__SLLS_ICON_COLLAPSE_ROWS__", _UI_ICONS["collapse_rows"])
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
     .replace("__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
@@ -1577,6 +2048,10 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_SYNC__", _UI_ICONS["sync"])
     .replace("__SLLS_ICON_CHEVRON_LEFT__", _UI_ICONS["chevron_left"])
     .replace("__SLLS_ICON_CHEVRON_RIGHT__", _UI_ICONS["chevron_right"])
+    .replace("__SLLS_ICON_MINI_MODEL_MANAGER__", _UI_ICONS["mini_model_manager"])
+    .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
+    .replace("__SLLS_ICON_EXPAND_DIAGONAL__", _UI_ICONS["expand_diagonal"])
+    .replace("__SLLS_ICON_COLLAPSE_DIAGONAL__", _UI_ICONS["collapse_diagonal"])
 )
 
 _OBJECT_TYPES = ["columns", "measures", "hierarchies"]
@@ -1615,7 +2090,7 @@ def _model_metadata(tom) -> dict:
 
 @log
 def mini_model_manager(
-    dataset: str | UUID,
+    dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     dark_mode: bool = False,
 ):
@@ -1637,9 +2112,10 @@ def mini_model_manager(
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
+    dataset : str | uuid.UUID, default=None
         Name or ID of the semantic model. This is either the master semantic model (from which a
-        mini model is created) or an existing mini model (which is managed).
+        mini model is created) or an existing mini model (which is managed). Defaults to None,
+        which opens a workspace / semantic model picker.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1669,31 +2145,77 @@ def mini_model_manager(
     from sempy_labs.tom import connect_semantic_model
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
-    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
     workspace_id = str(workspace_id)
-    dataset_id = str(dataset_id)
     workspace_name = str(workspace_name or "")
-    dataset_name = str(dataset_name)
+    connected = dataset is not None
+    if connected:
+        dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+        dataset_id = str(dataset_id)
+        dataset_name = str(dataset_name)
+    else:
+        dataset_name, dataset_id = "", ""
+
+    def _pick_columns(df, preferred_ids, preferred_names):
+        columns = list(df.columns)
+        if not columns:
+            return None, None
+        id_column = next((c for c in preferred_ids if c in columns), columns[0])
+        name_column = next((c for c in preferred_names if c in columns), columns[-1])
+        return id_column, name_column
 
     def _list_workspaces_payload():
         try:
             dfW = fabric.list_workspaces()
-            rows = [
-                {"id": str(r["Id"]), "name": str(r["Name"])} for _, r in dfW.iterrows()
-            ]
-            rows.sort(key=lambda x: x["name"].lower())
-            return rows
         except Exception:
             return [{"id": workspace_id, "name": workspace_name}]
+        id_column, name_column = _pick_columns(
+            dfW,
+            ["Id", "ID", "Workspace Id", "Workspace ID"],
+            ["Name", "Workspace Name"],
+        )
+        if id_column is None or name_column is None:
+            return [{"id": workspace_id, "name": workspace_name}]
+        rows = [
+            {"id": str(row[id_column]), "name": str(row[name_column])}
+            for _, row in dfW.iterrows()
+        ]
+        return sorted(rows, key=lambda item: item["name"].lower())
+
+    def _list_datasets_payload(target_workspace_id):
+        try:
+            dfD = fabric.list_datasets(workspace=target_workspace_id)
+        except Exception:
+            return []
+        id_column, name_column = _pick_columns(
+            dfD,
+            ["Dataset Id", "Dataset ID", "Id"],
+            ["Dataset Name", "Name"],
+        )
+        if id_column is None or name_column is None:
+            return []
+        rows = [
+            {"id": str(row[id_column]), "name": str(row[name_column])}
+            for _, row in dfD.iterrows()
+        ]
+        return sorted(rows, key=lambda item: item["name"].lower())
+
+    def _read_model(target_dataset_id, target_workspace_id):
+        with connect_semantic_model(
+            dataset=target_dataset_id,
+            workspace=target_workspace_id,
+            readonly=True,
+        ) as tom:
+            properties = tom.get_mini_model_properties() or {}
+            metadata = _model_metadata(tom)
+        return properties, metadata
 
     # ------------------------------------------------------------------
     # Initial load: read the model and determine whether it is a mini model
     # ------------------------------------------------------------------
-    with connect_semantic_model(
-        dataset=dataset_id, workspace=workspace_id, readonly=True
-    ) as tom:
-        mini_properties = tom.get_mini_model_properties() or {}
-        own_metadata = _model_metadata(tom)
+    if connected:
+        mini_properties, own_metadata = _read_model(dataset_id, workspace_id)
+    else:
+        mini_properties, own_metadata = {}, {}
 
     is_mini = bool(mini_properties)
 
@@ -1708,6 +2230,7 @@ def mini_model_manager(
         broken_objects = traitlets.List().tag(sync=True)
         saved_filters = traitlets.Dict().tag(sync=True)
         workspaces = traitlets.List().tag(sync=True)
+        datasets = traitlets.Dict().tag(sync=True)
         verify_results = traitlets.Dict().tag(sync=True)
         deploy_result = traitlets.Dict().tag(sync=True)
         mini_error = traitlets.Unicode("").tag(sync=True)
@@ -1718,6 +2241,8 @@ def mini_model_manager(
         dataset_name = traitlets.Unicode("").tag(sync=True)
         workspace_name = traitlets.Unicode("").tag(sync=True)
         workspace_id = traitlets.Unicode("").tag(sync=True)
+        connected = traitlets.Bool(False).tag(sync=True)
+        connect_done = traitlets.Int(0).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
 
     widget = MiniModelManagerWidget(
@@ -1725,6 +2250,13 @@ def mini_model_manager(
         workspace_name=workspace_name,
         workspace_id=workspace_id,
         workspaces=_list_workspaces_payload(),
+        datasets=(
+            {workspace_id: _list_datasets_payload(workspace_id)}
+            if not connected
+            else {}
+        ),
+        connected=connected,
+        connect_done=0,
         dark_mode=bool(dark_mode),
     )
 
@@ -2003,13 +2535,49 @@ def mini_model_manager(
         )
 
     def _on_run(_change):
+        nonlocal workspace_id, dataset_id, workspace_name, dataset_name
+        nonlocal mini_properties, own_metadata, is_mini
         data = dict(widget.pending_action or {})
         action = data.get("action")
         if not action:
             return
         widget.busy = True
         try:
-            if action == "set_mode":
+            if action == "list_datasets":
+                target_workspace_id = data.get("workspace_id")
+                if target_workspace_id:
+                    datasets = dict(widget.datasets)
+                    datasets[str(target_workspace_id)] = _list_datasets_payload(
+                        target_workspace_id
+                    )
+                    widget.datasets = datasets
+            elif action == "connect":
+                target_workspace_id = str(data.get("workspace_id") or "")
+                target_dataset_id = str(data.get("dataset_id") or "")
+                if not target_workspace_id or not target_dataset_id:
+                    _set_status("Select a workspace and semantic model.", "error")
+                    return
+                new_properties, new_metadata = _read_model(
+                    target_dataset_id, target_workspace_id
+                )
+                workspace_id = target_workspace_id
+                dataset_id = target_dataset_id
+                workspace_name = str(data.get("workspace_name") or "")
+                dataset_name = str(data.get("dataset_name") or "")
+                mini_properties = new_properties
+                own_metadata = new_metadata
+                is_mini = bool(mini_properties)
+                widget.workspace_id = workspace_id
+                widget.workspace_name = workspace_name
+                widget.dataset_name = dataset_name
+                if is_mini:
+                    _load_manage_mode()
+                else:
+                    _load_create_mode()
+                widget.connected = True
+                widget.connect_done = widget.connect_done + 1
+                _set_status("")
+            elif action == "set_mode":
                 if data.get("mode") == "manage":
                     _load_manage_mode()
                 else:
@@ -2029,10 +2597,11 @@ def mini_model_manager(
 
     widget.observe(_on_run, names=["run"])
 
-    if is_mini:
-        _load_manage_mode()
-    else:
-        _load_create_mode()
+    if connected:
+        if is_mini:
+            _load_manage_mode()
+        else:
+            _load_create_mode()
 
     # Keep a reference on the widget so the Python-side observer is not garbage
     # collected after this function returns. We intentionally do NOT return the
