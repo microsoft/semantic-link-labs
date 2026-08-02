@@ -76,6 +76,25 @@ def test_widget_includes_optional_dataset_picker():
     assert 'dispatch("connect"' in refresh_manager_module._WIDGET_JS
     assert 'model.get("connected")' in refresh_manager_module._WIDGET_JS
     assert ">Connect</button>" in refresh_manager_module._WIDGET_JS
+    assert "slls-rm-picker-connect" in refresh_manager_module._WIDGET_JS
+    assert "slls-rm-btn.primary.slls-rm-picker-connect" in (
+        refresh_manager_module._WIDGET_CSS
+    )
+    assert "flex:none;width:auto;min-width:96px" in refresh_manager_module._WIDGET_CSS
+    assert "data-picker-close" in refresh_manager_module._WIDGET_JS
+    assert "data-picker-cancel" not in refresh_manager_module._WIDGET_JS
+
+
+def test_fullscreen_and_theme_buttons_use_active_accent_style():
+    assert refresh_manager_module._WIDGET_JS.count("slls-rm-header-action") == 2
+    assert (
+        ".slls-rm-header-action { color:var(--ui-accent);"
+        in refresh_manager_module._WIDGET_CSS
+    )
+    assert (
+        ".slls-rm-header-action:hover { color:#fff;background:var(--ui-accent); }"
+        in refresh_manager_module._WIDGET_CSS
+    )
     assert "data-combo-input" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
@@ -130,6 +149,21 @@ def test_widget_has_tools_style_schedule_controls():
     assert "data-add-time" in refresh_manager_module._WIDGET_JS
     assert "data-remove-time" in refresh_manager_module._WIDGET_JS
     assert "length:48" in refresh_manager_module._WIDGET_JS
+    assert "option===time||!d.times.includes(option)" in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert "keepPosition()" in refresh_manager_module._WIDGET_JS
+    assert "restorePosition()" in refresh_manager_module._WIDGET_JS
+    assert "function draw(){if(!savedPosition)keepPosition();" in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert "node.scrollHeight>node.clientHeight" in refresh_manager_module._WIDGET_JS
+    assert "node.parentNode||(node.host||null)" in refresh_manager_module._WIDGET_JS
+    assert "document.scrollingElement" in refresh_manager_module._WIDGET_JS
+    assert "node.scrollTo(left,top)" in refresh_manager_module._WIDGET_JS
+    assert "requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);})" in (
+        refresh_manager_module._WIDGET_JS
+    )
 
 
 def test_widget_uses_semantic_table_icons():
@@ -169,6 +203,23 @@ def test_widget_has_refresh_policy_and_visualize_toggles():
     assert 'aria-label="Toggle visualize refresh"' in refresh_manager_module._WIDGET_JS
     assert "visualize:s.visualize" in refresh_manager_module._WIDGET_JS
     assert "busy&&!s.visualize" in refresh_manager_module._WIDGET_JS
+
+
+def test_refresh_option_values_use_compact_controls():
+    assert "slls-rm-card slls-rm-options" in refresh_manager_module._WIDGET_JS
+    assert (
+        ".slls-rm-options .slls-rm-input,.slls-rm-options .slls-rm-select"
+        in refresh_manager_module._WIDGET_CSS
+    )
+    assert "min-height:32px;height:32px" in refresh_manager_module._WIDGET_CSS
+    assert "font-size:12px" in refresh_manager_module._WIDGET_CSS
+
+
+def test_visualized_refresh_suppresses_empty_trace_warning():
+    source = getsource(refresh_manager_module._read_refresh_trace_events)
+    assert "warnings.catch_warnings()" in source
+    assert 'message="No trace logs have been recorded.*"' in source
+    assert "trace.stop() if stop else trace.get_trace_logs()" in source
 
 
 def test_widget_renders_visualized_refresh_timeline():
