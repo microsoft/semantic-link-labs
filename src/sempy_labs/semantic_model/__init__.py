@@ -12,6 +12,9 @@ from ._perspective_editor import (
 from ._direct_lake_manager import (
     direct_lake_manager,
 )
+from ._refresh_manager import (
+    refresh_manager,
+)
 from ._lineage_view import (
     lineage_view,
 )
@@ -29,6 +32,7 @@ __all__ = [
     "enable_query_caching",
     "perspective_editor",
     "direct_lake_manager",
+    "refresh_manager",
     "lineage_view",
     "migrate_to_direct_lake",
     "find_unused_objects",

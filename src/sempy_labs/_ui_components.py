@@ -164,6 +164,14 @@ ICONS: dict[str, str] = {
         "15 5.4V2.5a.5.5 0 0 0-1 0v1.55A7 7 0 1 0 15 8a.5.5 0 0 0-1 0A6 6 0 "
         '1 1 8 2z"/></svg>'
     ),
+    "history": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 3v3.5H6"/>'
+        '<path d="M3 6.2A5.5 5.5 0 1 1 2.8 10"/>'
+        '<path d="M8 4.5V8l2.5 1.5"/></svg>'
+    ),
     "source": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
