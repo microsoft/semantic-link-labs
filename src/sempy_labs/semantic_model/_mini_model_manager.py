@@ -585,6 +585,36 @@ _WIDGET_CSS = """
 }
 .slls-mmm-verifysummary span { display: inline-flex; align-items: center; gap: 5px; }
 .slls-mmm-verifysummary svg { width: 14px; height: 14px; }
+.slls-mmm-verifyprogress {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    color: var(--slls-text-secondary);
+    font-size: 12.5px;
+}
+.slls-mmm-verifyprogress.show { display: flex; }
+.slls-mmm-verifytrack {
+    position: relative;
+    flex: 1 1 auto;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--slls-accent-soft);
+}
+.slls-mmm-verifytrack::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 35%;
+    border-radius: inherit;
+    background: var(--slls-accent);
+    animation: slls-mmm-verify-progress 1.1s ease-in-out infinite;
+}
+@keyframes slls-mmm-verify-progress {
+    from { transform: translateX(-110%); }
+    to { transform: translateX(320%); }
+}
 .slls-mmm-ok { color: var(--slls-success); }
 .slls-mmm-bad { color: var(--slls-danger); }
 .slls-mmm-warnc { color: var(--slls-orange); }
@@ -689,14 +719,17 @@ _WIDGET_CSS = """
 .slls-mmm-status.show { display: block; animation: slls-mmm-fade 200ms ease; }
 .slls-mmm-status.success { background: var(--slls-success-soft); color: var(--slls-success); }
 .slls-mmm-status.error { background: var(--slls-danger-soft); color: var(--slls-danger); }
+.slls-mmm-status.warning { background: var(--slls-orange-soft); color: var(--slls-orange); }
 .slls-mmm-status.info { background: var(--slls-accent-soft); color: var(--slls-accent); }
 @keyframes slls-mmm-fade {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
 }
-.slls-mmm-busy { pointer-events: none; }
 .slls-mmm > * { transition: opacity 120ms ease; }
-.slls-mmm-busy > * { opacity: 0.55; }
+.slls-mmm-busy > :not(.slls-mmm-header) {
+    pointer-events: none;
+    opacity: 0.55;
+}
 
 .slls-mmm-attribution {
     margin-top: 18px;
@@ -754,6 +787,7 @@ function render({ model, el }) {
     let filterText = "";
     let step = "objects";
     let metadataOnly = false;
+    let verifyingFilters = false;
     let fsMode = false;
     let objectsFsMode = false;
     let pickWs = model.get("workspace_id") || "";
@@ -1337,6 +1371,14 @@ function render({ model, el }) {
     verifySummary.className = "slls-mmm-verifysummary";
     verifyBar.appendChild(verifySummary);
 
+    const verifyProgress = document.createElement("div");
+    verifyProgress.className = "slls-mmm-verifyprogress";
+    verifyProgress.setAttribute("role", "progressbar");
+    verifyProgress.setAttribute("aria-label", "Verifying filters");
+    verifyProgress.innerHTML =
+        '<div class="slls-mmm-verifytrack"></div><span>Verifying filters…</span>';
+    filtersPage.appendChild(verifyProgress);
+
     const filtersStatus = document.createElement("div");
     filtersStatus.className = "slls-mmm-status";
     filtersPage.appendChild(filtersStatus);
@@ -1516,14 +1558,16 @@ function render({ model, el }) {
 
     /**
      * The filters page only exists when the whole model is made of objects it can
-     * handle: Direct Lake tables (which take a filter) and calculation groups
-     * (which hold no data), and at least one Direct Lake table exists.
+    * handle: Direct Lake tables (which take a filter), calculation groups, and
+    * calculated tables (which hold no lake data), and at least one Direct Lake
+    * table exists.
      */
     function modelIsFilterable() {
         const md = getMetadata();
         const names = Object.keys(md);
         if (names.length === 0) return false;
-        const allOk = names.every((t) => md[t].direct_lake || md[t].calculation_group);
+        const allOk = names.every((t) =>
+            md[t].direct_lake || md[t].calculation_group || md[t].calculated_table);
         const anyDl = names.some((t) => md[t].direct_lake);
         return allOk && anyDl;
     }
@@ -1585,6 +1629,10 @@ function render({ model, el }) {
     }
 
     function send(action) {
+        if (action.action === "verify") {
+            verifyingFilters = true;
+            renderVerifyBar();
+        }
         setBusy(true);
         model.set("pending_action", action);
         model.set("run", (model.get("run") || 0) + 1);
@@ -1902,6 +1950,7 @@ function render({ model, el }) {
 
     function renderVerifyBar() {
         verifyBtn.disabled = isBusy() || Object.keys(activeFilters()).length === 0;
+        verifyProgress.classList.toggle("show", verifyingFilters);
         renderVerifySummary();
     }
 
@@ -1987,12 +2036,19 @@ function render({ model, el }) {
     // ================= Model observers =================
     model.on("change:status", () => {
         const s = model.get("status") || {};
+        verifyingFilters = false;
         setBusy(false);
         setStatus(s.message || "", s.kind || "info");
         renderFooter();
         renderVerifyBar();
     });
-    model.on("change:busy", () => { setBusy(isBusy()); renderFooter(); renderPicker(); });
+    model.on("change:busy", () => {
+        if (!isBusy()) verifyingFilters = false;
+        setBusy(isBusy());
+        renderFooter();
+        renderPicker();
+        renderVerifyBar();
+    });
     model.on("change:metadata", reloadFromModel);
     model.on("change:mode", reloadFromModel);
     model.on("change:preset_selection", reloadFromModel);
@@ -2080,6 +2136,10 @@ def _model_metadata(tom) -> dict:
             "hidden_measures": [m.Name for m in table.Measures if m.IsHidden],
             "hidden_hierarchies": [h.Name for h in table.Hierarchies if h.IsHidden],
             "calculation_group": table.CalculationGroup is not None,
+            "calculated_table": any(
+                p.SourceType == TOM.PartitionSourceType.Calculated
+                for p in table.Partitions
+            ),
             "direct_lake": any(
                 p.Mode == TOM.ModeType.DirectLake for p in table.Partitions
             ),
@@ -2137,6 +2197,7 @@ def mini_model_manager(
     import sempy.fabric as fabric
     from IPython.display import display
     from sempy_labs._helper_functions import (
+        _pure_python_notebook,
         resolve_workspace_name_and_id,
         resolve_dataset_name_and_id,
         resolve_item_name_and_id,
@@ -2285,6 +2346,16 @@ def mini_model_manager(
             return str(mini_properties.get("miniModelPerspective") or dataset_name)
         return str(mini_name or "")
 
+    def _warn_if_filters_require_pyspark(filters: dict) -> bool:
+        if filters and _pure_python_notebook():
+            _set_status(
+                "Filter validation and creation require a PySpark notebook. "
+                "Run the Mini Model Manager in a PySpark notebook to use filters.",
+                "warning",
+            )
+            return True
+        return False
+
     def _load_create_mode():
         widget.mini_error = ""
         widget.master_info = {}
@@ -2367,6 +2438,9 @@ def mini_model_manager(
         widget.metadata = master_metadata
 
     def _verify(filters: dict, mini_name: Optional[str] = None):
+        if _warn_if_filters_require_pyspark(filters):
+            return
+
         from sempy_labs.lakehouse._materialized_lake_views import (
             create_materialized_lake_view,
         )
@@ -2478,6 +2552,9 @@ def mini_model_manager(
             for k, v in (data.get("filters") or {}).items()
             if str(v).strip()
         }
+        if _warn_if_filters_require_pyspark(filters):
+            return
+
         master = _master_reference()
 
         if widget.mode == "manage":

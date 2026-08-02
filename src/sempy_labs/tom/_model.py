@@ -6223,9 +6223,15 @@ class TOMWrapper:
         queries = {}
 
         # Validation
-        if any(p for p in self.all_partitions() if p.Mode != TOM.ModeType.DirectLake):
+        data_partitions = [
+            p
+            for p in self.all_partitions()
+            if p.Parent.CalculationGroup is None
+            and p.SourceType != TOM.PartitionSourceType.Calculated
+        ]
+        if any(p.Mode != TOM.ModeType.DirectLake for p in data_partitions):
             print(
-                f"{icons.red_dot} This function only supports semantic models where all tables are in Direct Lake mode."
+                f"{icons.red_dot} This function only supports semantic models where all data tables are in Direct Lake mode."
             )
             return None, None, None
 
@@ -6261,7 +6267,9 @@ class TOMWrapper:
 
         # Map of table_name -> (schema_name, entity_name)
         table_sources = {}
-        for p in self.all_partitions():
+        for p in data_partitions:
+            if p.SourceType != TOM.PartitionSourceType.Entity:
+                continue
             tn = p.Parent.Name
             if tn not in table_sources:
                 table_sources[tn] = (p.Source.SchemaName, p.Source.EntityName)
