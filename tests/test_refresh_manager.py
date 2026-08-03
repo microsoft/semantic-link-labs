@@ -256,6 +256,20 @@ def test_widget_renders_visualized_refresh_timeline():
     assert "event.cpuTimeMs" in refresh_manager_module._WIDGET_JS
 
 
+def test_visualized_refresh_updates_live_regions_without_full_redraw():
+    widget_js = refresh_manager_module._WIDGET_JS
+
+    assert "data-live-status" in widget_js
+    assert "data-live-gantt" in widget_js
+    assert 'model.on("change:refresh_status",()=>updateLive(' in widget_js
+    assert 'model.on("change:gantt_events",()=>updateLive(' in widget_js
+    draw_observers = widget_js.split(
+        'const updateLive=(selector,render)=>', 1
+    )[1].split('model.on("change:refresh_status"', 1)[0]
+    assert '"refresh_status"' not in draw_observers
+    assert '"gantt_events"' not in draw_observers
+
+
 def test_refresh_status_polling_accepts_active_202_responses():
     source = getsource(refresh_manager_module.refresh_manager)
     assert source.count("status_codes=[200, 202]") == 2
