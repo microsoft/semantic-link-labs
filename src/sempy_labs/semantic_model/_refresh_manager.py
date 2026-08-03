@@ -505,7 +505,9 @@ def refresh_manager(
 
     def list_datasets(target_workspace_id: str) -> list[dict[str, str]]:
         try:
-            dataframe = fabric.list_datasets(workspace=target_workspace_id)
+            dataframe = fabric.list_datasets(
+                workspace=target_workspace_id, mode="rest"
+            )
         except Exception:
             return []
         id_column = next(
@@ -534,12 +536,8 @@ def refresh_manager(
             key=lambda item: item["name"].lower(),
         )
 
-    initial_workspaces = (
-        [{"id": workspace_id, "name": workspace_name}]
-        if connected
-        else list_workspaces()
-    )
-    initial_datasets = {} if connected else {workspace_id: list_datasets(workspace_id)}
+    initial_workspaces = [{"id": workspace_id, "name": workspace_name}]
+    initial_datasets = {}
 
     class _RefreshManagerWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
@@ -873,3 +871,16 @@ def refresh_manager(
 
     widget.observe(on_run, names=["run"])
     display(widget)
+
+    if not connected:
+
+        def load_initial_workspaces() -> None:
+            widget.workspaces = list_workspaces()
+
+        def load_initial_datasets() -> None:
+            datasets = dict(widget.datasets)
+            datasets[workspace_id] = list_datasets(workspace_id)
+            widget.datasets = datasets
+
+        threading.Thread(target=load_initial_workspaces, daemon=True).start()
+        threading.Thread(target=load_initial_datasets, daemon=True).start()

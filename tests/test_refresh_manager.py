@@ -85,6 +85,21 @@ def test_widget_includes_optional_dataset_picker():
     assert "data-picker-cancel" not in refresh_manager_module._WIDGET_JS
 
 
+def test_no_dataset_picker_renders_before_discovery():
+    source = getsource(refresh_manager_module.refresh_manager)
+
+    assert 'fabric.list_datasets(' in source
+    assert 'workspace=target_workspace_id, mode="rest"' in source
+    assert 'initial_workspaces = [{"id": workspace_id, "name": workspace_name}]' in source
+    assert "initial_datasets = {}" in source
+    display_index = source.index("display(widget)")
+    discovery_index = source.index(
+        "threading.Thread(target=load_initial_workspaces, daemon=True).start()"
+    )
+    assert display_index < discovery_index
+    assert "threading.Thread(target=load_initial_datasets, daemon=True).start()" in source
+
+
 def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert "slls-rm-header-action" not in refresh_manager_module._WIDGET_JS
     assert "slls-rm-header-action" not in refresh_manager_module._WIDGET_CSS
