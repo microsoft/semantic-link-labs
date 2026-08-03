@@ -2765,7 +2765,12 @@ def migrate_to_direct_lake(
     display(widget)
 
 
-from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+from sempy_labs._ui_components import (  # noqa: E402
+    ICONS as _UI_ICONS,
+    scoped_button_press_css as _ui_scoped_button_press_css,
+)
+
+_WIDGET_CSS += _ui_scoped_button_press_css(".slls-mdl")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__IC_DATABASE__", _UI_ICONS["database"])

@@ -1146,7 +1146,12 @@ export default { render };
 
 # Inject SVG icons from the shared UI components module so they stay in
 # sync with other widgets (e.g. ``vertipaq_analyzer``).
-from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+from sempy_labs._ui_components import (  # noqa: E402
+    ICONS as _UI_ICONS,
+    scoped_button_press_css as _ui_scoped_button_press_css,
+)
+
+_WIDGET_CSS += _ui_scoped_button_press_css(".slls-pe")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])

@@ -85,16 +85,13 @@ def test_widget_includes_optional_dataset_picker():
     assert "data-picker-cancel" not in refresh_manager_module._WIDGET_JS
 
 
-def test_fullscreen_and_theme_buttons_use_active_accent_style():
-    assert refresh_manager_module._WIDGET_JS.count("slls-rm-header-action") == 2
-    assert (
-        ".slls-rm-header-action { color:var(--ui-accent);"
-        in refresh_manager_module._WIDGET_CSS
+def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
+    assert "slls-rm-header-action" not in refresh_manager_module._WIDGET_JS
+    assert "slls-rm-header-action" not in refresh_manager_module._WIDGET_CSS
+    assert 'class="slls-rm-iconbtn" data-fullscreen' in (
+        refresh_manager_module._WIDGET_JS
     )
-    assert (
-        ".slls-rm-header-action:hover { color:#fff;background:var(--ui-accent); }"
-        in refresh_manager_module._WIDGET_CSS
-    )
+    assert 'class="slls-rm-iconbtn" data-theme' in refresh_manager_module._WIDGET_JS
     assert "data-combo-input" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
@@ -102,6 +99,10 @@ def test_fullscreen_and_theme_buttons_use_active_accent_style():
     assert 'root.querySelector("[data-picker-connect]").focus()' in (
         refresh_manager_module._WIDGET_JS
     )
+    assert "s.pickDs=id;draw();const input=root.querySelector" in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert "if(input)input.focus()" in refresh_manager_module._WIDGET_JS
     assert 'class="slls-rm-iconbtn" data-picker-reload' in (
         refresh_manager_module._WIDGET_JS
     )
@@ -157,6 +158,13 @@ def test_widget_has_tools_style_schedule_controls():
     assert "function draw(){if(!savedPosition)keepPosition();" in (
         refresh_manager_module._WIDGET_JS
     )
+    assert 'root.querySelector(".slls-rm-body")' in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert 'key:"body"' in refresh_manager_module._WIDGET_JS
+    assert 'key==="body"?root.querySelector(".slls-rm-body"):node' in (
+        refresh_manager_module._WIDGET_JS
+    )
     assert "node.scrollHeight>node.clientHeight" in refresh_manager_module._WIDGET_JS
     assert "node.parentNode||(node.host||null)" in refresh_manager_module._WIDGET_JS
     assert "document.scrollingElement" in refresh_manager_module._WIDGET_JS
@@ -164,6 +172,24 @@ def test_widget_has_tools_style_schedule_controls():
     assert "requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);})" in (
         refresh_manager_module._WIDGET_JS
     )
+
+
+def test_history_and_schedule_panel_headers_toggle_in_place():
+    widget_js = refresh_manager_module._WIDGET_JS
+
+    assert 'event.target.closest(".slls-rm-panel-head")' in widget_js
+    assert 'panelHead.querySelector("[data-panel]")' in widget_js
+    assert 'event.target.closest("[data-reload-history],[data-reload-schedule]")' in (
+        widget_js
+    )
+    assert 'panelHead.closest(".slls-rm-panel").classList.toggle("open",open)' in (
+        widget_js
+    )
+    capture_handler = widget_js.split(
+        'root.addEventListener("click",event=>{const panelHead=', 1
+    )[1].split("},true);", 1)[0]
+    assert "event.stopPropagation()" in capture_handler
+    assert "draw()" not in capture_handler
 
 
 def test_widget_uses_semantic_table_icons():

@@ -32,6 +32,7 @@ from sempy_labs._ui_components import (
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_header_css as _ui_scoped_header_css,
     scoped_attribution_css as _ui_scoped_attribution_css,
+    scoped_button_press_css as _ui_scoped_button_press_css,
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
@@ -1888,6 +1889,7 @@ def visualize_vertipaq(
     # are NOT subject to f-string escaping and don't need doubling.
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
 
     # ── CSS ──────────────────────────────────────────────────────────────
     # Light theme is the default; the ``.vpx-dark`` modifier on the root
@@ -2743,6 +2745,7 @@ def visualize_vertipaq(
         color: #f5f5f7;
     }}
     {ui_attribution_css_scoped}
+    {ui_button_press_css_scoped}
     </style>
     """
 

@@ -7,6 +7,7 @@ from sempy_labs._ui_components import (
     ICONS as _UI_ICONS,
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
+    scoped_button_press_css as _ui_scoped_button_press_css,
 )
 
 # The maximum number of models a single bulk scan may target. Keeps the run time
@@ -486,6 +487,7 @@ _WIDGET_CSS = (
 .slls-bpa-searchwrap .slls-bpa-input { padding-left: 32px; min-width: 240px; }
 """
 )
+_WIDGET_CSS += _ui_scoped_button_press_css(".slls-bpa")
 
 
 _WIDGET_JS = r"""
