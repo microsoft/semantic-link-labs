@@ -107,17 +107,27 @@ def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
         refresh_manager_module._WIDGET_JS
     )
     assert 'class="slls-rm-iconbtn" data-theme' in refresh_manager_module._WIDGET_JS
+    assert ".slls-rm-title-row .slls-rm-iconbtn" not in (
+        refresh_manager_module._WIDGET_CSS
+    )
+    assert ".slls-rm-iconbtn { width:34px;height:34px" in (
+        refresh_manager_module._WIDGET_CSS
+    )
     assert "data-combo-input" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
     assert 'event.key==="Tab"&&kind==="dataset"' in refresh_manager_module._WIDGET_JS
-    assert 'root.querySelector("[data-picker-connect]").focus()' in (
+    assert 'if(connect&&!connect.disabled)connect.focus()' in (
         refresh_manager_module._WIDGET_JS
     )
-    assert "s.pickDs=id;draw();const input=root.querySelector" in (
+    assert "choice=exact||(visible.length===1?visible[0]:null)" in (
         refresh_manager_module._WIDGET_JS
     )
-    assert "if(input)input.focus()" in refresh_manager_module._WIDGET_JS
+    assert "if(choice&&!s.pickDs)" in refresh_manager_module._WIDGET_JS
+    assert "onChoose(choice.dataset.id)" in refresh_manager_module._WIDGET_JS
+    assert "s.pickDs=id;draw();requestAnimationFrame" in (
+        refresh_manager_module._WIDGET_JS
+    )
     assert 'class="slls-rm-iconbtn" data-picker-reload' in (
         refresh_manager_module._WIDGET_JS
     )
