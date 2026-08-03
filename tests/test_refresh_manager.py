@@ -201,8 +201,24 @@ def test_widget_uses_semantic_table_icons():
         refresh_manager_module._UI_ICONS["calculation_group"]
         in refresh_manager_module._WIDGET_JS
     )
+    assert (
+        refresh_manager_module._UI_ICONS["field_parameter"]
+        in refresh_manager_module._WIDGET_JS
+    )
     assert 't.kind==="calculation_group"' in refresh_manager_module._WIDGET_JS
     assert 't.kind==="calculated_table"' in refresh_manager_module._WIDGET_JS
+    assert 't.kind==="field_parameter"' in refresh_manager_module._WIDGET_JS
+
+
+def test_semantic_table_icons_have_hover_labels():
+    widget_js = refresh_manager_module._WIDGET_JS
+
+    for label in ["Table", "Calculation Group", "Calculated Table", "Field Parameter"]:
+        assert label in widget_js
+    assert 'title="${tableKind}" aria-label="${tableKind}"' in widget_js
+    assert "tom.is_field_parameter(table_name=str(table.Name))" in getsource(
+        refresh_manager_module._get_refresh_objects
+    )
 
 
 def test_refresh_detail_titles_use_neutral_text_color():
