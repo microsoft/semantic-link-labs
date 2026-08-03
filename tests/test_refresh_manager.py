@@ -241,6 +241,17 @@ def test_refresh_option_values_use_compact_controls():
     assert "font-size:12px" in refresh_manager_module._WIDGET_CSS
 
 
+def test_refresh_options_have_hover_descriptions():
+    widget_js = refresh_manager_module._WIDGET_JS
+
+    for option in ["type", "commit", "parallel", "retry", "policy"]:
+        assert f'{option}:"' in widget_js
+    assert "const annotateOptionDescriptions=" in widget_js
+    assert 'control.closest(".slls-rm-field,.slls-rm-toggle-row")' in widget_js
+    assert "field.title=description" in widget_js
+    assert "new MutationObserver(annotateOptionDescriptions)" in widget_js
+
+
 def test_visualized_refresh_suppresses_empty_trace_warning():
     source = getsource(refresh_manager_module._read_refresh_trace_events)
     assert "warnings.catch_warnings()" in source
