@@ -308,6 +308,25 @@ def test_widget_renders_visualized_refresh_timeline():
     assert "event.cpuTimeMs" in refresh_manager_module._WIDGET_JS
 
 
+def test_visualized_refresh_timeline_filters_and_scrolls():
+    widget_js = refresh_manager_module._WIDGET_JS
+    widget_css = refresh_manager_module._WIDGET_CSS
+
+    assert "data-gantt-search" in widget_js
+    assert "Search tables and partitions..." in widget_js
+    assert "event.tableName,event.partitionName,event.objectName" in widget_js
+    assert "row.dataset.filter.includes(query)" in widget_js
+    assert 'row.classList.toggle("filtered",!show)' in widget_js
+    assert "function applyGanttFilter()" in widget_js
+    assert 'model.on("change:gantt_events",updateGantt)' in widget_js
+    assert "input.setSelectionRange(start,end)" in widget_js
+    assert 'root.querySelector(".slls-rm-gantt-rows")?.scrollTop||0' in widget_js
+    assert "if(rows)rows.scrollTop=scrollTop" in widget_js
+    assert ".slls-rm-gantt-rows {" in widget_css
+    assert "max-height:50vh;overflow-y:auto" in widget_css
+    assert ".slls-rm-gantt-row.filtered { display:none; }" in widget_css
+
+
 def test_visualized_refresh_updates_live_regions_without_full_redraw():
     widget_js = refresh_manager_module._WIDGET_JS
 
