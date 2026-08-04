@@ -158,6 +158,8 @@ _WIDGET_CSS = (
 .slls-bpa-btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 50%; }
 .slls-bpa-btn-sm { font-size: 12.5px; padding: 4px 11px; border-radius: 7px; }
 .slls-bpa-btn-sm.slls-bpa-btn-icon-sm { width: 30px; height: 30px; padding: 0; justify-content: center; border-radius: 7px; }
+.slls-bpa-main-rule-count { padding: 4px 10px; border: 1px solid var(--ui-border); border-radius: 999px;
+    background: var(--ui-bg-secondary); color: var(--ui-text-secondary); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Anything that offers or advertises an automatic fix. */
 .slls-bpa-btn-fix { color: var(--slls-success); border-color: transparent; background: var(--slls-success-soft); }
 .slls-bpa-btn-fix:hover { color: var(--slls-success); border-color: var(--slls-success); background: var(--slls-success-soft); }
@@ -1100,6 +1102,13 @@ function render({ model, el }) {
     headSpacer.className = "slls-bpa-head-spacer";
     header.appendChild(headSpacer);
 
+    const mainRuleCount = document.createElement("span");
+    mainRuleCount.className = "slls-bpa-main-rule-count";
+    mainRuleCount.setAttribute("role", "status");
+    mainRuleCount.setAttribute("aria-live", "polite");
+    mainRuleCount.textContent = "Rules loading\u2026";
+    header.appendChild(mainRuleCount);
+
     const rulesBtn = makeButton("", "slls-bpa-btn-icon", ICON.sliders);
     rulesBtn.title = "Edit rules";
     rulesBtn.setAttribute("aria-label", "Edit rules");
@@ -1887,6 +1896,18 @@ function render({ model, el }) {
     // ==================================================================
     const MAX_BULK = model.get("max_bulk_models") || 10;
     const disabledRules = new Set(model.get("disabled_rules") || []);
+    function renderMainRuleCount() {
+        const rules = model.get("rules") || [];
+        if (rules.length === 0) {
+            mainRuleCount.textContent = "Rules loading\u2026";
+            mainRuleCount.title = "The BPA rule catalog is loading";
+            return;
+        }
+        const enabled = rules.filter((rule) => !disabledRules.has(rule.id)).length;
+        mainRuleCount.textContent = `${plural(rules.length, "rule")} \u2022 ${enabled} enabled`;
+        mainRuleCount.title = `${enabled} of ${rules.length} BPA rules are enabled`;
+    }
+    renderMainRuleCount();
     // Rule editor change history. Every entry snapshots the state *before* a
     // change so it can be undone, and is listed in the change-history popup.
     const ruleHistory = [];
@@ -2727,6 +2748,7 @@ function render({ model, el }) {
     // the history stack.
     let activeRuleCtrlsRender = null;
     function refreshRuleList() {
+        renderMainRuleCount();
         if (activeRuleListRender && overlay.classList.contains("show")) {
             activeRuleListRender();
         }
@@ -2736,6 +2758,7 @@ function render({ model, el }) {
     }
     function markRulesChanged() {
         rulesNeedExport = true;
+        renderMainRuleCount();
         const button = overlay.querySelector("[data-rules-export]");
         const cue = overlay.querySelector("[data-rules-download-cue]");
         if (button) {
@@ -2800,6 +2823,7 @@ function render({ model, el }) {
     function applyRuleState(state) {
         disabledRules.clear();
         for (const id of state.disabled) disabledRules.add(id);
+        renderMainRuleCount();
     }
     // Restores a snapshot, asking the backend to reinstate the ruleset when the
     // ruleset itself (not just the enabled/disabled state) changed.

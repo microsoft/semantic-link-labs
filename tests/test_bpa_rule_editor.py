@@ -25,6 +25,16 @@ def test_rule_editor_rules_are_warmed_after_initial_display():
     assert display_index < warm_index
 
 
+def test_main_bpa_ui_shows_total_and_enabled_rule_counts():
+    assert ".slls-bpa-main-rule-count" in BPA_SOURCE
+    assert 'mainRuleCount.setAttribute("role", "status")' in BPA_SOURCE
+    assert "function renderMainRuleCount()" in BPA_SOURCE
+    assert 'mainRuleCount.textContent = "Rules loading\\u2026"' in BPA_SOURCE
+    assert '`${plural(rules.length, "rule")} \\u2022 ${enabled} enabled`' in BPA_SOURCE
+    assert '`${enabled} of ${rules.length} BPA rules are enabled`' in BPA_SOURCE
+    assert "renderMainRuleCount();" in BPA_SOURCE
+
+
 def test_rule_editor_confirms_default_reset():
     assert "function openResetRulesConfirm()" in BPA_SOURCE
     assert 'heading.textContent = "Restore default rules?"' in BPA_SOURCE
