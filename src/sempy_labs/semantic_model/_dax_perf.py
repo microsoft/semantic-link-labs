@@ -759,6 +759,7 @@ _EXECUTION_METRIC_FIELDS: list = [
     ("totalCpuTimeMs", "Total CPU Time (ms)"),
     ("executionDelayMs", "Execution Delay (ms)"),
     ("approximatePeakMemConsumptionKB", "Approximate Peak Memory Consumption (KB)"),
+    ("directQueryTotalRows", "DirectQuery Total Rows"),
 ]
 
 
@@ -800,6 +801,16 @@ def _execution_metrics_from_df(df: pd.DataFrame) -> list:
                 val_v = 0
         out.append({"key": key, "label": label, "value": val_v})
     return out
+
+
+def _execution_metrics_dict(metric_rows: list) -> dict:
+    """Convert execution metric rows to the dictionary shown in history."""
+
+    return {
+        str(row.get("label") or row.get("key") or ""): row.get("value")
+        for row in metric_rows or []
+        if row.get("label") or row.get("key")
+    }
 
 
 def _result_payload_from_df(df: pd.DataFrame, max_rows: int = 5000) -> dict:
@@ -2682,9 +2693,9 @@ def _visualize_dax_test(
     border: 1px solid var(--ui-accent);
     background: var(--ui-accent);
     color: var(--ui-on-accent);
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
     flex: none;
     padding: 0;
     border-radius: 7px;
@@ -2943,7 +2954,116 @@ def _visualize_dax_test(
     line-height: 1.45;
     user-select: text;
     -webkit-user-select: text;
-    cursor: text;
+    cursor: copy;
+}}
+.dtx td.dtx-hist-query {{ cursor: copy; }}
+.dtx td.dtx-hist-query:focus-visible {{
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+}}
+.dtx .dtx-history-table {{ min-width: 1260px; }}
+.dtx td.dtx-hist-metrics {{
+    max-width: 380px;
+    vertical-align: top;
+    white-space: normal;
+}}
+.dtx td.dtx-hist-metrics pre {{
+    margin: 0;
+    max-height: 180px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-hist-metric-number {{ color: var(--ui-syntax-number); }}
+.dtx .dtx-toast {{
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    z-index: 50;
+    padding: 8px 12px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-md);
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+    transition: opacity 120ms ease, transform 120ms ease;
+}}
+.dtx .dtx-toast.dtx-toast-visible {{
+    opacity: 1;
+    transform: translateY(0);
+}}
+.dtx .dtx-confirm-overlay {{
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+}}
+.dtx .dtx-confirm-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-confirm-dialog {{
+    width: 400px;
+    max-width: 100%;
+    padding: 18px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg);
+    box-shadow: var(--ui-shadow-lg);
+}}
+.dtx .dtx-confirm-title {{
+    margin: 0 0 8px;
+    color: var(--ui-text);
+    font-size: 15px;
+    font-weight: 600;
+}}
+.dtx .dtx-confirm-message {{
+    margin: 0;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+}}
+.dtx .dtx-confirm-actions {{
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+}}
+.dtx .dtx-confirm-actions button {{
+    padding: 7px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}}
+.dtx .dtx-confirm-cancel {{
+    background: transparent;
+    color: var(--ui-text);
+}}
+.dtx .dtx-confirm-cancel:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-confirm-clear {{
+    border-color: var(--ui-danger) !important;
+    background: var(--ui-danger);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-confirm-clear:hover {{
+    border-color: var(--ui-danger-hover) !important;
+    background: var(--ui-danger-hover);
 }}
 .dtx .dtx-plan-seg {{ margin-right: 8px; }}
 .dtx .dtx-dep-seg {{ margin-right: 8px; }}
@@ -3873,6 +3993,7 @@ def _visualize_dax_test(
     eraser_icon = _UI_ICONS.get("eraser", _FALLBACK_ERASER_ICON).replace(
         "`", "\\`"
     )
+    trash_icon = _UI_ICONS["trash"].replace("`", "\\`")
     refresh_icon = _UI_ICONS["refresh"].replace("`", "\\`")
     swap_icon = _UI_ICONS["swap"].replace("`", "\\`")
     sort_asc_icon = _UI_ICONS["sort_asc"].replace("`", "\\`")
@@ -4126,6 +4247,7 @@ function render({ model, el }) {
     const UNDO_SVG = `__DTX_UNDO__`;
     const REDO_SVG = `__DTX_REDO__`;
     const DOWNLOAD_SVG = `__DTX_DOWNLOAD__`;
+    const TRASH_SVG = `__DTX_TRASH__`;
     const CUT_SVG = `__DTX_CUT__`;
     const COPY_SVG = `__DTX_COPY__`;
     const PASTE_SVG = `__DTX_PASTE__`;
@@ -4146,6 +4268,21 @@ function render({ model, el }) {
         renderThemeBtn();
     }
     el.appendChild(root);
+
+    const toast = document.createElement("div");
+    toast.className = "dtx-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    root.appendChild(toast);
+    let toastTimer = null;
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("dtx-toast-visible");
+        if (toastTimer) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+            toast.classList.remove("dtx-toast-visible");
+        }, 2200);
+    }
 
     const container = document.createElement("div");
     container.className = "dtx-container";
@@ -5008,6 +5145,15 @@ function render({ model, el }) {
         renderBuilderZones();
         renderBuilderChrome();
     }
+    function resetBuilderForModelChange() {
+        builderFields = [];
+        builderFilters = [];
+        builderOrderBy = [];
+        clearedBuilderState = null;
+        qbSeq = 0;
+        renderBuilderZones();
+        renderBuilderChrome();
+    }
     function undoBuilderClear() {
         if (!clearedBuilderState) return;
         builderFields = clearedBuilderState.fields;
@@ -5824,12 +5970,21 @@ function render({ model, el }) {
                 return navigator.clipboard.writeText(text);
             }
         } catch (e) {}
-        // Fallback: use execCommand via the textarea itself.
+        // Fallback for notebook hosts where the Clipboard API is unavailable.
         try {
-            textarea.focus();
-            document.execCommand("copy");
-        } catch (e) {}
-        return Promise.resolve();
+            const copyTarget = document.createElement("textarea");
+            copyTarget.value = text;
+            copyTarget.setAttribute("readonly", "");
+            copyTarget.style.position = "fixed";
+            copyTarget.style.opacity = "0";
+            document.body.appendChild(copyTarget);
+            copyTarget.select();
+            const copied = document.execCommand("copy");
+            copyTarget.remove();
+            return copied ? Promise.resolve() : Promise.reject(new Error("Copy failed"));
+        } catch (e) {
+            return Promise.reject(e);
+        }
     }
     function doCopy() {
         const s = textarea.selectionStart || 0;
@@ -6625,6 +6780,66 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    const histClearBtn = document.createElement("button");
+    histClearBtn.type = "button";
+    histClearBtn.className = "dtx-hist-download";
+    histClearBtn.innerHTML = TRASH_SVG;
+    histClearBtn.title = "Clear trace history";
+    histClearBtn.setAttribute("aria-label", "Clear trace history");
+    histClearBtn.style.display = "none";
+    viewToolbar.appendChild(histClearBtn);
+
+    const clearHistoryOverlay = document.createElement("div");
+    clearHistoryOverlay.className = "dtx-confirm-overlay";
+    clearHistoryOverlay.innerHTML = `
+        <div class="dtx-confirm-dialog" role="dialog" aria-modal="true" aria-label="Clear trace history">
+            <h2 class="dtx-confirm-title">Clear trace history?</h2>
+            <p class="dtx-confirm-message">This will permanently remove every query from this session's trace history.</p>
+            <div class="dtx-confirm-actions">
+                <button type="button" class="dtx-confirm-cancel">Cancel</button>
+                <button type="button" class="dtx-confirm-clear">Clear history</button>
+            </div>
+        </div>`;
+    root.appendChild(clearHistoryOverlay);
+    const clearHistoryCancel = clearHistoryOverlay.querySelector(".dtx-confirm-cancel");
+    const clearHistoryConfirm = clearHistoryOverlay.querySelector(".dtx-confirm-clear");
+
+    function closeClearHistoryDialog() {
+        clearHistoryOverlay.classList.remove("dtx-open");
+        histClearBtn.focus();
+    }
+    function openClearHistoryDialog() {
+        if (!(model.get("trace_history") || []).length) return;
+        clearHistoryOverlay.classList.add("dtx-open");
+        window.setTimeout(() => clearHistoryCancel.focus(), 0);
+    }
+    histClearBtn.addEventListener("click", openClearHistoryDialog);
+    clearHistoryCancel.addEventListener("click", closeClearHistoryDialog);
+    clearHistoryConfirm.addEventListener("click", () => {
+        model.set("trace_history", []);
+        model.save_changes();
+        clearHistoryOverlay.classList.remove("dtx-open");
+        segHistory.focus();
+        showToast("Trace history cleared");
+    });
+    clearHistoryOverlay.addEventListener("click", event => {
+        if (event.target === clearHistoryOverlay) closeClearHistoryDialog();
+    });
+    clearHistoryOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeClearHistoryDialog();
+        } else if (event.key === "Tab") {
+            if (!event.shiftKey && document.activeElement === clearHistoryConfirm) {
+                event.preventDefault();
+                clearHistoryCancel.focus();
+            } else if (event.shiftKey && document.activeElement === clearHistoryCancel) {
+                event.preventDefault();
+                clearHistoryConfirm.focus();
+            }
+        }
+    });
+
     const resultDownloadBtn = document.createElement("button");
     resultDownloadBtn.type = "button";
     resultDownloadBtn.className = "dtx-hist-download";
@@ -6758,6 +6973,8 @@ function render({ model, el }) {
         const hist = model.get("trace_history") || [];
         histDownloadBtn.style.display = (mode === "history") ? "" : "none";
         histDownloadBtn.disabled = !hist.length;
+        histClearBtn.style.display = (mode === "history") ? "" : "none";
+        histClearBtn.disabled = !hist.length;
         resultDownloadBtn.style.display = (mode === "result") ? "" : "none";
         resultDownloadBtn.disabled = (model.get("result_total_rows") || 0) <= 0;
         // Logical/Physical toggle is only relevant on the DAX Query Plan tab.
@@ -6862,45 +7079,80 @@ function render({ model, el }) {
     function renderHistoryTable() {
         const hist = model.get("trace_history") || [];
         const fmt = (n) => Number(n).toLocaleString();
+        const renderMetrics = (metrics) => {
+            if (!metrics || typeof metrics !== "object") return "";
+            const lines = Object.entries(metrics).map(([key, value]) => {
+                const jsonValue = JSON.stringify(value);
+                const renderedValue = typeof value === "number" && Number.isFinite(value)
+                    ? `<span class="dtx-hist-metric-number">${escapeHtml(jsonValue)}</span>`
+                    : escapeHtml(jsonValue);
+                return `  ${escapeHtml(JSON.stringify(key))}: ${renderedValue}`;
+            });
+            return lines.length ? `{\n${lines.join(",\n")}\n}` : "";
+        };
+        const fmtRunTime = (value) => {
+            const run = String(value || "");
+            const time = run.includes(" ") ? run.split(" ").pop() : run;
+            const parts = time.split(":").map(Number);
+            if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return time;
+            const date = new Date(2000, 0, 1, parts[0], parts[1], parts[2]);
+            return date.toLocaleTimeString("en-US", {
+                hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+            });
+        };
         if (!hist.length) {
             tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No queries have been executed in this session yet.</td></tr></tbody></table>`;
             return;
         }
-        const body = hist.map(h => {
+        const body = hist.map((h, index) => {
             const q = String(h.dax_query || "");
+            const run = String(h.start_time || "");
+            const runTime = fmtRunTime(run);
+            const metrics = renderMetrics(h.execution_metrics);
             return `<tr>
-                <td class="dtx-hist-query"><pre>${escapeHtml(q)}</pre></td>
-                <td>${escapeHtml(String(h.start_time || ""))}</td>
-                <td>${escapeHtml(String(h.end_time || ""))}</td>
-                <td class="dtx-num">${escapeHtml(fmt(h.rows))}</td>
-                <td class="dtx-num">${escapeHtml(fmt(h.duration))}</td>
-                <td class="dtx-num">${escapeHtml(fmt(h.cpu))}</td>
-                <td class="dtx-num">${escapeHtml(fmt(h.fe_duration))}</td>
-                <td class="dtx-num">${escapeHtml(fmt(h.se_duration))}</td>
-                <td>${escapeHtml(String(h.dataset_name || ""))}</td>
-                <td>${escapeHtml(String(h.workspace_name || ""))}</td>
-                <td>${escapeHtml(String(h.impersonation_type || "None"))}</td>
-                <td>${escapeHtml(String(h.impersonation || "None"))}</td>
+                <td title="${escapeHtml(run)}">${escapeHtml(runTime)}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.duration))} ms</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.fe_duration))} ms</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.se_duration))} ms</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.cpu))} ms</td>
+                <td>${escapeHtml(String(h.cache || ""))}</td>
+                <td class="dtx-hist-metrics">${metrics ? `<pre>${metrics}</pre>` : ""}</td>
+                <td class="dtx-hist-query" data-history-index="${index}" tabindex="0" role="button" aria-label="Copy query from trace history" title="Copy query to clipboard"><pre>${escapeHtml(q)}</pre></td>
             </tr>`;
         }).join("");
         tableWrap.innerHTML = `
-            <table>
+            <table class="dtx-history-table">
                 <thead><tr>
-                    <th>DAX Query</th>
-                    <th>Start Time (UTC)</th>
-                    <th>End Time (UTC)</th>
-                    <th style="text-align:right">Rows</th>
-                    <th style="text-align:right">Duration (ms)</th>
-                    <th style="text-align:right">CPU (ms)</th>
-                    <th style="text-align:right">FE (ms)</th>
-                    <th style="text-align:right">SE (ms)</th>
-                    <th>Semantic Model</th>
-                    <th>Workspace</th>
-                    <th>Impersonation Type</th>
-                    <th>Impersonation</th>
+                    <th>Run</th>
+                    <th style="text-align:right">Total</th>
+                    <th style="text-align:right">FE</th>
+                    <th style="text-align:right">SE</th>
+                    <th style="text-align:right">CPU</th>
+                    <th>Cache</th>
+                    <th>Execution metrics</th>
+                    <th>Query</th>
                 </tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
+
+        const copyHistoryQuery = (cell) => {
+            const index = Number(cell.dataset.historyIndex);
+            const entry = (model.get("trace_history") || [])[index];
+            const query = entry ? String(entry.dax_query || "") : "";
+            if (!query) return;
+            writeClipboard(query)
+                .then(() => showToast("Query copied to clipboard"))
+                .catch(() => showToast("Unable to copy query"));
+        };
+        tableWrap.querySelectorAll(".dtx-hist-query").forEach(cell => {
+            cell.addEventListener("click", () => copyHistoryQuery(cell));
+            cell.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    copyHistoryQuery(cell);
+                }
+            });
+        });
     }
 
     function renderQueryPlanTable() {
@@ -7563,6 +7815,7 @@ function render({ model, el }) {
         // does not change and so would not otherwise close the picker.
         connectingToModel = false;
         pickerOpen = false;
+        resetBuilderForModelChange();
         // Force a fresh dependency computation for the newly activated model.
         lastDepQuery = null;
         renderPicker();
@@ -7655,6 +7908,7 @@ export default { render };
         .replace("__DTX_UNDO__", undo_icon)
         .replace("__DTX_REDO__", redo_icon)
         .replace("__DTX_DOWNLOAD__", download_icon)
+        .replace("__DTX_TRASH__", trash_icon)
         .replace("__DTX_CUT__", cut_icon)
         .replace("__DTX_COPY__", copy_icon)
         .replace("__DTX_PASTE__", paste_icon)
@@ -8016,6 +8270,21 @@ export default { render };
         with trace_lock:
             _teardown_trace_locked()
 
+    def _update_history_execution_metrics(history_id, metric_rows: list) -> None:
+        metrics = _execution_metrics_dict(metric_rows)
+        if not metrics:
+            return
+        history = []
+        changed = False
+        for entry in widget.trace_history:
+            if entry.get("run_id") == history_id:
+                entry = dict(entry)
+                entry["execution_metrics"] = metrics
+                changed = True
+            history.append(entry)
+        if changed:
+            widget.trace_history = history
+
     def _run_query_persistent(
         query: str,
         clear_cache_flag: bool,
@@ -8125,6 +8394,7 @@ export default { render };
                 metric_rows = _execution_metrics_from_df(_new)
                 if metric_rows:
                     widget.execution_metrics = metric_rows
+                    _update_history_execution_metrics(run_id, metric_rows)
                     _need_metrics = False
             if not _need_plan and not _need_metrics:
                 return
@@ -8177,7 +8447,8 @@ export default { render };
         widget.query_executed = True
         widget.trace_rows = _trace_rows_from_df(new_df)
         widget.query_plan_rows = _query_plan_rows_from_df(new_df)
-        widget.execution_metrics = _execution_metrics_from_df(new_df)
+        metric_rows = _execution_metrics_from_df(new_df)
+        widget.execution_metrics = metric_rows
         with state_lock:
             run_state["traced_query"] = query
         payload = _result_payload_from_df(new_result)
@@ -8207,6 +8478,7 @@ export default { render };
                 _imp_type = "None"
                 _imp_value = "None"
             _entry = {
+                "run_id": run_id,
                 "dax_query": query,
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -8215,6 +8487,8 @@ export default { render };
                 "cpu": int(new_cpu),
                 "fe_duration": int(new_fe),
                 "se_duration": int(new_se),
+                "cache": "Cold" if clear_cache_flag else "Warm",
+                "execution_metrics": _execution_metrics_dict(metric_rows),
                 "dataset_name": str(widget.dataset_name or ""),
                 "workspace_name": str(widget.workspace_name or ""),
                 "impersonation_type": _imp_type,
@@ -8508,7 +8782,8 @@ export default { render };
         widget.cpu_time = int(new_cpu)
         widget.trace_rows = _trace_rows_from_df(new_df)
         widget.query_plan_rows = _query_plan_rows_from_df(new_df)
-        widget.execution_metrics = _execution_metrics_from_df(new_df)
+        metric_rows = _execution_metrics_from_df(new_df)
+        widget.execution_metrics = metric_rows
         payload = _result_payload_from_df(new_result)
         widget.result_columns = payload["columns"]
         widget.result_rows = payload["rows"]
@@ -8520,6 +8795,7 @@ export default { render };
         # Append a row to the session trace history (newest first), exactly as a
         # normal query run does.
         _end_dt = datetime.now(timezone.utc)
+        _history_id = f"analysis-{time.time_ns()}"
         try:
             try:
                 _row_count = int(len(new_result)) if new_result is not None else 0
@@ -8535,6 +8811,7 @@ export default { render };
                 _imp_type = "None"
                 _imp_value = "None"
             _entry = {
+                "run_id": _history_id,
                 "dax_query": query,
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -8543,6 +8820,8 @@ export default { render };
                 "cpu": int(new_cpu),
                 "fe_duration": int(new_fe),
                 "se_duration": int(new_se),
+                "cache": "Cold" if bool(widget.clear_cache) else "Warm",
+                "execution_metrics": _execution_metrics_dict(metric_rows),
                 "dataset_name": str(widget.dataset_name or ""),
                 "workspace_name": str(widget.workspace_name or ""),
                 "impersonation_type": _imp_type,
@@ -8583,6 +8862,7 @@ export default { render };
                     metric_rows = _execution_metrics_from_df(_new)
                     if metric_rows:
                         widget.execution_metrics = metric_rows
+                        _update_history_execution_metrics(_history_id, metric_rows)
                         _need_metrics = False
 
     def _compute_performance() -> None:
@@ -8690,22 +8970,23 @@ export default { render };
         import io
 
         history = list(widget.trace_history)
-        cols = [
-            ("dax_query", "DAX Query"),
-            ("start_time", "Start Time (UTC)"),
-            ("end_time", "End Time (UTC)"),
-            ("rows", "Rows"),
-            ("duration", "Duration (ms)"),
-            ("cpu", "CPU (ms)"),
-            ("fe_duration", "FE Duration (ms)"),
-            ("se_duration", "SE Duration (ms)"),
-            ("dataset_name", "Semantic Model"),
-            ("workspace_name", "Workspace"),
-            ("impersonation_type", "Impersonation Type"),
-            ("impersonation", "Impersonation"),
+        columns = ["Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics", "Query"]
+        rows = [
+            {
+                "Run": entry.get("start_time", ""),
+                "Total": entry.get("duration", ""),
+                "FE": entry.get("fe_duration", ""),
+                "SE": entry.get("se_duration", ""),
+                "CPU": entry.get("cpu", ""),
+                "Cache": entry.get("cache", ""),
+                "Execution metrics": json.dumps(
+                    entry.get("execution_metrics") or {}, indent=2
+                ),
+                "Query": entry.get("dax_query", ""),
+            }
+            for entry in history
         ]
-        rows = [{label: entry.get(key, "") for key, label in cols} for entry in history]
-        df_hist = pd.DataFrame(rows, columns=[label for _, label in cols])
+        df_hist = pd.DataFrame(rows, columns=columns)
         buf = io.BytesIO()
         # Use whichever Excel engine is available (openpyxl is standard in
         # Fabric notebooks; xlsxwriter is an accepted fallback).

@@ -160,6 +160,29 @@ def test_query_builder_header_clear_can_be_undone():
     assert 'builderToggle.title = "Hide query builder"' not in source
 
 
+def test_query_builder_clears_after_model_change():
+    source = _source()
+    reset_builder = source[
+        source.index("function resetBuilderForModelChange") : source.index(
+            "function undoBuilderClear"
+        )
+    ]
+    active_model_listener = source[
+        source.index('model.on("change:active_dataset_id"') : source.index(
+            'model.on("change:picker_loading"'
+        )
+    ]
+
+    assert "builderFields = [];" in reset_builder
+    assert "builderFilters = [];" in reset_builder
+    assert "builderOrderBy = [];" in reset_builder
+    assert "clearedBuilderState = null;" in reset_builder
+    assert "qbSeq = 0;" in reset_builder
+    assert "renderBuilderZones();" in reset_builder
+    assert "renderBuilderChrome();" in reset_builder
+    assert "resetBuilderForModelChange();" in active_model_listener
+
+
 def test_panel_header_actions_are_larger_and_clear_requires_contents():
     source = _source()
 
@@ -290,6 +313,22 @@ def test_eraser_button_clears_the_active_model_cache():
     assert "renderRunBtn(); renderClearModelCacheBtn(); renderSubtitle();" in source
 
 
+def test_run_button_matches_adjacent_toolbar_button_size():
+    source = _source()
+    run_button_css = source[
+        source.index(".dtx .dtx-btn {{") : source.index(
+            ".dtx .dtx-btn:hover", source.index(".dtx .dtx-btn {{")
+        )
+    ]
+
+    assert "width: 26px;" in run_button_css
+    assert "height: 26px;" in run_button_css
+    assert "min-width: 26px;" in run_button_css
+    assert ".dtx .dtx-fmt-btn {{" in source
+    assert source.count("width: 26px;") >= 2
+    assert source.count("height: 26px;") >= 2
+
+
 def test_query_builder_filter_placeholder_names_supported_objects():
     source = _source()
 
@@ -379,3 +418,89 @@ def test_trace_details_format_timings_and_sql_like_text():
     assert "  bytes = " in trace_helpers
     assert "volume, marshalling bytes" not in trace_table
     assert "renderTraceText(r.text, r.event_class)" in trace_table
+
+
+def test_trace_history_matches_optimizer_columns_and_metrics_dictionary():
+    source = _source()
+    history_table = source[
+        source.index("function renderHistoryTable") : source.index(
+            "function renderQueryPlanTable"
+        )
+    ]
+    metrics_helper = source[
+        source.index("def _execution_metrics_dict") : source.index(
+            "def _result_payload_from_df"
+        )
+    ]
+    history_export = source[
+        source.index("def _build_history_excel") : source.index(
+            "def _on_download_history"
+        )
+    ]
+
+    headings = ("Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics", "Query")
+    positions = [history_table.index(f">{heading}</th>") for heading in headings]
+    assert positions == sorted(positions)
+    assert 'const renderMetrics = (metrics) =>' in history_table
+    assert 'typeof value === "number" && Number.isFinite(value)' in history_table
+    assert 'class="dtx-hist-metric-number"' in history_table
+    assert '.dtx .dtx-hist-metric-number {{ color: var(--ui-syntax-number); }}' in source
+    assert 'class="dtx-hist-metrics"' in history_table
+    assert '${escapeHtml(fmt(h.duration))} ms' in history_table
+    assert '${escapeHtml(fmt(h.fe_duration))} ms' in history_table
+    assert '${escapeHtml(fmt(h.se_duration))} ms' in history_table
+    assert '${escapeHtml(fmt(h.cpu))} ms' in history_table
+    assert 'const fmtRunTime = (value) =>' in history_table
+    assert 'date.toLocaleTimeString("en-US", {' in history_table
+    assert 'hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true' in history_table
+    assert 'const runTime = fmtRunTime(run)' in history_table
+    assert 'str(row.get("label") or row.get("key") or "")' in metrics_helper
+    assert '"directQueryTotalRows", "DirectQuery Total Rows"' in source
+    assert 'columns = ["Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics", "Query"]' in history_export
+
+
+def test_trace_history_backfills_late_execution_metrics():
+    source = _source()
+    update_helper = source[
+        source.index("def _update_history_execution_metrics") : source.index(
+            "def _backfill_query_plan"
+        )
+    ]
+    backfill = source[
+        source.index("def _backfill_query_plan") : source.index("def _worker")
+    ]
+
+    assert 'entry.get("run_id") == history_id' in update_helper
+    assert 'entry["execution_metrics"] = metrics' in update_helper
+    assert '_update_history_execution_metrics(run_id, metric_rows)' in backfill
+    assert source.count('"execution_metrics": _execution_metrics_dict(metric_rows)') == 2
+    assert source.count('"cache": "Cold"') == 2
+
+
+def test_trace_history_queries_copy_and_clear_with_user_feedback():
+    source = _source()
+    history_table = source[
+        source.index("function renderHistoryTable") : source.index(
+            "function renderQueryPlanTable"
+        )
+    ]
+    history_controls = source[
+        source.index('const histDownloadBtn = document.createElement("button")') :
+        source.index('const resultDownloadBtn = document.createElement("button")')
+    ]
+
+    assert 'data-history-index="${index}"' in history_table
+    assert 'tabindex="0" role="button"' in history_table
+    assert 'writeClipboard(query)' in history_table
+    assert 'event.key === "Enter" || event.key === " "' in history_table
+    assert 'showToast("Query copied to clipboard")' in history_table
+    assert 'histClearBtn.innerHTML = TRASH_SVG' in history_controls
+    assert 'class="dtx-confirm-dialog" role="dialog" aria-modal="true"' in history_controls
+    assert 'class="dtx-confirm-clear">Clear history</button>' in history_controls
+    assert 'histClearBtn.addEventListener("click", openClearHistoryDialog)' in history_controls
+    assert 'event.key === "Escape"' in history_controls
+    assert 'window.confirm(' not in source
+    assert 'model.set("trace_history", [])' in history_controls
+    assert 'showToast("Trace history cleared")' in history_controls
+    assert 'toast.setAttribute("aria-live", "polite")' in source
+    assert '.replace("__DTX_TRASH__", trash_icon)' in source

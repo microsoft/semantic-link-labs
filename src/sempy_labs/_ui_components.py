@@ -190,6 +190,14 @@ ICONS: dict[str, str] = {
         '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6c1 1 1 2.5 0 3.4L11 21"/>'
         '<path d="M22 21H7"/><path d="m5 11 9 9"/></svg>'
     ),
+    "trash": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 6h18"/><path d="M8 6V4h8v2"/>'
+        '<path d="M19 6l-1 14H6L5 6"/>'
+        '<path d="M10 11v5M14 11v5"/></svg>'
+    ),
     "refresh": (
         '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
         'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
