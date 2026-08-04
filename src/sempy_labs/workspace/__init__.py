@@ -19,6 +19,11 @@ from ._tags import (
     apply_workspace_tags,
     unapply_workspace_tags,
 )
+from ._relations import (
+    list_workspace_relations,
+    create_workspace_relation,
+    delete_workspace_relation,
+)
 
 __all__ = [
     "list_workspace_users",
@@ -38,4 +43,7 @@ __all__ = [
     "set_outbound_gateway_rules",
     "apply_workspace_tags",
     "unapply_workspace_tags",
+    "list_workspace_relations",
+    "create_workspace_relation",
+    "delete_workspace_relation",
 ]

@@ -45,6 +45,7 @@ Semantic Link Labs has exactly two supported patterns for interactive UI tools. 
 | `render_header_html(title, dataset_name, workspace_name, theme_btn_id, dark_mode)` | Renders the standard header markup. |
 | `theme_toggle_script(btn_id, root_selector, dark_class)` | Returns a `<script>` block that wires the theme toggle button to flip a `dark_class` on the root element and swap the sun/moon icon. |
 | `ATTRIBUTION_CSS`, `scoped_attribution_css(root_selector)`, `render_attribution_html(extra_links=None)` | "Powered by Semantic Link Labs" attribution shown at the bottom of every widget, with an optional list of extra `(label, url)` links. |
+| `SEARCH_SELECT_CSS`, `SEARCH_SELECT_JS` | The standard **searchable single-select** picker (`createSearchSelect({ placeholder, searchPlaceholder, ariaLabel, emptyLabel, onChange })`). Every workspace / semantic model / item picker must use this control — never a plain `<select>` — so long lists can always be filtered by typing. Inject the CSS into the widget stylesheet and the JS into the widget's ESM module, then drive the returned controller with `setOptions(items, value)`, `setEmptyLabel(text)` and `setDisabled(flag)`. Reference implementations: `semantic_model._find_unused_objects`, `semantic_model._bpa`. |
 
 ### When to extend `_ui_components`
 
