@@ -3678,6 +3678,7 @@ def bpa(
 
     import pandas as pd
     import sempy.fabric as fabric
+    import threading
 
     from sempy_labs._helper_functions import (
         resolve_workspace_name_and_id,
@@ -3823,12 +3824,15 @@ def bpa(
         return normalize_rules(ruleset["custom"], defaults)
 
     # Building the catalog initializes the Analysis Services client, which is slow.
-    # It is therefore created on first use rather than when the widget is displayed.
+    # It is warmed after display so opening the rule editor does not pay that cost.
     _catalog_cache = {}
+    _catalog_lock = threading.Lock()
 
     def _catalog():
         if "value" not in _catalog_cache:
-            _catalog_cache["value"] = _default_rules(None, None)
+            with _catalog_lock:
+                if "value" not in _catalog_cache:
+                    _catalog_cache["value"] = _default_rules(None, None)
         return _catalog_cache["value"]
 
     # Per-model rules, cached so that scanning, previewing and applying a fix for
@@ -4046,6 +4050,17 @@ def bpa(
         if widget.rules:
             return
         widget.rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
+
+    def _warm_rule_editor_rules():
+        """Builds and publishes rule metadata without blocking initial display."""
+
+        try:
+            payload = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
+            if not widget.rules:
+                widget.rules = payload
+        except Exception:
+            # The on-demand action reports failures if the editor is opened.
+            pass
 
     def _handle_list_datasets(payload):
         widget.datasets = _list_datasets_payload(payload.get("workspace_id"))
@@ -4400,3 +4415,5 @@ def bpa(
             widget.status = {"message": f"Error: {e}", "kind": "error"}
 
     display(widget)
+    if not widget.rules:
+        threading.Thread(target=_warm_rule_editor_rules, daemon=True).start()
