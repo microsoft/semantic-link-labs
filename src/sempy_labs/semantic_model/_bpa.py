@@ -427,6 +427,17 @@ _WIDGET_CSS = (
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
 .slls-bpa-rule-count { font-size: 11.5px; color: var(--ui-text-tertiary); margin-bottom: 7px; }
+.slls-bpa-rule-download-needed { color: var(--ui-accent); border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.slls-bpa-rule-download-needed:hover { color: var(--ui-accent); border-color: var(--ui-accent-hover); background: var(--ui-accent-soft); }
+.slls-bpa-rule-download-cue { display: none; align-items: center; gap: 8px; margin: 10px 0 12px; padding: 9px 11px;
+    border: 1px solid var(--ui-accent); border-radius: var(--slls-radius-sm); background: var(--ui-accent-soft);
+    color: var(--ui-accent); font-size: 12.5px; }
+.slls-bpa-rule-download-cue.show { display: flex; }
+.slls-bpa-rule-status { display: none; margin-bottom: 12px; padding: 8px 10px; border-radius: var(--slls-radius-sm); font-size: 12.5px; }
+.slls-bpa-rule-status.show { display: block; animation: slls-bpa-fade 200ms ease; }
+.slls-bpa-rule-status.success { color: var(--slls-success); background: var(--slls-success-soft); }
+.slls-bpa-rule-status.info { color: var(--ui-accent); background: var(--ui-accent-soft); }
+.slls-bpa-rule-status.error { color: var(--slls-error); background: var(--slls-error-soft); }
 
 /* Problems reported by an imported ruleset. */
 .slls-bpa-issues { display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: var(--slls-radius-sm); font-size: 12.5px; }
@@ -443,6 +454,8 @@ _WIDGET_CSS = (
 .slls-bpa-rule { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--ui-border); }
 .slls-bpa-rule:last-child { border-bottom: none; }
 .slls-bpa-rule-body { min-width: 0; flex: 1; }
+.slls-bpa-rule-delete { flex-shrink: 0; color: var(--ui-text-tertiary); }
+.slls-bpa-rule-delete:hover { color: var(--slls-error); border-color: var(--slls-error); background: var(--slls-error-soft); }
 .slls-bpa-rule-name { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 7px; }
 .slls-bpa-rule-meta { font-size: 11.5px; color: var(--ui-text-tertiary); margin-top: 2px; }
 .slls-bpa-rule-desc { font-size: 12px; color: var(--ui-text-secondary); margin-top: 4px; line-height: 1.45; }
@@ -557,6 +570,7 @@ function render({ model, el }) {
         reset: `__SLLS_ICON_RESET__`,
         upload: `__SLLS_ICON_UPLOAD__`,
         download: `__SLLS_ICON_DOWNLOAD__`,
+        trash: `__SLLS_ICON_TRASH__`,
         info: `__SLLS_ICON_INFO__`,
         alert: `__SLLS_ICON_ALERT__`,
         error: `__SLLS_ICON_ERROR_CIRCLE__`,
@@ -1182,6 +1196,8 @@ function render({ model, el }) {
     status.className = "slls-bpa-status";
     root.appendChild(status);
     let statusTimer = null;
+    let activeRuleStatus = null;
+    let ruleStatusTimer = null;
     function setStatus(message, kind) {
         if (statusTimer) { window.clearTimeout(statusTimer); statusTimer = null; }
         if (!message) { status.classList.remove("show"); return; }
@@ -1197,7 +1213,18 @@ function render({ model, el }) {
     }
     model.on("change:status", () => {
         const s = model.get("status") || {};
-        setStatus(s.message || "", s.kind);
+        if (activeRuleStatus && overlay.classList.contains("show")) {
+            setStatus("", "");
+            if (ruleStatusTimer) window.clearTimeout(ruleStatusTimer);
+            activeRuleStatus.className = `slls-bpa-rule-status show ${s.kind || "info"}`;
+            activeRuleStatus.textContent = s.message || "";
+            ruleStatusTimer = window.setTimeout(() => {
+                activeRuleStatus.classList.remove("show");
+                ruleStatusTimer = null;
+            }, 3500);
+        } else {
+            setStatus(s.message || "", s.kind);
+        }
     });
     model.on("change:busy", () => {
         if (model.get("busy") === true) root.classList.add("slls-bpa-busy");
@@ -1868,6 +1895,7 @@ function render({ model, el }) {
     let rulesetRef = { source: "initial", rules: null };
     // A ruleset change awaiting the backend's confirmation.
     let pendingRulesetChange = null;
+    let rulesNeedExport = false;
     const expandedRules = new Set();
     // Rule ids whose Expression / FixExpression code is revealed in the rule editor.
     const expandedRuleExprs = new Set();
@@ -2679,6 +2707,13 @@ function render({ model, el }) {
     root.appendChild(overlay);
     overlay.addEventListener("click", (ev) => { if (ev.target === overlay) overlay.classList.remove("show"); });
 
+    const ruleConfirmOverlay = document.createElement("div");
+    ruleConfirmOverlay.className = "slls-bpa-overlay slls-bpa-overlay-top";
+    root.appendChild(ruleConfirmOverlay);
+    ruleConfirmOverlay.addEventListener("click", (ev) => {
+        if (ev.target === ruleConfirmOverlay) closeRuleConfirm();
+    });
+
     // Set while the rules panel is open, so the list can be re-rendered when the
     // catalog finishes loading or a ruleset is imported.
     let activeRuleListRender = null;
@@ -2695,6 +2730,28 @@ function render({ model, el }) {
         if (activeRuleCtrlsRender && overlay.classList.contains("show")) {
             activeRuleCtrlsRender();
         }
+    }
+    function markRulesChanged() {
+        rulesNeedExport = true;
+        const button = overlay.querySelector("[data-rules-export]");
+        const cue = overlay.querySelector("[data-rules-download-cue]");
+        if (button) {
+            button.classList.add("slls-bpa-rule-download-needed");
+            button.title = "Download your changed rules for future use";
+            button.setAttribute("aria-label", button.title);
+        }
+        if (cue) cue.classList.add("show");
+    }
+    function markRulesExported() {
+        rulesNeedExport = false;
+        const button = overlay.querySelector("[data-rules-export]");
+        const cue = overlay.querySelector("[data-rules-download-cue]");
+        if (button) {
+            button.classList.remove("slls-bpa-rule-download-needed");
+            button.title = "Export the current ruleset as a .json file";
+            button.setAttribute("aria-label", button.title);
+        }
+        if (cue) cue.classList.remove("show");
     }
     model.on("change:rules", () => {
         // A ruleset change is only recorded once the backend has adopted it.
@@ -2769,6 +2826,7 @@ function render({ model, el }) {
         ruleRedoStack.push({
             time: new Date(), label: entry.label, state: ruleStateSnapshot(),
         });
+        markRulesChanged();
         applyRuleSnapshot(entry.state, `Undid: ${entry.label}`);
     }
     function redoRuleChange() {
@@ -2777,6 +2835,7 @@ function render({ model, el }) {
         ruleHistory.push({
             time: new Date(), label: entry.label, state: ruleStateSnapshot(),
         });
+        markRulesChanged();
         applyRuleSnapshot(entry.state, `Redid: ${entry.label}`);
     }
     function resetRulesToDefault() {
@@ -2786,12 +2845,41 @@ function render({ model, el }) {
             history: { label: "Reverted to the default rules", state: ruleStateSnapshot() },
         };
         disabledRules.clear();
+        markRulesChanged();
         runAction("set_ruleset", {
             source: "default",
             rules: null,
             disabled_rules: [],
             message: "Reverted to the default rules.",
         });
+    }
+
+    function closeRuleConfirm() { ruleConfirmOverlay.classList.remove("show"); }
+    function openResetRulesConfirm() {
+        clear(ruleConfirmOverlay);
+        const modal = document.createElement("div");
+        modal.className = "slls-bpa-modal slls-bpa-staged-modal";
+        const heading = document.createElement("h2");
+        heading.textContent = "Restore default rules?";
+        modal.appendChild(heading);
+        const sub = document.createElement("div");
+        sub.className = "slls-bpa-modal-sub";
+        sub.textContent = "This replaces the current ruleset and restores every built-in rule. You can undo this change from the rule editor.";
+        modal.appendChild(sub);
+        const footer = document.createElement("div");
+        footer.className = "slls-bpa-modal-footer";
+        const cancelBtn = makeButton("Cancel", "slls-bpa-btn-sm");
+        cancelBtn.addEventListener("click", closeRuleConfirm);
+        footer.appendChild(cancelBtn);
+        const confirmBtn = makeButton("Restore defaults", "slls-bpa-btn-sm slls-bpa-btn-danger", ICON.reset);
+        confirmBtn.addEventListener("click", () => {
+            closeRuleConfirm();
+            resetRulesToDefault();
+        });
+        footer.appendChild(confirmBtn);
+        modal.appendChild(footer);
+        ruleConfirmOverlay.appendChild(modal);
+        ruleConfirmOverlay.classList.add("show");
     }
 
     function closeHistory() { historyOverlay.classList.remove("show"); }
@@ -2894,10 +2982,10 @@ function render({ model, el }) {
         renderHistoryList();
     }
 
-    // Downloads the effective ruleset in the Best Practice Rules JSON format.
+    // Serializes the effective ruleset in the Best Practice Rules JSON format.
     const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
-    function exportRuleset() {
-        const entries = (model.get("rules") || []).map((r) => {
+    function rulesetEntries(rules = model.get("rules") || []) {
+        return rules.map((r) => {
             const entry = {
                 ID: String(r.id || "").toUpperCase(),
                 Name: r.name,
@@ -2912,6 +3000,9 @@ function render({ model, el }) {
             if (r.fixExpression) entry.FixExpression = r.fixExpression;
             return entry;
         });
+    }
+    function exportRuleset() {
+        const entries = rulesetEntries();
         const blob = new Blob([JSON.stringify(entries, null, 2)],
             { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -2946,6 +3037,13 @@ function render({ model, el }) {
             + "You can also import a ruleset from a .json file, or export the current one.";
         modal.appendChild(sub);
 
+        const ruleStatus = document.createElement("div");
+        ruleStatus.className = "slls-bpa-rule-status";
+        ruleStatus.setAttribute("role", "status");
+        ruleStatus.setAttribute("aria-live", "polite");
+        modal.appendChild(ruleStatus);
+        activeRuleStatus = ruleStatus;
+
         const bar = document.createElement("div");
         bar.className = "slls-bpa-toolbar";
         bar.style.marginBottom = "12px";
@@ -2968,7 +3066,7 @@ function render({ model, el }) {
         const resetBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.reset);
         resetBtn.title = "Restore the default rules (discards any imported ruleset)";
         resetBtn.setAttribute("aria-label", resetBtn.title);
-        resetBtn.addEventListener("click", () => resetRulesToDefault());
+        resetBtn.addEventListener("click", openResetRulesConfirm);
         bar.appendChild(resetBtn);
 
         const undoBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.undo);
@@ -3050,12 +3148,28 @@ function render({ model, el }) {
         bar.appendChild(importBtn);
 
         const exportBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm", ICON.download);
-        exportBtn.title = "Export the current ruleset as a .json file";
+        exportBtn.setAttribute("data-rules-export", "");
+        exportBtn.classList.toggle("slls-bpa-rule-download-needed", rulesNeedExport);
+        exportBtn.title = rulesNeedExport
+            ? "Download your changed rules for future use"
+            : "Export the current ruleset as a .json file";
         exportBtn.setAttribute("aria-label", exportBtn.title);
-        exportBtn.addEventListener("click", () => exportRuleset());
+        exportBtn.addEventListener("click", () => {
+            exportRuleset();
+            markRulesExported();
+        });
         bar.appendChild(exportBtn);
 
         modal.appendChild(bar);
+
+        const downloadCue = document.createElement("div");
+        downloadCue.className = `slls-bpa-rule-download-cue${rulesNeedExport ? " show" : ""}`;
+        downloadCue.setAttribute("data-rules-download-cue", "");
+        downloadCue.appendChild(iconSpan(ICON.download));
+        const downloadCueText = document.createElement("span");
+        downloadCueText.textContent = "Rules have changed. Use the highlighted Download rules button to save them for future use.";
+        downloadCue.appendChild(downloadCueText);
+        modal.appendChild(downloadCue);
 
         // Problems found in an imported ruleset, so they can be corrected in the file.
         const issuesBox = document.createElement("div");
@@ -3177,6 +3291,7 @@ function render({ model, el }) {
                         `${box.checked ? "Enabled" : "Disabled"} "${rule.name}"`);
                     if (box.checked) disabledRules.delete(rule.id);
                     else disabledRules.add(rule.id);
+                    markRulesChanged();
                     renderRuleCount();
                     renderRuleCtrls();
                 });
@@ -3255,6 +3370,28 @@ function render({ model, el }) {
                     });
                 }
                 row.appendChild(body);
+                const deleteBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm slls-bpa-rule-delete", ICON.trash);
+                deleteBtn.disabled = (model.get("rules") || []).length <= 1;
+                deleteBtn.title = deleteBtn.disabled
+                    ? "At least one rule must remain"
+                    : `Delete "${rule.name}"`;
+                deleteBtn.setAttribute("aria-label", deleteBtn.title);
+                deleteBtn.addEventListener("click", () => {
+                    const remaining = (model.get("rules") || []).filter((item) => item.id !== rule.id);
+                    pendingRulesetChange = {
+                        ruleset: { source: "custom", rules: rulesetEntries(remaining) },
+                        history: { label: `Deleted "${rule.name}"`, state: ruleStateSnapshot() },
+                    };
+                    disabledRules.delete(rule.id);
+                    markRulesChanged();
+                    runAction("set_ruleset", {
+                        source: "custom",
+                        rules: pendingRulesetChange.ruleset.rules,
+                        disabled_rules: [...disabledRules],
+                        silent: true,
+                    });
+                });
+                row.appendChild(deleteBtn);
                 list.appendChild(row);
             }
         }
@@ -3264,6 +3401,7 @@ function render({ model, el }) {
             if (disabledRules.size === 0) return;
             recordRuleChange("Enabled all rules");
             disabledRules.clear();
+            markRulesChanged();
             renderRuleList();
         });
         disableAll.addEventListener("click", () => {
@@ -3271,6 +3409,7 @@ function render({ model, el }) {
             if (rules.length > 0 && rules.every((r) => disabledRules.has(r.id))) return;
             recordRuleChange("Disabled all rules");
             for (const r of rules) disabledRules.add(r.id);
+            markRulesChanged();
             renderRuleList();
         });
 
@@ -3410,6 +3549,7 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_RESET__", _UI_ICONS["reset"])
     .replace("__SLLS_ICON_UPLOAD__", _UI_ICONS["upload"])
     .replace("__SLLS_ICON_DOWNLOAD__", _UI_ICONS["download"])
+    .replace("__SLLS_ICON_TRASH__", _UI_ICONS["trash"])
     .replace("__SLLS_ICON_INFO__", _UI_ICONS["info"])
     .replace("__SLLS_ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__SLLS_ICON_ERROR_CIRCLE__", _UI_ICONS["error_circle"])
@@ -4187,10 +4327,11 @@ def bpa(
         widget.rules = rules_payload(normalize_rules(entries, _catalog()))
         widget.disabled_rules = [str(r) for r in (payload.get("disabled_rules") or [])]
         widget.import_issues = {}
-        widget.status = {
-            "message": str(payload.get("message") or "The ruleset was restored."),
-            "kind": "success",
-        }
+        if not payload.get("silent"):
+            widget.status = {
+                "message": str(payload.get("message") or "The ruleset was restored."),
+                "kind": "success",
+            }
 
     handlers = {
         "list_datasets": _handle_list_datasets,
