@@ -323,3 +323,57 @@ def test_normalize_rules_accepts_none_dataframe_list_and_dict():
 def test_normalize_rules_raises_when_nothing_matches():
     with pytest.raises(ValueError):
         engine.normalize_rules([{"ID": "NOT_A_REAL_RULE"}], _rules())
+
+
+def test_validate_rules_json_accepts_a_valid_ruleset():
+    defaults = _rules()
+
+    errors, warnings = engine.validate_rules_json(
+        engine.rules_to_json(defaults), defaults
+    )
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_validate_rules_json_reports_an_unusable_file():
+    defaults = _rules()
+
+    assert engine.validate_rules_json("not a ruleset", defaults)[0]
+    assert engine.validate_rules_json([], defaults)[0]
+    # Nothing matched a built-in rule, so there is nothing to import.
+    errors, warnings = engine.validate_rules_json(
+        [{"ID": "NOT_A_REAL_RULE", "Name": "Nope"}], defaults
+    )
+    assert len(errors) == 1
+    assert len(warnings) == 1
+
+
+def test_validate_rules_json_reports_every_problem_it_finds():
+    defaults = _rules()
+
+    errors, warnings = engine.validate_rules_json(
+        [
+            {"Name": "First letter of objects must be capitalized"},
+            # A duplicate of the entry above.
+            {"ID": "FIRST_LETTER_OF_OBJECTS_MUST_BE_CAPITALIZED"},
+            {
+                "Name": "Rule that raises",
+                "Severity": "Critical",
+                "Scope": "DataColumn",
+                "Enabled": "yes",
+            },
+            "not a rule object",
+            {"Category": "Formatting"},
+        ],
+        defaults,
+    )
+
+    assert errors == []
+    assert len(warnings) == 6
+    assert any("duplicate" in w for w in warnings)
+    assert any("'Severity'" in w for w in warnings)
+    assert any("'Scope'" in w for w in warnings)
+    assert any("'Enabled'" in w for w in warnings)
+    assert any("no 'ID' or 'Name'" in w for w in warnings)
+    assert any("not a rule object" in w for w in warnings)

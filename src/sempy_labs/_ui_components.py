@@ -347,6 +347,13 @@ ICONS: dict[str, str] = {
         '<path d="M5 13.5H3.5a1 1 0 0 1-1-1V11"/>'
         '<circle cx="8" cy="8" r="2"/></svg>'
     ),
+    "history": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.6 8a5.4 5.4 0 1 0 1.7-3.9"/>'
+        '<path d="M2.5 2.8v2.6h2.6"/>'
+        '<path d="M8 5.2V8l2 1.4"/></svg>'
     "scan_search": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -425,6 +432,13 @@ ICONS: dict[str, str] = {
         '<path d="M6 4L3 7l3 3"/>'
         '<path d="M3 7h6a3.5 3.5 0 0 1 0 7H5.5"/></svg>'
     ),
+    "redo": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M10 4l3 3-3 3"/>'
+        '<path d="M13 7H7a3.5 3.5 0 0 0 0 7h3.5"/></svg>'
+    ),
     "error_circle": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -437,6 +451,14 @@ ICONS: dict[str, str] = {
         'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M3.2 8.4l3.2 3.2 6.4-7"/></svg>'
+    ),
+    "reset": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M13.4 8a5.4 5.4 0 1 1-1.7-3.9"/>'
+        '<path d="M13.5 2.7v3.1h-3.1"/>'
+        '<circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none"/></svg>'
     ),
     "sliders": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
