@@ -230,6 +230,15 @@ _TEST_EVENT_SCHEMA: dict = {
         "TextData",
         "RequestID",
     ],
+    "DirectQueryEnd": [
+        "EventClass",
+        "TextData",
+        "StartTime",
+        "EndTime",
+        "Duration",
+        "CpuTime",
+        "RequestID",
+    ],
     "DAXQueryPlan": [
         "EventClass",
         "EventSubclass",
@@ -657,16 +666,37 @@ def _trace_rows_from_df(df: pd.DataFrame) -> list:
     """Convert the captured trace dataframe to a list of plain-dict rows
     suitable for serialization to the front-end."""
 
-    detail_classes = {"QueryEnd", "VertiPaqSEQueryEnd", "VertiPaqSEQueryCacheMatch"}
     if df is None or df.empty:
         return []
-    rows_df = df[df["Event Class"].isin(detail_classes)]
+    event_col = _trace_col(df, "Event Class", "EventClass")
+    subclass_col = _trace_col(df, "Event Subclass", "EventSubclass")
+    duration_col = _trace_col(df, "Duration")
+    cpu_col = _trace_col(df, "Cpu Time", "CpuTime")
+    text_col = _trace_col(df, "Text Data", "TextData")
+    if event_col is None:
+        return []
+    detail_classes = {
+        "QueryEnd",
+        "VertiPaqSEQueryEnd",
+        "VertiPaqSEQueryCacheMatch",
+        "DirectQueryEnd",
+    }
+    rows_df = df[df[event_col].isin(detail_classes)]
     out = []
     for _, row in rows_df.iterrows():
-        ec = str(row.get("Event Class", "") or "")
-        sc = str(row.get("Event Subclass", "") or "")
-        dur = row.get("Duration", 0)
-        cpu = row.get("Cpu Time", 0)
+        event = str(row.get(event_col, "") or "")
+        subclass = row.get(subclass_col, "") if subclass_col else ""
+        subclass_v = "" if not pd.notna(subclass) else str(subclass)
+        if subclass_v == "VertiPaqScanInternal":
+            continue
+        dur = row.get(duration_col, 0) if duration_col else 0
+        cpu = row.get(cpu_col, 0) if cpu_col else 0
+        text = row.get(text_col, "") if text_col else ""
+        text_v = "" if not pd.notna(text) else str(text)
+        estimate = re.search(
+            r"Estimated size \(volume, marshalling bytes\):\s*(\d+),\s*(\d+)",
+            text_v,
+        )
         try:
             dur_v = int(dur) if pd.notna(dur) else 0
         except (TypeError, ValueError):
@@ -677,10 +707,13 @@ def _trace_rows_from_df(df: pd.DataFrame) -> list:
             cpu_v = 0
         out.append(
             {
-                "event_class": ec,
-                "event_subclass": sc if sc else ec,
+                "event_class": event,
+                "event_subclass": subclass_v,
                 "duration": dur_v,
                 "cpu": cpu_v,
+                "rows": int(estimate.group(1)) if estimate else None,
+                "kb": int(estimate.group(2)) / 1024 if estimate else None,
+                "text": text_v,
             }
         )
     return out
@@ -1656,6 +1689,13 @@ _FALLBACK_USER_ICON = (
     'aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/>'
     '<circle cx="12" cy="7" r="4"/></svg>'
 )
+_FALLBACK_ERASER_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6c1 1 1 2.5 0 3.4L11 21"/>'
+    '<path d="M22 21H7"/><path d="m5 11 9 9"/></svg>'
+)
 
 
 def _visualize_dax_test(
@@ -1748,24 +1788,64 @@ def _visualize_dax_test(
     margin: 0;
     padding: 0;
     background: var(--ui-bg);
-    overflow: auto;
+    overflow: hidden;
 }}
 .dtx.dtx-fullscreen .dtx-container {{
     border: none;
     border-radius: 0;
     box-shadow: none;
+    height: 100vh;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }}
+.dtx.dtx-fullscreen .dtx-body {{
+    flex: 1 1 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}}
+.dtx.dtx-fullscreen .dtx-main {{
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}}
+.dtx.dtx-fullscreen .dtx-main > * {{ flex-shrink: 0; }}
+.dtx.dtx-fullscreen .dtx-query {{ min-height: 300px; max-height: 60vh; }}
 .dtx:fullscreen {{
-    overflow: auto;
+    overflow: hidden;
     background: var(--ui-bg);
 }}
 .dtx:fullscreen .dtx-container {{
     border: none;
     border-radius: 0;
     box-shadow: none;
+    height: 100vh;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }}
+.dtx:fullscreen .dtx-body {{
+    flex: 1 1 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}}
+.dtx:fullscreen .dtx-main {{
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}}
+.dtx:fullscreen .dtx-main > * {{ flex-shrink: 0; }}
+.dtx:fullscreen .dtx-query {{ min-height: 300px; max-height: 60vh; }}
 .dtx *, .dtx *::before, .dtx *::after {{ box-sizing: border-box; }}
 .dtx .dtx-container {{
     background: var(--ui-bg);
@@ -1811,11 +1891,21 @@ def _visualize_dax_test(
     gap: 4px;
 }}
 .dtx .dtx-card-label {{
+    display: flex;
+    align-items: center;
+    gap: 7px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-card-label svg {{
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
 }}
 .dtx .dtx-card-value {{
     font-size: 22px;
@@ -1852,6 +1942,30 @@ def _visualize_dax_test(
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
+}}
+.dtx .dtx-run-progress {{
+    display: none;
+    position: relative;
+    height: 3px;
+    margin: -3px 0 8px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-run-progress.dtx-active {{ display: block; }}
+.dtx .dtx-run-progress::after {{
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: -35%;
+    width: 35%;
+    border-radius: inherit;
+    background: var(--ui-accent);
+    animation: dtx-run-progress 1s ease-in-out infinite;
+}}
+@keyframes dtx-run-progress {{
+    from {{ transform: translateX(0); }}
+    to {{ transform: translateX(390%); }}
 }}
 .dtx .dtx-query-titlegroup {{
     display: flex;
@@ -1898,6 +2012,18 @@ def _visualize_dax_test(
 .dtx .dtx-analyze-btn {{ color: var(--ui-text-secondary); }}
 .dtx .dtx-analyze-btn svg {{ width: 15px; height: 15px; }}
 .dtx .dtx-analyze-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
+.dtx .dtx-clear-model-cache-btn {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-clear-model-cache-btn svg {{
+    width: 17px;
+    height: 17px;
+    fill: none !important;
+    stroke: currentColor !important;
+}}
+.dtx .dtx-clear-model-cache-btn svg * {{
+    fill: none !important;
+    stroke: currentColor !important;
+}}
+.dtx .dtx-clear-model-cache-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
 .dtx .dtx-nl-btn {{ color: var(--ui-accent); }}
 .dtx .dtx-nl-btn svg {{ width: 16px; height: 16px; }}
 .dtx .dtx-nl-btn:hover:not(:disabled) {{ color: var(--ui-accent-hover, var(--ui-accent)); }}
@@ -2191,6 +2317,7 @@ def _visualize_dax_test(
 .dtx .dtx-imp-segment {{
     display: inline-flex;
     flex: 0 0 auto;
+    height: 26px;
     overflow: hidden;
     border: 1px solid var(--ui-border-strong);
     border-radius: 8px;
@@ -2201,8 +2328,10 @@ def _visualize_dax_test(
     align-items: center;
     justify-content: center;
     gap: 5px;
-    height: 28px;
-    padding: 3px 9px;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    padding: 0 8px !important;
     border: 0;
     border-right: 1px solid var(--ui-border-strong);
     background: transparent;
@@ -2210,11 +2339,12 @@ def _visualize_dax_test(
     font: inherit;
     font-size: 12px;
     font-weight: 600;
+    line-height: 1 !important;
     white-space: nowrap;
     cursor: pointer;
 }}
 .dtx .dtx-imp-mode:last-child {{ border-right: 0; }}
-.dtx .dtx-imp-mode svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-imp-mode svg {{ width: 12px; height: 12px; }}
 .dtx .dtx-imp-mode:hover:not(:disabled):not(.dtx-active) {{
     background: var(--ui-surface-2);
     color: var(--ui-text);
@@ -2557,7 +2687,7 @@ def _visualize_dax_test(
     min-width: 32px;
     flex: none;
     padding: 0;
-    border-radius: 50%;
+    border-radius: 7px;
     cursor: pointer;
     font-family: inherit;
     display: inline-flex;
@@ -2576,6 +2706,7 @@ def _visualize_dax_test(
 .dtx .dtx-btn.dtx-btn-stop {{
     background: var(--ui-danger);
     border-color: var(--ui-danger);
+    border-radius: 50%;
 }}
 .dtx .dtx-btn.dtx-btn-stop:hover {{
     background: var(--ui-danger-hover);
@@ -2730,6 +2861,40 @@ def _visualize_dax_test(
     overflow-y: auto;
     max-height: 480px;
     border-top: 1px solid var(--ui-border);
+}}
+.dtx .dtx-trace-table {{ min-width: 1040px; table-layout: fixed; }}
+.dtx .dtx-trace-table th:nth-child(1) {{ width: 150px; }}
+.dtx .dtx-trace-table th:nth-child(2) {{ width: 180px; }}
+.dtx .dtx-trace-table th:nth-child(3),
+.dtx .dtx-trace-table th:nth-child(4) {{ width: 100px; }}
+.dtx .dtx-trace-table th:nth-child(5),
+.dtx .dtx-trace-table th:nth-child(6) {{ width: 80px; }}
+.dtx td.dtx-trace-text {{ min-width: 360px; vertical-align: top; white-space: normal; }}
+.dtx .dtx-trace-text pre {{
+    margin: 0;
+    max-height: 160px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-trace-keyword {{
+    color: var(--ui-syntax-keyword);
+    font-weight: 600;
+}}
+.dtx .dtx-trace-string {{ color: var(--ui-syntax-string); }}
+.dtx .dtx-trace-comment {{
+    color: var(--ui-syntax-comment);
+    font-style: italic;
+}}
+.dtx .dtx-trace-number,
+.dtx .dtx-trace-estimate-value {{ color: var(--ui-syntax-number); }}
+.dtx .dtx-trace-estimate {{
+    color: var(--ui-text);
+    font-weight: 600;
 }}
 .dtx table {{
     width: 100%;
@@ -3093,6 +3258,9 @@ def _visualize_dax_test(
 .dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-mark {{
     display: inline-flex;
     order: 2;
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
 }}
 .dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-toggle {{
     order: 1;
@@ -3115,8 +3283,8 @@ def _visualize_dax_test(
     border: 1px solid transparent;
     background: transparent;
     color: var(--ui-text-secondary);
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border-radius: 4px;
     cursor: pointer;
@@ -3134,8 +3302,8 @@ def _visualize_dax_test(
 .dtx .dtx-sidebar-toggle svg,
 .dtx .dtx-sidebar-refresh svg,
 .dtx .dtx-builder-toggle svg {{
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
 }}
 .dtx .dtx-sidebar-refresh.dtx-spinning svg {{
     animation: dtx-spin 0.9s linear infinite;
@@ -3429,6 +3597,9 @@ def _visualize_dax_test(
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-mark {{
     display: inline-flex;
     order: 2;
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle {{
     display: none;
@@ -3699,6 +3870,9 @@ def _visualize_dax_test(
     level_icon = _UI_ICONS["level"].replace("`", "\\`")
     play_icon = _UI_ICONS["play"].replace("`", "\\`")
     stop_icon = _UI_ICONS["stop"].replace("`", "\\`")
+    eraser_icon = _UI_ICONS.get("eraser", _FALLBACK_ERASER_ICON).replace(
+        "`", "\\`"
+    )
     refresh_icon = _UI_ICONS["refresh"].replace("`", "\\`")
     swap_icon = _UI_ICONS["swap"].replace("`", "\\`")
     sort_asc_icon = _UI_ICONS["sort_asc"].replace("`", "\\`")
@@ -3720,6 +3894,9 @@ def _visualize_dax_test(
     dax_performance_icon = _UI_ICONS.get(
         "dax_performance", _FALLBACK_DAX_PERFORMANCE_ICON
     ).replace("`", "\\`")
+    cpu_icon = _UI_ICONS["cpu"].replace("`", "\\`")
+    database_icon = _UI_ICONS["database"].replace("`", "\\`")
+    zap_icon = _UI_ICONS["zap"].replace("`", "\\`")
     # The DAX Formatter logo mark (the orange "formatted lines" glyph from
     # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
     # clearly visible in both light and dark themes.
@@ -3849,11 +4026,81 @@ function escapeHtml(s) {
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+const TRACE_XMSQL_KEYWORDS = [
+    "LEFT OUTER JOIN", "RIGHT OUTER JOIN", "FULL OUTER JOIN", "INNER JOIN",
+    "LEFT JOIN", "RIGHT JOIN", "CROSS JOIN", "OUTER JOIN", "GROUP BY",
+    "ORDER BY", "JOIN", "SELECT", "FROM", "WHERE", "WITH", "HAVING",
+    "UNION", "SET", "ON", "AS", "AND", "OR", "NOT", "IN", "ASC", "DESC"
+].join("|");
+const TRACE_XMSQL_TOKEN_RE = new RegExp(
+    `\\b(?:${TRACE_XMSQL_KEYWORDS})\\b|[A-Za-z_][A-Za-z0-9_]*(?=\\()`, "gi");
+const TRACE_XMSQL_BRACKET_RE = /(\[(?:\]\]|[^\]])*\])/;
+const TRACE_SQL_TOKEN_RE = new RegExp([
+    "(?<str>'(?:''|[^'])*')",
+    "(?<br>\\[(?:\\]\\]|[^\\]])*\\])",
+    '(?<qid>"(?:""|[^"])*")',
+    "(?<cmt>--.*)",
+    "(?<num>\\b\\d+(?:\\.\\d+)?\\b)",
+    `(?<kw>\\b(?:${TRACE_XMSQL_KEYWORDS}|DISTINCT|TOP|IS NULL|IS NOT NULL|BETWEEN|LIKE|CASE|WHEN|THEN|ELSE|END|CAST|CONVERT|COALESCE|ISNULL|NULL|COUNT|COUNT_BIG|SUM|MIN|MAX|AVG|OVER|PARTITION BY)\\b)`
+].join("|"), "gi");
+const TRACE_ESTIMATE_RE = /Estimated size \(volume, marshalling bytes\):\s*(\d+),\s*(\d+)/;
+
+function highlightXmSqlLine(line) {
+    return line.split(TRACE_XMSQL_BRACKET_RE).map(segment => {
+        if (!segment || segment.startsWith("[")) return escapeHtml(segment);
+        TRACE_XMSQL_TOKEN_RE.lastIndex = 0;
+        let html = "";
+        let last = 0;
+        let match;
+        while ((match = TRACE_XMSQL_TOKEN_RE.exec(segment)) !== null) {
+            html += escapeHtml(segment.slice(last, match.index));
+            html += `<span class="dtx-trace-keyword">${escapeHtml(match[0])}</span>`;
+            last = match.index + match[0].length;
+        }
+        return html + escapeHtml(segment.slice(last));
+    }).join("");
+}
+
+function highlightSqlLine(line) {
+    TRACE_SQL_TOKEN_RE.lastIndex = 0;
+    let html = "";
+    let last = 0;
+    let match;
+    while ((match = TRACE_SQL_TOKEN_RE.exec(line)) !== null) {
+        html += escapeHtml(line.slice(last, match.index));
+        const groups = match.groups || {};
+        const className = groups.str ? "dtx-trace-string"
+            : groups.cmt ? "dtx-trace-comment"
+            : groups.num ? "dtx-trace-number"
+            : groups.kw ? "dtx-trace-keyword" : "";
+        html += className
+            ? `<span class="${className}">${escapeHtml(match[0])}</span>`
+            : escapeHtml(match[0]);
+        last = match.index + match[0].length;
+    }
+    return html + escapeHtml(line.slice(last));
+}
+
+function renderTraceText(text, eventClass) {
+    return String(text || "").split(/\r?\n/).map(line => {
+        const estimate = TRACE_ESTIMATE_RE.exec(line);
+        if (estimate) {
+            return `<span class="dtx-trace-estimate">Estimated size: rows = <span class="dtx-trace-estimate-value">${escapeHtml(estimate[1])}</span>  bytes = <span class="dtx-trace-estimate-value">${escapeHtml(estimate[2])}</span></span>`;
+        }
+        return eventClass === "DirectQueryEnd"
+            ? highlightSqlLine(line)
+            : eventClass === "VertiPaqSEQueryEnd"
+                ? highlightXmSqlLine(line)
+                : escapeHtml(line);
+    }).join("\n");
+}
+
 function render({ model, el }) {
     const SUN_SVG = `__DTX_SUN__`;
     const MOON_SVG = `__DTX_MOON__`;
     const PLAY_SVG = `__DTX_PLAY__`;
     const STOP_SVG = `__DTX_STOP__`;
+    const ERASER_SVG = `__DTX_ERASER__`;
     const TABLE_SVG = `__DTX_TABLE__`;
     const CALC_GROUP_SVG = `__DTX_CALC_GROUP__`;
     const CALC_ITEM_SVG = `__DTX_CALC_ITEM__`;
@@ -3888,6 +4135,9 @@ function render({ model, el }) {
     const FULLSCREEN_SVG = `__DTX_FULLSCREEN__`;
     const FULLSCREEN_EXIT_SVG = `__DTX_FULLSCREEN_EXIT__`;
     const DAX_PERFORMANCE_SVG = `__DTX_DAX_PERFORMANCE__`;
+    const CPU_SVG = `__DTX_CPU__`;
+    const DATABASE_SVG = `__DTX_DATABASE__`;
+    const ZAP_SVG = `__DTX_ZAP__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3925,7 +4175,7 @@ function render({ model, el }) {
 
     const title = document.createElement("div");
     title.className = "sl-title";
-    title.textContent = "DAX Query Performance";
+    title.textContent = "DAX Perf Optimizer";
     titleRow.appendChild(title);
 
     let connectingToModel = false;
@@ -5095,7 +5345,7 @@ function render({ model, el }) {
         if (!builderFilters.length) {
             const ph = document.createElement("div");
             ph.className = "dtx-builder-placeholder";
-            ph.textContent = "Drag fields here to filter";
+            ph.textContent = "Drag columns and measures here to filter";
             filtersZone.appendChild(ph);
         } else {
             for (const f of builderFilters) {
@@ -5115,6 +5365,8 @@ function render({ model, el }) {
                 orderByZone.appendChild(makeOrderByChip(f));
             }
         }
+        builderToggle.style.display =
+            (builderFields.length || builderFilters.length) ? "" : "none";
     }
 
     function onBuildClick() {
@@ -5360,14 +5612,14 @@ function render({ model, el }) {
         const fmt = (n) => Number(n).toLocaleString();
         const pct = (n) => total > 0 ? Math.round(n / total * 100) : 0;
         const cards = [
-            { label: "Duration", value: fmt(total), sub: null },
-            { label: "FE Duration", value: fmt(fe), sub: pct(fe) + "% of total" },
-            { label: "SE Duration", value: fmt(se), sub: pct(se) + "% of total" },
-            { label: "CPU", value: fmt(cpu), sub: null },
+            { label: "Duration", icon: DAX_PERFORMANCE_SVG, value: fmt(total), sub: null },
+            { label: "FE Duration", icon: CPU_SVG, value: fmt(fe), sub: pct(fe) + "% of total" },
+            { label: "SE Duration", icon: DATABASE_SVG, value: fmt(se), sub: pct(se) + "% of total" },
+            { label: "CPU", icon: ZAP_SVG, value: fmt(cpu), sub: null },
         ];
         cardsEl.innerHTML = cards.map(c => (
             `<div class="dtx-card">
-                <div class="dtx-card-label">${escapeHtml(c.label)}</div>
+                <div class="dtx-card-label">${c.icon}<span>${escapeHtml(c.label)}</span></div>
                 <div class="dtx-card-value">${escapeHtml(c.value)}<span class="dtx-card-unit">ms</span></div>
                 ${c.sub ? `<div class="dtx-card-sub">${escapeHtml(c.sub)}</div>` : ""}
             </div>`
@@ -5377,6 +5629,13 @@ function render({ model, el }) {
     const toolbar = document.createElement("div");
     toolbar.className = "dtx-query-toolbar";
     queryBlock.appendChild(toolbar);
+
+    const runProgress = document.createElement("div");
+    runProgress.className = "dtx-run-progress";
+    runProgress.setAttribute("role", "progressbar");
+    runProgress.setAttribute("aria-label", "Running DAX query");
+    runProgress.setAttribute("aria-hidden", "true");
+    queryBlock.appendChild(runProgress);
 
     const qTitleGroup = document.createElement("div");
     qTitleGroup.className = "dtx-query-titlegroup";
@@ -5803,6 +6062,8 @@ function render({ model, el }) {
             runBtn.title = "Run DAX query (Ctrl/Cmd+Enter)";
             runBtn.setAttribute("aria-label", "Run DAX query");
         }
+        runProgress.classList.toggle("dtx-active", running);
+        runProgress.setAttribute("aria-hidden", running ? "false" : "true");
     }
     runBtn.addEventListener("click", () => {
         if (model.get("is_running") === true) {
@@ -5819,6 +6080,30 @@ function render({ model, el }) {
         model.save_changes();
     });
     toolbar.appendChild(runBtn);
+
+    const clearModelCacheBtn = document.createElement("button");
+    clearModelCacheBtn.type = "button";
+    clearModelCacheBtn.className = "dtx-fmt-btn dtx-clear-model-cache-btn";
+    clearModelCacheBtn.innerHTML = ERASER_SVG;
+    clearModelCacheBtn.setAttribute("aria-label", "Clear model cache");
+    function renderClearModelCacheBtn() {
+        const chosen = model.get("dataset_chosen") === true;
+        const loading = model.get("cache_clear_loading") === true;
+        clearModelCacheBtn.disabled = !chosen || loading;
+        clearModelCacheBtn.title = loading
+            ? "Clearing model cache…"
+            : "Clear model cache";
+    }
+    clearModelCacheBtn.addEventListener("click", () => {
+        if (model.get("dataset_chosen") !== true
+            || model.get("cache_clear_loading") === true) return;
+        model.set("error_message", "");
+        model.set("cache_clear_loading", true);
+        model.set("cache_clear_trigger",
+            (model.get("cache_clear_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    toolbar.appendChild(clearModelCacheBtn);
 
     // ---------- Analyze (DAX performance analysis) ----------
     const analyzeBtn = document.createElement("button");
@@ -6518,24 +6803,30 @@ function render({ model, el }) {
         const fmt = (n) => Number(n).toLocaleString();
         let body;
         if (!rows.length) {
-            body = `<tr><td colspan="4" class="dtx-empty">No trace events captured.</td></tr>`;
+            body = `<tr><td colspan="7" class="dtx-empty">No trace events captured.</td></tr>`;
         } else {
             body = rows.map(r => (
                 `<tr>
                     <td>${escapeHtml(r.event_class)}</td>
                     <td>${escapeHtml(r.event_subclass)}</td>
-                    <td class="dtx-num">${escapeHtml(fmt(r.duration))}</td>
-                    <td class="dtx-num">${escapeHtml(fmt(r.cpu))}</td>
+                    <td class="dtx-num">${escapeHtml(fmt(r.duration))} ms</td>
+                    <td class="dtx-num">${escapeHtml(fmt(r.cpu))} ms</td>
+                    <td class="dtx-num">${r.rows == null ? "" : escapeHtml(fmt(r.rows))}</td>
+                    <td class="dtx-num">${r.kb == null ? "" : escapeHtml(Number(r.kb).toLocaleString(undefined, { maximumFractionDigits: 2 }))}</td>
+                    <td class="dtx-trace-text"><pre>${renderTraceText(r.text, r.event_class)}</pre></td>
                 </tr>`
             )).join("");
         }
         tableWrap.innerHTML = `
-            <table>
+            <table class="dtx-trace-table">
                 <thead><tr>
-                    <th>Event Class</th>
-                    <th>Event Subclass</th>
-                    <th style="text-align:right">Duration (ms)</th>
-                    <th style="text-align:right">CPU (ms)</th>
+                    <th>Event</th>
+                    <th>Subclass</th>
+                    <th style="text-align:right">Duration</th>
+                    <th style="text-align:right">CPU</th>
+                    <th style="text-align:right">Rows</th>
+                    <th style="text-align:right">KB</th>
+                    <th>Text</th>
                 </tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
@@ -7246,6 +7537,7 @@ function render({ model, el }) {
     });
     model.on("change:dataset_chosen", renderNlBtn);
     model.on("change:clear_cache", renderCacheBtn);
+    model.on("change:cache_clear_loading", renderClearModelCacheBtn);
     model.on("change:impersonation_mode", renderImpersonation);
     model.on("change:impersonation_value", renderImpersonation);
     model.on("change:model_roles", renderImpersonation);
@@ -7257,7 +7549,7 @@ function render({ model, el }) {
             connectingToModel = false;
             pickerOpen = false;
         }
-        renderPicker(); renderRunBtn(); renderSubtitle();
+        renderPicker(); renderRunBtn(); renderClearModelCacheBtn(); renderSubtitle();
         renderBuildBtn(); renderBuilderChrome(); renderModelViewChrome();
     });
     model.on("change:available_workspaces", renderPicker);
@@ -7291,6 +7583,7 @@ function render({ model, el }) {
     renderSubtitle();
     renderCards();
     renderRunBtn();
+    renderClearModelCacheBtn();
     renderCacheBtn();
     renderImpersonation();
     renderError();
@@ -7345,6 +7638,7 @@ export default { render };
         .replace("__DTX_LEVEL__", level_icon)
         .replace("__DTX_PLAY__", play_icon)
         .replace("__DTX_STOP__", stop_icon)
+        .replace("__DTX_ERASER__", eraser_icon)
         .replace("__DTX_REFRESH__", refresh_icon)
         .replace("__DTX_SWAP__", swap_icon)
         .replace("__DTX_SORT_ASC__", sort_asc_icon)
@@ -7370,6 +7664,9 @@ export default { render };
         .replace("__DTX_FULLSCREEN__", fullscreen_icon)
         .replace("__DTX_FULLSCREEN_EXIT__", fullscreen_exit_icon)
         .replace("__DTX_DAX_PERFORMANCE__", dax_performance_icon)
+        .replace("__DTX_CPU__", cpu_icon)
+        .replace("__DTX_DATABASE__", database_icon)
+        .replace("__DTX_ZAP__", zap_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -7382,6 +7679,8 @@ export default { render };
         workspace_name = traitlets.Unicode("").tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
         clear_cache = traitlets.Bool(True).tag(sync=True)
+        cache_clear_trigger = traitlets.Int(0).tag(sync=True)
+        cache_clear_loading = traitlets.Bool(False).tag(sync=True)
         total_duration = traitlets.Int(0).tag(sync=True)
         fe_duration = traitlets.Int(0).tag(sync=True)
         se_duration = traitlets.Int(0).tag(sync=True)
@@ -7988,6 +8287,28 @@ export default { render };
             "query in the background; results have been discarded."
         )
 
+    def _clear_model_cache() -> None:
+        try:
+            dataset_id = model_ctx["dataset_id"]
+            if dataset_id is None:
+                raise ValueError("No semantic model selected.")
+            from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+            _clear_cache_fn(
+                dataset=dataset_id,
+                workspace=model_ctx["workspace_id"],
+            )
+            widget.error_message = ""
+        except Exception as exc:
+            widget.error_message = f"Failed to clear the model cache: {exc}"
+        finally:
+            widget.cache_clear_loading = False
+
+    def _on_clear_model_cache(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_clear_model_cache, daemon=True).start()
+
     def _compute_dependencies() -> None:
         """Compute the model objects (tables, columns, measures,
         relationships) referenced by the current DAX query via
@@ -8359,6 +8680,7 @@ export default { render };
 
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
+    widget.observe(_on_clear_model_cache, names="cache_clear_trigger")
     widget.observe(_on_dependencies, names="dependencies_trigger")
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
     widget.observe(_on_performance, names="performance_trigger")

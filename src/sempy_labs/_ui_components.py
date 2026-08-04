@@ -118,6 +118,31 @@ ICONS: dict[str, str] = {
         '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
         '</svg>'
     ),
+    "cpu": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect width="16" height="16" x="4" y="4" rx="2"/>'
+        '<rect width="6" height="6" x="9" y="9" rx="1"/>'
+        '<path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/>'
+        '</svg>'
+    ),
+    "database": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<ellipse cx="12" cy="5" rx="9" ry="3"/>'
+        '<path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>'
+        '<path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>'
+        '</svg>'
+    ),
+    "zap": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M4 14a1 1 0 0 1-.78-1.63l9-11a.5.5 0 0 1 .87.43L11.92 8h7.18a1 1 0 0 1 .78 1.63l-9 11a.5.5 0 0 1-.87-.43l1.17-6.2z"/>'
+        '</svg>'
+    ),
     "list_tree": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
@@ -157,6 +182,13 @@ ICONS: dict[str, str] = {
     "stop": (
         '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">'
         '<rect x="4" y="4" width="8" height="8" rx="1.2"/></svg>'
+    ),
+    "eraser": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6c1 1 1 2.5 0 3.4L11 21"/>'
+        '<path d="M22 21H7"/><path d="m5 11 9 9"/></svg>'
     ),
     "refresh": (
         '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
