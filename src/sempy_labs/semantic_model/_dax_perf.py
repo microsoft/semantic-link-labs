@@ -3273,8 +3273,13 @@ def _visualize_dax_test(
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 30px;
     width: 30px;
+    min-width: 30px;
+    max-width: 30px;
     height: 30px;
+    min-height: 30px;
+    max-height: 30px;
     padding: 0;
     color: var(--ui-text-secondary);
     background: var(--ui-bg-secondary);
@@ -3467,7 +3472,8 @@ def _visualize_dax_test(
     overflow-x: hidden;
     padding: 6px 4px 10px 4px;
     flex: 1 1 auto;
-    font-size: 12px;
+    font-family: "Segoe UI", SegoeUI, Arial, sans-serif;
+    font-size: 14px;
 }}
 .dtx .dtx-sidebar-empty {{
     padding: 16px 14px;
@@ -3570,7 +3576,21 @@ def _visualize_dax_test(
     white-space: nowrap;
 }}
 .dtx .dtx-tree-node > .dtx-tree-label {{
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 600;
+}}
+.dtx .dtx-tree-counts {{
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding-left: 8px;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}}
+.dtx .dtx-tree-leaf .dtx-tree-label {{
+    font-size: 14px;
     font-weight: 600;
 }}
 .dtx .dtx-tree-label.dtx-hidden {{
@@ -3623,7 +3643,7 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-tree-folder-header:hover {{ background: var(--ui-surface-2); color: var(--ui-text); }}
 .dtx .dtx-tree-folder-header .dtx-tree-icon {{ color: var(--ui-text-tertiary); }}
-.dtx .dtx-tree-folder-header .dtx-tree-label {{ font-size: 12px; }}
+.dtx .dtx-tree-folder-header .dtx-tree-label {{ font-size: 14px; font-weight: 600; }}
 .dtx .dtx-tree-level {{ color: var(--ui-text-tertiary); cursor: default; }}
 .dtx .dtx-tree-level:hover {{ background: var(--ui-surface-2); color: var(--ui-text-secondary); }}
 .dtx .dtx-tree-group {{
@@ -3875,6 +3895,26 @@ def _visualize_dax_test(
     gap: 4px;
     min-width: 0;
 }}
+.dtx .dtx-builder-chip-filter {{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 6px;
+}}
+.dtx .dtx-filter-chip-head {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}}
+.dtx .dtx-builder-chip-filter .dtx-chip-op {{
+    width: 100%;
+    min-width: 0;
+}}
+.dtx .dtx-builder-chip-filter .dtx-chip-values {{
+    width: 100%;
+    min-width: 0;
+}}
 .dtx .dtx-chip-value {{
     flex: 1 1 0;
     width: 0;
@@ -3969,6 +4009,10 @@ def _visualize_dax_test(
     color: var(--ui-text);
 }}
 .dtx .dtx-build-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 6px 16px;
     border: 1px solid var(--ui-accent);
     border-radius: 6px;
@@ -3978,6 +4022,7 @@ def _visualize_dax_test(
     font-weight: 600;
     cursor: pointer;
 }}
+.dtx .dtx-build-btn svg {{ width: 14px; height: 14px; }}
 .dtx .dtx-build-btn:hover {{ filter: brightness(1.05); }}
 .dtx .dtx-build-btn:disabled {{
     opacity: 0.5;
@@ -4771,33 +4816,6 @@ function render({ model, el }) {
         }
     }
 
-    function makeGroup(label, items, iconSvg, dragFn, leafBuilder, metaFn) {
-        if (!items || !items.length) return null;
-        const wrap = document.createElement("div");
-        wrap.className = "dtx-tree-group";
-        const header = document.createElement("div");
-        header.className = "dtx-tree-group-header";
-        header.style.paddingLeft = "18px";
-        header.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span><span>${escapeHtml(label)}</span><span class="dtx-tree-group-count">${items.length}</span>`;
-        const children = document.createElement("div");
-        children.className = "dtx-tree-children";
-        const build = leafBuilder || ((it, pad) => makeLeaf(
-            iconSvg, it.name, !!it.hidden, it.data_type,
-            dragFn ? dragFn(it) : null, it.description, pad,
-            metaFn ? metaFn(it) : null));
-        renderFolderTree(children, buildFolderTree(items), build, 0);
-        header.addEventListener("click", () => {
-            const open = !header.classList.contains("dtx-open");
-            header.classList.toggle("dtx-open", open);
-            children.style.display = open ? "block" : "none";
-        });
-        children.style.display = treeExpand ? "block" : "none";
-        header.classList.toggle("dtx-open", treeExpand);
-        wrap.appendChild(header);
-        wrap.appendChild(children);
-        return wrap;
-    }
-
     // Leaf builder for hierarchies: the hierarchy is draggable and (when it
     // has levels) expands to show its levels. Levels are NOT draggable.
     function makeHierarchyLeaf(tableName) {
@@ -4840,6 +4858,39 @@ function render({ model, el }) {
             }
             return frag;
         };
+    }
+
+    function renderTableObjects(parentEl, table) {
+        const objects = [
+            ...(table.measures || []).map(it => Object.assign({_kind: "measure"}, it)),
+            ...(table.columns || []).map(it => Object.assign({_kind: "column"}, it)),
+            ...(table.hierarchies || []).map(it => Object.assign({_kind: "hierarchy"}, it)),
+            ...(table.calculation_items || []).map(it => Object.assign({_kind: "calculation_item"}, it)),
+        ];
+        const hierarchyBuilder = makeHierarchyLeaf(table.name);
+        const build = (it, pad) => {
+            if (it._kind === "measure") {
+                return makeLeaf(
+                    MEASURE_SVG, it.name, !!it.hidden, it.data_type,
+                    daxMeasureRef(it.name), it.description, pad,
+                    {kind: "measure", table: table.name, name: it.name,
+                        data_type: it.data_type, expression: it.expression,
+                        ref: daxMeasureRef(it.name)});
+            }
+            if (it._kind === "column") {
+                return makeLeaf(
+                    COLUMN_SVG, it.name, !!it.hidden, it.data_type,
+                    daxColumnRef(table.name, it.name), it.description, pad,
+                    {kind: "column", table: table.name, name: it.name,
+                        data_type: it.data_type,
+                        ref: daxColumnRef(table.name, it.name)});
+            }
+            if (it._kind === "hierarchy") return hierarchyBuilder(it, pad);
+            return makeLeaf(
+                CALC_ITEM_SVG, it.name, !!it.hidden, it.data_type,
+                daxColumnRef(table.name, it.name), it.description, pad, null);
+        };
+        renderFolderTree(parentEl, buildFolderTree(objects), build, 0);
     }
 
     // Filter the model tree by a case-insensitive substring. A table is kept
@@ -4901,32 +4952,22 @@ function render({ model, el }) {
             const node = document.createElement("div");
             node.className = "dtx-tree-node";
             const tblIcon = tbl.calculation_group ? CALC_GROUP_SVG : TABLE_SVG;
+            const countParts = [
+                `${(tbl.columns || []).length}c`,
+                `${(tbl.measures || []).length}m`,
+            ];
+            if ((tbl.hierarchies || []).length) {
+                countParts.push(`${tbl.hierarchies.length}h`);
+            }
             node.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span>`
                 + `<span class="dtx-tree-icon">${tblIcon}</span>`
                 + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
-                + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`;
+                + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`
+                + `<span class="dtx-tree-counts">${escapeHtml(countParts.join(" · "))}</span>`;
             makeDraggable(node, daxTableRef(tbl.name));
             const children = document.createElement("div");
             children.className = "dtx-tree-children";
-            const colGrp = makeGroup("Columns", tbl.columns, COLUMN_SVG,
-                (it) => daxColumnRef(tbl.name, it.name), null,
-                (it) => ({kind: "column", table: tbl.name, name: it.name,
-                    data_type: it.data_type,
-                    ref: daxColumnRef(tbl.name, it.name)}));
-            const meaGrp = makeGroup("Measures", tbl.measures, MEASURE_SVG,
-                (it) => daxMeasureRef(it.name), null,
-                (it) => ({kind: "measure", table: tbl.name, name: it.name,
-                    data_type: it.data_type,
-                    expression: it.expression,
-                    ref: daxMeasureRef(it.name)}));
-            const hieGrp = makeGroup("Hierarchies", tbl.hierarchies, HIERARCHY_SVG,
-                null, makeHierarchyLeaf(tbl.name));
-            if (colGrp) children.appendChild(colGrp);
-            if (meaGrp) children.appendChild(meaGrp);
-            if (hieGrp) children.appendChild(hieGrp);
-            const ciGrp = makeGroup("Calculation items", tbl.calculation_items, CALC_ITEM_SVG,
-                (it) => daxColumnRef(tbl.name, it.name));
-            if (ciGrp) children.appendChild(ciGrp);
+            renderTableObjects(children, tbl);
             node.addEventListener("click", () => {
                 const open = !node.classList.contains("dtx-open");
                 node.classList.toggle("dtx-open", open);
@@ -5179,7 +5220,7 @@ function render({ model, el }) {
     const buildBtn = document.createElement("button");
     buildBtn.type = "button";
     buildBtn.className = "dtx-build-btn";
-    buildBtn.textContent = "Build";
+    buildBtn.innerHTML = BUILDER_SVG + "<span>Build</span>";
     buildBtn.addEventListener("click", onBuildClick);
     builderFooter.appendChild(clearBtn);
     builderFooter.appendChild(buildBtn);
@@ -5342,6 +5383,8 @@ function render({ model, el }) {
     function makeFilterChip(f) {
         const chip = document.createElement("div");
         chip.className = "dtx-builder-chip dtx-builder-chip-filter";
+        const head = document.createElement("div");
+        head.className = "dtx-filter-chip-head";
         const ic = document.createElement("span");
         ic.className = "dtx-chip-icon";
         ic.innerHTML = qbIcon(f.kind);
@@ -5396,14 +5439,15 @@ function render({ model, el }) {
             renderVals();
         });
         renderVals();
-        chip.appendChild(ic);
-        chip.appendChild(label);
-        chip.appendChild(opSel);
-        chip.appendChild(valWrap);
-        chip.appendChild(makeChipRemove(() => {
+        head.appendChild(ic);
+        head.appendChild(label);
+        head.appendChild(makeChipRemove(() => {
             builderFilters = builderFilters.filter(x => x.id !== f.id);
             renderBuilderZones();
         }));
+        chip.appendChild(head);
+        chip.appendChild(opSel);
+        chip.appendChild(valWrap);
         attachChipReorder(chip, f, "filters");
         return chip;
     }

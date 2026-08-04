@@ -139,6 +139,52 @@ def test_model_view_and_collapsed_query_builder_are_identifiable():
     assert "#08282d" not in source
 
 
+def test_model_view_flattens_type_groups_and_preserves_display_folders():
+    source = _source()
+    renderer = source[
+        source.index("function renderTableObjects") : source.index(
+            "// Filter the model tree"
+        )
+    ]
+    tree_render = source[
+        source.index("function renderTree()") : source.index(
+            "const main = document.createElement", source.index("function renderTree()")
+        )
+    ]
+
+    measure_pos = renderer.index('table.measures || []')
+    column_pos = renderer.index('table.columns || []')
+    hierarchy_pos = renderer.index('table.hierarchies || []')
+    calculation_item_pos = renderer.index('table.calculation_items || []')
+    assert measure_pos < column_pos < hierarchy_pos < calculation_item_pos
+    assert "renderFolderTree(parentEl, buildFolderTree(objects), build, 0)" in renderer
+    assert 'it._kind === "measure"' in renderer
+    assert 'it._kind === "column"' in renderer
+    assert 'it._kind === "hierarchy"' in renderer
+    assert "renderTableObjects(children, tbl)" in tree_render
+    assert 'makeGroup("Columns"' not in source
+    assert 'makeGroup("Measures"' not in source
+    assert 'makeGroup("Hierarchies"' not in source
+    assert 'makeGroup("Calculation items"' not in source
+
+
+def test_model_view_uses_power_bi_typography_and_table_counts():
+    source = _source()
+    tree_render = source[
+        source.index("function renderTree()") : source.index(
+            "const main = document.createElement", source.index("function renderTree()")
+        )
+    ]
+
+    assert 'font-family: "Segoe UI", SegoeUI, Arial, sans-serif;' in source
+    assert ".dtx .dtx-tree-leaf .dtx-tree-label {{\n    font-size: 14px;" in source
+    assert ".dtx .dtx-tree-counts {{" in source
+    assert '`${(tbl.columns || []).length}c`' in tree_render
+    assert '`${(tbl.measures || []).length}m`' in tree_render
+    assert 'countParts.push(`${tbl.hierarchies.length}h`)' in tree_render
+    assert 'countParts.join(" · ")' in tree_render
+
+
 def test_query_builder_header_clear_can_be_undone():
     source = _source()
 
@@ -334,6 +380,29 @@ def test_query_builder_filter_placeholder_names_supported_objects():
 
     assert 'ph.textContent = "Drag columns and measures here to filter"' in source
     assert 'ph.textContent = "Drag fields here to filter"' not in source
+
+
+def test_query_builder_filters_and_toolbar_actions_keep_stable_layouts():
+    source = _source()
+
+    assert ".dtx .dtx-builder-chip-filter {{\n    display: grid;" in source
+    assert ".dtx .dtx-filter-chip-head {{" in source
+    assert ".dtx .dtx-builder-chip-filter .dtx-chip-op {{" in source
+    assert ".dtx .dtx-builder-chip-filter .dtx-chip-values {{" in source
+    filter_chip = source[
+        source.index("function makeFilterChip") : source.index(
+            "// Keep the Order By pane"
+        )
+    ]
+    assert 'head.className = "dtx-filter-chip-head"' in filter_chip
+    assert filter_chip.index("head.appendChild(ic)") < filter_chip.index("chip.appendChild(opSel)")
+    assert filter_chip.index("head.appendChild(label)") < filter_chip.index("chip.appendChild(opSel)")
+    assert filter_chip.index("head.appendChild(makeChipRemove") < filter_chip.index("chip.appendChild(opSel)")
+    assert filter_chip.index("chip.appendChild(opSel)") < filter_chip.index("chip.appendChild(valWrap)")
+    assert "    flex: 0 0 30px;\n    width: 30px;\n    min-width: 30px;\n    max-width: 30px;" in source
+    assert "    height: 30px;\n    min-height: 30px;\n    max-height: 30px;" in source
+    assert 'buildBtn.innerHTML = BUILDER_SVG + "<span>Build</span>"' in source
+    assert ".dtx .dtx-build-btn svg {{ width: 14px; height: 14px; }}" in source
 
 
 def test_dax_formatter_icon_fits_inside_its_button():
