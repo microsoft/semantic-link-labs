@@ -161,6 +161,59 @@ def test_widget_uses_shared_expand_and_collapse_icons():
 def test_widget_has_independent_refresh_history_reload_button():
     assert "data-reload-history" in refresh_manager_module._WIDGET_JS
     assert 'closest("[data-reload-history]")' in refresh_manager_module._WIDGET_JS
+    assert 'keepPosition();dispatch("load_history")' in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert (
+        'event.target.closest("[data-reload-history],[data-reload-schedule],'
+        '[data-cancel-history]")' in refresh_manager_module._WIDGET_JS
+    )
+
+
+def test_refresh_history_can_cancel_active_refreshes():
+    widget_js = refresh_manager_module._WIDGET_JS
+    source = getsource(refresh_manager_module.refresh_manager)
+
+    assert 'r.status==="Unknown"' in widget_js
+    assert 'data-cancel-history="${esc(r.requestId)}"' in widget_js
+    assert 'title="Cancel refresh" aria-label="Cancel refresh"' in widget_js
+    assert '${I.close}</button>' in widget_js
+    assert 'dispatch("cancel_refresh",{request_id:cancel.dataset.cancelHistory})' in widget_js
+    cancel_handler = widget_js.split(
+        'root.addEventListener("click",event=>{const cancel=', 1
+    )[1].split("},true);", 1)[0]
+    assert "event.stopPropagation()" in cancel_handler
+    assert "from sempy_labs._refresh_semantic_model import cancel_dataset_refresh" in source
+    assert "request_id=target_request_id" in source
+    assert 'cancel_refresh(str(data.get("request_id") or "") or None)' in source
+
+
+def test_completed_refresh_cancel_conflict_is_user_friendly():
+    source = getsource(refresh_manager_module.refresh_manager)
+    cancel_source = source.split("def cancel_refresh(", 1)[1].split(
+        "def save_schedule(", 1
+    )[0]
+
+    assert 'status_code == 409 or "409 Conflict" in error_text' in cancel_source
+    assert '"cannot be cancelled" in error_text' in cancel_source
+    assert '"status": "Completed"' in cancel_source
+    assert '"kind": "success"' in cancel_source
+    assert "This refresh has already completed and no longer needs" in cancel_source
+    assert "if not cancellation_conflict:\n                raise" in cancel_source
+    assert "load_history()" in cancel_source
+
+
+def test_cancel_refresh_uses_reloaded_history_status():
+    source = getsource(refresh_manager_module.refresh_manager)
+    cancel_source = source.split("def cancel_refresh(", 1)[1].split(
+        "def save_schedule(", 1
+    )[0]
+
+    assert "refreshed_request = next(" in cancel_source
+    assert 'refreshed_status = str(refreshed_request.get("status")' in cancel_source
+    assert 'if refreshed_status == "Completed":' in cancel_source
+    assert "This refresh completed before the cancellation could be" in cancel_source
+    assert '"status": refreshed_status' in cancel_source
 
 
 def test_widget_has_tools_style_schedule_controls():

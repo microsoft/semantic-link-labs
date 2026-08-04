@@ -40,6 +40,8 @@ _WIDGET_CSS = """
 .slls-rm-iconbtn:hover { background:var(--ui-bg-secondary);color:var(--ui-text); }
 .slls-rm-iconbtn:disabled { opacity:.42;cursor:not-allowed; }
 .slls-rm-iconbtn svg { width:16px;height:16px; }
+.slls-rm-history-cancel { width:28px;height:28px;color:var(--rm-danger); }
+.slls-rm-history-cancel:hover { color:var(--rm-danger);background:var(--rm-danger-soft); }
 .slls-rm-body { padding:20px; }
 .slls-rm-grid { display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start; }
 .slls-rm-card,.slls-rm-panel { border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-bg-tertiary); }
@@ -211,9 +213,10 @@ function render({ model, el }) {
     const scrollContainers=()=>{const nodes=[],seen=new Set(),body=root.querySelector(".slls-rm-body");if(body&&body.scrollHeight>body.clientHeight){nodes.push({node:body,key:"body"});seen.add(body);}let node=root;while(node){if(node instanceof Element&&node.scrollHeight>node.clientHeight&&!seen.has(node)){nodes.push({node,key:null});seen.add(node);}node=node.parentNode||(node.host||null);}const page=document.scrollingElement;if(page&&!seen.has(page))nodes.push({node:page,key:null});return nodes;};
     const keepPosition=()=>{savedPosition=scrollContainers().map(({node,key})=>({node,key,left:node.scrollLeft,top:node.scrollTop}));};
     const restorePosition=()=>{if(!savedPosition)return;const positions=savedPosition;savedPosition=null,restore=()=>positions.forEach(({node,key,left,top})=>{const target=key==="body"?root.querySelector(".slls-rm-body"):node;if(target)target.scrollTo(left,top);});restore();requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);});};
-    root.addEventListener("mousedown",event=>{const panelHead=event.target.closest(".slls-rm-panel-head");if(panelHead&&!event.target.closest("[data-reload-history],[data-reload-schedule]"))event.preventDefault();},true);
+    root.addEventListener("mousedown",event=>{const panelHead=event.target.closest(".slls-rm-panel-head"),action=event.target.closest("[data-reload-history],[data-reload-schedule],[data-cancel-history]");if(panelHead||action)event.preventDefault();},true);
     root.addEventListener("click",event=>{const panelHead=event.target.closest(".slls-rm-panel-head"),reload=event.target.closest("[data-reload-history],[data-reload-schedule]");if(!panelHead||reload)return;const toggle=panelHead.querySelector("[data-panel]");if(!toggle)return;event.preventDefault();event.stopPropagation();const open=toggle.dataset.panel==="history"?(s.history=!s.history):(s.schedule=!s.schedule);panelHead.closest(".slls-rm-panel").classList.toggle("open",open);if(toggle.dataset.panel==="history"&&open&&!model.get("history_loaded"))dispatch("load_history");if(toggle.dataset.panel==="schedule"&&open&&!model.get("schedule_loaded"))dispatch("load_schedule");},true);
-    root.addEventListener("click",event=>{if(event.target.closest("[data-reload-history]")){event.preventDefault();event.stopPropagation();dispatch("load_history");}else if(event.target.closest("[data-reload-schedule]")){event.preventDefault();event.stopPropagation();s.draft=null;dispatch("load_schedule");}});
+    root.addEventListener("click",event=>{if(event.target.closest("[data-reload-history]")){event.preventDefault();event.stopPropagation();keepPosition();dispatch("load_history");}else if(event.target.closest("[data-reload-schedule]")){event.preventDefault();event.stopPropagation();s.draft=null;keepPosition();dispatch("load_schedule");}});
+    root.addEventListener("click",event=>{const cancel=event.target.closest("[data-cancel-history]");if(!cancel)return;event.preventDefault();event.stopPropagation();keepPosition();cancel.disabled=true;dispatch("cancel_refresh",{request_id:cancel.dataset.cancelHistory});},true);
     const optionDescriptions={type:"Controls how the selected model objects are processed.",commit:"Determines whether refresh changes are committed together or in separate batches.",parallel:"Sets the maximum number of refresh operations that can run concurrently.",retry:"Sets how many times a failed refresh operation is retried.",policy:"Applies the model's incremental refresh policy when processing eligible tables."};
     const annotateOptionDescriptions=()=>Object.entries(optionDescriptions).forEach(([option,description])=>{const control=root.querySelector(`[data-option="${option}"]`),field=control&&control.closest(".slls-rm-field,.slls-rm-toggle-row");if(field)field.title=description;});
     new MutationObserver(()=>{annotateOptionDescriptions();applyGanttFilter();}).observe(root,{childList:true,subtree:true});
@@ -230,7 +233,7 @@ function render({ model, el }) {
     const formatMs=value=>value>=1000?`${(value/1000).toFixed(1)}s`:`${Math.round(value)}ms`;
     function gantt(){const events=model.get("gantt_events")||[];if(!events.length)return"";const starts=events.map(event=>Date.parse(event.startTime)).filter(Number.isFinite),ends=events.map(event=>Date.parse(event.endTime)).filter(Number.isFinite),minimum=Math.min(...starts),maximum=Math.max(...ends),span=Math.max(maximum-minimum,1),groups=new Map();events.forEach(event=>{const rows=groups.get(event.objectName)||[];rows.push(event);groups.set(event.objectName,rows);});const rows=[...groups.entries()].sort(([,left],[,right])=>Date.parse(left[0].startTime)-Date.parse(right[0].startTime)).map(([name,items])=>{const filterText=items.flatMap(event=>[event.tableName,event.partitionName,event.objectName]).filter(Boolean).join(" ").toLowerCase();return`<div class="slls-rm-gantt-row" data-gantt-row data-filter="${esc(filterText)}"><span class="slls-rm-gantt-label" title="${esc(name)}">${esc(name)}</span><div class="slls-rm-gantt-track">${items.map(event=>{const start=Date.parse(event.startTime),end=Date.parse(event.endTime),left=Math.max(0,(start-minimum)/span*100),width=Math.max(.3,(end-start)/span*100),color=event.eventSubclass==="ExecuteSql"?"#0070c0":"#ffc000";return`<span class="slls-rm-gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${color}" title="${esc(name)} · ${esc(event.eventSubclass==="ExecuteSql"?"Execute SQL":"Process")} · ${esc(formatMs(event.durationMs||0))} · CPU ${esc(formatMs(event.cpuTimeMs||0))}"></span>`;}).join("")}</div></div>`;}).join("");return`<div class="slls-rm-gantt"><div class="slls-rm-gantt-head"><strong>Refresh timeline</strong><div class="slls-rm-gantt-legend"><span class="slls-rm-gantt-key"><i class="slls-rm-gantt-swatch" style="background:#ffc000"></i>Process</span><span class="slls-rm-gantt-key"><i class="slls-rm-gantt-swatch" style="background:#0070c0"></i>Execute SQL</span><span>Total ${esc(formatMs(span))}</span></div></div><div class="slls-rm-gantt-search"><span>${I.search}</span><input class="slls-rm-input" data-gantt-search value="${esc(s.ganttSearch)}" placeholder="Search tables and partitions..." aria-label="Search refresh timeline by table or partition"></div><div class="slls-rm-gantt-rows">${rows}<div class="slls-rm-empty" data-gantt-empty hidden>No timeline rows match your search.</div></div><div class="slls-rm-gantt-axis"><span>Elapsed</span><div class="slls-rm-gantt-ticks"><span>0ms</span><span>${esc(formatMs(span/2))}</span><span>${esc(formatMs(span))}</span></div></div></div>`;}
     function applyGanttFilter(){const input=root.querySelector("[data-gantt-search]");if(!input)return;s.ganttSearch=input.value;const query=s.ganttSearch.trim().toLowerCase(),rows=[...root.querySelectorAll("[data-gantt-row]")];let visible=0;rows.forEach(row=>{const show=!query||row.dataset.filter.includes(query);row.classList.toggle("filtered",!show);if(show)visible++;});const empty=root.querySelector("[data-gantt-empty]");if(empty)empty.hidden=visible>0;}
-    function history(){const rows=model.get("history")||[],loading=!!model.get("history_loading");return`<div class="slls-rm-panel ${s.history?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="history"><span class="slls-rm-caret">${I.caret}</span>${I.history}<span>Refresh history</span></button>${rows.length?`<span class="slls-rm-badge">${rows.length}</span>`:""}<button class="slls-rm-iconbtn ${loading?"slls-rm-spin":""}" data-reload-history title="Reload refresh history" ${loading?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-panel-body">${rows.length?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Status</th><th>Refresh ID</th></tr></thead><tbody>${rows.map(r=>`<tr data-detail="${esc(r.requestId)}"><td>${esc(r.refreshType)}</td><td>${esc(date(r.startTime))}</td><td>${esc(r.endTime?date(r.endTime):"-")}</td><td>${esc(duration(r.startTime,r.endTime)||"-")}</td><td><span class="slls-rm-badge ${esc(r.status)}">${esc(r.status)}</span></td><td><code>${esc(r.requestId)}</code></td></tr>`).join("")}</tbody></table></div>`:`<div class="slls-rm-empty">${model.get("history_loaded")?"No refresh history for this model yet.":"Open this panel to load refresh history."}</div>`}</div></div>`;}
+    function history(){const rows=model.get("history")||[],loading=!!model.get("history_loading");return`<div class="slls-rm-panel ${s.history?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="history"><span class="slls-rm-caret">${I.caret}</span>${I.history}<span>Refresh history</span></button>${rows.length?`<span class="slls-rm-badge">${rows.length}</span>`:""}<button class="slls-rm-iconbtn ${loading?"slls-rm-spin":""}" data-reload-history title="Reload refresh history" ${loading?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-panel-body">${rows.length?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Status</th><th>Refresh ID</th><th>Actions</th></tr></thead><tbody>${rows.map(r=>`<tr data-detail="${esc(r.requestId)}"><td>${esc(r.refreshType)}</td><td>${esc(date(r.startTime))}</td><td>${esc(r.endTime?date(r.endTime):"-")}</td><td>${esc(duration(r.startTime,r.endTime)||"-")}</td><td><span class="slls-rm-badge ${esc(r.status)}">${esc(r.status)}</span></td><td><code>${esc(r.requestId)}</code></td><td>${r.status==="Unknown"?`<button class="slls-rm-iconbtn slls-rm-history-cancel" data-cancel-history="${esc(r.requestId)}" title="Cancel refresh" aria-label="Cancel refresh">${I.close}</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:`<div class="slls-rm-empty">${model.get("history_loaded")?"No refresh history for this model yet.":"Open this panel to load refresh history."}</div>`}</div></div>`;}
     function schedule(){const current=model.get("schedule")||{},loading=!!model.get("schedule_loading");if(!s.draft&&current.exists)s.draft=JSON.parse(JSON.stringify(current));const d=s.draft||{days:[],times:[],localTimeZoneId:"UTC",notifyOption:"NoNotification",enabled:false},timeRows=(d.times||[]).map((time,index)=>`<div class="slls-rm-time-row"><select class="slls-rm-select" data-time-index="${index}" aria-label="Refresh time ${index+1}">${timeOptions.filter(option=>option===time||!d.times.includes(option)).map(option=>`<option value="${option}" ${option===time?"selected":""}>${option}</option>`).join("")}</select><button class="slls-rm-iconbtn" data-remove-time="${index}" title="Remove time" aria-label="Remove time ${esc(time)}">${I.close}</button></div>`).join("");return`<div class="slls-rm-panel ${s.schedule?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="schedule"><span class="slls-rm-caret">${I.caret}</span>${I.calendar}<span>Refresh schedule</span>${current.exists?`<span class="slls-rm-badge ${current.enabled?"Completed":""}">${current.enabled?"Enabled":"Disabled"}</span>`:""}</button>${s.schedule?`<button class="slls-rm-iconbtn ${loading?"slls-rm-spin":""}" data-reload-schedule title="Reload refresh schedule" aria-label="Reload refresh schedule" ${loading?"disabled":""}>${I.refresh}</button>`:""}</div><div class="slls-rm-panel-body">${loading&&!model.get("schedule_loaded")?`<div class="slls-rm-empty">Loading refresh schedule...</div>`:model.get("schedule_loaded")&&!current.exists?`<div class="slls-rm-empty">${esc(current.message||"This model has no refresh schedule.")}</div>`:`<div class="slls-rm-schedule-state"><div><strong>Scheduled refresh</strong><span>${d.enabled?"Power BI refreshes this model on the schedule below.":"The schedule is saved but turned off."}</span></div><button class="slls-rm-switch" type="button" role="switch" aria-checked="${d.enabled}" aria-label="${d.enabled?"Disable":"Enable"} scheduled refresh" data-toggle-schedule title="${d.enabled?"Disable":"Enable"} scheduled refresh"><span class="slls-rm-switch-knob"></span></button></div><div class="slls-rm-days">${weekdays.map(([v,l])=>`<button class="slls-rm-day ${(d.days||[]).includes(v)?"active":""}" data-day="${v}">${l}</button>`).join("")}</div><div class="slls-rm-schedule-grid"><div class="slls-rm-field"><label>Times</label><div class="slls-rm-times">${timeRows||`<span class="slls-rm-muted">No times set.</span>`}<button class="slls-rm-btn slls-rm-add-time" data-add-time ${d.times.length>=timeOptions.length?"disabled":""}>${I.plus}Add time</button></div></div><div class="slls-rm-field"><label>Time zone</label><input class="slls-rm-input" data-schedule="timezone" value="${esc(d.localTimeZoneId||"UTC")}"></div><div class="slls-rm-field"><label>Notification</label><select class="slls-rm-select" data-schedule="notify"><option value="NoNotification" ${d.notifyOption==="NoNotification"?"selected":""}>No notification</option><option value="MailOnFailure" ${d.notifyOption==="MailOnFailure"?"selected":""}>Mail on failure</option></select></div></div><div class="slls-rm-actions slls-rm-schedule-actions"><button class="slls-rm-btn primary slls-rm-save-schedule" data-save-schedule ${!(d.days||[]).length?"disabled":""}>${I.save}Save schedule</button><span class="slls-rm-schedule-help">Saving also enables the schedule. Times must be on the hour or half hour.</span></div>`}</div></div>`;}
     function detailError(value){if(!value)return"—";try{const parsed=typeof value==="string"?JSON.parse(value):value;return parsed.errorDescription||parsed.errorCode||parsed.message||"—";}catch(_error){return String(value);}}
     function detail(){const d=model.get("detail")||{},attempts=d.refreshAttempts||[],targets=d.objects||[],fields=[["Current type",d.currentRefreshType||d.type||d.refreshType],["Commit mode",d.commitMode],["Initiated by",d.initiatedBy],["Attempts",d.numberOfAttempts??attempts.length],["Start",date(d.startTime)],["End",d.endTime?date(d.endTime):"-"],["Duration",duration(d.startTime,d.endTime)||"-"]];const attemptRows=attempts.map((a,index)=>`<tr><td>${esc(a.attemptId??index+1)}</td><td>${esc(a.type||"-")}</td><td>${esc(date(a.startTime))}</td><td>${esc(a.endTime?date(a.endTime):"-")}</td><td>${esc(duration(a.startTime,a.endTime)||"-")}</td><td class="slls-rm-detail-error" title="${esc(detailError(a.serviceExceptionJson))}">${esc(detailError(a.serviceExceptionJson))}</td></tr>`).join("");const objectRows=targets.map(o=>`<tr><td>${esc(o.table||"-")}</td><td>${esc(o.partition||"-")}</td><td>${esc(o.status||"-")}</td></tr>`).join("");return`<div class="slls-rm-overlay ${s.detail?"show":""}"><div class="slls-rm-modal"><div class="slls-rm-modal-head"><div><h2>Refresh details</h2><code>${esc(d.requestId||"Loading...")}</code></div><button class="slls-rm-iconbtn" data-close-detail title="Close refresh details" aria-label="Close refresh details">${I.close}</button></div><div class="slls-rm-modal-body">${d.requestId?`<div class="slls-rm-summary">${fields.map(([label,value])=>`<div><span>${label}</span><b>${esc(value??"-")}</b></div>`).join("")}</div><section class="slls-rm-detail-section"><div class="slls-rm-detail-title">Attempts</div>${attemptRows?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>#</th><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Error</th></tr></thead><tbody>${attemptRows}</tbody></table></div>`:`<div class="slls-rm-empty">No attempt details are available.</div>`}</section><section class="slls-rm-detail-section"><div class="slls-rm-detail-title">Objects</div>${objectRows?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Table</th><th>Partition</th><th>Status</th></tr></thead><tbody>${objectRows}</tbody></table></div>`:`<div class="slls-rm-empty">No object details are available.</div>`}</section>`:`<div class="slls-rm-empty">Loading refresh details...</div>`}</div></div></div>`;}
@@ -767,20 +770,61 @@ def refresh_manager(
             widget.busy = False
             set_error(str(exc))
 
-    def cancel_refresh() -> None:
-        if not widget.refresh_id:
+    def cancel_refresh(request_id: Optional[str] = None) -> None:
+        from sempy_labs._refresh_semantic_model import cancel_dataset_refresh
+
+        target_request_id = request_id or widget.refresh_id
+        if not target_request_id:
             return
-        _base_api(
-            request=(
-                f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/"
-                f"refreshes/{widget.refresh_id}"
+        try:
+            cancel_dataset_refresh(
+                dataset=dataset_id,
+                request_id=target_request_id,
+                workspace=workspace_id,
+            )
+        except Exception as exc:
+            response = getattr(exc, "response", None)
+            status_code = getattr(response, "status_code", None)
+            error_text = str(exc)
+            cancellation_conflict = (
+                status_code == 409 or "409 Conflict" in error_text
+            ) and "cannot be cancelled" in error_text
+            if not cancellation_conflict:
+                raise
+            widget.refresh_status = {
+                "status": "Completed",
+                "kind": "success",
+                "message": (
+                    "This refresh has already completed and no longer needs "
+                    "to be cancelled."
+                ),
+            }
+            load_history()
+            return
+        load_history()
+        refreshed_request = next(
+            (
+                item
+                for item in widget.history
+                if str(item.get("requestId") or "") == target_request_id
             ),
-            method="delete",
+            {},
         )
-        widget.refresh_status = {
-            "status": "Unknown",
-            "message": "Cancellation requested...",
-        }
+        refreshed_status = str(refreshed_request.get("status") or "Unknown")
+        if refreshed_status == "Completed":
+            widget.refresh_status = {
+                "status": "Completed",
+                "kind": "success",
+                "message": (
+                    "This refresh completed before the cancellation could be "
+                    "applied."
+                ),
+            }
+        else:
+            widget.refresh_status = {
+                "status": refreshed_status,
+                "message": "Cancellation requested...",
+            }
 
     def save_schedule(data: dict[str, Any]) -> None:
         schedule = dict(data.get("schedule") or {})
@@ -862,7 +906,7 @@ def refresh_manager(
             elif action == "start_refresh":
                 start_refresh(data)
             elif action == "cancel_refresh":
-                cancel_refresh()
+                cancel_refresh(str(data.get("request_id") or "") or None)
             elif action == "save_schedule":
                 save_schedule(data)
             elif action == "toggle_schedule":
