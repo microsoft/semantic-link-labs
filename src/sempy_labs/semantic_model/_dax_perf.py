@@ -617,6 +617,71 @@ def _compute_trace_stats(
     return df, total_duration, fe_duration, se_duration, cpu_time
 
 
+def _captured_queries_from_df(df: pd.DataFrame) -> list:
+    """Build one timing record per report-issued ``QueryEnd`` trace event."""
+
+    if df is None or df.empty:
+        return []
+    event_col = _trace_col(df, "Event Class", "EventClass")
+    text_col = _trace_col(df, "Text Data", "TextData")
+    request_col = _trace_col(df, "Request ID", "RequestID")
+    duration_col = _trace_col(df, "Duration")
+    cpu_col = _trace_col(df, "Cpu Time", "CpuTime")
+    subclass_col = _trace_col(df, "Event Subclass", "EventSubclass")
+    if event_col is None or text_col is None:
+        return []
+
+    def _integer(row, column: Optional[str]) -> int:
+        if column is None:
+            return 0
+        try:
+            value = row.get(column, 0)
+            return 0 if pd.isna(value) else int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    def _text(row, column: Optional[str]) -> str:
+        if column is None:
+            return ""
+        value = row.get(column, "")
+        return "" if pd.isna(value) else str(value).strip()
+
+    storage_by_request: dict[str, int] = {}
+    if request_col is not None:
+        storage_events = df[df[event_col] == "VertiPaqSEQueryEnd"]
+        if subclass_col is not None and not storage_events.empty:
+            storage_events = storage_events[
+                ~storage_events[subclass_col]
+                .astype(str)
+                .str.contains("Internal", case=False, na=False)
+            ]
+        for _, row in storage_events.iterrows():
+            request_id = _text(row, request_col)
+            if request_id:
+                storage_by_request[request_id] = storage_by_request.get(
+                    request_id, 0
+                ) + _integer(row, duration_col)
+
+    queries = []
+    for _, row in df[df[event_col] == "QueryEnd"].iterrows():
+        query = _text(row, text_col)
+        if not query or query.startswith("EVALUATE {1}"):
+            continue
+        request_id = _text(row, request_col)
+        total = _integer(row, duration_col)
+        storage = storage_by_request.get(request_id, 0)
+        queries.append(
+            {
+                "dax_query": query,
+                "duration": total,
+                "cpu": _integer(row, cpu_col),
+                "fe_duration": max(total - storage, 0),
+                "se_duration": storage,
+            }
+        )
+    return queries
+
+
 def _run_dax_trace(
     dataset_id: str,
     workspace_id: str,
@@ -1225,6 +1290,32 @@ def _collect_model_metadata(dataset_id: str, workspace_id: str) -> tuple:
             return _build_model_tree(tom), _build_model_roles(tom)
     except Exception:
         return [], []
+
+
+def _list_reports_for_capture(dataset_id: str, workspace_id: str) -> list:
+    """List embeddable reports in ``workspace_id`` bound to ``dataset_id``."""
+
+    from sempy_labs.report._items import list_reports_base
+
+    reports = list_reports_base(workspace=workspace_id)
+    if reports is None or reports.empty:
+        return []
+    matches = reports[
+        (reports["Dataset Id"].astype(str) == str(dataset_id))
+        & (reports["Dataset Workspace Id"].astype(str) == str(workspace_id))
+    ]
+    result = [
+        {
+            "id": str(row["Report Id"]),
+            "name": str(row["Report Name"]),
+            "embed_url": (
+                "" if pd.isna(row["Embed Url"]) else str(row["Embed Url"])
+            ),
+        }
+        for _, row in matches.iterrows()
+    ]
+    result.sort(key=lambda item: item["name"].lower())
+    return result
 
 
 def _collect_model_roles(dataset_id: str, workspace_id: str) -> list:
@@ -1964,6 +2055,13 @@ def _visualize_dax_test(
     gap: 8px;
     margin-bottom: 8px;
 }}
+.dtx .dtx-query-cache-row {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 24px;
+    margin-top: 8px;
+}}
 .dtx .dtx-run-progress {{
     display: none;
     position: relative;
@@ -2328,6 +2426,160 @@ def _visualize_dax_test(
     gap: 10px;
     min-width: 0;
     flex: 0 1 auto;
+}}
+.dtx .dtx-report-capture {{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}}
+.dtx .dtx-report-label {{
+    color: var(--ui-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-select {{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: 176px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}}
+.dtx .dtx-report-select:hover:not(:disabled) {{ border-color: var(--ui-text-tertiary); }}
+.dtx .dtx-report-select-icon {{
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-report-select-text {{
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-select-chevron {{
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    color: var(--ui-text-secondary);
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-report-select[aria-expanded="true"] .dtx-report-select-chevron {{ transform: rotate(180deg); }}
+.dtx .dtx-report-select:disabled,
+.dtx .dtx-report-capture-btn:disabled {{ opacity: 0.45; cursor: default; }}
+.dtx .dtx-report-menu {{
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 66px;
+    width: 220px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-md);
+}}
+.dtx .dtx-report-clear {{
+    width: 100%;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-accent);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}}
+.dtx .dtx-report-clear:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-report-option {{
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}}
+.dtx .dtx-report-option:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-report-check {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 6px;
+    color: transparent;
+}}
+.dtx .dtx-report-check.dtx-checked {{
+    border-color: var(--ui-accent);
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-report-check svg {{ width: 13px; height: 13px; }}
+.dtx .dtx-report-option-text {{
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-capture-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    cursor: pointer;
+}}
+.dtx .dtx-report-capture-btn:hover:not(:disabled) {{ background: var(--ui-accent-hover); }}
+.dtx .dtx-report-capture-btn svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-report-progress {{
+    max-width: 260px;
+    overflow: hidden;
+    color: var(--ui-text-secondary);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-host {{
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
 }}
 .dtx .dtx-imp-label {{
     font-size: 12px;
@@ -3099,7 +3351,6 @@ def _visualize_dax_test(
     padding: 6px 4px;
     user-select: none;
 }}
-.dtx .dtx-perf {{ padding: 8px 6px 14px; }}
 .dtx .dtx-perf-summary {{
     border: 1px solid var(--ui-border, rgba(127,127,127,0.25));
     border-radius: 10px;
@@ -3111,12 +3362,9 @@ def _visualize_dax_test(
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    align-items: center;
+    overflow: hidden;
 }}
 .dtx .dtx-perf-chip {{
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
     font-size: 11.5px;
     padding: 3px 8px;
     border-radius: 999px;
@@ -3172,7 +3420,6 @@ def _visualize_dax_test(
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
 }}
 .dtx .dtx-perf-sev {{
     font-size: 10px;
@@ -3197,7 +3444,7 @@ def _visualize_dax_test(
 .dtx .dtx-perf-msg {{
     margin-top: 6px;
     font-size: 12.5px;
-    color: var(--ui-text-secondary);
+    background: var(--ui-bg);
     line-height: 1.45;
 }}
 .dtx .dtx-perf-rec {{
@@ -4049,6 +4296,10 @@ def _visualize_dax_test(
         "`", "\\`"
     )
     trash_icon = _UI_ICONS["trash"].replace("`", "\\`")
+    camera_icon = _UI_ICONS["camera"].replace("`", "\\`")
+    report_file_icon = _UI_ICONS["report_file"].replace("`", "\\`")
+    chevron_down_icon = _UI_ICONS["chevron_down"].replace("`", "\\`")
+    check_icon = _UI_ICONS["check"].replace("`", "\\`")
     refresh_icon = _UI_ICONS["refresh"].replace("`", "\\`")
     swap_icon = _UI_ICONS["swap"].replace("`", "\\`")
     sort_asc_icon = _UI_ICONS["sort_asc"].replace("`", "\\`")
@@ -4303,6 +4554,10 @@ function render({ model, el }) {
     const REDO_SVG = `__DTX_REDO__`;
     const DOWNLOAD_SVG = `__DTX_DOWNLOAD__`;
     const TRASH_SVG = `__DTX_TRASH__`;
+    const CAMERA_SVG = `__DTX_CAMERA__`;
+    const REPORT_FILE_SVG = `__DTX_REPORT_FILE__`;
+    const CHEVRON_DOWN_SVG = `__DTX_CHEVRON_DOWN__`;
+    const CHECK_SVG = `__DTX_CHECK__`;
     const CUT_SVG = `__DTX_CUT__`;
     const COPY_SVG = `__DTX_COPY__`;
     const PASTE_SVG = `__DTX_PASTE__`;
@@ -6125,7 +6380,6 @@ function render({ model, el }) {
     function renderCacheBtn() {
         cacheCb.checked = model.get("clear_cache") === true;
     }
-    queryOptions.appendChild(cacheLabel);
 
     // Impersonation: none / user (effective_user_name) / role (role).
     const impWrap = document.createElement("div");
@@ -6163,7 +6417,7 @@ function render({ model, el }) {
     impWrap.appendChild(impSegment);
     impWrap.appendChild(impInput);
     impWrap.appendChild(impRoleSel);
-    queryOptions.insertBefore(impWrap, cacheLabel);
+    queryOptions.appendChild(impWrap);
 
     function hasRoles() {
         const roles = model.get("model_roles") || [];
@@ -6253,13 +6507,132 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    const reportCapture = document.createElement("div");
+    reportCapture.className = "dtx-report-capture";
+    const reportLabel = document.createElement("span");
+    reportLabel.className = "dtx-report-label";
+    reportLabel.textContent = "Reports";
+    const reportSelectBtn = document.createElement("button");
+    reportSelectBtn.type = "button";
+    reportSelectBtn.className = "dtx-report-select";
+    reportSelectBtn.setAttribute("aria-haspopup", "menu");
+    reportSelectBtn.setAttribute("aria-expanded", "false");
+    const reportSelectIcon = document.createElement("span");
+    reportSelectIcon.className = "dtx-report-select-icon";
+    reportSelectIcon.innerHTML = REPORT_FILE_SVG;
+    const reportSelectText = document.createElement("span");
+    reportSelectText.className = "dtx-report-select-text";
+    const reportSelectChevron = document.createElement("span");
+    reportSelectChevron.className = "dtx-report-select-chevron";
+    reportSelectChevron.innerHTML = CHEVRON_DOWN_SVG;
+    reportSelectBtn.appendChild(reportSelectIcon);
+    reportSelectBtn.appendChild(reportSelectText);
+    reportSelectBtn.appendChild(reportSelectChevron);
+    const reportMenu = document.createElement("div");
+    reportMenu.className = "dtx-report-menu";
+    reportMenu.style.display = "none";
+    const reportCaptureBtn = document.createElement("button");
+    reportCaptureBtn.type = "button";
+    reportCaptureBtn.className = "dtx-report-capture-btn";
+    reportCaptureBtn.innerHTML = CAMERA_SVG;
+    reportCaptureBtn.setAttribute("aria-label", "Capture report queries");
+    reportCaptureBtn.title = "Embed the selected report(s), cycle their pages and capture their DAX queries into Trace history";
+    const reportProgress = document.createElement("span");
+    reportProgress.className = "dtx-report-progress";
+    let selectedReportIds = new Set();
+    let reportMenuOpen = false;
+
+    function renderReportCapture() {
+        const reports = model.get("available_reports") || [];
+        const capturing = model.get("report_capture_loading") === true;
+        selectedReportIds = new Set(
+            [...selectedReportIds].filter(id => reports.some(report => report.id === id))
+        );
+        const count = selectedReportIds.size;
+        reportSelectText.textContent = count === 0
+            ? "Select report(s)…"
+            : count === 1 ? "1 report" : `${count} reports`;
+        reportSelectBtn.setAttribute("aria-expanded", reportMenuOpen ? "true" : "false");
+        reportSelectBtn.disabled = reports.length === 0 || capturing;
+        reportSelectBtn.title = reports.length
+            ? "Choose reports that use this semantic model"
+            : "No reports use this semantic model";
+        reportCaptureBtn.disabled = count === 0 || capturing;
+        reportProgress.textContent = model.get("report_capture_progress") || "";
+        reportMenu.innerHTML = "";
+        if (count > 0) {
+            const clearSelection = document.createElement("button");
+            clearSelection.type = "button";
+            clearSelection.className = "dtx-report-clear";
+            clearSelection.textContent = "Clear selection";
+            clearSelection.addEventListener("click", () => {
+                selectedReportIds.clear();
+                renderReportCapture();
+            });
+            reportMenu.appendChild(clearSelection);
+        }
+        reports.forEach(report => {
+            const option = document.createElement("label");
+            option.className = "dtx-report-option";
+            option.setAttribute("role", "menuitemcheckbox");
+            option.setAttribute("aria-checked", selectedReportIds.has(report.id) ? "true" : "false");
+            const checkbox = document.createElement("span");
+            checkbox.className = "dtx-report-check"
+                + (selectedReportIds.has(report.id) ? " dtx-checked" : "");
+            checkbox.innerHTML = CHECK_SVG;
+            const label = document.createElement("span");
+            label.className = "dtx-report-option-text";
+            label.textContent = report.name;
+            label.title = report.name;
+            option.appendChild(checkbox);
+            option.appendChild(label);
+            option.addEventListener("click", event => {
+                event.preventDefault();
+                if (selectedReportIds.has(report.id)) selectedReportIds.delete(report.id);
+                else selectedReportIds.add(report.id);
+                renderReportCapture();
+            });
+            reportMenu.appendChild(option);
+        });
+        reportMenu.style.display = reportMenuOpen && reports.length ? "" : "none";
+        renderRunBtn();
+    }
+    reportSelectBtn.addEventListener("click", () => {
+        reportMenuOpen = !reportMenuOpen;
+        renderReportCapture();
+    });
+    function hideReportMenuOnOutsidePointer(event) {
+        if (!reportMenuOpen || reportCapture.contains(event.target)) return;
+        reportMenuOpen = false;
+        renderReportCapture();
+    }
+    document.addEventListener("pointerdown", hideReportMenuOnOutsidePointer);
+    reportCaptureBtn.addEventListener("click", () => {
+        if (!selectedReportIds.size || model.get("report_capture_loading") === true) return;
+        reportMenuOpen = false;
+        model.set("capture_report_ids", [...selectedReportIds]);
+        model.set("report_capture_loading", true);
+        model.set("report_capture_progress", "Starting trace…");
+        model.set("report_capture_start_trigger",
+            (model.get("report_capture_start_trigger") || 0) + 1);
+        model.save_changes();
+        renderReportCapture();
+    });
+    reportCapture.appendChild(reportLabel);
+    reportCapture.appendChild(reportSelectBtn);
+    reportCapture.appendChild(reportMenu);
+    reportCapture.appendChild(reportCaptureBtn);
+    reportCapture.appendChild(reportProgress);
+    queryOptions.appendChild(reportCapture);
+
     const runBtn = document.createElement("button");
     runBtn.type = "button";
     runBtn.className = "dtx-btn";
     function renderRunBtn() {
         const running = model.get("is_running") === true;
+        const capturing = model.get("report_capture_loading") === true;
         const chosen = model.get("dataset_chosen") === true;
-        runBtn.disabled = !running && !chosen;
+        runBtn.disabled = capturing || (!running && !chosen);
         if (running) {
             runBtn.classList.add("dtx-btn-stop");
             runBtn.innerHTML = STOP_SVG;
@@ -6298,7 +6671,8 @@ function render({ model, el }) {
     function renderClearModelCacheBtn() {
         const chosen = model.get("dataset_chosen") === true;
         const loading = model.get("cache_clear_loading") === true;
-        clearModelCacheBtn.disabled = !chosen || loading;
+        const capturing = model.get("report_capture_loading") === true;
+        clearModelCacheBtn.disabled = !chosen || loading || capturing;
         clearModelCacheBtn.title = loading
             ? "Clearing model cache…"
             : "Clear model cache";
@@ -6313,6 +6687,100 @@ function render({ model, el }) {
         model.save_changes();
     });
     toolbar.appendChild(clearModelCacheBtn);
+
+    const reportCaptureHost = document.createElement("div");
+    reportCaptureHost.className = "dtx-report-host";
+    reportCaptureHost.setAttribute("aria-hidden", "true");
+    root.appendChild(reportCaptureHost);
+
+    let powerBiClientPromise = null;
+    function ensurePowerBiClient() {
+        if (window.powerbi && window["powerbi-client"]) return Promise.resolve();
+        if (powerBiClientPromise) return powerBiClientPromise;
+        powerBiClientPromise = new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/powerbi-client@2.23.1/dist/powerbi.min.js";
+            script.onload = resolve;
+            script.onerror = () => reject(new Error("Failed to load the Power BI client"));
+            document.head.appendChild(script);
+        });
+        return powerBiClientPromise;
+    }
+
+    async function cycleReportPages(embedUrl, accessToken) {
+        await ensurePowerBiClient();
+        const models = window["powerbi-client"].models;
+        window.powerbi.reset(reportCaptureHost);
+        const report = window.powerbi.embed(reportCaptureHost, {
+            type: "report",
+            tokenType: models.TokenType.Embed,
+            accessToken,
+            embedUrl,
+            permissions: models.Permissions.Read,
+            viewMode: models.ViewMode.View,
+            settings: { panes: { filters: { visible: false }, pageNavigation: { visible: false } } },
+        });
+        await new Promise(resolve => {
+            let pages = [];
+            let index = 0;
+            let started = false;
+            let done = false;
+            let pageTimer = 0;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                window.clearTimeout(pageTimer);
+                window.clearTimeout(overallTimer);
+                resolve();
+            };
+            const overallTimer = window.setTimeout(finish, 120000);
+            const activateNext = () => {
+                if (done) return;
+                if (index >= pages.length) { finish(); return; }
+                const page = pages[index++];
+                window.clearTimeout(pageTimer);
+                pageTimer = window.setTimeout(activateNext, 30000);
+                Promise.resolve(page.setActive()).catch(activateNext);
+            };
+            report.on("loaded", () => {
+                report.getPages().then(value => {
+                    pages = value;
+                    started = true;
+                    activateNext();
+                }).catch(finish);
+            });
+            report.on("rendered", () => {
+                if (!started || done) return;
+                window.clearTimeout(pageTimer);
+                pageTimer = window.setTimeout(activateNext, 1800);
+            });
+            report.on("error", finish);
+        });
+        window.powerbi.reset(reportCaptureHost);
+    }
+
+    async function runReportCapture(payload) {
+        if (!payload || !payload.nonce || !payload.token) return;
+        let clientError = "";
+        try {
+            const reports = payload.reports || [];
+            for (let index = 0; index < reports.length; index++) {
+                const report = reports[index];
+                model.set("report_capture_progress",
+                    `Cycling pages — ${report.name} (${index + 1}/${reports.length})`);
+                model.save_changes();
+                await cycleReportPages(report.embed_url, payload.token);
+            }
+        } catch (error) {
+            clientError = error && error.message ? error.message : String(error);
+        } finally {
+            model.set("report_capture_client_error", clientError);
+            model.set("report_capture_progress", "Collecting captured queries…");
+            model.set("report_capture_finish_trigger",
+                (model.get("report_capture_finish_trigger") || 0) + 1);
+            model.save_changes();
+        }
+    }
 
     // ---------- Analyze (DAX performance analysis) ----------
     const analyzeBtn = document.createElement("button");
@@ -6421,6 +6889,10 @@ function render({ model, el }) {
     queryWrap.appendChild(hl);
     queryWrap.appendChild(textarea);
     queryBlock.appendChild(queryWrap);
+    const queryCacheRow = document.createElement("div");
+    queryCacheRow.className = "dtx-query-cache-row";
+    queryCacheRow.appendChild(cacheLabel);
+    queryBlock.appendChild(queryCacheRow);
 
     // ---------- Auto-grow ----------
     // Grow the editor vertically to fit its content, up to EDITOR_MAX_ROWS
@@ -7847,6 +8319,13 @@ function render({ model, el }) {
     model.on("change:impersonation_mode", renderImpersonation);
     model.on("change:impersonation_value", renderImpersonation);
     model.on("change:model_roles", renderImpersonation);
+    model.on("change:available_reports", renderReportCapture);
+    model.on("change:report_capture_loading", renderReportCapture);
+    model.on("change:report_capture_loading", renderClearModelCacheBtn);
+    model.on("change:report_capture_progress", renderReportCapture);
+    model.on("change:report_capture_payload", () => {
+        void runReportCapture(model.get("report_capture_payload") || {});
+    });
     model.on("change:sidebar_collapsed", renderSidebarChrome);
     model.on("change:metadata_loading", () => { renderSidebarChrome(); renderTree(); });
     model.on("change:model_tree", renderTree);
@@ -7867,7 +8346,10 @@ function render({ model, el }) {
         // A new model finished activating — close the picker. This covers
         // switching between two already-chosen models, where dataset_chosen
         // does not change and so would not otherwise close the picker.
-        connectingToModel = false;
+        // During the first connection active_dataset_id arrives before
+        // dataset_chosen. Keep the connecting guard set until dataset_chosen
+        // changes so renderPicker cannot briefly reopen the picker.
+        if (model.get("dataset_chosen") === true) connectingToModel = false;
         pickerOpen = false;
         resetBuilderForModelChange();
         // Force a fresh dependency computation for the newly activated model.
@@ -7878,7 +8360,8 @@ function render({ model, el }) {
         const loading = model.get("picker_loading") === true;
         const selected = String(model.get("selected_dataset_id") || "");
         const active = String(model.get("active_dataset_id") || "");
-        if (connectingToModel && !loading && selected !== active) {
+        const activationError = String(model.get("error_message") || "").trim();
+        if (connectingToModel && !loading && selected !== active && activationError) {
             connectingToModel = false;
             pickerOpen = true;
         }
@@ -7893,6 +8376,7 @@ function render({ model, el }) {
     renderClearModelCacheBtn();
     renderCacheBtn();
     renderImpersonation();
+    renderReportCapture();
     renderError();
     renderTable();
     renderAnalyzeBtn();
@@ -7924,6 +8408,8 @@ function render({ model, el }) {
     // disposed (cell re-run, widget removed, notebook closed).
     return () => {
         try {
+            document.removeEventListener("pointerdown", hideReportMenuOnOutsidePointer);
+            if (window.powerbi) window.powerbi.reset(reportCaptureHost);
             model.set("close_trigger", (model.get("close_trigger") || 0) + 1);
             model.save_changes();
         } catch (e) {}
@@ -7963,6 +8449,10 @@ export default { render };
         .replace("__DTX_REDO__", redo_icon)
         .replace("__DTX_DOWNLOAD__", download_icon)
         .replace("__DTX_TRASH__", trash_icon)
+        .replace("__DTX_CAMERA__", camera_icon)
+        .replace("__DTX_REPORT_FILE__", report_file_icon)
+        .replace("__DTX_CHEVRON_DOWN__", chevron_down_icon)
+        .replace("__DTX_CHECK__", check_icon)
         .replace("__DTX_CUT__", cut_icon)
         .replace("__DTX_COPY__", copy_icon)
         .replace("__DTX_PASTE__", paste_icon)
@@ -8034,6 +8524,14 @@ export default { render };
         impersonation_mode = traitlets.Unicode("none").tag(sync=True)
         impersonation_value = traitlets.Unicode("").tag(sync=True)
         model_roles = traitlets.List([]).tag(sync=True)
+        available_reports = traitlets.List([]).tag(sync=True)
+        capture_report_ids = traitlets.List([]).tag(sync=True)
+        report_capture_start_trigger = traitlets.Int(0).tag(sync=True)
+        report_capture_finish_trigger = traitlets.Int(0).tag(sync=True)
+        report_capture_loading = traitlets.Bool(False).tag(sync=True)
+        report_capture_progress = traitlets.Unicode("").tag(sync=True)
+        report_capture_payload = traitlets.Dict({}).tag(sync=True)
+        report_capture_client_error = traitlets.Unicode("").tag(sync=True)
         dataset_chosen = traitlets.Bool(False).tag(sync=True)
         available_workspaces = traitlets.List([]).tag(sync=True)
         available_datasets = traitlets.List([]).tag(sync=True)
@@ -8078,9 +8576,14 @@ export default { render };
         except Exception:
             initial_tree = []
             initial_roles = []
+        try:
+            initial_reports = _list_reports_for_capture(dataset_id, workspace_id)
+        except Exception:
+            initial_reports = []
     else:
         initial_tree = []
         initial_roles = []
+        initial_reports = []
 
     # Avoid blocking the initial picker screen on workspace enumeration. For a
     # supplied dataset, retain the existing eager picker data so Change Model
@@ -8164,6 +8667,14 @@ export default { render };
         ),
         impersonation_value=(effective_user_name or role or ""),
         model_roles=initial_roles,
+        available_reports=initial_reports,
+        capture_report_ids=[],
+        report_capture_start_trigger=0,
+        report_capture_finish_trigger=0,
+        report_capture_loading=False,
+        report_capture_progress="",
+        report_capture_payload={},
+        report_capture_client_error="",
     )
 
     # Expose the most recent dataframes for programmatic access.
@@ -8205,6 +8716,7 @@ export default { render };
         "started": False,
         "warmed_up": False,
     }
+    report_capture_state = {"active": False, "baseline": 0, "nonce": ""}
     trace_lock = threading.Lock()
 
     def _teardown_trace_locked() -> None:
@@ -8323,6 +8835,150 @@ export default { render };
         """Tear down the long-running trace (called when the UI is closed)."""
         with trace_lock:
             _teardown_trace_locked()
+
+    def _start_report_capture() -> None:
+        try:
+            if widget.is_running:
+                raise RuntimeError("Wait for the current DAX query to finish first.")
+            report_ids = [str(value) for value in (widget.capture_report_ids or [])]
+            available = {
+                str(report.get("id")): report
+                for report in (widget.available_reports or [])
+            }
+            reports = [available[value] for value in report_ids if value in available]
+            reports = [report for report in reports if report.get("embed_url")]
+            if not reports:
+                raise ValueError("Select at least one embeddable report.")
+
+            ds_id = model_ctx["dataset_id"]
+            ws_id = model_ctx["workspace_id"]
+            _ensure_trace(ds_id, ws_id)
+            with trace_lock:
+                trace = trace_ctx["trace"] if trace_ctx["started"] else None
+                if trace is None:
+                    raise RuntimeError("Unable to start the semantic model trace.")
+                logs = _get_trace_logs(trace)
+                baseline = 0 if logs is None else len(logs)
+                trace_ctx["baseline"] = baseline
+
+            if widget.clear_cache:
+                from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+                _clear_cache_fn(dataset=ds_id, workspace=ws_id)
+
+            from sempy_labs.report._generate_embed_token import generate_embed_token
+
+            token = generate_embed_token(
+                dataset_ids=[ds_id],
+                report_ids=[report["id"] for report in reports],
+            )
+            if not token:
+                raise RuntimeError("Power BI did not return an embed token.")
+
+            nonce = str(time.time_ns())
+            report_capture_state.update(
+                {"active": True, "baseline": baseline, "nonce": nonce}
+            )
+            with state_lock:
+                run_state["current_run_id"] += 1
+            widget.report_capture_client_error = ""
+            widget.report_capture_payload = {
+                "nonce": nonce,
+                "token": token,
+                "reports": reports,
+            }
+        except Exception as exc:  # noqa: BLE001
+            report_capture_state.update({"active": False, "baseline": 0, "nonce": ""})
+            widget.report_capture_payload = {}
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+            widget.error_message = f"Failed to start report query capture: {exc}"
+
+    def _finish_report_capture() -> None:
+        if not report_capture_state["active"]:
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+            return
+        try:
+            time.sleep(0.8)
+            baseline = int(report_capture_state["baseline"])
+            with trace_lock:
+                trace = trace_ctx["trace"] if trace_ctx["started"] else None
+                logs = _get_trace_logs(trace) if trace is not None else None
+                total_count = 0 if logs is None else len(logs)
+                if trace_ctx["trace"] is trace:
+                    trace_ctx["baseline"] = total_count
+            if logs is None or total_count <= baseline:
+                new_logs = pd.DataFrame()
+            else:
+                new_logs = logs.iloc[baseline:].reset_index(drop=True)
+
+            captured = _captured_queries_from_df(new_logs)
+            widget.last_df = new_logs  # type: ignore[attr-defined]
+            widget.trace_rows = _trace_rows_from_df(new_logs)
+            widget.query_plan_rows = []
+            widget.execution_metrics = []
+            widget.total_duration = sum(item["duration"] for item in captured)
+            widget.fe_duration = sum(item["fe_duration"] for item in captured)
+            widget.se_duration = sum(item["se_duration"] for item in captured)
+            widget.cpu_time = sum(item["cpu"] for item in captured)
+            widget.query_executed = bool(captured)
+            widget.view_mode = "trace"
+
+            stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            entries = []
+            for index, item in enumerate(captured):
+                entries.append(
+                    {
+                        "run_id": f"report-{report_capture_state['nonce']}-{index}",
+                        "dax_query": item["dax_query"],
+                        "start_time": stamp,
+                        "end_time": stamp,
+                        "rows": 0,
+                        "duration": item["duration"],
+                        "cpu": item["cpu"],
+                        "fe_duration": item["fe_duration"],
+                        "se_duration": item["se_duration"],
+                        "cache": "Cold" if widget.clear_cache else "Warm",
+                        "execution_metrics": {},
+                        "dataset_name": str(widget.dataset_name or ""),
+                        "workspace_name": str(widget.workspace_name or ""),
+                        "impersonation_type": "None",
+                        "impersonation": "None",
+                    }
+                )
+            if entries:
+                widget.trace_history = list(reversed(entries)) + list(
+                    widget.trace_history
+                )
+
+            client_error = (widget.report_capture_client_error or "").strip()
+            if client_error:
+                widget.error_message = f"Report capture ended early: {client_error}"
+            elif not captured:
+                widget.error_message = (
+                    "No DAX queries were captured. The selected reports may have "
+                    "no visible data visuals or may have returned cached results."
+                )
+            else:
+                widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to collect report queries: {exc}"
+        finally:
+            report_capture_state.update({"active": False, "baseline": 0, "nonce": ""})
+            widget.report_capture_payload = {}
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+
+    def _on_report_capture_start(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_start_report_capture, daemon=True).start()
+
+    def _on_report_capture_finish(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_finish_report_capture, daemon=True).start()
 
     def _update_history_execution_metrics(history_id, metric_rows: list) -> None:
         metrics = _execution_metrics_dict(metric_rows)
@@ -8568,6 +9224,10 @@ export default { render };
     def _on_run(change):
         if change["new"] == change["old"]:
             return
+        if widget.report_capture_loading:
+            widget.error_message = "Wait for report query capture to finish first."
+            widget.is_running = False
+            return
         if model_ctx["dataset_id"] is None:
             widget.error_message = (
                 "No semantic model selected. Choose a workspace and a "
@@ -8635,6 +9295,10 @@ export default { render };
 
     def _on_clear_model_cache(change):
         if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.cache_clear_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
             return
         threading.Thread(target=_clear_model_cache, daemon=True).start()
 
@@ -8730,6 +9394,10 @@ export default { render };
     def _on_dependencies(change):
         if change["new"] == change["old"]:
             return
+        if widget.report_capture_loading:
+            widget.dependencies_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
         if widget.dependencies_loading:
             return
         widget.dependencies_loading = True
@@ -8782,6 +9450,10 @@ export default { render };
 
     def _on_vertipaq(change):
         if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.vertipaq_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
             return
         if widget.vertipaq_loading:
             return
@@ -9011,6 +9683,10 @@ export default { render };
     def _on_performance(change):
         if change["new"] == change["old"]:
             return
+        if widget.report_capture_loading:
+            widget.performance_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
         threading.Thread(target=_compute_performance, daemon=True).start()
 
     widget.observe(_on_run, names="run_trigger")
@@ -9019,6 +9695,8 @@ export default { render };
     widget.observe(_on_dependencies, names="dependencies_trigger")
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
     widget.observe(_on_performance, names="performance_trigger")
+    widget.observe(_on_report_capture_start, names="report_capture_start_trigger")
+    widget.observe(_on_report_capture_finish, names="report_capture_finish_trigger")
 
     def _build_history_excel() -> None:
         import base64
@@ -9148,6 +9826,12 @@ export default { render };
             return
         widget.model_tree = tree
         widget.model_roles = roles
+        try:
+            widget.available_reports = _list_reports_for_capture(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+        except Exception:
+            widget.available_reports = []
         widget.metadata_loading = False
         # Start (or keep) the long-running trace for this model now that its
         # metadata has loaded.
@@ -9192,6 +9876,11 @@ export default { render };
     widget.observe(_on_select_workspace, names="select_workspace_trigger")
 
     def _activate_selected_dataset() -> None:
+        if widget.report_capture_loading:
+            widget.metadata_loading = False
+            widget.picker_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
         ws_id = (widget.selected_workspace_id or "").strip()
         ds_id = (widget.selected_dataset_id or "").strip()
         if not ws_id or not ds_id:
@@ -9211,9 +9900,9 @@ export default { render };
             model_ctx["dataset_id"] = ds_id_resolved
             tree, roles = _collect_model_metadata(ds_id_resolved, ws_id_resolved)
         except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to load semantic model: {exc}"
             widget.metadata_loading = False
             widget.picker_loading = False
-            widget.error_message = f"Failed to load semantic model: {exc}"
             return
         widget.dataset_name = str(ds_name) if ds_name else str(ds_id)
         widget.workspace_name = str(ws_name) if ws_name else ""
@@ -9221,6 +9910,12 @@ export default { render };
         widget.active_dataset_id = str(ds_id_resolved)
         widget.model_tree = tree
         widget.model_roles = roles
+        try:
+            widget.available_reports = _list_reports_for_capture(
+                ds_id_resolved, ws_id_resolved
+            )
+        except Exception:
+            widget.available_reports = []
         widget.metadata_loading = False
         # Clear Vertipaq Analyzer results from any previously selected model so
         # stale stats aren't shown; they are recomputed on the next tab open.

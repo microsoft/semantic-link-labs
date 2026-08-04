@@ -198,6 +198,30 @@ ICONS: dict[str, str] = {
         '<path d="M19 6l-1 14H6L5 6"/>'
         '<path d="M10 11v5M14 11v5"/></svg>'
     ),
+    "camera": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3z"/>'
+        '<circle cx="12" cy="13" r="3"/></svg>'
+    ),
+    "report_file": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+        '<path d="M14 2v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg>'
+    ),
+    "chevron_down": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'
+    ),
+    "check": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
+    ),
     "refresh": (
         '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
         'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '

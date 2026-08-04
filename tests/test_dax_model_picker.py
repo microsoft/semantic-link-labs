@@ -70,12 +70,42 @@ def test_connect_is_the_explicit_model_activation_action():
     assert 'model.set("metadata_loading", true);' in picker_source
 
 
+def test_connect_does_not_reopen_picker_for_transient_active_model_state():
+    source = _source()
+    active_listener_start = source.index('model.on("change:active_dataset_id"')
+    listener_start = source.index('model.on("change:picker_loading"')
+    active_listener = source[active_listener_start:listener_start]
+    listener_end = source.index("    applyTheme();", listener_start)
+    listener = source[listener_start:listener_end]
+    activation_start = source.index("def _activate_selected_dataset()")
+    activation_end = source.index("def _on_select_dataset", activation_start)
+    activation = source[activation_start:activation_end]
+
+    assert 'const activationError = String(model.get("error_message") || "").trim();' in listener
+    assert "selected !== active && activationError" in listener
+    assert 'if (model.get("dataset_chosen") === true) connectingToModel = false;' in active_listener
+    error_assignment = activation.index(
+        'widget.error_message = f"Failed to load semantic model: {exc}"'
+    )
+    loading_finished = activation.index("widget.picker_loading = False", error_assignment)
+    assert error_assignment < loading_finished
+    assert activation.index("widget.active_dataset_id =") < activation.index(
+        "widget.dataset_chosen = True"
+    )
+
+
 def test_model_metadata_loads_before_main_screen_is_enabled():
     source = _source()
+    collector_start = source.index("def _collect_model_metadata")
+    collector_end = source.index("def _list_reports_for_capture", collector_start)
+    collector_source = source[collector_start:collector_end]
     activation_start = source.index("def _activate_selected_dataset()")
     activation_end = source.index("def _on_select_dataset", activation_start)
     activation_source = source[activation_start:activation_end]
 
+    assert "with connect_semantic_model(" in collector_source
+    assert "return _build_model_tree(tom), _build_model_roles(tom)" in collector_source
+    assert collector_source.count("return [], []") == 2
     assert activation_source.index("_collect_model_metadata(") < activation_source.index(
         "widget.dataset_chosen = True"
     )
@@ -185,6 +215,102 @@ def test_model_view_uses_power_bi_typography_and_table_counts():
     assert 'countParts.join(" · ")' in tree_render
 
 
+def test_report_query_capture_lists_related_reports_and_uses_camera_action():
+    source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert '"camera": (' in ui_source
+    assert "def _list_reports_for_capture(" in source
+    assert '(reports["Dataset Id"].astype(str) == str(dataset_id))' in source
+    assert '(reports["Dataset Workspace Id"].astype(str) == str(workspace_id))' in source
+    assert 'available_reports = traitlets.List([]).tag(sync=True)' in source
+    assert 'reportCaptureBtn.innerHTML = CAMERA_SVG' in source
+    assert 'reportCaptureBtn.setAttribute("aria-label", "Capture report queries")' in source
+    assert 'let selectedReportIds = new Set();' in source
+    assert 'model.set("capture_report_ids", [...selectedReportIds]);' in source
+    assert "initial_reports = _list_reports_for_capture(dataset_id, workspace_id)" in source
+
+
+def test_report_selector_closes_when_canvas_is_clicked():
+    source = _source()
+    report_ui_start = source.index('const reportCapture = document.createElement("div")')
+    report_ui_end = source.index("const runBtn = document.createElement", report_ui_start)
+    report_ui = source[report_ui_start:report_ui_end]
+
+    assert "function hideReportMenuOnOutsidePointer(event)" in report_ui
+    assert "reportCapture.contains(event.target)" in report_ui
+    assert "reportMenuOpen = false;" in report_ui
+    assert 'document.addEventListener("pointerdown", hideReportMenuOnOutsidePointer)' in source
+    assert 'document.removeEventListener("pointerdown", hideReportMenuOnOutsidePointer)' in source
+
+
+def test_report_selector_uses_structured_compact_controls():
+    source = _source()
+    report_label_start = source.index(".dtx .dtx-report-label {{")
+    report_label_end = source.index("}}", report_label_start)
+    report_label_css = source[report_label_start:report_label_end]
+
+    assert 'reportLabel.textContent = "Reports";' in source
+    assert "color: var(--ui-text-secondary);" in report_label_css
+    assert 'reportSelectIcon.innerHTML = REPORT_FILE_SVG;' in source
+    assert 'reportSelectChevron.innerHTML = CHEVRON_DOWN_SVG;' in source
+    assert "reportSelectText.textContent = count === 0" in source
+    assert 'clearSelection.textContent = "Clear selection";' in source
+    assert "selectedReportIds.clear();" in source
+    assert 'checkbox.className = "dtx-report-check"' in source
+    assert 'checkbox.innerHTML = CHECK_SVG;' in source
+    assert ".dtx .dtx-report-select-icon {{" in source
+    assert ".dtx .dtx-report-select-chevron {{" in source
+    assert ".dtx .dtx-report-check.dtx-checked {{" in source
+    assert "    width: 34px;\n    height: 34px;" in source
+
+
+def test_report_query_capture_cycles_pages_and_signals_completion():
+    source = _source()
+    capture_js = source[
+        source.index("function ensurePowerBiClient") : source.index(
+            "// ---------- Analyze", source.index("function ensurePowerBiClient")
+        )
+    ]
+
+    assert "powerbi-client@2.23.1" in capture_js
+    assert 'report.on("loaded"' in capture_js
+    assert "report.getPages()" in capture_js
+    assert "Promise.resolve(page.setActive())" in capture_js
+    assert 'report.on("rendered"' in capture_js
+    assert "window.setTimeout(activateNext, 1800)" in capture_js
+    assert "window.setTimeout(activateNext, 30000)" in capture_js
+    assert "window.setTimeout(finish, 120000)" in capture_js
+    assert 'model.set("report_capture_finish_trigger"' in capture_js
+    assert 'model.on("change:report_capture_payload"' in source
+
+
+def test_report_query_capture_correlates_trace_rows_and_appends_history():
+    source = _source()
+    normalizer = source[
+        source.index("def _captured_queries_from_df") : source.index(
+            "def _run_dax_trace", source.index("def _captured_queries_from_df")
+        )
+    ]
+    finish_worker = source[
+        source.index("def _finish_report_capture") : source.index(
+            "def _on_report_capture_start", source.index("def _finish_report_capture")
+        )
+    ]
+
+    assert '"VertiPaqSEQueryEnd"' in normalizer
+    assert 'str.contains("Internal", case=False, na=False)' in normalizer
+    assert "storage_by_request.get(request_id, 0)" in normalizer
+    assert 'df[df[event_col] == "QueryEnd"]' in normalizer
+    assert "captured = _captured_queries_from_df(new_logs)" in finish_worker
+    assert '"run_id": f"report-{report_capture_state[\'nonce\']}-{index}"' in finish_worker
+    assert "widget.trace_history = list(reversed(entries))" in finish_worker
+    assert 'widget.observe(_on_report_capture_start, names="report_capture_start_trigger")' in source
+    assert 'widget.observe(_on_report_capture_finish, names="report_capture_finish_trigger")' in source
+
+
 def test_query_builder_header_clear_can_be_undone():
     source = _source()
 
@@ -254,6 +380,16 @@ def test_fullscreen_uses_viewport_height_for_panes_and_query_editor():
     assert source.count("    height: 100vh;\n    min-height: 100vh;") >= 2
     assert source.count("    display: flex;\n    flex-direction: column;") >= 2
     assert source.count("    overflow: hidden;\n    background: var(--ui-bg);") >= 1
+
+
+def test_fullscreen_container_has_no_later_shape_override():
+    source = _source()
+
+    assert source.count(".dtx.dtx-fullscreen .dtx-container {{") == 1
+    assert source.count(".dtx:fullscreen .dtx-container {{") == 1
+    assert ".dtx .dtx-perf-chip {{" in source
+    assert "border-radius: 999px;" in source
+    assert "border-radius: 999px;\n    background: var(--ui-surface" in source
 
 
 def test_change_model_button_is_larger_and_beside_the_tool_name():
@@ -326,10 +462,19 @@ def test_timing_cards_show_metric_specific_icons():
 
 def test_clear_cache_uses_a_toggle_switch():
     source = _source()
+    query_wrap_append = source.index("queryBlock.appendChild(queryWrap)")
+    cache_row_append = source.index("queryBlock.appendChild(queryCacheRow)")
 
     assert 'cacheSwitch.className = "dtx-cache-switch"' in source
     assert ".dtx-cache-label input:checked + .dtx-cache-switch" in source
     assert "toolbar.appendChild(cacheLabel)" not in source
+    assert "queryOptions.appendChild(cacheLabel)" not in source
+    assert "queryOptions.appendChild(impWrap)" in source
+    assert "queryOptions.appendChild(reportCapture)" in source
+    assert query_wrap_append < source.index("queryCacheRow.appendChild(cacheLabel)")
+    assert query_wrap_append < cache_row_append
+    assert ".dtx .dtx-query-cache-row {{" in source
+    assert "    justify-content: flex-end;" in source
     assert 'cacheText.textContent = "Clear cache before run (cold-cache timings)"' in source
 
 
@@ -565,7 +710,7 @@ def test_trace_history_backfills_late_execution_metrics():
     assert 'entry["execution_metrics"] = metrics' in update_helper
     assert '_update_history_execution_metrics(run_id, metric_rows)' in backfill
     assert source.count('"execution_metrics": _execution_metrics_dict(metric_rows)') == 2
-    assert source.count('"cache": "Cold"') == 2
+    assert source.count('"cache": "Cold"') == 3
 
 
 def test_trace_history_queries_copy_and_clear_with_user_feedback():
