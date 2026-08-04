@@ -424,6 +424,9 @@ _WIDGET_CSS = (
 .slls-bpa-modal h2 .slls-bpa-icon { color: var(--ui-accent); }
 .slls-bpa-modal h2 .slls-bpa-icon svg { width: 18px; height: 18px; }
 .slls-bpa-modal-sub { font-size: 12.5px; color: var(--ui-text-secondary); margin-bottom: 14px; }
+.slls-bpa-rule-editor-modal { position: relative; }
+.slls-bpa-rule-editor-close { position: absolute; top: 16px; right: 18px; }
+.slls-bpa-rule-editor-modal > h2,.slls-bpa-rule-editor-modal > .slls-bpa-modal-sub { padding-right: 42px; }
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
 .slls-bpa-rule-count { font-size: 11.5px; color: var(--ui-text-tertiary); margin-bottom: 7px; }
@@ -3023,7 +3026,13 @@ function render({ model, el }) {
     function openRulesPanel() {
         clear(overlay);
         const modal = document.createElement("div");
-        modal.className = "slls-bpa-modal";
+        modal.className = "slls-bpa-modal slls-bpa-rule-editor-modal";
+
+        const closeBtn = makeButton("", "slls-bpa-btn-sm slls-bpa-btn-icon-sm slls-bpa-rule-editor-close", ICON.close);
+        closeBtn.title = "Close rule editor";
+        closeBtn.setAttribute("aria-label", closeBtn.title);
+        closeBtn.addEventListener("click", () => overlay.classList.remove("show"));
+        modal.appendChild(closeBtn);
 
         const heading = document.createElement("h2");
         heading.appendChild(iconSpan(ICON.sliders));
@@ -3415,9 +3424,6 @@ function render({ model, el }) {
 
         const footer = document.createElement("div");
         footer.className = "slls-bpa-modal-footer";
-        const closeBtn = makeButton("Close", "");
-        closeBtn.addEventListener("click", () => overlay.classList.remove("show"));
-        footer.appendChild(closeBtn);
         const applyBtn = makeButton("Save and re-run", "slls-bpa-btn-primary", ICON.play);
         applyBtn.addEventListener("click", () => {
             model.set("disabled_rules", [...disabledRules]);

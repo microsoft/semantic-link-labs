@@ -25,6 +25,17 @@ def test_rule_editor_confirms_default_reset():
     assert 'confirmBtn.addEventListener("click", () =>' in BPA_SOURCE
 
 
+def test_rule_editor_uses_top_right_close_button():
+    assert ".slls-bpa-rule-editor-close" in BPA_SOURCE
+    assert 'modal.className = "slls-bpa-modal slls-bpa-rule-editor-modal"' in BPA_SOURCE
+    assert 'slls-bpa-rule-editor-close", ICON.close)' in BPA_SOURCE
+    assert 'closeBtn.title = "Close rule editor"' in BPA_SOURCE
+    rule_editor = BPA_SOURCE.split("function openRulesPanel()", 1)[1].split(
+        "// ------------------------------------------------------------------\n    // Screen switching", 1
+    )[0]
+    assert 'makeButton("Close", "")' not in rule_editor
+
+
 def test_rule_editor_deletes_rules_through_active_ruleset():
     assert 'trash: `__SLLS_ICON_TRASH__`' in BPA_SOURCE
     assert '.replace("__SLLS_ICON_TRASH__", _UI_ICONS["trash"])' in BPA_SOURCE
