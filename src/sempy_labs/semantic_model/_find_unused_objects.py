@@ -1,4 +1,6 @@
 import re
+from collections import deque
+from itertools import combinations
 from typing import Optional, Literal, Dict, List, Set, Tuple
 from uuid import UUID
 
@@ -17,16 +19,31 @@ from sempy_labs._helper_functions import (
 _FIELD_REF = re.compile(r"(?:'(?P<tq>[^']+)'|(?P<tu>\w+))?\[(?P<o>[^\]]+)\]")
 _QUOTED_REF = re.compile(r"'(?P<t>[^']+)'")
 
+# MDX regexes. Clients such as Excel (pivot tables) query a semantic model with
+# MDX rather than DAX, where objects are referenced as a dot-separated chain of
+# bracketed segments, e.g. [Measures].[Sales Amount], [Date].[Calendar Year] or
+# [Date].[Calendar].[Year].&[2020]. A ``]`` within a name is escaped as ``]]``
+# and a segment prefixed with ``&`` is a member key (a value, not an object).
+_MDX_SEGMENT = re.compile(r"(?P<key>&)?\[(?P<v>(?:[^\]]|\]\])*)\]")
+_MDX_CHAIN = re.compile(
+    r"&?\[(?:[^\]]|\]\])*\](?:\s*\.\s*&?\[(?:[^\]]|\]\])*\])*",
+)
+
+# Statements which begin an MDX query (an Excel pivot table sends SELECT, and
+# WITH when it defines calculated members/sets).
+_MDX_START = ("SELECT", "WITH", "DRILLTHROUGH")
+
 # Context tuple layout (see ``_build_usage_context``).
 _CTX_ALL = 0
-_CTX_CANONICAL = 1
-_CTX_TABLES = 2
-_CTX_COLUMNS = 3
-_CTX_MEASURES = 4
-_CTX_ADJ = 5
-_CTX_HIDDEN = 6
-_CTX_TABLE_KIND = 7
-_CTX_CALC_COLS = 8
+_CTX_TABLES = 1
+_CTX_COLUMNS = 2
+_CTX_MEASURES = 3
+_CTX_ADJ = 4
+_CTX_HIDDEN = 5
+_CTX_TABLE_KIND = 6
+_CTX_CALC_COLS = 7
+_CTX_REL_EDGES = 8
+_CTX_REL_ADJ = 9
 
 
 def _ukey(object_type: str, table: str, name: str) -> str:
@@ -59,19 +76,23 @@ def _normalize_usage_type(dmv_type: str) -> Optional[str]:
 
 def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
     List[Tuple[str, str, str]],
-    Set[str],
     Dict[str, str],
     Dict[str, Set[str]],
     Dict[str, str],
     Dict[str, Set[str]],
     Set[str],
+    Dict[str, str],
+    Set[str],
+    List[Tuple[str, str, str, str]],
+    Dict[str, List[Tuple[str, int]]],
 ]:
     """Builds the reusable analysis context for a semantic model.
 
     Enumerates every tracked object (tables, non-row-number columns and
     measures), builds case-insensitive lookups, records which objects are
-    hidden, and derives the (transitive) dependency adjacency from the model's
-    calculation dependencies.
+    hidden, derives the (transitive) dependency adjacency from the model's
+    calculation dependencies, and records the model's relationships (so a query
+    spanning related tables can be credited to the joining columns).
     """
     from sempy_labs.tom import connect_semantic_model
     from sempy_labs._model_dependencies import get_model_calc_dependencies
@@ -84,6 +105,10 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
     hidden_keys: Set[str] = set()
     table_kinds: Dict[str, str] = {}  # actual table name -> kind
     calc_columns: Set[str] = set()  # ukeys of calculated columns
+    # (from table, from column, to table, to column) per relationship, plus an
+    # undirected table -> [(other table, relationship index)] adjacency.
+    rel_edges: List[Tuple[str, str, str, str]] = []
+    rel_adj: Dict[str, List[Tuple[str, int]]] = {}
 
     def register(object_type: str, table: str, name: str) -> None:
         key = _ukey(object_type, table, name)
@@ -154,6 +179,26 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
                 if measure.IsHidden:
                     hidden_keys.add(_ukey("Measure", table_name, measure.Name))
 
+        # Only active relationships are recorded: an inactive relationship does
+        # not join the tables of a query unless a measure activates it (in which
+        # case the measure's calculation dependencies cover it).
+        for rel in tom.model.Relationships:
+            try:
+                if not rel.IsActive:
+                    continue
+                from_table = rel.FromTable.Name
+                from_column = rel.FromColumn.Name
+                to_table = rel.ToTable.Name
+                to_column = rel.ToColumn.Name
+            except Exception:
+                continue
+            if from_table == to_table:
+                continue
+            index = len(rel_edges)
+            rel_edges.append((from_table, from_column, to_table, to_column))
+            rel_adj.setdefault(from_table, []).append((to_table, index))
+            rel_adj.setdefault(to_table, []).append((from_table, index))
+
     # Build the dependency adjacency (object -> referenced objects). The
     # ``get_model_calc_dependencies`` result is already transitively expanded,
     # so a single-level union reproduces the transitive closure used by the
@@ -173,7 +218,6 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
 
     return (
         all_objects,
-        canonical,
         tables_lower,
         columns_by_table,
         measure_home,
@@ -181,6 +225,8 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
         hidden_keys,
         table_kinds,
         calc_columns,
+        rel_edges,
+        rel_adj,
     )
 
 
@@ -221,6 +267,152 @@ def _collect_direct_references(
     return direct
 
 
+def _query_language(query: str) -> str:
+    """Identifies whether a captured query is written in DAX or MDX.
+
+    Clients such as Excel query the model with MDX, which must be parsed
+    differently than DAX. The language is derived from the query text so it is
+    correct regardless of which application submitted the query.
+    """
+    head = (query or "").lstrip().lstrip("\ufeff")[:400].upper()
+    if head.startswith(_MDX_START):
+        return "MDX"
+    return "DAX"
+
+
+def _collect_mdx_references(
+    query: str,
+    tables_lower: Dict[str, str],
+    columns_by_table: Dict[str, Set[str]],
+    measure_home: Dict[str, str],
+) -> Set[str]:
+    """Finds the model objects a single MDX query directly references.
+
+    In the MDX view of a tabular model each table is a dimension, each column is
+    an (attribute) hierarchy and the levels of a user hierarchy are named after
+    the columns they are built from. A reference is therefore a chain of
+    bracketed segments whose first segment is either ``Measures`` (making the
+    next segment a measure) or a table, with any subsequent segment which
+    matches one of that table's columns naming a used column. Member key
+    segments (``&[...]``) hold values rather than object names and are skipped.
+
+    Only the objects named in the query text are returned; the columns of the
+    relationships joining them are added by ``_relationship_references``.
+    """
+    direct: Set[str] = set()
+
+    for chain in _MDX_CHAIN.finditer(query):
+        segments = [
+            (bool(m.group("key")), m.group("v").replace("]]", "]"))
+            for m in _MDX_SEGMENT.finditer(chain.group(0))
+        ]
+        if not segments or segments[0][0]:
+            continue
+
+        first = segments[0][1]
+        names = [name for is_key, name in segments[1:] if not is_key]
+
+        if first.lower() == "measures":
+            # [Measures].[Sales Amount] - only the segment directly after
+            # 'Measures' names the measure (any others are member properties).
+            if names:
+                home = measure_home.get(names[0].lower())
+                if home is not None:
+                    direct.add(_ukey("Measure", home, names[0]))
+            continue
+
+        actual = tables_lower.get(first.lower())
+        if actual is None:
+            continue
+        direct.add(_ukey("Table", actual, actual))
+        cols = columns_by_table.get(actual.lower())
+        if not cols:
+            continue
+        for name in names:
+            if name.lower() in cols:
+                direct.add(_ukey("Column", actual, name))
+
+    return direct
+
+
+def _referenced_tables(direct: Set[str], tables_lower: Dict[str, str]) -> Set[str]:
+    """Returns the (actual) names of the tables a set of references belongs to.
+
+    A measure reference contributes its home table, so a query which combines a
+    measure with a column of another table reports both tables.
+    """
+    tables: Set[str] = set()
+    for key in direct:
+        parts = key.split("\u0001")
+        if len(parts) < 2:
+            continue
+        actual = tables_lower.get(parts[1])
+        if actual is not None:
+            tables.add(actual)
+    return tables
+
+
+def _relationship_path(
+    source: str,
+    target: str,
+    rel_edges: List[Tuple[str, str, str, str]],
+    rel_adj: Dict[str, List[Tuple[str, int]]],
+) -> Set[str]:
+    """Returns the objects of the relationships on the shortest path between two tables."""
+    previous: Dict[str, Optional[Tuple[str, int]]] = {source: None}
+    queue = deque([source])
+    while queue:
+        node = queue.popleft()
+        if node == target:
+            break
+        for other, edge in rel_adj.get(node, ()):
+            if other not in previous:
+                previous[other] = (node, edge)
+                queue.append(other)
+
+    if target not in previous:
+        return set()
+
+    keys: Set[str] = set()
+    node = target
+    while previous[node] is not None:
+        parent, edge = previous[node]
+        from_table, from_column, to_table, to_column = rel_edges[edge]
+        keys.add(_ukey("Table", from_table, from_table))
+        keys.add(_ukey("Column", from_table, from_column))
+        keys.add(_ukey("Table", to_table, to_table))
+        keys.add(_ukey("Column", to_table, to_column))
+        node = parent
+    return keys
+
+
+def _relationship_references(
+    tables: Set[str],
+    rel_edges: List[Tuple[str, str, str, str]],
+    rel_adj: Dict[str, List[Tuple[str, int]]],
+    cache: Dict[Tuple[str, str], Set[str]],
+) -> Set[str]:
+    """Finds the relationship columns a query spanning several tables uses.
+
+    Combining objects from different tables (e.g. a measure from a fact table
+    and a column from a dimension) also uses the columns of the relationships
+    which join those tables, including any intermediate (snowflaked) hops. The
+    path between each pair of tables is cached, since the same table
+    combinations recur across queries.
+    """
+    if len(tables) < 2 or not rel_edges:
+        return set()
+
+    keys: Set[str] = set()
+    for source, target in combinations(sorted(tables), 2):
+        path = cache.get((source, target))
+        if path is None:
+            path = _relationship_path(source, target, rel_edges, rel_adj)
+            cache[(source, target)] = path
+        keys |= path
+    return keys
+
+
 def _collect_report_references(
     references: List[Tuple[str, str, str]],
     tables_lower: Dict[str, str],
@@ -259,14 +451,19 @@ def _expand(direct: Set[str], adjacency: Dict[str, Set[str]]) -> Set[str]:
 def _fetch_monitoring_queries(
     dataset_name: str, workspace_id: str, range_str: str
 ) -> List[str]:
-    """Fetches the DAX query texts captured by workspace monitoring."""
+    """Fetches the query texts captured by workspace monitoring.
+
+    Both DAX queries (which start with EVALUATE or DEFINE) and the MDX queries
+    submitted by Excel (pivot tables) are captured.
+    """
     from sempy_labs._kusto import query_workspace_monitoring
 
     safe_name = dataset_name.replace("\\", "\\\\").replace('"', '\\"')
     kql_query = (
         "SemanticModelLogs\n"
         '| where OperationName == "QueryEnd" and '
-        '(EventText startswith "EVALUATE" or EventText startswith "DEFINE")\n'
+        '(EventText startswith "EVALUATE" or EventText startswith "DEFINE" '
+        'or ApplicationName == "Excel")\n'
         f'| where ItemName == "{safe_name}"\n'
         f"| where Timestamp >= ago({range_str})\n"
         "| project EventText\n"
@@ -281,17 +478,33 @@ def _fetch_monitoring_queries(
 
 
 def _score_queries(context, queries: List[str]) -> Dict[str, int]:
-    """Scores captured DAX queries, returning a usage count per object."""
+    """Scores captured DAX/MDX queries, returning a usage count per object."""
     tables_lower = context[_CTX_TABLES]
     columns_by_table = context[_CTX_COLUMNS]
     measure_home = context[_CTX_MEASURES]
     adjacency = context[_CTX_ADJ]
+    rel_edges = context[_CTX_REL_EDGES]
+    rel_adj = context[_CTX_REL_ADJ]
 
     counts: Dict[str, int] = {}
+    path_cache: Dict[Tuple[str, str], Set[str]] = {}
     for query in queries:
-        direct = _collect_direct_references(
-            query, tables_lower, columns_by_table, measure_home
-        )
+        if _query_language(query) == "MDX":
+            direct = _collect_mdx_references(
+                query, tables_lower, columns_by_table, measure_home
+            )
+            # An MDX query which spans related tables (e.g. a measure sliced by
+            # a dimension's column) also uses the joining relationship columns.
+            direct |= _relationship_references(
+                _referenced_tables(direct, tables_lower),
+                rel_edges,
+                rel_adj,
+                path_cache,
+            )
+        else:
+            direct = _collect_direct_references(
+                query, tables_lower, columns_by_table, measure_home
+            )
         if not direct:
             continue
         for key in _expand(direct, adjacency):
@@ -317,6 +530,10 @@ def _score_reports(
 
     counts: Dict[str, int] = {}
     report_count = 0
+    # Each row of the reference list is one usage of an object within a report,
+    # so the same object referenced by several visuals is counted several times.
+    # The keys a reference expands to never change, so they are computed once.
+    expanded: Dict[Tuple[str, str, str], Set[str]] = {}
     df_reports = list_report_semantic_model_objects(
         dataset=dataset_id, workspace=workspace_id
     )
@@ -326,17 +543,21 @@ def _score_reports(
             if selected is not None and (report_name, report_workspace) not in selected:
                 continue
             report_count += 1
-            references = [
-                (r["Table Name"], r["Object Name"], r["Object Type"])
-                for _, r in grp.iterrows()
-            ]
-            direct = _collect_report_references(
-                references, tables_lower, columns_by_table, measure_home
-            )
-            if not direct:
-                continue
-            for key in _expand(direct, adjacency):
-                counts[key] = counts.get(key, 0) + 1
+            for _, r in grp.iterrows():
+                reference = (
+                    str(r["Table Name"]),
+                    str(r["Object Name"]),
+                    str(r["Object Type"]),
+                )
+                keys = expanded.get(reference)
+                if keys is None:
+                    direct = _collect_report_references(
+                        [reference], tables_lower, columns_by_table, measure_home
+                    )
+                    keys = _expand(direct, adjacency) if direct else set()
+                    expanded[reference] = keys
+                for key in keys:
+                    counts[key] = counts.get(key, 0) + 1
     return counts, report_count
 
 
@@ -395,7 +616,7 @@ def _make_widget_data(context, counts: Dict[str, int]) -> List[dict]:
 
 @log
 def find_unused_objects(
-    dataset: str | UUID,
+    dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     method: Literal["Report", "WorkspaceMonitoring"] = "WorkspaceMonitoring",
     workspace_monitoring_days: int = 7,
@@ -405,16 +626,19 @@ def find_unused_objects(
     """
     Identifies used and unused objects (tables, columns and measures) in a semantic model.
 
-    Object usage is determined by scoring the DAX queries that reference the model (either
+    Object usage is determined by scoring the queries that reference the model (either
     captured by workspace monitoring, or reconstructed from the model's
     downstream reports), expanding each direct reference through the model's
-    calculation dependencies, and counting how many queries/reports used each
-    object. An object with a usage count of zero is unused.
+    calculation dependencies, and counting how often each object was used. An
+    object with a usage count of zero is unused.
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
+    dataset : str | uuid.UUID, default=None
         Name or ID of the semantic model.
+        Defaults to None which opens the widget on a workspace / semantic model
+        picker so the model to analyze can be chosen interactively. Required when
+        `visualize` is False.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -424,11 +648,12 @@ def find_unused_objects(
         when `visualize` is False, and to preselect the analysis method in the
         interactive widget when `visualize` is True).
 
-        * "WorkspaceMonitoring" scores the DAX queries captured by workspace
-          monitoring. Workspace monitoring must be enabled on the workspace.
+        * "WorkspaceMonitoring" scores the queries captured by workspace
+          monitoring (both the DAX queries and the MDX queries submitted by
+          Excel). Workspace monitoring must be enabled on the workspace.
         * "Report" scores the objects referenced by the model's downstream
-          reports (which must be in the PBIR format). Each report counts as one
-          use.
+          reports (which must be in the PBIR format). Each reference to an object
+          within a report counts as one use.
     workspace_monitoring_days : int, default=7
         The number of days of workspace monitoring history to analyze (also the
         initial time frame preselected in the interactive widget). Only used with
@@ -453,13 +678,24 @@ def find_unused_objects(
     """
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
-    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_id = str(workspace_id)
 
     method_normalized = str(method).lower()
     if method_normalized not in ("report", "workspacemonitoring"):
         raise ValueError(
             f"{method} is not a valid method. Must be one of ['Report', 'WorkspaceMonitoring']."
         )
+
+    if dataset is None:
+        if not visualize:
+            raise ValueError(
+                "The 'dataset' parameter is required when 'visualize' is False."
+            )
+        # The widget opens on the workspace / semantic model picker.
+        dataset_name, dataset_id = "", ""
+    else:
+        dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+        dataset_id = str(dataset_id)
 
     if not visualize:
         context = _build_usage_context(dataset_id, workspace_id)
@@ -519,6 +755,7 @@ def _render_find_unused_objects(
         ) from e
 
     from IPython.display import display
+    import sempy.fabric as fabric
 
     # Captured workspace-monitoring queries (fetched on "Count queries", scored
     # on "Analyze") so the two-step flow does not re-query the monitoring db.
@@ -533,11 +770,56 @@ def _render_find_unused_objects(
             ctx_cache["context"] = _build_usage_context(dataset_id, workspace_id)
         return ctx_cache["context"]
 
+    def _pick_columns(df, preferred_id, preferred_name):
+        cols = list(df.columns)
+        if not cols:
+            return None, None
+        id_col = next((c for c in preferred_id if c in cols), cols[0])
+        name_col = next((c for c in preferred_name if c in cols), cols[-1])
+        return id_col, name_col
+
+    def _list_workspaces_payload():
+        try:
+            df = fabric.list_workspaces()
+        except Exception:
+            return [{"id": workspace_id, "name": str(workspace_name or "")}]
+        id_col, name_col = _pick_columns(df, ["Id"], ["Name"])
+        if id_col is None or name_col is None:
+            return [{"id": workspace_id, "name": str(workspace_name or "")}]
+        rows = [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
+        ]
+        return sorted(rows, key=lambda x: x["name"].lower())
+
+    def _list_datasets_payload(target_workspace_id):
+        try:
+            df = fabric.list_datasets(workspace=target_workspace_id, mode="rest")
+        except Exception:
+            return []
+        id_col, name_col = _pick_columns(
+            df, ["Dataset Id", "Dataset ID", "Id"], ["Dataset Name", "Name"]
+        )
+        if id_col is None or name_col is None:
+            return []
+        rows = [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
+        ]
+        return sorted(rows, key=lambda x: x["name"].lower())
+
+    # Nothing is fetched before the widget is displayed: with no semantic model
+    # the picker requests its workspace / model lists after the first render (via
+    # the run/observe channel), so the UI appears immediately.
+    connected = bool(dataset_id)
+    initial_workspaces = (
+        [{"id": workspace_id, "name": str(workspace_name or "")}] if connected else []
+    )
+
     class FindUnusedObjectsWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
         _css = _WIDGET_CSS
 
         screen = traitlets.Unicode("config").tag(sync=True)
+        connected = traitlets.Bool(True).tag(sync=True)
         method = traitlets.Unicode("workspacemonitoring").tag(sync=True)
         time_amount = traitlets.Int(7).tag(sync=True)
         time_unit = traitlets.Unicode("d").tag(sync=True)
@@ -550,42 +832,106 @@ def _render_find_unused_objects(
         subtitle_count = traitlets.Unicode("").tag(sync=True)
         has_results = traitlets.Bool(False).tag(sync=True)
         dataset_name = traitlets.Unicode("").tag(sync=True)
+        dataset_id = traitlets.Unicode("").tag(sync=True)
         workspace_name = traitlets.Unicode("").tag(sync=True)
+        workspace_id = traitlets.Unicode("").tag(sync=True)
+        workspaces = traitlets.List().tag(sync=True)
+        datasets = traitlets.Dict().tag(sync=True)
         status = traitlets.Dict().tag(sync=True)
         running = traitlets.Bool(False).tag(sync=True)
         pending_action = traitlets.Dict().tag(sync=True)
         run = traitlets.Int(0).tag(sync=True)
+        action_done = traitlets.Int(0).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
 
     # The widget is displayed immediately with no blocking work; the downstream
     # reports are detected after the first render (via the run/observe channel)
     # and the model context is built lazily on the first analysis.
     widget = FindUnusedObjectsWidget(
+        screen="config" if connected else "select",
+        connected=connected,
         method=method,
         time_amount=max(1, min(9999, int(days))),
         time_unit="d",
         dataset_name=dataset_name or "",
+        dataset_id=dataset_id or "",
         workspace_name=workspace_name or "",
+        workspace_id=workspace_id or "",
+        workspaces=initial_workspaces,
         dark_mode=bool(dark_mode),
     )
 
-    def _on_run(_change):
-        action = dict(widget.pending_action or {})
+    def _detect_reports():
+        """Loads the model's downstream reports (used by the report method)."""
+        try:
+            reports = _list_downstream_reports(dataset_id, workspace_id)
+            widget.reports_list = reports
+            widget.reports_available = len(reports) > 0
+            if not reports and widget.method == "report":
+                widget.method = "workspacemonitoring"
+        except Exception:
+            widget.reports_list = []
+            widget.reports_available = False
+        finally:
+            widget.reports_checked = True
+
+    def _handle_action(action):
+        nonlocal dataset_name, dataset_id, workspace_name, workspace_id
         act = action.get("action")
         if act == "detect_reports":
             # Runs after the first render (kept off the load path) on the
             # kernel's main thread via the run/observe channel, so the result
             # reliably syncs back to the widget.
+            _detect_reports()
+            return
+        if act == "list_workspaces":
+            widget.workspaces = _list_workspaces_payload()
+            return
+        if act == "list_datasets":
+            target_workspace = str(action.get("workspace_id") or "")
+            if target_workspace:
+                loaded = dict(widget.datasets)
+                loaded[target_workspace] = _list_datasets_payload(target_workspace)
+                widget.datasets = loaded
+            return
+        if act == "connect":
+            target_workspace = str(action.get("workspace_id") or "")
+            target_dataset = str(action.get("dataset_id") or "")
+            if not target_workspace or not target_dataset:
+                widget.status = {
+                    "message": "Select a workspace and semantic model.",
+                    "kind": "error",
+                }
+                return
+            widget.running = True
+            widget.status = {}
             try:
-                reports = _list_downstream_reports(dataset_id, workspace_id)
-                widget.reports_list = reports
-                widget.reports_available = len(reports) > 0
-                if not reports and widget.method == "report":
-                    widget.method = "workspacemonitoring"
-            except Exception:
-                widget.reports_available = False
+                # Repoint every helper (context builder, monitoring query,
+                # report scan) at the newly chosen model.
+                workspace_id = target_workspace
+                dataset_id = target_dataset
+                workspace_name = str(action.get("workspace_name") or "")
+                dataset_name = str(action.get("dataset_name") or "")
+                ctx_cache["context"] = None
+                captured["queries"] = None
+                widget.workspace_id = workspace_id
+                widget.dataset_id = dataset_id
+                widget.workspace_name = workspace_name
+                widget.dataset_name = dataset_name
+                widget.data = []
+                widget.table_kinds = {}
+                widget.subtitle_count = ""
+                widget.has_results = False
+                widget.query_count = -1
+                widget.reports_checked = False
+                widget.reports_list = []
+                widget.connected = True
+                widget.screen = "config"
+                _detect_reports()
+            except Exception as e:
+                widget.status = {"message": f"Error: {e}", "kind": "error"}
             finally:
-                widget.reports_checked = True
+                widget.running = False
             return
         if act not in ("count", "analyze"):
             return
@@ -643,6 +989,15 @@ def _render_find_unused_objects(
             widget.status = {"message": f"Error: {e}", "kind": "error"}
         finally:
             widget.running = False
+
+    def _on_run(_change):
+        try:
+            _handle_action(dict(widget.pending_action or {}))
+        finally:
+            # Acknowledges the action so the frontend releases the next queued
+            # one; actions must be sent one at a time, otherwise two sent in the
+            # same tick are merged into a single state sync.
+            widget.action_done = widget.action_done + 1
 
     widget.observe(_on_run, names=["run"])
 
@@ -711,10 +1066,12 @@ _WIDGET_CSS = """
 .fuo-badge {
     flex-shrink: 0; width: 40px; height: 40px; border-radius: 11px;
     display: inline-flex; align-items: center; justify-content: center;
-    background: var(--ui-bg-secondary); color: var(--ui-text);
+    background: var(--ui-bg-secondary); color: var(--ui-accent);
     border: 1px solid var(--ui-border);
 }
 .fuo-badge svg { width: 20px; height: 20px; }
+.fuo-badge.fuo-badge-sm { width: 32px; height: 32px; border-radius: 9px; }
+.fuo-badge.fuo-badge-sm svg { width: 17px; height: 17px; }
 .fuo-cfg-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
 .fuo-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; color: var(--ui-text); }
 .fuo-desc { font-size: 13px; line-height: 1.5; color: var(--ui-text-secondary); margin-top: 5px; }
@@ -725,6 +1082,15 @@ _WIDGET_CSS = """
     margin: 18px 0 8px 0;
 }
 .fuo-timeframe { display: flex; gap: 10px; align-items: center; }
+
+/* ---- Workspace / semantic model picker ---- */
+__SEARCH_SELECT_CSS__
+.fuo-pick-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.fuo-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 240px; min-width: 0; }
+.fuo-field label {
+    font-size: 11.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--ui-text-tertiary);
+}
 .fuo-amount {
     width: 92px; padding: 10px 12px; font-size: 15px; font-family: inherit;
     border: 1px solid var(--ui-border-strong); border-radius: 10px;
@@ -746,6 +1112,10 @@ _WIDGET_CSS = """
 .fuo-countmsg b { font-weight: 700; }
 .fuo-countmsg.fuo-err { border-color: rgba(255,59,48,0.4); color: #ff3b30; background: rgba(255,59,48,0.08); }
 .fuo-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+/* The primary action comes first in the DOM (so it is the next tab stop after
+   the pickers) but is shown last. */
+.fuo-o1 { order: 1; }
+.fuo-o2 { order: 2; }
 .fuo-btn-secondary {
     border: 1px solid var(--ui-border-strong); background: var(--ui-bg);
     color: var(--ui-text); font-size: 14px; font-weight: 600; font-family: inherit;
@@ -919,6 +1289,8 @@ _WIDGET_CSS = """
 
 
 _WIDGET_JS = r"""
+__SEARCH_SELECT_JS__
+
 function render({ model, el }) {
     const root = document.createElement("div");
     root.className = "fuo";
@@ -931,7 +1303,7 @@ function render({ model, el }) {
         calcColumn: `__IC_CALCCOLUMN__`, measure: `__IC_MEASURE__`,
         caret: `__IC_CARET__`, search: `__IC_SEARCH__`,
         expand: `__IC_EXPAND__`, collapse: `__IC_COLLAPSE__`, rerun: `__IC_REFRESH__`,
-        report: `__IC_REPORT__`,
+        report: `__IC_REPORT__`, swap: `__IC_SWAP__`,
     };
     const SUN = `__IC_SUN__`, MOON = `__IC_MOON__`, FS = `__IC_FS__`, FSX = `__IC_FSX__`;
 
@@ -999,6 +1371,9 @@ function render({ model, el }) {
     function rerunBtnHtml() {
         return `<button class="fuo-rerun" data-r="rerun" type="button" title="Run a new analysis">${IC.rerun}<span>New analysis</span></button>`;
     }
+    function swapBtnHtml() {
+        return `<button class="fuo-icon-btn" data-r="swap" type="button" title="Change semantic model / workspace">${IC.swap}</button>`;
+    }
     function wireHeaderCtrls() {
         const tb = root.querySelector('[data-r="theme"]');
         if (tb) tb.addEventListener("click", () => {
@@ -1012,6 +1387,8 @@ function render({ model, el }) {
         });
         const fb = root.querySelector('[data-r="fs"]');
         if (fb) fb.addEventListener("click", () => setFs(!fsMode));
+        const sw = root.querySelector('[data-r="swap"]');
+        if (sw) sw.addEventListener("click", () => openPicker());
     }
     function setFs(on) {
         fsMode = on;
@@ -1034,6 +1411,182 @@ function render({ model, el }) {
         if (!on && fsMode) { fsMode = false; root.classList.remove("fuo-fs"); route(); }
     });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && fsMode) setFs(false); });
+
+    // ================= WORKSPACE / MODEL PICKER =================
+    // The picker is the entry screen when no semantic model was supplied, and is
+    // reopened by the "Change semantic model / workspace" button.
+    let pickWs = "";
+    let pickDs = "";
+    let workspacesRequested = false;
+    let datasetsRequested = {};
+    // Which picker to re-focus after the next render (the pickers are detached
+    // when the screen is re-rendered, which would otherwise drop focus).
+    let focusAfterRender = null;
+
+    // Actions are queued and sent one at a time: two actions set in the same
+    // tick would be merged into a single state sync, and only the last one
+    // would reach the backend.
+    let actionQueue = [];
+    let actionInFlight = false;
+    function dispatch(payload) {
+        actionQueue.push(payload);
+        pumpActions();
+    }
+    function pumpActions() {
+        if (actionInFlight || actionQueue.length === 0) return;
+        actionInFlight = true;
+        model.set("pending_action", actionQueue.shift());
+        model.set("run", (model.get("run") || 0) + 1);
+        model.save_changes();
+    }
+    model.on("change:action_done", () => { actionInFlight = false; pumpActions(); });
+    function ensureWorkspaces() {
+        if (workspacesRequested) return;
+        workspacesRequested = true;
+        dispatch({ action: "list_workspaces" });
+    }
+    function ensureDatasets(wsId) {
+        if (!wsId) return;
+        const loaded = model.get("datasets") || {};
+        if (loaded[wsId] || datasetsRequested[wsId]) return;
+        datasetsRequested[wsId] = true;
+        dispatch({ action: "list_datasets", workspace_id: wsId });
+    }
+    function reloadPickerLists() {
+        workspacesRequested = false;
+        datasetsRequested = {};
+        ensureWorkspaces();
+        if (pickWs) {
+            datasetsRequested[pickWs] = true;
+            dispatch({ action: "list_datasets", workspace_id: pickWs });
+        }
+    }
+    function reloadBtnHtml() {
+        return `<button class="fuo-icon-btn" data-r="preload" type="button" title="Reload workspaces and semantic models">${IC.rerun}</button>`;
+    }
+    function openPicker() {
+        pickWs = model.get("workspace_id") || "";
+        pickDs = "";
+        model.set("screen", "select");
+        model.save_changes();
+        route();
+    }
+
+    // The pickers are built once and re-attached on every render so their
+    // filter/keyboard state survives a re-render.
+    let wsPicker = null;
+    let dsPicker = null;
+    function ensurePickers() {
+        if (wsPicker) return;
+        wsPicker = createSearchSelect({
+            placeholder: "Select a workspace\u2026",
+            searchPlaceholder: "Filter workspaces\u2026",
+            ariaLabel: "Workspace",
+            emptyLabel: "Loading workspaces\u2026",
+            onChange: (option) => {
+                pickWs = option.value;
+                pickDs = "";
+                focusAfterRender = "ws";
+                ensureDatasets(pickWs);
+                mountSelect();
+            },
+        });
+        dsPicker = createSearchSelect({
+            placeholder: "Select a semantic model\u2026",
+            searchPlaceholder: "Filter semantic models\u2026",
+            ariaLabel: "Semantic model",
+            emptyLabel: "Select a workspace first\u2026",
+            onChange: (option) => {
+                pickDs = option.value;
+                // Focus returns to the picker, so the next Tab lands on
+                // "Continue" (which is first in the footer's DOM order).
+                focusAfterRender = "ds";
+                mountSelect();
+            },
+        });
+    }
+
+    function mountSelect() {
+        if (!pickWs) pickWs = model.get("workspace_id") || "";
+        const workspaces = model.get("workspaces") || [];
+        // The lists are requested on the first render so the widget appears
+        // immediately rather than waiting for the tenant workspace list.
+        ensureWorkspaces();
+        ensureDatasets(pickWs);
+        const loaded = model.get("datasets") || {};
+        const ds = pickWs ? (loaded[pickWs] || null) : null;
+        const running = model.get("running") === true;
+        const connected = model.get("connected") === true;
+
+        const status = model.get("status") || {};
+        const statusHtml = (status.kind === "error" && status.message)
+            ? `<div class="fuo-countmsg fuo-err">${esc(status.message)}</div>` : "";
+
+        root.innerHTML = `
+            <div class="fuo-config">
+                <div class="fuo-cfg-head">
+                    <div class="fuo-badge">${IC.scan}</div>
+                    <div class="fuo-cfg-titlewrap">
+                        <div class="fuo-title">Find unused objects</div>
+                        <div class="fuo-desc">Choose the workspace and semantic model to analyze.</div>
+                    </div>
+                    <div class="fuo-hdr-ctrls">${reloadBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
+                </div>
+                <div class="fuo-pick-grid">
+                    <div class="fuo-field">
+                        <label>Workspace</label>
+                        <div data-r="pws"></div>
+                    </div>
+                    <div class="fuo-field">
+                        <label>Semantic model</label>
+                        <div data-r="pds"></div>
+                    </div>
+                </div>
+                ${statusHtml}
+                <div class="fuo-footer">
+                    <button class="fuo-btn-primary fuo-o2" data-r="pconnect" type="button" ${(!pickDs || running) ? 'disabled' : ''}>${running ? `<span class="fuo-spin"></span>` : `Continue`}</button>
+                    ${connected ? `<button class="fuo-btn-secondary fuo-o1" data-r="pcancel" type="button">Cancel</button>` : ``}
+                </div>
+            </div>`;
+
+        ensurePickers();
+        wsPicker.setOptions(
+            workspaces.map((w) => ({ value: w.id, label: w.name })), pickWs);
+        dsPicker.setEmptyLabel(!pickWs
+            ? "Select a workspace first\u2026"
+            : (ds === null ? "Loading semantic models\u2026" : "No semantic models"));
+        dsPicker.setOptions((ds || []).map((d) => ({ value: d.id, label: d.name })), pickDs);
+        dsPicker.setDisabled(!pickWs || ds === null);
+        root.querySelector('[data-r="pws"]').appendChild(wsPicker.el);
+        root.querySelector('[data-r="pds"]').appendChild(dsPicker.el);
+        if (focusAfterRender) {
+            const target = focusAfterRender;
+            focusAfterRender = null;
+            (target === "ds" ? dsPicker : wsPicker).focus();
+        }
+
+        wireHeaderCtrls();
+        root.querySelector('[data-r="preload"]').addEventListener("click", () => reloadPickerLists());
+        const pcancel = root.querySelector('[data-r="pcancel"]');
+        if (pcancel) pcancel.addEventListener("click", () => {
+            goScreen(model.get("has_results") === true ? "results" : "config");
+        });
+        root.querySelector('[data-r="pconnect"]').addEventListener("click", (e) => {
+            if (!pickDs || model.get("running")) return;
+            const wsName = wsPicker.label;
+            const dsName = dsPicker.label;
+            // Immediate feedback: show the busy state before the (async) work.
+            e.currentTarget.disabled = true;
+            e.currentTarget.innerHTML = '<span class="fuo-spin"></span>';
+            dispatch({
+                action: "connect",
+                workspace_id: pickWs,
+                dataset_id: pickDs,
+                workspace_name: wsName,
+                dataset_name: dsName,
+            });
+        });
+    }
 
     // ================= CONFIG SCREEN =================
     // Per-report selection for the downstream-report analysis. A report key maps
@@ -1096,7 +1649,7 @@ function render({ model, el }) {
                 : 'disabled title="This semantic model has no downstream reports."');
         const desc = isMon
             ? `Reads the workspace-monitoring queries for <b>${esc(ds)}</b> in the chosen time frame and reports which objects were never used (plus how often each object was used).`
-            : `Reads the downstream reports that consume <b>${esc(ds)}</b> and reports which objects are never referenced (plus how many reports use each object). Dependencies are included.`;
+            : `Reads the downstream reports that consume <b>${esc(ds)}</b> and reports which objects are never referenced (plus how many times each object is referenced in the reports). Dependencies are included.`;
         const primaryLabel = isMon ? (qc >= 0 ? "Analyze" : "Count queries") : "Analyze reports";
         const selectedCount = isMon ? 0 : selectedReports().length;
         const primaryDisabled = running || (!isMon && reportsAvail && selectedCount === 0);
@@ -1118,7 +1671,7 @@ function render({ model, el }) {
                         <div class="fuo-title">Find unused objects</div>
                         <div class="fuo-desc">${desc}</div>
                     </div>
-                    <div class="fuo-hdr-ctrls">${fsBtnHtml()}${themeBtnHtml()}</div>
+                    <div class="fuo-hdr-ctrls">${swapBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
                 </div>
                 <div class="fuo-section-label">Analyze by</div>
                 <div class="fuo-seg" data-r="method">
@@ -1215,11 +1768,12 @@ function render({ model, el }) {
         root.innerHTML = `
             <div class="fuo-results">
                 <div class="fuo-res-head">
+                    <div class="fuo-badge fuo-badge-sm">${IC.scan}</div>
                     <div class="fuo-res-titlewrap">
-                        <div class="fuo-res-title">Object usage</div>
+                        <div class="fuo-res-title">Find unused objects</div>
                         <div class="fuo-res-sub" data-r="subtitle"></div>
                     </div>
-                    <div class="fuo-hdr-ctrls">${rerunBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
+                    <div class="fuo-hdr-ctrls">${rerunBtnHtml()}${swapBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
                 </div>
                 <div class="fuo-res-toolbar">
                     <div class="fuo-tools">
@@ -1349,7 +1903,12 @@ function render({ model, el }) {
     }
 
     function currentScreen() { return model.get("screen") || "config"; }
-    function route() { if (currentScreen() === "results") mountResults(); else mountConfig(); }
+    function route() {
+        const s = currentScreen();
+        if (s === "select") mountSelect();
+        else if (s === "results") mountResults();
+        else mountConfig();
+    }
     // Navigate between screens with immediate feedback (does not wait for the
     // traitlet sync round-trip).
     function goScreen(name) {
@@ -1367,6 +1926,8 @@ function render({ model, el }) {
     });
     model.on("change:reports_list", () => { if (currentScreen() === "config") mountConfig(); });
     model.on("change:reports_checked", () => { if (currentScreen() === "config") mountConfig(); });
+    model.on("change:workspaces", () => { if (currentScreen() === "select") mountSelect(); });
+    model.on("change:datasets", () => { if (currentScreen() === "select") mountSelect(); });
     model.on("change:running", route);
     model.on("change:query_count", () => { if (currentScreen() === "config") mountConfig(); });
     model.on("change:status", () => { if (currentScreen() === "config") mountConfig(); });
@@ -1379,10 +1940,9 @@ function render({ model, el }) {
     // Detect downstream reports AFTER the (immediate) first render, via the
     // run/observe channel so the result reliably syncs back. This keeps the
     // initial load fast; the "Downstream reports" option stays disabled
-    // ("Checking\u2026") until the detection completes.
-    model.set("pending_action", { action: "detect_reports" });
-    model.set("run", (model.get("run") || 0) + 1);
-    model.save_changes();
+    // ("Checking\u2026") until the detection completes. With no model chosen yet
+    // the picker is shown instead, and the detection runs once one is picked.
+    if (model.get("connected") === true) dispatch({ action: "detect_reports" });
 }
 export default { render };
 """
@@ -1395,15 +1955,20 @@ from sempy_labs._ui_components import (  # noqa: E402
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_button_press_css as _ui_scoped_button_press_css,
+    SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
+    SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
 )
 
-_WIDGET_CSS = _WIDGET_CSS.replace("__LIGHT__", _UI_LIGHT_VARS).replace(
-    "__DARK__", _UI_DARK_VARS
+_WIDGET_CSS = (
+    _WIDGET_CSS.replace("__LIGHT__", _UI_LIGHT_VARS)
+    .replace("__DARK__", _UI_DARK_VARS)
+    .replace("__SEARCH_SELECT_CSS__", _UI_SEARCH_SELECT_CSS)
 )
 _WIDGET_CSS += _ui_scoped_button_press_css(".fuo")
 
 _WIDGET_JS = (
-    _WIDGET_JS.replace("__IC_SCAN__", _UI_ICONS["scan"])
+    _WIDGET_JS.replace("__SEARCH_SELECT_JS__", _UI_SEARCH_SELECT_JS)
+    .replace("__IC_SCAN__", _UI_ICONS["scan_search"])
     .replace("__IC_TABLE__", _UI_ICONS["table"])
     .replace("__IC_CALCTABLE__", _UI_ICONS["calculated_table"])
     .replace("__IC_CALCGROUP__", _UI_ICONS["calculation_group"])
@@ -1418,6 +1983,7 @@ _WIDGET_JS = (
     .replace("__IC_COLLAPSE__", _UI_ICONS["collapse_rows"])
     .replace("__IC_REFRESH__", _UI_ICONS["refresh"])
     .replace("__IC_REPORT__", _UI_ICONS["report"])
+    .replace("__IC_SWAP__", _UI_ICONS["swap"])
     .replace("__IC_SUN__", _UI_ICONS["sun"])
     .replace("__IC_MOON__", _UI_ICONS["moon"])
     .replace("__IC_FS__", _UI_ICONS["fullscreen"])

@@ -356,6 +356,24 @@ ICONS: dict[str, str] = {
         '<path d="M5 13.5H3.5a1 1 0 0 1-1-1V11"/>'
         '<circle cx="8" cy="8" r="2"/></svg>'
     ),
+    "history": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.6 8a5.4 5.4 0 1 0 1.7-3.9"/>'
+        '<path d="M2.5 2.8v2.6h2.6"/>'
+        '<path d="M8 5.2V8l2 1.4"/></svg>'
+    "scan_search": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 5V3.5A1 1 0 0 1 3.5 2.5H5"/>'
+        '<path d="M11 2.5h1.5a1 1 0 0 1 1 1V5"/>'
+        '<path d="M13.5 11v1.5a1 1 0 0 1-1 1H11"/>'
+        '<path d="M5 13.5H3.5a1 1 0 0 1-1-1V11"/>'
+        '<circle cx="7.2" cy="7.2" r="2.2"/>'
+        '<path d="M8.9 8.9L11 11"/></svg>'
+    ),
     "fullscreen": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -423,6 +441,13 @@ ICONS: dict[str, str] = {
         '<path d="M6 4L3 7l3 3"/>'
         '<path d="M3 7h6a3.5 3.5 0 0 1 0 7H5.5"/></svg>'
     ),
+    "redo": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M10 4l3 3-3 3"/>'
+        '<path d="M13 7H7a3.5 3.5 0 0 0 0 7h3.5"/></svg>'
+    ),
     "error_circle": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -435,6 +460,14 @@ ICONS: dict[str, str] = {
         'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M3.2 8.4l3.2 3.2 6.4-7"/></svg>'
+    ),
+    "reset": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M13.4 8a5.4 5.4 0 1 1-1.7-3.9"/>'
+        '<path d="M13.5 2.7v3.1h-3.1"/>'
+        '<circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none"/></svg>'
     ),
     "sliders": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
@@ -556,6 +589,247 @@ DARK_THEME_VARS: str = """\
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
 """
+
+
+# ---------------------------------------------------------------------------
+# Searchable single-select (the standard workspace / semantic model picker)
+# ---------------------------------------------------------------------------
+# Every tool which asks the user to pick a workspace, a semantic model or any
+# other long list must use this control rather than a plain <select>, so that
+# the list can always be filtered by typing.
+SEARCH_SELECT_CSS: str = """\
+.slls-ss { position: relative; display: flex; width: 100%; }
+.slls-ss-btn {
+    appearance: none; -webkit-appearance: none; width: 100%;
+    background: var(--ui-bg); border: 1px solid var(--ui-border-strong);
+    border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: inherit;
+    color: var(--ui-text); cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    transition: border-color 120ms ease;
+}
+.slls-ss-btn:hover:not(:disabled) { border-color: var(--ui-text-tertiary); }
+.slls-ss-btn:focus-visible { outline: none; border-color: var(--ui-accent); }
+.slls-ss-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.slls-ss-value { flex: 1 1 auto; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-ss-value.slls-ss-placeholder { color: var(--ui-text-tertiary); }
+.slls-ss-caret { display: inline-flex; flex-shrink: 0; color: var(--ui-text-tertiary); transform: rotate(90deg); transition: transform 140ms ease; }
+.slls-ss-caret svg { display: block; width: 15px; height: 15px; }
+.slls-ss.slls-ss-open .slls-ss-caret { transform: rotate(-90deg); }
+.slls-ss-panel {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70;
+    min-width: 240px; padding: 6px; background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border); border-radius: 12px; box-shadow: var(--ui-shadow-lg);
+}
+.slls-ss.slls-ss-open .slls-ss-panel { display: block; }
+.slls-ss-searchwrap { position: relative; display: flex; align-items: center; margin-bottom: 5px; }
+.slls-ss-searchicon { position: absolute; left: 10px; display: inline-flex; color: var(--ui-text-tertiary); pointer-events: none; }
+.slls-ss-searchicon svg { display: block; width: 15px; height: 15px; }
+.slls-ss-search {
+    width: 100%; appearance: none; background: var(--ui-bg-secondary);
+    border: 1px solid transparent; border-radius: 8px; padding: 7px 10px 7px 32px;
+    font-size: 13px; font-family: inherit; color: var(--ui-text);
+}
+.slls-ss-search::placeholder { color: var(--ui-text-tertiary); }
+.slls-ss-search:focus { outline: none; border-color: var(--ui-accent); }
+.slls-ss-list { max-height: 240px; overflow-y: auto; }
+.slls-ss-opt {
+    display: block; width: 100%; padding: 7px 10px; border: none; background: transparent;
+    color: var(--ui-text); font-family: inherit; font-size: 13px; text-align: left;
+    border-radius: 7px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slls-ss-opt:hover, .slls-ss-opt.slls-ss-active { background: var(--ui-surface-2); }
+.slls-ss-opt.slls-ss-selected { color: var(--ui-accent); font-weight: 500; }
+.slls-ss-empty { padding: 9px 10px; font-size: 12.5px; color: var(--ui-text-tertiary); }
+"""
+
+# JavaScript defining ``createSearchSelect(options)``. Embed this inside a
+# widget's ESM module (or inside its ``render`` function) and call it to build a
+# picker. ``options`` accepts ``placeholder``, ``searchPlaceholder``,
+# ``ariaLabel``, ``emptyLabel`` and ``onChange``; the returned controller
+# exposes ``el``, ``value``, ``label``, ``focus()``, ``setOptions(items, value)``,
+# ``setEmptyLabel(text)`` and ``setDisabled(flag)``.
+SEARCH_SELECT_JS: str = """\
+const __sllsSsOpen = new Set();
+document.addEventListener("click", () => { for (const close of __sllsSsOpen) close(); });
+
+function createSearchSelect(config) {
+    const cfg = config || {};
+    const MAX_LIST_HEIGHT = 240, MIN_LIST_HEIGHT = 120;
+    let placeholder = cfg.placeholder || "Select\\u2026";
+    let emptyLabel = cfg.emptyLabel || "No items";
+    const onChange = cfg.onChange || function () {};
+
+    const wrap = document.createElement("div");
+    wrap.className = "slls-ss";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slls-ss-btn";
+    btn.setAttribute("aria-haspopup", "listbox");
+    if (cfg.ariaLabel) btn.setAttribute("aria-label", cfg.ariaLabel);
+    const valueLabel = document.createElement("span");
+    valueLabel.className = "slls-ss-value";
+    btn.appendChild(valueLabel);
+    const caret = document.createElement("span");
+    caret.className = "slls-ss-caret";
+    caret.innerHTML = `__SLLS_SS_CARET__`;
+    btn.appendChild(caret);
+    wrap.appendChild(btn);
+
+    const panel = document.createElement("div");
+    panel.className = "slls-ss-panel";
+    const searchWrap = document.createElement("div");
+    searchWrap.className = "slls-ss-searchwrap";
+    const searchIcon = document.createElement("span");
+    searchIcon.className = "slls-ss-searchicon";
+    searchIcon.innerHTML = `__SLLS_SS_SEARCH__`;
+    searchWrap.appendChild(searchIcon);
+    const search = document.createElement("input");
+    search.className = "slls-ss-search";
+    search.type = "search";
+    search.placeholder = cfg.searchPlaceholder || "Search\\u2026";
+    search.setAttribute("aria-label", cfg.searchPlaceholder || "Search");
+    searchWrap.appendChild(search);
+    panel.appendChild(searchWrap);
+    const list = document.createElement("div");
+    list.className = "slls-ss-list";
+    list.setAttribute("role", "listbox");
+    panel.appendChild(list);
+    wrap.appendChild(panel);
+
+    let options = [];
+    let value = "";
+    let disabled = false;
+    // Index into the currently filtered options, for keyboard navigation.
+    let activeIndex = -1;
+    let shown = [];
+
+    function clearNode(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+    function close() {
+        wrap.classList.remove("slls-ss-open");
+        btn.setAttribute("aria-expanded", "false");
+        activeIndex = -1;
+    }
+    function open() {
+        for (const other of __sllsSsOpen) if (other !== close) other();
+        wrap.classList.add("slls-ss-open");
+        btn.setAttribute("aria-expanded", "true");
+        search.value = "";
+        // The list always drops downward and is capped to the room below the
+        // control, so it scrolls instead of overflowing the widget.
+        const rect = btn.getBoundingClientRect();
+        const room = window.innerHeight - rect.bottom - 70;
+        list.style.maxHeight = `${Math.max(MIN_LIST_HEIGHT, Math.min(MAX_LIST_HEIGHT, room))}px`;
+        activeIndex = -1;
+        renderList();
+        setActive(shown.findIndex((o) => o.value === value));
+        search.focus();
+    }
+    __sllsSsOpen.add(close);
+
+    function selectedOption() { return options.find((o) => o.value === value) || null; }
+    function renderValue() {
+        const option = selectedOption();
+        valueLabel.textContent = option ? option.label : (options.length === 0 ? emptyLabel : placeholder);
+        valueLabel.classList.toggle("slls-ss-placeholder", !option);
+        valueLabel.title = option ? option.label : "";
+        btn.disabled = disabled || options.length === 0;
+    }
+    function setActive(index) {
+        const rows = list.querySelectorAll(".slls-ss-opt");
+        if (rows.length === 0) { activeIndex = -1; return; }
+        activeIndex = Math.max(0, Math.min(index, rows.length - 1));
+        rows.forEach((row, i) => row.classList.toggle("slls-ss-active", i === activeIndex));
+        rows[activeIndex].scrollIntoView({ block: "nearest" });
+    }
+    function commit(option) {
+        const changed = value !== option.value;
+        value = option.value;
+        renderValue();
+        close();
+        btn.focus();
+        if (changed) onChange(option);
+    }
+    function renderList() {
+        clearNode(list);
+        const term = search.value.trim().toLowerCase();
+        shown = term ? options.filter((o) => o.label.toLowerCase().includes(term)) : options;
+        if (shown.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "slls-ss-empty";
+            empty.textContent = options.length === 0 ? emptyLabel : "No matches";
+            list.appendChild(empty);
+            activeIndex = -1;
+            return;
+        }
+        for (const option of shown) {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.tabIndex = -1;
+            row.className = "slls-ss-opt" + (option.value === value ? " slls-ss-selected" : "");
+            row.setAttribute("role", "option");
+            row.setAttribute("aria-selected", String(option.value === value));
+            row.textContent = option.label;
+            row.title = option.label;
+            row.addEventListener("click", () => commit(option));
+            list.appendChild(row);
+        }
+        if (activeIndex >= 0) setActive(activeIndex);
+    }
+
+    btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (wrap.classList.contains("slls-ss-open")) close(); else open();
+    });
+    btn.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+            ev.preventDefault();
+            if (!wrap.classList.contains("slls-ss-open")) open();
+        }
+    });
+    panel.addEventListener("click", (ev) => ev.stopPropagation());
+    search.addEventListener("input", () => { activeIndex = -1; renderList(); setActive(0); });
+    search.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowDown") { ev.preventDefault(); setActive(activeIndex + 1); }
+        else if (ev.key === "ArrowUp") { ev.preventDefault(); setActive(activeIndex <= 0 ? 0 : activeIndex - 1); }
+        else if (ev.key === "Home") { ev.preventDefault(); setActive(0); }
+        else if (ev.key === "End") { ev.preventDefault(); setActive(shown.length - 1); }
+        else if (ev.key === "Enter") {
+            ev.preventDefault();
+            if (activeIndex >= 0 && shown[activeIndex]) commit(shown[activeIndex]);
+        } else if (ev.key === "Escape" || ev.key === "Tab") {
+            // Collapse first so Esc/Tab continue on to the surrounding UI rather
+            // than stepping through the option list.
+            ev.stopPropagation();
+            ev.preventDefault();
+            close();
+            btn.focus();
+        }
+    });
+
+    renderValue();
+
+    return {
+        el: wrap,
+        get value() { return value; },
+        get label() { const o = selectedOption(); return o ? o.label : ""; },
+        focus() { btn.focus(); },
+        setOptions(next, nextValue) {
+            options = next || [];
+            if (nextValue !== undefined) value = nextValue;
+            if (!options.some((o) => o.value === value)) value = "";
+            renderValue();
+            renderList();
+        },
+        setEmptyLabel(text) { emptyLabel = text; renderValue(); renderList(); },
+        setPlaceholder(text) { placeholder = text; renderValue(); },
+        setDisabled(flag) { disabled = !!flag; if (disabled) close(); renderValue(); },
+    };
+}
+"""
+
+SEARCH_SELECT_JS = SEARCH_SELECT_JS.replace(
+    "__SLLS_SS_CARET__", ICONS["caret_right"]
+).replace("__SLLS_SS_SEARCH__", ICONS["search"])
 
 
 # ---------------------------------------------------------------------------
