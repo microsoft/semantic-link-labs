@@ -1,4 +1,6 @@
 import re
+from collections import deque
+from itertools import combinations
 from typing import Optional, Literal, Dict, List, Set, Tuple
 from uuid import UUID
 
@@ -17,16 +19,31 @@ from sempy_labs._helper_functions import (
 _FIELD_REF = re.compile(r"(?:'(?P<tq>[^']+)'|(?P<tu>\w+))?\[(?P<o>[^\]]+)\]")
 _QUOTED_REF = re.compile(r"'(?P<t>[^']+)'")
 
+# MDX regexes. Clients such as Excel (pivot tables) query a semantic model with
+# MDX rather than DAX, where objects are referenced as a dot-separated chain of
+# bracketed segments, e.g. [Measures].[Sales Amount], [Date].[Calendar Year] or
+# [Date].[Calendar].[Year].&[2020]. A ``]`` within a name is escaped as ``]]``
+# and a segment prefixed with ``&`` is a member key (a value, not an object).
+_MDX_SEGMENT = re.compile(r"(?P<key>&)?\[(?P<v>(?:[^\]]|\]\])*)\]")
+_MDX_CHAIN = re.compile(
+    r"&?\[(?:[^\]]|\]\])*\](?:\s*\.\s*&?\[(?:[^\]]|\]\])*\])*",
+)
+
+# Statements which begin an MDX query (an Excel pivot table sends SELECT, and
+# WITH when it defines calculated members/sets).
+_MDX_START = ("SELECT", "WITH", "DRILLTHROUGH")
+
 # Context tuple layout (see ``_build_usage_context``).
 _CTX_ALL = 0
-_CTX_CANONICAL = 1
-_CTX_TABLES = 2
-_CTX_COLUMNS = 3
-_CTX_MEASURES = 4
-_CTX_ADJ = 5
-_CTX_HIDDEN = 6
-_CTX_TABLE_KIND = 7
-_CTX_CALC_COLS = 8
+_CTX_TABLES = 1
+_CTX_COLUMNS = 2
+_CTX_MEASURES = 3
+_CTX_ADJ = 4
+_CTX_HIDDEN = 5
+_CTX_TABLE_KIND = 6
+_CTX_CALC_COLS = 7
+_CTX_REL_EDGES = 8
+_CTX_REL_ADJ = 9
 
 
 def _ukey(object_type: str, table: str, name: str) -> str:
@@ -59,19 +76,23 @@ def _normalize_usage_type(dmv_type: str) -> Optional[str]:
 
 def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
     List[Tuple[str, str, str]],
-    Set[str],
     Dict[str, str],
     Dict[str, Set[str]],
     Dict[str, str],
     Dict[str, Set[str]],
     Set[str],
+    Dict[str, str],
+    Set[str],
+    List[Tuple[str, str, str, str]],
+    Dict[str, List[Tuple[str, int]]],
 ]:
     """Builds the reusable analysis context for a semantic model.
 
     Enumerates every tracked object (tables, non-row-number columns and
     measures), builds case-insensitive lookups, records which objects are
-    hidden, and derives the (transitive) dependency adjacency from the model's
-    calculation dependencies.
+    hidden, derives the (transitive) dependency adjacency from the model's
+    calculation dependencies, and records the model's relationships (so a query
+    spanning related tables can be credited to the joining columns).
     """
     from sempy_labs.tom import connect_semantic_model
     from sempy_labs._model_dependencies import get_model_calc_dependencies
@@ -84,6 +105,10 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
     hidden_keys: Set[str] = set()
     table_kinds: Dict[str, str] = {}  # actual table name -> kind
     calc_columns: Set[str] = set()  # ukeys of calculated columns
+    # (from table, from column, to table, to column) per relationship, plus an
+    # undirected table -> [(other table, relationship index)] adjacency.
+    rel_edges: List[Tuple[str, str, str, str]] = []
+    rel_adj: Dict[str, List[Tuple[str, int]]] = {}
 
     def register(object_type: str, table: str, name: str) -> None:
         key = _ukey(object_type, table, name)
@@ -154,6 +179,26 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
                 if measure.IsHidden:
                     hidden_keys.add(_ukey("Measure", table_name, measure.Name))
 
+        # Only active relationships are recorded: an inactive relationship does
+        # not join the tables of a query unless a measure activates it (in which
+        # case the measure's calculation dependencies cover it).
+        for rel in tom.model.Relationships:
+            try:
+                if not rel.IsActive:
+                    continue
+                from_table = rel.FromTable.Name
+                from_column = rel.FromColumn.Name
+                to_table = rel.ToTable.Name
+                to_column = rel.ToColumn.Name
+            except Exception:
+                continue
+            if from_table == to_table:
+                continue
+            index = len(rel_edges)
+            rel_edges.append((from_table, from_column, to_table, to_column))
+            rel_adj.setdefault(from_table, []).append((to_table, index))
+            rel_adj.setdefault(to_table, []).append((from_table, index))
+
     # Build the dependency adjacency (object -> referenced objects). The
     # ``get_model_calc_dependencies`` result is already transitively expanded,
     # so a single-level union reproduces the transitive closure used by the
@@ -173,7 +218,6 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
 
     return (
         all_objects,
-        canonical,
         tables_lower,
         columns_by_table,
         measure_home,
@@ -181,6 +225,8 @@ def _build_usage_context(dataset_id: str, workspace_id: str) -> Tuple[
         hidden_keys,
         table_kinds,
         calc_columns,
+        rel_edges,
+        rel_adj,
     )
 
 
@@ -221,6 +267,152 @@ def _collect_direct_references(
     return direct
 
 
+def _query_language(query: str) -> str:
+    """Identifies whether a captured query is written in DAX or MDX.
+
+    Clients such as Excel query the model with MDX, which must be parsed
+    differently than DAX. The language is derived from the query text so it is
+    correct regardless of which application submitted the query.
+    """
+    head = (query or "").lstrip().lstrip("\ufeff")[:400].upper()
+    if head.startswith(_MDX_START):
+        return "MDX"
+    return "DAX"
+
+
+def _collect_mdx_references(
+    query: str,
+    tables_lower: Dict[str, str],
+    columns_by_table: Dict[str, Set[str]],
+    measure_home: Dict[str, str],
+) -> Set[str]:
+    """Finds the model objects a single MDX query directly references.
+
+    In the MDX view of a tabular model each table is a dimension, each column is
+    an (attribute) hierarchy and the levels of a user hierarchy are named after
+    the columns they are built from. A reference is therefore a chain of
+    bracketed segments whose first segment is either ``Measures`` (making the
+    next segment a measure) or a table, with any subsequent segment which
+    matches one of that table's columns naming a used column. Member key
+    segments (``&[...]``) hold values rather than object names and are skipped.
+
+    Only the objects named in the query text are returned; the columns of the
+    relationships joining them are added by ``_relationship_references``.
+    """
+    direct: Set[str] = set()
+
+    for chain in _MDX_CHAIN.finditer(query):
+        segments = [
+            (bool(m.group("key")), m.group("v").replace("]]", "]"))
+            for m in _MDX_SEGMENT.finditer(chain.group(0))
+        ]
+        if not segments or segments[0][0]:
+            continue
+
+        first = segments[0][1]
+        names = [name for is_key, name in segments[1:] if not is_key]
+
+        if first.lower() == "measures":
+            # [Measures].[Sales Amount] - only the segment directly after
+            # 'Measures' names the measure (any others are member properties).
+            if names:
+                home = measure_home.get(names[0].lower())
+                if home is not None:
+                    direct.add(_ukey("Measure", home, names[0]))
+            continue
+
+        actual = tables_lower.get(first.lower())
+        if actual is None:
+            continue
+        direct.add(_ukey("Table", actual, actual))
+        cols = columns_by_table.get(actual.lower())
+        if not cols:
+            continue
+        for name in names:
+            if name.lower() in cols:
+                direct.add(_ukey("Column", actual, name))
+
+    return direct
+
+
+def _referenced_tables(direct: Set[str], tables_lower: Dict[str, str]) -> Set[str]:
+    """Returns the (actual) names of the tables a set of references belongs to.
+
+    A measure reference contributes its home table, so a query which combines a
+    measure with a column of another table reports both tables.
+    """
+    tables: Set[str] = set()
+    for key in direct:
+        parts = key.split("\u0001")
+        if len(parts) < 2:
+            continue
+        actual = tables_lower.get(parts[1])
+        if actual is not None:
+            tables.add(actual)
+    return tables
+
+
+def _relationship_path(
+    source: str,
+    target: str,
+    rel_edges: List[Tuple[str, str, str, str]],
+    rel_adj: Dict[str, List[Tuple[str, int]]],
+) -> Set[str]:
+    """Returns the objects of the relationships on the shortest path between two tables."""
+    previous: Dict[str, Optional[Tuple[str, int]]] = {source: None}
+    queue = deque([source])
+    while queue:
+        node = queue.popleft()
+        if node == target:
+            break
+        for other, edge in rel_adj.get(node, ()):
+            if other not in previous:
+                previous[other] = (node, edge)
+                queue.append(other)
+
+    if target not in previous:
+        return set()
+
+    keys: Set[str] = set()
+    node = target
+    while previous[node] is not None:
+        parent, edge = previous[node]
+        from_table, from_column, to_table, to_column = rel_edges[edge]
+        keys.add(_ukey("Table", from_table, from_table))
+        keys.add(_ukey("Column", from_table, from_column))
+        keys.add(_ukey("Table", to_table, to_table))
+        keys.add(_ukey("Column", to_table, to_column))
+        node = parent
+    return keys
+
+
+def _relationship_references(
+    tables: Set[str],
+    rel_edges: List[Tuple[str, str, str, str]],
+    rel_adj: Dict[str, List[Tuple[str, int]]],
+    cache: Dict[Tuple[str, str], Set[str]],
+) -> Set[str]:
+    """Finds the relationship columns a query spanning several tables uses.
+
+    Combining objects from different tables (e.g. a measure from a fact table
+    and a column from a dimension) also uses the columns of the relationships
+    which join those tables, including any intermediate (snowflaked) hops. The
+    path between each pair of tables is cached, since the same table
+    combinations recur across queries.
+    """
+    if len(tables) < 2 or not rel_edges:
+        return set()
+
+    keys: Set[str] = set()
+    for source, target in combinations(sorted(tables), 2):
+        path = cache.get((source, target))
+        if path is None:
+            path = _relationship_path(source, target, rel_edges, rel_adj)
+            cache[(source, target)] = path
+        keys |= path
+    return keys
+
+
 def _collect_report_references(
     references: List[Tuple[str, str, str]],
     tables_lower: Dict[str, str],
@@ -259,14 +451,19 @@ def _expand(direct: Set[str], adjacency: Dict[str, Set[str]]) -> Set[str]:
 def _fetch_monitoring_queries(
     dataset_name: str, workspace_id: str, range_str: str
 ) -> List[str]:
-    """Fetches the DAX query texts captured by workspace monitoring."""
+    """Fetches the query texts captured by workspace monitoring.
+
+    Both DAX queries (which start with EVALUATE or DEFINE) and the MDX queries
+    submitted by Excel (pivot tables) are captured.
+    """
     from sempy_labs._kusto import query_workspace_monitoring
 
     safe_name = dataset_name.replace("\\", "\\\\").replace('"', '\\"')
     kql_query = (
         "SemanticModelLogs\n"
         '| where OperationName == "QueryEnd" and '
-        '(EventText startswith "EVALUATE" or EventText startswith "DEFINE")\n'
+        '(EventText startswith "EVALUATE" or EventText startswith "DEFINE" '
+        'or ApplicationName == "Excel")\n'
         f'| where ItemName == "{safe_name}"\n'
         f"| where Timestamp >= ago({range_str})\n"
         "| project EventText\n"
@@ -281,17 +478,33 @@ def _fetch_monitoring_queries(
 
 
 def _score_queries(context, queries: List[str]) -> Dict[str, int]:
-    """Scores captured DAX queries, returning a usage count per object."""
+    """Scores captured DAX/MDX queries, returning a usage count per object."""
     tables_lower = context[_CTX_TABLES]
     columns_by_table = context[_CTX_COLUMNS]
     measure_home = context[_CTX_MEASURES]
     adjacency = context[_CTX_ADJ]
+    rel_edges = context[_CTX_REL_EDGES]
+    rel_adj = context[_CTX_REL_ADJ]
 
     counts: Dict[str, int] = {}
+    path_cache: Dict[Tuple[str, str], Set[str]] = {}
     for query in queries:
-        direct = _collect_direct_references(
-            query, tables_lower, columns_by_table, measure_home
-        )
+        if _query_language(query) == "MDX":
+            direct = _collect_mdx_references(
+                query, tables_lower, columns_by_table, measure_home
+            )
+            # An MDX query which spans related tables (e.g. a measure sliced by
+            # a dimension's column) also uses the joining relationship columns.
+            direct |= _relationship_references(
+                _referenced_tables(direct, tables_lower),
+                rel_edges,
+                rel_adj,
+                path_cache,
+            )
+        else:
+            direct = _collect_direct_references(
+                query, tables_lower, columns_by_table, measure_home
+            )
         if not direct:
             continue
         for key in _expand(direct, adjacency):
@@ -413,7 +626,7 @@ def find_unused_objects(
     """
     Identifies used and unused objects (tables, columns and measures) in a semantic model.
 
-    Object usage is determined by scoring the DAX queries that reference the model (either
+    Object usage is determined by scoring the queries that reference the model (either
     captured by workspace monitoring, or reconstructed from the model's
     downstream reports), expanding each direct reference through the model's
     calculation dependencies, and counting how often each object was used. An
@@ -435,8 +648,9 @@ def find_unused_objects(
         when `visualize` is False, and to preselect the analysis method in the
         interactive widget when `visualize` is True).
 
-        * "WorkspaceMonitoring" scores the DAX queries captured by workspace
-          monitoring. Workspace monitoring must be enabled on the workspace.
+        * "WorkspaceMonitoring" scores the queries captured by workspace
+          monitoring (both the DAX queries and the MDX queries submitted by
+          Excel). Workspace monitoring must be enabled on the workspace.
         * "Report" scores the objects referenced by the model's downstream
           reports (which must be in the PBIR format). Each reference to an object
           within a report counts as one use.
