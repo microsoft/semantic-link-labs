@@ -10,6 +10,7 @@ This module centralizes:
 - Helpers to render a reusable widget header (title, dataset/workspace
   subtitle, and a light/dark theme toggle button) and the small bit of
   JavaScript that powers the theme toggle for static-HTML widgets.
+- Immediate, consistent press feedback for buttons in every interactive tool.
 
 The components here are intentionally framework-agnostic: they return plain
 strings (HTML / CSS / JS) so they can be embedded in ``IPython.display.HTML``
@@ -163,6 +164,14 @@ ICONS: dict[str, str] = {
         '<path d="M8 2a6 6 0 0 1 5.196 3H11.5a.5.5 0 0 0 0 1h2.9A.6.6 0 0 0 '
         "15 5.4V2.5a.5.5 0 0 0-1 0v1.55A7 7 0 1 0 15 8a.5.5 0 0 0-1 0A6 6 0 "
         '1 1 8 2z"/></svg>'
+    ),
+    "history": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 3v3.5H6"/>'
+        '<path d="M3 6.2A5.5 5.5 0 1 1 2.8 10"/>'
+        '<path d="M8 4.5V8l2.5 1.5"/></svg>'
     ),
     "source": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
@@ -905,6 +914,23 @@ HEADER_CSS: str = """\
 """
 
 
+# ---------------------------------------------------------------------------
+# Reusable button press feedback
+# ---------------------------------------------------------------------------
+BUTTON_PRESS_CSS: str = """\
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+    transform-origin: center;
+    -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+}
+"""
+
+
 def _scope_css(root_selector: str, css: str) -> str:
     """Prefix every top-level rule in ``css`` with ``root_selector``.
 
@@ -942,6 +968,31 @@ def scoped_header_css(root_selector: str) -> str:
         The scoped CSS as a single string.
     """
     return _scope_css(root_selector, HEADER_CSS)
+
+
+def scoped_button_press_css(root_selector: str) -> str:
+    """Return immediate press-feedback styles scoped to a widget root.
+
+    Every interactive Semantic Link Labs tool should include this CSS so a
+    pointer or keyboard press is acknowledged before any slower JavaScript or
+    Python action completes. The rules cover enabled native buttons and custom
+    controls with ``role="button"``; disabled controls are intentionally
+    excluded. Scoping prevents the styles from leaking into the notebook host
+    or neighboring widget instances.
+
+    Parameters
+    ----------
+    root_selector : str
+        A CSS selector for the widget's root container, e.g.
+        ``".slls-rm"`` or ``".vpx-abc123"``.
+
+    Returns
+    -------
+    str
+        :data:`BUTTON_PRESS_CSS` with every rule prefixed by
+        ``root_selector``.
+    """
+    return _scope_css(root_selector, BUTTON_PRESS_CSS)
 
 
 def _escape_html(value: str) -> str:

@@ -5,6 +5,7 @@ import inspect
 import os
 import re as _re
 from sempy._utils._log import log
+from sempy_labs._ui_components import scoped_button_press_css
 
 
 def _parse_skills():
@@ -222,6 +223,7 @@ def _build_function_registry():
 @log
 def chat():
     session_id = str(uuid.uuid4()).replace("-", "")
+    button_press_css = scoped_button_press_css(f"#chat-wrapper-{session_id}")
 
     # Build function registry from library introspection
     registry = _build_function_registry()
@@ -417,6 +419,8 @@ def chat():
         #send-btn-{session_id}:hover {{
             background: #0060df;
         }}
+
+        {button_press_css}
     </style>
 
     <div id="chat-wrapper-{session_id}">

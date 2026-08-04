@@ -4091,7 +4091,12 @@ export default { render };
 # Inject SVG icons from the shared UI components module so every Semantic
 # Link Labs widget renders the same visual primitives (see
 # ``sempy_labs._ui_components.ICONS``).
-from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+from sempy_labs._ui_components import (  # noqa: E402
+    ICONS as _UI_ICONS,
+    scoped_button_press_css as _ui_scoped_button_press_css,
+)
+
+_WIDGET_CSS += _ui_scoped_button_press_css(".slls-dle")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])

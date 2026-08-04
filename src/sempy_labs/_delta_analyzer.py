@@ -38,6 +38,7 @@ from sempy_labs._ui_components import (
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_header_css as _ui_scoped_header_css,
     scoped_attribution_css as _ui_scoped_attribution_css,
+    scoped_button_press_css as _ui_scoped_button_press_css,
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
@@ -721,6 +722,7 @@ def _display_delta_analyzer_ui(
     )
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
     attribution_html = _ui_render_attribution_html()
 
     full_html = f"""
@@ -1060,6 +1062,7 @@ def _display_delta_analyzer_ui(
             font-variant-numeric: tabular-nums;
         }}
         {ui_attribution_css_scoped}
+        {ui_button_press_css_scoped}
     </style>
 
     <div class="da-{uid}-root{' da-dark' if dark_mode else ''}">

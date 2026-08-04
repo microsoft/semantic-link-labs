@@ -1954,6 +1954,7 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
+    scoped_button_press_css as _ui_scoped_button_press_css,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
 )
@@ -1963,6 +1964,7 @@ _WIDGET_CSS = (
     .replace("__DARK__", _UI_DARK_VARS)
     .replace("__SEARCH_SELECT_CSS__", _UI_SEARCH_SELECT_CSS)
 )
+_WIDGET_CSS += _ui_scoped_button_press_css(".fuo")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SEARCH_SELECT_JS__", _UI_SEARCH_SELECT_JS)
