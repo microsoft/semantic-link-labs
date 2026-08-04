@@ -363,6 +363,7 @@ def _execute_and_capture(
     role: Optional[str],
     baseline_count: int,
     run_warmup: bool = True,
+    wait_for_optional_events: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
     """Run the real DAX query (optionally preceded by a one-time warm-up
     evaluation) against an already-started ``trace`` and capture the trace
@@ -377,6 +378,11 @@ def _execute_and_capture(
     query is executed first. This is only needed for the very first query run
     against a semantic model (to prime caches/connection); subsequent queries
     against the same model skip it.
+
+    ``wait_for_optional_events`` controls whether capture blocks for late DAX
+    query-plan events after the essential ``QueryEnd`` event arrives. The
+    interactive widget disables this wait and back-fills optional artifacts in
+    the background so timing stats can be displayed immediately.
 
     Returns
     -------
@@ -429,8 +435,12 @@ def _execute_and_capture(
     # essentially guaranteed to arrive; break the instant it does.
     qe_seen = False
     _qe_deadline = time.monotonic() + 30.0
+    _first_qe_poll = True
     while time.monotonic() < _qe_deadline:
-        time.sleep(0.1)
+        if _first_qe_poll:
+            _first_qe_poll = False
+        else:
+            time.sleep(0.05)
         try:
             _l = _get_trace_logs(trace)
         except Exception:
@@ -496,7 +506,7 @@ def _execute_and_capture(
     # several separate flushes), so a generous deadline is used. Only a query
     # that genuinely produces no plan (e.g. a trivial constant evaluation) waits
     # out the longer no-plan grace period below before giving up.
-    _plan_deadline = time.monotonic() + 30.0
+    _plan_deadline = time.monotonic() + (30.0 if wait_for_optional_events else 0.0)
     _plan_count = -1
     _stable_since: Optional[float] = None
     _qe_at: Optional[float] = time.monotonic() if qe_seen else None
@@ -8329,6 +8339,7 @@ export default { render };
             role_name,
             baseline,
             run_warmup=run_warmup,
+            wait_for_optional_events=False,
         )
         with trace_lock:
             # Only advance the baseline if the trace wasn't rebound meanwhile.

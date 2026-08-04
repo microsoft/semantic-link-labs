@@ -353,6 +353,28 @@ def test_running_query_shows_an_indeterminate_progress_bar():
     assert "animation: dtx-run-progress 1s ease-in-out infinite;" in source
 
 
+def test_interactive_run_does_not_wait_for_optional_trace_events():
+    source = _source()
+    capture = source[
+        source.index("def _execute_and_capture") : source.index(
+            "def _compute_trace_stats"
+        )
+    ]
+    persistent_run = source[
+        source.index("def _run_query_persistent") : source.index(
+            "def _backfill_query_plan"
+        )
+    ]
+    worker = source[source.index("def _worker") : source.index("def _on_run")]
+
+    assert "wait_for_optional_events: bool = True" in capture
+    assert "30.0 if wait_for_optional_events else 0.0" in capture
+    assert "_first_qe_poll = True" in capture
+    assert "time.sleep(0.05)" in capture
+    assert "wait_for_optional_events=False" in persistent_run
+    assert "_backfill_query_plan(run_id, int(start_baseline), query)" in worker
+
+
 def test_play_button_is_a_rounded_rectangle():
     source = _source()
     button_css = source[
