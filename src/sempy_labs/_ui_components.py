@@ -109,6 +109,23 @@ ICONS: dict[str, str] = {
         "0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 "
         '0 012 8z" clip-rule="evenodd"/></svg>'
     ),
+    "dax_performance": (
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4.1 17.5a8.5 8.5 0 1 1 15.8 0"/>'
+        '<path d="m12 14.5 4.1-4.8"/>'
+        '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
+        '</svg>'
+    ),
+    "list_tree": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/>'
+        '<path d="M3 6v4c0 1.1.9 2 2 2h3"/>'
+        '<path d="M3 10v6c0 1.1.9 2 2 2h3"/></svg>'
+    ),
     "plus": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
@@ -181,13 +198,31 @@ ICONS: dict[str, str] = {
         '<rect x="2" y="3" width="12" height="10" rx="1.5"/>'
         '<path d="M6.5 3v10"/><path d="M8.5 6.5L10.5 8l-2 1.5"/></svg>'
     ),
-    "builder": (
-        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
-        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+    "hammer": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true">'
-        '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/>'
-        '<path d="M2 6h12"/><path d="M4.5 9h4"/><path d="M4.5 11h2"/>'
-        '<path d="M11.5 9.2v3.2M9.9 10.8h3.2"/></svg>'
+        '<path d="m15 12-9.373 9.373a1 1 0 0 1-3.001-3L12 9"/>'
+        '<path d="m18 15 4-4"/>'
+        '<path d="m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172v-.344a2 2 0 0 0-.586-1.414l-1.657-1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5"/></svg>'
+    ),
+    "shield_check": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/>'
+        '<path d="m9 12 2 2 4-4"/></svg>'
+    ),
+    "users": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>'
+        '<circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>'
+    ),
+    "user": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/>'
+        '<circle cx="12" cy="7" r="4"/></svg>'
     ),
     "close": (
         '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
@@ -217,6 +252,9 @@ ICONS: dict[str, str] = {
         '<path d="M15 21 v-4 a2 2 0 0 1 2 -2 h4"/></svg>'
     ),
 }
+
+# Backward-compatible name used by older widget implementations.
+ICONS["builder"] = ICONS["hammer"]
 
 
 # ---------------------------------------------------------------------------

@@ -30,7 +30,7 @@ def _get_trace_logs(trace) -> Optional[pd.DataFrame]:
 
 
 @log
-def test(
+def dax_perf_optimizer(
     dataset: Optional[str | UUID] = None,
     dax_string: str = "",
     workspace: Optional[str | UUID] = None,
@@ -1464,6 +1464,200 @@ def _classify_dax_spans(dax_expression: str) -> list:
     return spans
 
 
+_FALLBACK_SEARCH_SELECT_CSS = r"""
+.slls-ss { position: relative; display: flex; width: 100%; }
+.slls-ss-btn {
+    display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
+    border: 1px solid var(--ui-border-strong); border-radius: 8px;
+    padding: 8px 10px; background: var(--ui-bg); color: var(--ui-text);
+    font: inherit; cursor: pointer;
+}
+.slls-ss-value { flex: 1 1 auto; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.slls-ss-caret { color: var(--ui-text-tertiary); font-size: 11px; }
+.slls-ss-panel {
+    display: none; position: absolute; top: calc(100% + 5px); left: 0; right: 0;
+    z-index: 30; padding: 6px; border: 1px solid var(--ui-border-strong);
+    border-radius: 10px; background: var(--ui-bg); box-shadow: var(--ui-shadow-md);
+}
+.slls-ss-open .slls-ss-panel { display: block; }
+.slls-ss-search {
+    width: 100%; margin-bottom: 5px; border: 1px solid var(--ui-border-strong);
+    border-radius: 8px; padding: 7px 9px; background: var(--ui-bg-secondary);
+    color: var(--ui-text); font: inherit; font-size: 13px;
+}
+.slls-ss-search:focus { outline: none; border-color: var(--ui-accent); }
+.slls-ss-list { max-height: 240px; overflow-y: auto; }
+.slls-ss-opt {
+    display: block; width: 100%; border: 0; border-radius: 7px;
+    padding: 7px 10px; background: transparent; color: var(--ui-text);
+    font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slls-ss-opt:hover { background: var(--ui-surface-2); }
+.slls-ss-opt.slls-ss-selected { color: var(--ui-accent); font-weight: 500; }
+.slls-ss-empty { padding: 9px 10px; color: var(--ui-text-tertiary); font-size: 12.5px; }
+.slls-ss-disabled { opacity: 0.6; }
+"""
+
+_FALLBACK_SEARCH_SELECT_JS = r"""
+function createSearchSelect(config) {
+    const cfg = config || {};
+    const wrap = document.createElement("div");
+    wrap.className = "slls-ss";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slls-ss-btn";
+    btn.setAttribute("aria-haspopup", "listbox");
+    btn.setAttribute("aria-expanded", "false");
+    if (cfg.ariaLabel) btn.setAttribute("aria-label", cfg.ariaLabel);
+    const valueLabel = document.createElement("span");
+    valueLabel.className = "slls-ss-value";
+    const caret = document.createElement("span");
+    caret.className = "slls-ss-caret";
+    caret.textContent = "\u25be";
+    btn.appendChild(valueLabel);
+    btn.appendChild(caret);
+    wrap.appendChild(btn);
+
+    const panel = document.createElement("div");
+    panel.className = "slls-ss-panel";
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "slls-ss-search";
+    search.placeholder = cfg.searchPlaceholder || "Search\u2026";
+    panel.appendChild(search);
+    const list = document.createElement("div");
+    list.className = "slls-ss-list";
+    list.setAttribute("role", "listbox");
+    panel.appendChild(list);
+    wrap.appendChild(panel);
+
+    let options = [];
+    let value = "";
+    let emptyLabel = cfg.emptyLabel || "No items";
+    let disabled = false;
+    function close() {
+        wrap.classList.remove("slls-ss-open");
+        btn.setAttribute("aria-expanded", "false");
+    }
+    function renderValue() {
+        const selected = options.find(option => String(option.value) === String(value));
+        valueLabel.textContent = selected ? selected.label : (cfg.placeholder || "Select\u2026");
+        btn.disabled = disabled;
+        wrap.classList.toggle("slls-ss-disabled", disabled);
+    }
+    function renderList() {
+        list.innerHTML = "";
+        const term = search.value.trim().toLowerCase();
+        const shown = term
+            ? options.filter(option => String(option.label).toLowerCase().includes(term))
+            : options;
+        if (!shown.length) {
+            const empty = document.createElement("div");
+            empty.className = "slls-ss-empty";
+            empty.textContent = options.length ? "No matches" : emptyLabel;
+            list.appendChild(empty);
+            return;
+        }
+        shown.forEach(option => {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.className = "slls-ss-opt";
+            row.classList.toggle("slls-ss-selected", String(option.value) === String(value));
+            row.textContent = option.label;
+            row.addEventListener("click", () => {
+                value = option.value;
+                renderValue();
+                close();
+                if (cfg.onChange) cfg.onChange(option);
+            });
+            list.appendChild(row);
+        });
+    }
+    btn.addEventListener("click", event => {
+        event.stopPropagation();
+        if (disabled) return;
+        const opening = !wrap.classList.contains("slls-ss-open");
+        wrap.classList.toggle("slls-ss-open", opening);
+        btn.setAttribute("aria-expanded", String(opening));
+        if (opening) {
+            search.value = "";
+            renderList();
+            search.focus();
+        }
+    });
+    panel.addEventListener("click", event => event.stopPropagation());
+    search.addEventListener("input", renderList);
+    search.addEventListener("keydown", event => {
+        if (event.key === "Escape") { close(); btn.focus(); }
+    });
+    document.addEventListener("click", close);
+    renderValue();
+    return {
+        el: wrap,
+        get value() { return value; },
+        get label() {
+            const selected = options.find(option => String(option.value) === String(value));
+            return selected ? selected.label : "";
+        },
+        focus() { btn.focus(); },
+        setOptions(items, selectedValue) {
+            options = items || [];
+            value = selectedValue || "";
+            renderValue();
+            renderList();
+        },
+        setEmptyLabel(text) { emptyLabel = text || "No items"; renderList(); },
+        setDisabled(flag) { disabled = !!flag; if (disabled) close(); renderValue(); },
+    };
+}
+"""
+
+_FALLBACK_DAX_PERFORMANCE_ICON = (
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
+    'stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M4.1 17.5a8.5 8.5 0 1 1 15.8 0"/>'
+    '<path d="m12 14.5 4.1-4.8"/>'
+    '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
+    "</svg>"
+)
+_FALLBACK_HAMMER_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="m15 12-9.373 9.373a1 1 0 0 1-3.001-3L12 9"/>'
+    '<path d="m18 15 4-4"/>'
+    '<path d="m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172v-.344a2 2 0 0 0-.586-1.414l-1.657-1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5"/></svg>'
+)
+_FALLBACK_LIST_TREE_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/>'
+    '<path d="M3 6v4c0 1.1.9 2 2 2h3"/>'
+    '<path d="M3 10v6c0 1.1.9 2 2 2h3"/></svg>'
+)
+_FALLBACK_SHIELD_CHECK_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/>'
+    '<path d="m9 12 2 2 4-4"/></svg>'
+)
+_FALLBACK_USERS_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>'
+    '<circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>'
+)
+_FALLBACK_USER_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/>'
+    '<circle cx="12" cy="7" r="4"/></svg>'
+)
+
+
 def _visualize_dax_test(
     df: pd.DataFrame,
     total_duration: int,
@@ -1494,6 +1688,7 @@ def _visualize_dax_test(
 
     from IPython.display import display
     from sempy_labs._daxformatter import _format_dax
+    from sempy_labs import _ui_components
     from sempy_labs._ui_components import (
         LIGHT_THEME_VARS as _UI_LIGHT_VARS,
         DARK_THEME_VARS as _UI_DARK_VARS,
@@ -1501,6 +1696,12 @@ def _visualize_dax_test(
         HEADER_CSS as _UI_HEADER_CSS,
         ATTRIBUTION_CSS as _UI_ATTRIBUTION_CSS,
         ICONS as _UI_ICONS,
+    )
+    _UI_SEARCH_SELECT_CSS = getattr(
+        _ui_components, "SEARCH_SELECT_CSS", _FALLBACK_SEARCH_SELECT_CSS
+    )
+    _UI_SEARCH_SELECT_JS = getattr(
+        _ui_components, "SEARCH_SELECT_JS", _FALLBACK_SEARCH_SELECT_JS
     )
 
     # The DAX is intentionally NOT auto-formatted on load (formatting calls
@@ -1515,7 +1716,14 @@ def _visualize_dax_test(
     initial_query_plan_rows = _query_plan_rows_from_df(df)
     initial_execution_metrics = _execution_metrics_from_df(df)
 
-    widget_css = _UI_HEADER_CSS + "\n" + _UI_ATTRIBUTION_CSS + "\n" + f"""
+    widget_css = (
+        _UI_HEADER_CSS
+        + "\n"
+        + _UI_ATTRIBUTION_CSS
+        + "\n"
+        + _UI_SEARCH_SELECT_CSS
+        + "\n"
+        + f"""
 .dtx {{
     {_UI_LIGHT_VARS}
     {_UI_SYNTAX_VARS}
@@ -1570,6 +1778,21 @@ def _visualize_dax_test(
     padding: 22px 24px 18px 24px;
     background: var(--ui-bg);
 }}
+.dtx .dtx-tool-icon {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-tool-icon svg {{ width: 27px; height: 27px; }}
+.dtx .dtx-tool-icon svg path:nth-of-type(2) {{ stroke: var(--ui-accent); }}
+.dtx .dtx-tool-icon svg circle {{ fill: var(--ui-accent); }}
 .dtx .dtx-cards {{
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1577,6 +1800,7 @@ def _visualize_dax_test(
     flex: 0 0 auto;
     padding: 0 24px 18px 24px;
 }}
+.dtx .dtx-cards.dtx-cards-hidden {{ display: none; }}
 .dtx .dtx-card {{
     background: var(--ui-bg-secondary);
     border: 1px solid var(--ui-border);
@@ -1616,6 +1840,13 @@ def _visualize_dax_test(
 .dtx .dtx-query-block {{
     margin: 0 24px 16px 24px;
 }}
+.dtx .dtx-query-options {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 24px 14px;
+}}
 .dtx .dtx-query-toolbar {{
     display: flex;
     align-items: center;
@@ -1652,6 +1883,7 @@ def _visualize_dax_test(
     height: auto;
     display: block;
 }}
+.dtx .dtx-daxformat-btn svg {{ width: 18px; }}
 .dtx .dtx-fmt-btn:hover:not(:disabled) {{
     border-color: var(--ui-accent);
     background: var(--ui-surface-2);
@@ -1819,24 +2051,29 @@ def _visualize_dax_test(
     opacity: 0.4;
     cursor: default;
 }}
+.dtx .dtx-title-row {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}}
 .dtx .dtx-change-btn {{
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     padding: 0;
-    margin-left: 4px;
     flex: 0 0 auto;
-    border-radius: 6px;
-    border: 1px solid var(--ui-border);
-    background: transparent;
-    color: var(--ui-text-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--ui-border-strong);
+    background: var(--ui-surface);
+    color: var(--ui-text);
     cursor: pointer;
 }}
 .dtx .dtx-change-btn svg {{
-    width: 15px;
-    height: 15px;
+    width: 18px;
+    height: 18px;
 }}
 .dtx .dtx-change-btn:hover {{
     border-color: var(--ui-accent);
@@ -1846,29 +2083,30 @@ def _visualize_dax_test(
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     padding: 0;
     margin-right: 6px;
     flex: 0 0 auto;
-    border-radius: 7px;
+    border-radius: 8px;
     border: 1px solid var(--ui-border);
-    background: transparent;
+    background: var(--ui-surface);
     color: var(--ui-text-secondary);
     cursor: pointer;
 }}
 .dtx .dtx-builder-show-btn svg {{
-    width: 17px;
-    height: 17px;
+    width: 20px;
+    height: 20px;
 }}
 .dtx .dtx-builder-show-btn:hover {{
-    border-color: var(--ui-accent);
-    color: var(--ui-accent);
+    border-color: var(--ui-border-strong);
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
 }}
 .dtx .dtx-builder-show-btn.dtx-active {{
     border-color: var(--ui-accent);
-    background: var(--ui-accent);
-    color: var(--ui-on-accent);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
 }}
 .dtx .dtx-picker-cancel {{
     display: inline-flex;
@@ -1893,23 +2131,99 @@ def _visualize_dax_test(
 .dtx .dtx-cache-label {{
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 12px;
     color: var(--ui-text-secondary);
     cursor: pointer;
     user-select: none;
+    white-space: nowrap;
 }}
 .dtx .dtx-cache-label input {{
-    cursor: pointer;
-    accent-color: var(--ui-accent);
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}}
+.dtx .dtx-cache-switch {{
+    position: relative;
+    width: 34px;
+    height: 20px;
+    flex: 0 0 34px;
+    border-radius: 10px;
+    background: var(--ui-border-strong);
+    transition: background 120ms ease;
+}}
+.dtx .dtx-cache-switch::after {{
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-sm);
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-cache-label input:checked + .dtx-cache-switch {{
+    background: var(--ui-accent);
+}}
+.dtx .dtx-cache-label input:checked + .dtx-cache-switch::after {{
+    transform: translateX(14px);
+}}
+.dtx .dtx-cache-label input:focus-visible + .dtx-cache-switch {{
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
 }}
 .dtx .dtx-imp-wrap {{
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     min-width: 0;
     flex: 0 1 auto;
 }}
+.dtx .dtx-imp-label {{
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+}}
+.dtx .dtx-imp-segment {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-imp-mode {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 28px;
+    padding: 3px 9px;
+    border: 0;
+    border-right: 1px solid var(--ui-border-strong);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}}
+.dtx .dtx-imp-mode:last-child {{ border-right: 0; }}
+.dtx .dtx-imp-mode svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-imp-mode:hover:not(:disabled):not(.dtx-active) {{
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+}}
+.dtx .dtx-imp-mode.dtx-active {{
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-imp-mode:disabled {{ opacity: 0.45; cursor: not-allowed; }}
 .dtx .dtx-imp-select {{
     appearance: none;
     -webkit-appearance: none;
@@ -1943,7 +2257,7 @@ def _visualize_dax_test(
     font-family: inherit;
     font-size: 12px;
     color: var(--ui-text);
-    width: 150px;
+    width: 220px;
     min-width: 0;
     flex: 0 1 auto;
 }}
@@ -1952,23 +2266,100 @@ def _visualize_dax_test(
     border-color: var(--ui-accent);
     box-shadow: 0 0 0 3px var(--ui-accent-soft);
 }}
+@media (max-width: 760px) {{
+    .dtx .dtx-query-options {{ align-items: flex-start; flex-direction: column; }}
+    .dtx .dtx-imp-wrap {{ align-items: flex-start; flex-wrap: wrap; }}
+}}
 .dtx .dtx-picker {{
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    flex: 0 0 auto;
-    padding: 14px 24px;
-    margin-bottom: 18px;
-    border-bottom: 1px solid var(--ui-border);
-    background: var(--ui-bg-secondary);
+    justify-content: center;
+    min-height: 430px;
+    padding: 32px;
+    background: var(--ui-bg);
+    overflow: auto;
 }}
-.dtx .dtx-picker-label {{
-    font-size: 13px;
+.dtx .dtx-picker-panel {{
+    width: 100%;
+    max-width: 900px;
+    box-sizing: border-box;
+    padding: 24px 28px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-md);
+}}
+.dtx .dtx-picker-top {{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}}
+.dtx .dtx-picker-head {{ min-width: 0; }}
+.dtx .dtx-picker-reload {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}}
+.dtx .dtx-picker-reload:hover {{ border-color: var(--ui-accent); color: var(--ui-accent); }}
+.dtx .dtx-picker-reload:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx .dtx-picker-reload svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-picker-reload.dtx-loading svg {{ animation: dtx-spin 0.8s linear infinite; }}
+@keyframes dtx-spin {{ to {{ transform: rotate(360deg); }} }}
+.dtx .dtx-picker-title {{
+    margin: 0;
+    font-size: 17px;
     font-weight: 600;
+    color: var(--ui-text);
+}}
+.dtx .dtx-picker-subtitle {{
+    margin-top: 3px;
+    font-size: 12.5px;
     color: var(--ui-text-secondary);
 }}
-.dtx .dtx-picker-select {{ min-width: 190px; }}
+.dtx .dtx-picker-fields {{
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}}
+.dtx .dtx-picker-field {{
+    display: flex;
+    flex: 1 1 260px;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}}
+.dtx .dtx-picker-label {{
+    display: block;
+    font-size: 12px;
+    color: var(--ui-text-secondary);
+    padding-left: 8px;
+}}
+.dtx .dtx-picker-field .slls-ss-btn {{
+    min-height: 40px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--ui-surface);
+    font-size: 14px;
+}}
+.dtx .dtx-picker-field .slls-ss-panel {{ z-index: 30; }}
+.dtx .dtx-picker-actions {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}}
 .dtx .dtx-picker-spin {{ font-size: 12px; color: var(--ui-text-tertiary); }}
 .dtx .dtx-picker-btn {{
     appearance: none;
@@ -1986,6 +2377,12 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-picker-btn:hover {{ background: var(--ui-accent-hover); }}
 .dtx .dtx-picker-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+@media (max-width: 640px) {{
+    .dtx .dtx-picker {{ min-height: 360px; padding: 20px 16px; }}
+    .dtx .dtx-picker-panel {{ padding: 20px; }}
+    .dtx .dtx-picker-top {{ align-items: stretch; flex-direction: column; }}
+    .dtx .dtx-picker-reload {{ align-self: flex-start; }}
+}}
 .dtx .dtx-icon-btn {{
     appearance: none;
     -webkit-appearance: none;
@@ -2630,9 +3027,9 @@ def _visualize_dax_test(
     user-select: none;
 }}
 .dtx .dtx-sidebar.dtx-sidebar-collapsed {{
-    flex: 0 0 36px;
-    min-width: 36px;
-    max-width: 36px;
+    flex: 0 0 44px;
+    min-width: 44px;
+    max-width: 44px;
 }}
 .dtx .dtx-sidebar-resizer {{
     flex: 0 0 5px;
@@ -2676,8 +3073,38 @@ def _visualize_dax_test(
     display: none;
 }}
 .dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-header {{
+    flex-direction: column;
     padding: 10px 4px;
     justify-content: center;
+    gap: 8px;
+}}
+.dtx .dtx-sidebar-mark {{
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-sidebar-mark svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-mark {{
+    display: inline-flex;
+    order: 2;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-toggle {{
+    order: 1;
+    width: 32px;
+    height: 32px;
+    border-color: var(--ui-border);
+    background: var(--ui-surface);
+    border-radius: 7px;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-toggle svg {{
+    width: 18px;
+    height: 18px;
 }}
 .dtx .dtx-sidebar-toggle,
 .dtx .dtx-sidebar-refresh,
@@ -2933,7 +3360,7 @@ def _visualize_dax_test(
     min-width: 0;
     display: flex;
     flex-direction: column;
-    padding-left: 12px;
+    padding-left: 0;
 }}
 .dtx .dtx-builder {{
     flex: 0 0 260px;
@@ -2956,9 +3383,9 @@ def _visualize_dax_test(
     display: none;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed {{
-    flex: 0 0 36px;
-    max-width: 36px;
-    min-width: 36px;
+    flex: 0 0 44px;
+    max-width: 44px;
+    min-width: 44px;
 }}
 .dtx .dtx-builder-resizer {{
     flex: 0 0 5px;
@@ -2982,14 +3409,42 @@ def _visualize_dax_test(
     display: none;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-header {{
+    flex-direction: column;
     justify-content: center;
+    gap: 8px;
     padding: 10px 4px;
+}}
+.dtx .dtx-builder-mark {{
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-builder-mark svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-mark {{
+    display: inline-flex;
+    order: 2;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle {{
     display: none;
 }}
 .dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle.dtx-builder-collapse {{
     display: inline-flex;
+    order: 1;
+    width: 32px;
+    height: 32px;
+    border-color: var(--ui-border);
+    background: var(--ui-surface);
+    border-radius: 7px;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-collapse svg {{
+    width: 18px;
+    height: 18px;
 }}
 .dtx .dtx-builder-header {{
     display: flex;
@@ -3229,6 +3684,7 @@ def _visualize_dax_test(
     filter: none;
 }}
 """
+    )
 
     sun_icon = _UI_ICONS["sun"].replace("`", "\\`")
     moon_icon = _UI_ICONS["moon"].replace("`", "\\`")
@@ -3249,8 +3705,21 @@ def _visualize_dax_test(
     sort_desc_icon = _UI_ICONS["sort_desc"].replace("`", "\\`")
     panel_collapse_icon = _UI_ICONS["panel_collapse"].replace("`", "\\`")
     panel_expand_icon = _UI_ICONS["panel_expand"].replace("`", "\\`")
-    builder_icon = _UI_ICONS["builder"].replace("`", "\\`")
+    builder_icon = _UI_ICONS.get("hammer", _FALLBACK_HAMMER_ICON).replace(
+        "`", "\\`"
+    )
+    list_tree_icon = _UI_ICONS.get("list_tree", _FALLBACK_LIST_TREE_ICON).replace(
+        "`", "\\`"
+    )
+    shield_check_icon = _UI_ICONS.get(
+        "shield_check", _FALLBACK_SHIELD_CHECK_ICON
+    ).replace("`", "\\`")
+    users_icon = _UI_ICONS.get("users", _FALLBACK_USERS_ICON).replace("`", "\\`")
+    user_icon = _UI_ICONS.get("user", _FALLBACK_USER_ICON).replace("`", "\\`")
     close_icon = _UI_ICONS["close"].replace("`", "\\`")
+    dax_performance_icon = _UI_ICONS.get(
+        "dax_performance", _FALLBACK_DAX_PERFORMANCE_ICON
+    ).replace("`", "\\`")
     # The DAX Formatter logo mark (the orange "formatted lines" glyph from
     # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
     # clearly visible in both light and dark themes.
@@ -3373,7 +3842,7 @@ def _visualize_dax_test(
         "</svg>"
     ).replace("`", "\\`")
 
-    widget_js = r"""
+    widget_js = _UI_SEARCH_SELECT_JS + "\n" + r"""
 function escapeHtml(s) {
     return String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -3401,6 +3870,10 @@ function render({ model, el }) {
     const PANEL_COLLAPSE_SVG = `__DTX_PANEL_COLLAPSE__`;
     const PANEL_EXPAND_SVG = `__DTX_PANEL_EXPAND__`;
     const BUILDER_SVG = `__DTX_BUILDER__`;
+    const LIST_TREE_SVG = `__DTX_LIST_TREE__`;
+    const SHIELD_CHECK_SVG = `__DTX_SHIELD_CHECK__`;
+    const USERS_SVG = `__DTX_USERS__`;
+    const USER_SVG = `__DTX_USER__`;
     const CLOSE_SVG = `__DTX_CLOSE__`;
     const DAXFORMAT_SVG = `__DTX_DAXFORMAT__`;
     const UNDO_SVG = `__DTX_UNDO__`;
@@ -3414,6 +3887,7 @@ function render({ model, el }) {
     const EXPAND_SVG = `__DTX_EXPAND__`;
     const FULLSCREEN_SVG = `__DTX_FULLSCREEN__`;
     const FULLSCREEN_EXIT_SVG = `__DTX_FULLSCREEN_EXIT__`;
+    const DAX_PERFORMANCE_SVG = `__DTX_DAX_PERFORMANCE__`;
 
     const root = document.createElement("div");
     root.className = "dtx";
@@ -3436,15 +3910,25 @@ function render({ model, el }) {
     header.className = "sl-header";
     headerWrap.appendChild(header);
 
+    const toolIcon = document.createElement("span");
+    toolIcon.className = "dtx-tool-icon";
+    toolIcon.innerHTML = DAX_PERFORMANCE_SVG;
+    header.appendChild(toolIcon);
+
     const titleWrap = document.createElement("div");
     titleWrap.className = "sl-titlewrap";
     header.appendChild(titleWrap);
 
+    const titleRow = document.createElement("div");
+    titleRow.className = "dtx-title-row";
+    titleWrap.appendChild(titleRow);
+
     const title = document.createElement("div");
     title.className = "sl-title";
     title.textContent = "DAX Query Performance";
-    titleWrap.appendChild(title);
+    titleRow.appendChild(title);
 
+    let connectingToModel = false;
     const subtitle = document.createElement("div");
     subtitle.className = "sl-subtitle";
     titleWrap.appendChild(subtitle);
@@ -3453,10 +3937,11 @@ function render({ model, el }) {
     changeModelBtn.type = "button";
     changeModelBtn.className = "dtx-change-btn";
     changeModelBtn.innerHTML = SWAP_SVG;
-    changeModelBtn.title = "Change model";
-    changeModelBtn.setAttribute("aria-label", "Change model");
-    titleWrap.appendChild(changeModelBtn);
+    changeModelBtn.title = "Change model / workspace";
+    changeModelBtn.setAttribute("aria-label", "Change model / workspace");
+    titleRow.appendChild(changeModelBtn);
     changeModelBtn.addEventListener("click", () => {
+        connectingToModel = false;
         pickerOpen = true;
         // (Re)load the workspace list so the picker is populated even when a
         // dataset was supplied directly to test().
@@ -3472,7 +3957,9 @@ function render({ model, el }) {
         changeModelBtn.style.display =
             model.get("dataset_chosen") === true ? "" : "none";
         if (model.get("dataset_chosen") !== true) {
-            subtitle.textContent = "No semantic model selected";
+            subtitle.textContent = connectingToModel
+                ? "Loading semantic model…"
+                : "No semantic model selected";
             return;
         }
         if (!ds && !ws) { subtitle.textContent = ""; return; }
@@ -3547,6 +4034,16 @@ function render({ model, el }) {
         renderFullscreenBtn();
     });
 
+    let modelViewVisible = true;
+    const modelViewShowBtn = document.createElement("button");
+    modelViewShowBtn.type = "button";
+    modelViewShowBtn.className = "dtx-builder-show-btn dtx-model-show-btn";
+    modelViewShowBtn.innerHTML = LIST_TREE_SVG;
+    modelViewShowBtn.addEventListener("click", () => {
+        modelViewVisible = !modelViewVisible;
+        renderModelViewChrome();
+    });
+
     const builderShowBtn = document.createElement("button");
     builderShowBtn.type = "button";
     builderShowBtn.className = "dtx-builder-show-btn";
@@ -3557,6 +4054,7 @@ function render({ model, el }) {
         builderVisible = !builderVisible;
         renderBuilderChrome();
     });
+    header.appendChild(modelViewShowBtn);
     header.appendChild(builderShowBtn);
     header.appendChild(themeBtn);
     header.appendChild(fullscreenBtn);
@@ -3575,9 +4073,16 @@ function render({ model, el }) {
     sidebarHeader.className = "dtx-sidebar-header";
     sidebar.appendChild(sidebarHeader);
 
+    const sidebarMark = document.createElement("span");
+    sidebarMark.className = "dtx-sidebar-mark";
+    sidebarMark.innerHTML = LIST_TREE_SVG;
+    sidebarMark.title = "Model View";
+    sidebarMark.setAttribute("aria-label", "Model View");
+    sidebarHeader.appendChild(sidebarMark);
+
     const sidebarTitle = document.createElement("div");
     sidebarTitle.className = "dtx-sidebar-title";
-    sidebarTitle.textContent = "Model";
+    sidebarTitle.textContent = "Model View";
     sidebarHeader.appendChild(sidebarTitle);
 
     const refreshBtn = document.createElement("button");
@@ -3693,6 +4198,20 @@ function render({ model, el }) {
         sidebarToggle.setAttribute("aria-label", label);
         refreshBtn.classList.toggle("dtx-spinning", model.get("metadata_loading") === true);
         applySidebarWidth();
+        renderModelViewChrome();
+    }
+
+    function renderModelViewChrome() {
+        const chosen = model.get("dataset_chosen") === true;
+        const available = chosen || connectingToModel;
+        const visible = available && modelViewVisible;
+        modelViewShowBtn.style.display = chosen ? "" : "none";
+        modelViewShowBtn.classList.toggle("dtx-active", modelViewVisible);
+        sidebar.style.display = visible ? "" : "none";
+        sidebarResizer.style.display = visible ? "" : "none";
+        const label = modelViewVisible ? "Hide model view" : "Show model view";
+        modelViewShowBtn.title = label;
+        modelViewShowBtn.setAttribute("aria-label", label);
     }
 
     // Shared drag payload for dropping model objects into the editor.
@@ -4034,6 +4553,7 @@ function render({ model, el }) {
     let builderFields = [];
     let builderFilters = [];
     let builderOrderBy = [];
+    let clearedBuilderState = null;
     let qbSeq = 0;
 
     const QB_OPS = {
@@ -4085,6 +4605,11 @@ function render({ model, el }) {
 
     const builderHeader = document.createElement("div");
     builderHeader.className = "dtx-builder-header";
+    const builderMark = document.createElement("span");
+    builderMark.className = "dtx-builder-mark";
+    builderMark.innerHTML = BUILDER_SVG;
+    builderMark.title = "Query Builder";
+    builderMark.setAttribute("aria-label", "Query Builder");
     const builderTitle = document.createElement("div");
     builderTitle.className = "dtx-builder-title";
     builderTitle.textContent = "Query Builder";
@@ -4097,18 +4622,21 @@ function render({ model, el }) {
     });
     const builderToggle = document.createElement("button");
     builderToggle.type = "button";
-    builderToggle.className = "dtx-builder-toggle";
+    builderToggle.className = "dtx-builder-toggle dtx-builder-clear-toggle";
     builderToggle.innerHTML = CLOSE_SVG;
-    builderToggle.title = "Hide query builder";
-    builderToggle.setAttribute("aria-label", "Hide query builder");
-    builderToggle.addEventListener("click", () => {
-        builderVisible = false;
-        builderCollapsed = false;
-        renderBuilderChrome();
-    });
+    builderToggle.title = "Clear query builder";
+    builderToggle.setAttribute("aria-label", "Clear query builder");
+    const builderUndoBtn = document.createElement("button");
+    builderUndoBtn.type = "button";
+    builderUndoBtn.className = "dtx-builder-toggle dtx-builder-undo";
+    builderUndoBtn.innerHTML = UNDO_SVG;
+    builderUndoBtn.title = "Undo clear";
+    builderUndoBtn.setAttribute("aria-label", "Undo clear");
+    builderHeader.appendChild(builderMark);
     builderHeader.appendChild(builderTitle);
-    builderHeader.appendChild(builderCollapseBtn);
     builderHeader.appendChild(builderToggle);
+    builderHeader.appendChild(builderUndoBtn);
+    builderHeader.appendChild(builderCollapseBtn);
     builderPane.appendChild(builderHeader);
 
     const builderContent = document.createElement("div");
@@ -4216,12 +4744,32 @@ function render({ model, el }) {
     clearBtn.type = "button";
     clearBtn.className = "dtx-builder-clear";
     clearBtn.textContent = "Clear";
-    clearBtn.addEventListener("click", () => {
+    function clearBuilder() {
+        if (!builderFields.length && !builderFilters.length
+            && !builderOrderBy.length) return;
+        clearedBuilderState = {
+            fields: structuredClone(builderFields),
+            filters: structuredClone(builderFilters),
+            orderBy: structuredClone(builderOrderBy),
+        };
         builderFields = [];
         builderFilters = [];
         builderOrderBy = [];
         renderBuilderZones();
-    });
+        renderBuilderChrome();
+    }
+    function undoBuilderClear() {
+        if (!clearedBuilderState) return;
+        builderFields = clearedBuilderState.fields;
+        builderFilters = clearedBuilderState.filters;
+        builderOrderBy = clearedBuilderState.orderBy;
+        clearedBuilderState = null;
+        renderBuilderZones();
+        renderBuilderChrome();
+    }
+    builderToggle.addEventListener("click", clearBuilder);
+    builderUndoBtn.addEventListener("click", undoBuilderClear);
+    clearBtn.addEventListener("click", clearBuilder);
     const buildBtn = document.createElement("button");
     buildBtn.type = "button";
     buildBtn.className = "dtx-build-btn";
@@ -4607,6 +5155,7 @@ function render({ model, el }) {
             ? "Expand query builder" : "Collapse query builder";
         builderCollapseBtn.title = clabel;
         builderCollapseBtn.setAttribute("aria-label", clabel);
+        builderUndoBtn.style.display = clearedBuilderState ? "" : "none";
         builderShowBtn.classList.toggle("dtx-active", builderVisible);
         const label = builderVisible
             ? "Hide query builder" : "Show query builder";
@@ -4623,78 +5172,111 @@ function render({ model, el }) {
             : "Choose a semantic model first";
     }
 
-    // ---------- Model picker (shown when no dataset is chosen) ----------
+    // ---------- Model picker (first screen when no dataset is chosen) ----------
     let pickerOpen = model.get("dataset_chosen") !== true;
-    const pickerBar = document.createElement("div");
-    pickerBar.className = "dtx-picker";
-    const pickerLabel = document.createElement("span");
-    pickerLabel.className = "dtx-picker-label";
-    pickerLabel.textContent = "Choose a semantic model:";
-    const wsSel = document.createElement("select");
-    wsSel.className = "dtx-imp-select dtx-picker-select";
-    wsSel.title = "Workspace";
-    const dsSel = document.createElement("select");
-    dsSel.className = "dtx-imp-select dtx-picker-select";
-    dsSel.title = "Semantic model";
+    const pickerScreen = document.createElement("div");
+    pickerScreen.className = "dtx-picker";
+    const pickerPanel = document.createElement("div");
+    pickerPanel.className = "dtx-picker-panel";
+    const pickerTop = document.createElement("div");
+    pickerTop.className = "dtx-picker-top";
+    const pickerHead = document.createElement("div");
+    pickerHead.className = "dtx-picker-head";
+    const pickerTitle = document.createElement("h2");
+    pickerTitle.className = "dtx-picker-title";
+    pickerTitle.textContent = "Connect to a semantic model";
+    const pickerSubtitle = document.createElement("div");
+    pickerSubtitle.className = "dtx-picker-subtitle";
+    pickerSubtitle.textContent = "Select a workspace and semantic model to begin.";
+    pickerHead.appendChild(pickerTitle);
+    pickerHead.appendChild(pickerSubtitle);
+    pickerTop.appendChild(pickerHead);
+    const pickerReloadBtn = document.createElement("button");
+    pickerReloadBtn.type = "button";
+    pickerReloadBtn.className = "dtx-picker-reload";
+    pickerReloadBtn.innerHTML = REFRESH_SVG + "Reload";
+    pickerReloadBtn.title = "Reload workspaces and semantic models";
+    pickerTop.appendChild(pickerReloadBtn);
+    const pickerFields = document.createElement("div");
+    pickerFields.className = "dtx-picker-fields";
+
+    function createPickerField(label, placeholder, searchPlaceholder, emptyLabel, onChange) {
+        const field = document.createElement("div");
+        field.className = "dtx-picker-field";
+        const fieldLabel = document.createElement("label");
+        fieldLabel.className = "dtx-picker-label";
+        fieldLabel.textContent = label;
+        const picker = createSearchSelect({
+            placeholder,
+            searchPlaceholder,
+            ariaLabel: label,
+            emptyLabel,
+            onChange,
+        });
+        field.appendChild(fieldLabel);
+        field.appendChild(picker.el);
+        return { field, picker };
+    }
+
+    const wsPicker = createPickerField(
+        "Workspace", "Select a workspace…", "Filter workspaces…",
+        "Loading workspaces…", option => selectWorkspace(option.value));
+    const dsPicker = createPickerField(
+        "Semantic model", "Select a semantic model…", "Filter semantic models…",
+        "Select a workspace first…", option => selectDataset(option.value));
+    pickerFields.appendChild(wsPicker.field);
+    pickerFields.appendChild(dsPicker.field);
     const pickerBtn = document.createElement("button");
     pickerBtn.type = "button";
     pickerBtn.className = "dtx-picker-btn";
-    pickerBtn.textContent = "Use model";
+    pickerBtn.textContent = "Connect";
     const pickerCancelBtn = document.createElement("button");
     pickerCancelBtn.type = "button";
     pickerCancelBtn.className = "dtx-picker-cancel";
     pickerCancelBtn.textContent = "Cancel";
     const pickerSpin = document.createElement("span");
     pickerSpin.className = "dtx-picker-spin";
-    pickerBar.appendChild(pickerLabel);
-    pickerBar.appendChild(wsSel);
-    pickerBar.appendChild(dsSel);
-    pickerBar.appendChild(pickerBtn);
-    pickerBar.appendChild(pickerCancelBtn);
-    pickerBar.appendChild(pickerSpin);
-    main.appendChild(pickerBar);
+    const pickerError = document.createElement("div");
+    pickerError.className = "dtx-error";
+    pickerError.style.display = "none";
+    const pickerActions = document.createElement("div");
+    pickerActions.className = "dtx-picker-actions";
+    pickerActions.appendChild(pickerCancelBtn);
+    pickerActions.appendChild(pickerBtn);
+    pickerActions.appendChild(pickerSpin);
+    pickerPanel.appendChild(pickerTop);
+    pickerPanel.appendChild(pickerFields);
+    pickerPanel.appendChild(pickerActions);
+    pickerPanel.appendChild(pickerError);
+    pickerScreen.appendChild(pickerPanel);
+    container.insertBefore(pickerScreen, body);
 
     function renderPicker() {
         const chosen = model.get("dataset_chosen") === true;
-        const show = pickerOpen || !chosen;
-        pickerBar.style.display = show ? "" : "none";
+        const show = pickerOpen || (!chosen && !connectingToModel);
+        pickerScreen.style.display = show ? "" : "none";
+        body.style.display = show ? "none" : "";
         // Allow canceling only when a model is already in use.
         pickerCancelBtn.style.display = chosen ? "" : "none";
         const loading = model.get("picker_loading") === true;
         const curWs = model.get("selected_workspace_id") || "";
         const curDs = model.get("selected_dataset_id") || "";
         const wss = model.get("available_workspaces") || [];
-        wsSel.innerHTML = "";
-        const wph = document.createElement("option");
-        wph.value = "";
-        wph.textContent = wss.length ? "Select a workspace…" : "No workspaces";
-        wsSel.appendChild(wph);
-        wss.forEach(w => {
-            const o = document.createElement("option");
-            o.value = w.id;
-            o.textContent = w.name;
-            wsSel.appendChild(o);
-        });
-        wsSel.value = curWs;
         const dss = model.get("available_datasets") || [];
-        dsSel.innerHTML = "";
-        const dph = document.createElement("option");
-        dph.value = "";
-        dph.textContent = !curWs
-            ? "Select a workspace first"
-            : (loading
-                ? "Loading…"
-                : (dss.length ? "Select a semantic model…" : "No semantic models"));
-        dsSel.appendChild(dph);
-        dss.forEach(d => {
-            const o = document.createElement("option");
-            o.value = d.id;
-            o.textContent = d.name;
-            dsSel.appendChild(o);
-        });
-        dsSel.value = curDs;
-        dsSel.disabled = !curWs || loading;
-        // Disable "Use model" when the selection matches the model already
+        wsPicker.picker.setEmptyLabel(
+            loading && !wss.length ? "Loading workspaces…" : "No workspaces");
+        wsPicker.picker.setOptions(
+            wss.map(item => ({ value: item.id, label: item.name })), curWs);
+        dsPicker.picker.setEmptyLabel(!curWs
+            ? "Select a workspace first…"
+            : (loading ? "Loading semantic models…" : "No semantic models"));
+        dsPicker.picker.setOptions(
+            dss.map(item => ({ value: item.id, label: item.name })), curDs);
+        wsPicker.picker.setDisabled(loading);
+        dsPicker.picker.setDisabled(!curWs || loading || !dss.length);
+        pickerReloadBtn.disabled = loading;
+        pickerReloadBtn.classList.toggle("dtx-loading", loading);
+        // Disable Connect when the selection matches the model already
         // in use (same workspace and dataset).
         const sameAsActive = curWs === (model.get("active_workspace_id") || "")
             && curDs === (model.get("active_dataset_id") || "");
@@ -4702,46 +5284,75 @@ function render({ model, el }) {
         pickerBtn.title = sameAsActive
             ? "This semantic model is already in use"
             : "";
-        // Only show the spinner next to "Use model" while the model metadata
-        // is loading (i.e. after "Use model" is clicked, when a dataset is
-        // selected). During workspace selection the dataset list is loading
-        // and the spinner belongs in the dataset dropdown only.
-        pickerSpin.textContent = (loading && curDs) ? "Loading…" : "";
+        pickerSpin.textContent = loading
+            ? (curDs
+                ? "Loading model…"
+                : (curWs ? "Loading semantic models…" : "Loading workspaces…"))
+            : "";
     }
-    wsSel.addEventListener("change", () => {
-        model.set("selected_workspace_id", wsSel.value);
+    function selectWorkspace(workspaceId) {
+        model.set("selected_workspace_id", workspaceId);
         model.set("selected_dataset_id", "");
         model.set("available_datasets", []);
-        if (wsSel.value) {
-            model.set("select_workspace_trigger",
-                (model.get("select_workspace_trigger") || 0) + 1);
-        }
+        model.set("select_workspace_trigger",
+            (model.get("select_workspace_trigger") || 0) + 1);
         model.save_changes();
         renderPicker();
-    });
-    dsSel.addEventListener("change", () => {
-        model.set("selected_dataset_id", dsSel.value);
+    }
+    function selectDataset(datasetId) {
+        model.set("selected_dataset_id", datasetId);
         model.save_changes();
         renderPicker();
+    }
+    pickerReloadBtn.addEventListener("click", () => {
+        if (model.get("picker_loading") === true) return;
+        model.set("error_message", "");
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
     });
     pickerBtn.addEventListener("click", () => {
         if (!model.get("selected_dataset_id")) return;
+        connectingToModel = true;
+        modelViewVisible = true;
+        pickerOpen = false;
         model.set("error_message", "");
+        model.set("metadata_loading", true);
         model.set("select_dataset_trigger",
             (model.get("select_dataset_trigger") || 0) + 1);
         model.save_changes();
+        renderPicker();
+        renderSubtitle();
+        renderTree();
+        renderModelViewChrome();
     });
     pickerCancelBtn.addEventListener("click", () => {
         pickerOpen = false;
         renderPicker();
     });
 
-    // ---------- Cards ----------
+    // ---------- Query options + editor ----------
+    const queryOptions = document.createElement("div");
+    queryOptions.className = "dtx-query-options";
+    main.appendChild(queryOptions);
+
+    const queryBlock = document.createElement("div");
+    queryBlock.className = "dtx-query-block";
+    main.appendChild(queryBlock);
+
+    // Result cards belong directly below the query pane and stay hidden until
+    // a query completes successfully.
     const cardsEl = document.createElement("div");
     cardsEl.className = "dtx-cards";
     main.appendChild(cardsEl);
 
     function renderCards() {
+        const executed = model.get("query_executed") === true;
+        cardsEl.classList.toggle("dtx-cards-hidden", !executed);
+        if (!executed) {
+            cardsEl.innerHTML = "";
+            return;
+        }
         const total = model.get("total_duration") || 0;
         const fe = model.get("fe_duration") || 0;
         const se = model.get("se_duration") || 0;
@@ -4763,11 +5374,6 @@ function render({ model, el }) {
         )).join("");
     }
 
-    // ---------- Query editor + Run button ----------
-    const queryBlock = document.createElement("div");
-    queryBlock.className = "dtx-query-block";
-    main.appendChild(queryBlock);
-
     const toolbar = document.createElement("div");
     toolbar.className = "dtx-query-toolbar";
     queryBlock.appendChild(toolbar);
@@ -4783,7 +5389,7 @@ function render({ model, el }) {
 
     const fmtBtn = document.createElement("button");
     fmtBtn.type = "button";
-    fmtBtn.className = "dtx-fmt-btn";
+    fmtBtn.className = "dtx-fmt-btn dtx-daxformat-btn";
     fmtBtn.innerHTML = DAXFORMAT_SVG;
     fmtBtn.title = "Format the DAX query using DAX Formatter by SQLBI";
     fmtBtn.setAttribute("aria-label", "Format DAX with DAX Formatter");
@@ -5041,29 +5647,42 @@ function render({ model, el }) {
         model.save_changes();
     });
     cacheLabel.appendChild(cacheCb);
+    const cacheSwitch = document.createElement("span");
+    cacheSwitch.className = "dtx-cache-switch";
+    cacheSwitch.setAttribute("aria-hidden", "true");
+    cacheLabel.appendChild(cacheSwitch);
     const cacheText = document.createElement("span");
-    cacheText.textContent = "Clear cache";
+    cacheText.textContent = "Clear cache before run (cold-cache timings)";
     cacheLabel.appendChild(cacheText);
     function renderCacheBtn() {
         cacheCb.checked = model.get("clear_cache") === true;
     }
-    toolbar.appendChild(cacheLabel);
+    queryOptions.appendChild(cacheLabel);
 
     // Impersonation: none / user (effective_user_name) / role (role).
     const impWrap = document.createElement("div");
     impWrap.className = "dtx-imp-wrap";
-    const impSel = document.createElement("select");
-    impSel.className = "dtx-imp-select";
-    impSel.title = "Run the query impersonating a user or a security role";
+    const impLabel = document.createElement("span");
+    impLabel.className = "dtx-imp-label";
+    impLabel.textContent = "RUN AS";
+    const impSegment = document.createElement("div");
+    impSegment.className = "dtx-imp-segment";
+    impSegment.setAttribute("role", "group");
+    impSegment.setAttribute("aria-label", "Run query as");
+    const impButtons = {};
     [
-        ["none", "No impersonation"],
-        ["user", "User impersonation"],
-        ["role", "Role impersonation"],
-    ].forEach(([val, label]) => {
-        const o = document.createElement("option");
-        o.value = val;
-        o.textContent = label;
-        impSel.appendChild(o);
+        ["none", "No impersonation", SHIELD_CHECK_SVG],
+        ["role", "Role", USERS_SVG],
+        ["user", "User", USER_SVG],
+    ].forEach(([mode, label, icon]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "dtx-imp-mode";
+        button.innerHTML = icon + `<span>${label}</span>`;
+        button.title = mode === "none" ? "Run without impersonation" : `Run as ${label.toLowerCase()}`;
+        button.setAttribute("aria-pressed", "false");
+        impButtons[mode] = button;
+        impSegment.appendChild(button);
     });
     // Text input for user impersonation (effective_user_name).
     const impInput = document.createElement("input");
@@ -5072,10 +5691,11 @@ function render({ model, el }) {
     // Dropdown of model roles for role impersonation.
     const impRoleSel = document.createElement("select");
     impRoleSel.className = "dtx-imp-select dtx-imp-role-select";
-    impWrap.appendChild(impSel);
+    impWrap.appendChild(impLabel);
+    impWrap.appendChild(impSegment);
     impWrap.appendChild(impInput);
     impWrap.appendChild(impRoleSel);
-    toolbar.appendChild(impWrap);
+    queryOptions.insertBefore(impWrap, cacheLabel);
 
     function hasRoles() {
         const roles = model.get("model_roles") || [];
@@ -5084,13 +5704,10 @@ function render({ model, el }) {
 
     function renderRoleOption() {
         // Disable the "Role impersonation" choice when the model has no roles.
-        const opt = Array.from(impSel.options).find(o => o.value === "role");
-        if (opt) {
-            opt.disabled = !hasRoles();
-            opt.textContent = hasRoles()
-                ? "Role impersonation"
-                : "Role impersonation (no roles)";
-        }
+        impButtons.role.disabled = !hasRoles();
+        impButtons.role.title = hasRoles()
+            ? "Run as a security role"
+            : "Role impersonation is unavailable because this model has no roles";
     }
 
     function renderRoleChoices() {
@@ -5122,7 +5739,11 @@ function render({ model, el }) {
             model.save_changes();
             mode = "none";
         }
-        if (impSel.value !== mode) impSel.value = mode;
+        Object.entries(impButtons).forEach(([buttonMode, button]) => {
+            const active = buttonMode === mode;
+            button.classList.toggle("dtx-active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
         if (mode === "user") {
             impInput.style.display = "";
             impRoleSel.style.display = "none";
@@ -5145,21 +5766,15 @@ function render({ model, el }) {
             impRoleSel.style.display = "none";
         }
     }
-    impSel.addEventListener("change", () => {
-        const mode = impSel.value;
-        if (mode === "role" && !hasRoles()) {
-            model.set("error_message",
-                "Role impersonation is not available: this model does not "
-                + "contain any roles.");
-            impSel.value = model.get("impersonation_mode") || "none";
+    Object.entries(impButtons).forEach(([mode, button]) => {
+        button.addEventListener("click", () => {
+            if (mode === "role" && !hasRoles()) return;
+            model.set("impersonation_mode", mode);
+            // Reset the value so a stale user string isn't reused as a role, etc.
+            model.set("impersonation_value", "");
             model.save_changes();
-            return;
-        }
-        model.set("impersonation_mode", mode);
-        // Reset the value so a stale user string isn't reused as a role, etc.
-        model.set("impersonation_value", "");
-        model.save_changes();
-        renderImpersonation();
+            renderImpersonation();
+        });
     });
     impInput.addEventListener("input", () => {
         model.set("impersonation_value", impInput.value);
@@ -5559,6 +6174,8 @@ function render({ model, el }) {
     main.appendChild(errorEl);
     function renderError() {
         const msg = model.get("error_message") || "";
+        pickerError.textContent = msg;
+        pickerError.style.display = msg ? "" : "none";
         if (msg) {
             errorEl.textContent = msg;
             errorEl.style.display = "";
@@ -6521,6 +7138,7 @@ function render({ model, el }) {
     model.on("change:fe_duration", renderCards);
     model.on("change:se_duration", renderCards);
     model.on("change:cpu_time", renderCards);
+    model.on("change:query_executed", renderCards);
     model.on("change:trace_rows", renderTable);
     model.on("change:result_columns", renderTable);
     model.on("change:result_rows", renderTable);
@@ -6635,9 +7253,12 @@ function render({ model, el }) {
     model.on("change:metadata_loading", () => { renderSidebarChrome(); renderTree(); });
     model.on("change:model_tree", renderTree);
     model.on("change:dataset_chosen", () => {
-        if (model.get("dataset_chosen") === true) { pickerOpen = false; }
+        if (model.get("dataset_chosen") === true) {
+            connectingToModel = false;
+            pickerOpen = false;
+        }
         renderPicker(); renderRunBtn(); renderSubtitle();
-        renderBuildBtn(); renderBuilderChrome();
+        renderBuildBtn(); renderBuilderChrome(); renderModelViewChrome();
     });
     model.on("change:available_workspaces", renderPicker);
     model.on("change:available_datasets", renderPicker);
@@ -6648,12 +7269,23 @@ function render({ model, el }) {
         // A new model finished activating — close the picker. This covers
         // switching between two already-chosen models, where dataset_chosen
         // does not change and so would not otherwise close the picker.
+        connectingToModel = false;
         pickerOpen = false;
         // Force a fresh dependency computation for the newly activated model.
         lastDepQuery = null;
         renderPicker();
     });
-    model.on("change:picker_loading", renderPicker);
+    model.on("change:picker_loading", () => {
+        const loading = model.get("picker_loading") === true;
+        const selected = String(model.get("selected_dataset_id") || "");
+        const active = String(model.get("active_dataset_id") || "");
+        if (connectingToModel && !loading && selected !== active) {
+            connectingToModel = false;
+            pickerOpen = true;
+        }
+        renderPicker();
+        renderSubtitle();
+    });
 
     applyTheme();
     renderSubtitle();
@@ -6675,6 +7307,18 @@ function render({ model, el }) {
     renderBuilderChrome();
     renderBuilderZones();
     renderBuildBtn();
+
+    // Request the initial workspace list only after the front-end is fully
+    // rendered and its comm listeners are active. Starting the worker directly
+    // after display(widget) can race the comm handshake and strand the browser
+    // in its loading state.
+    if (model.get("dataset_chosen") !== true
+        && (model.get("available_workspaces") || []).length === 0
+        && model.get("picker_loading") !== true) {
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
+    }
 
     // Notify Python to tear down the long-running trace when this view is
     // disposed (cell re-run, widget removed, notebook closed).
@@ -6708,6 +7352,10 @@ export default { render };
         .replace("__DTX_PANEL_COLLAPSE__", panel_collapse_icon)
         .replace("__DTX_PANEL_EXPAND__", panel_expand_icon)
         .replace("__DTX_BUILDER__", builder_icon)
+        .replace("__DTX_LIST_TREE__", list_tree_icon)
+        .replace("__DTX_SHIELD_CHECK__", shield_check_icon)
+        .replace("__DTX_USERS__", users_icon)
+        .replace("__DTX_USER__", user_icon)
         .replace("__DTX_CLOSE__", close_icon)
         .replace("__DTX_DAXFORMAT__", daxformat_icon)
         .replace("__DTX_UNDO__", undo_icon)
@@ -6721,6 +7369,7 @@ export default { render };
         .replace("__DTX_EXPAND__", expand_icon)
         .replace("__DTX_FULLSCREEN__", fullscreen_icon)
         .replace("__DTX_FULLSCREEN_EXIT__", fullscreen_exit_icon)
+        .replace("__DTX_DAX_PERFORMANCE__", dax_performance_icon)
     )
 
     class DaxTestWidget(anywidget.AnyWidget):
@@ -6737,6 +7386,7 @@ export default { render };
         fe_duration = traitlets.Int(0).tag(sync=True)
         se_duration = traitlets.Int(0).tag(sync=True)
         cpu_time = traitlets.Int(0).tag(sync=True)
+        query_executed = traitlets.Bool(False).tag(sync=True)
         trace_rows = traitlets.List([]).tag(sync=True)
         query_plan_rows = traitlets.List([]).tag(sync=True)
         query_plan_type = traitlets.Unicode("Logical").tag(sync=True)
@@ -6825,21 +7475,20 @@ export default { render };
         initial_tree = []
         initial_roles = []
 
-    # Populate the workspace picker up-front so the user can immediately choose
-    # a workspace and then a semantic model. When a workspace is known (from the
-    # ``workspace`` parameter or resolved from the supplied dataset), pre-load
-    # its semantic models too, so the dataset dropdown is populated the moment
-    # the picker is opened — even when a dataset was already supplied.
-    try:
-        initial_workspaces = _list_workspaces_for_picker()
-    except Exception:
-        initial_workspaces = []
-    if workspace_id:
+    # Avoid blocking the initial picker screen on workspace enumeration. For a
+    # supplied dataset, retain the existing eager picker data so Change Model
+    # is immediately ready.
+    if dataset_chosen:
+        try:
+            initial_workspaces = _list_workspaces_for_picker()
+        except Exception:
+            initial_workspaces = []
         try:
             initial_datasets = _list_datasets_for_picker(workspace_id)
         except Exception:
             initial_datasets = []
     else:
+        initial_workspaces = []
         initial_datasets = []
 
     widget = DaxTestWidget(
@@ -6853,6 +7502,7 @@ export default { render };
         fe_duration=int(fe_duration),
         se_duration=int(se_duration),
         cpu_time=int(cpu_time),
+        query_executed=bool(dataset_chosen and dax_string and dax_string.strip()),
         trace_rows=initial_rows,
         query_plan_rows=initial_query_plan_rows,
         query_plan_type="Logical",
@@ -7225,6 +7875,7 @@ export default { render };
         widget.fe_duration = int(new_fe)
         widget.se_duration = int(new_se)
         widget.cpu_time = int(new_cpu)
+        widget.query_executed = True
         widget.trace_rows = _trace_rows_from_df(new_df)
         widget.query_plan_rows = _query_plan_rows_from_df(new_df)
         widget.execution_metrics = _execution_metrics_from_df(new_df)
@@ -7886,6 +8537,7 @@ export default { render };
         ws_id = (widget.selected_workspace_id or "").strip()
         ds_id = (widget.selected_dataset_id or "").strip()
         if not ws_id or not ds_id:
+            widget.metadata_loading = False
             widget.picker_loading = False
             return
         try:
@@ -7901,6 +8553,7 @@ export default { render };
             model_ctx["dataset_id"] = ds_id_resolved
             tree, roles = _collect_model_metadata(ds_id_resolved, ws_id_resolved)
         except Exception as exc:  # noqa: BLE001
+            widget.metadata_loading = False
             widget.picker_loading = False
             widget.error_message = f"Failed to load semantic model: {exc}"
             return
@@ -7910,6 +8563,7 @@ export default { render };
         widget.active_dataset_id = str(ds_id_resolved)
         widget.model_tree = tree
         widget.model_roles = roles
+        widget.metadata_loading = False
         # Clear Vertipaq Analyzer results from any previously selected model so
         # stale stats aren't shown; they are recomputed on the next tab open.
         widget.vertipaq_sections = []
@@ -7918,6 +8572,7 @@ export default { render };
         # Clear any performance analysis produced for the previous model.
         widget.performance_findings = []
         widget.performance_summary = {}
+        widget.query_executed = False
         # Reset impersonation so a stale role/user from a prior model isn't
         # reused against a model that may not define it.
         widget.impersonation_mode = "none"

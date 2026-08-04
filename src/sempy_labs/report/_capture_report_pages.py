@@ -9,7 +9,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.report._items import list_reports_base
 from sempy_labs.report._generate_embed_token import generate_embed_token
-from sempy_labs.semantic_model._test_dax import (
+from sempy_labs.semantic_model._dax_perf import (
     _TEST_EVENT_SCHEMA,
     _get_trace_logs,
 )
