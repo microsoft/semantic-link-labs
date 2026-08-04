@@ -250,11 +250,27 @@ def test_widget_has_tools_style_schedule_controls():
     assert "requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);})" in (
         refresh_manager_module._WIDGET_JS
     )
+    assert "let savedPosition=null,positionVersion=0" in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert "positionVersion++;savedPosition=" in refresh_manager_module._WIDGET_JS
+    assert "if(version!==positionVersion)return" in refresh_manager_module._WIDGET_JS
+    assert "[50,150,300].forEach(delay=>setTimeout(restore,delay))" in (
+        refresh_manager_module._WIDGET_JS
+    )
 
 
 def test_history_and_schedule_panel_headers_toggle_in_place():
     widget_js = refresh_manager_module._WIDGET_JS
 
+    assert "const preservePanelPosition=" in widget_js
+    assert 'event.target.closest(".slls-rm-panel")' in widget_js
+    assert "if(panel)preservePanelPosition()" in widget_js
+    assert "if(savedPosition===positions)restorePosition()" in widget_js
+    assert '["mousedown","click","change"].forEach(type=>' in widget_js
+    assert 'if(event.target.closest(".slls-rm-panel"))event.stopPropagation()' in (
+        widget_js
+    )
     assert 'event.target.closest(".slls-rm-panel-head")' in widget_js
     assert 'panelHead.querySelector("[data-panel]")' in widget_js
     assert 'event.target.closest("[data-reload-history],[data-reload-schedule]")' in (
@@ -268,6 +284,8 @@ def test_history_and_schedule_panel_headers_toggle_in_place():
     )[1].split("},true);", 1)[0]
     assert "event.stopPropagation()" in capture_handler
     assert "draw()" not in capture_handler
+    assert '{keepPosition();dispatch("load_history");}' in capture_handler
+    assert '{keepPosition();dispatch("load_schedule");}' in capture_handler
 
 
 def test_widget_uses_semantic_table_icons():
