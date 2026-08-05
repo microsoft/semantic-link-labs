@@ -2552,17 +2552,18 @@ def _visualize_dax_test(
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
     padding: 0;
-    border: 0;
-    border-radius: 8px;
+    border: 1px solid var(--ui-accent);
+    border-radius: 7px;
     background: var(--ui-accent);
     color: var(--ui-on-accent);
     cursor: pointer;
 }}
 .dtx .dtx-report-capture-btn:hover:not(:disabled) {{ background: var(--ui-accent-hover); }}
-.dtx .dtx-report-capture-btn svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-report-capture-btn svg {{ width: 14px; height: 14px; }}
 .dtx .dtx-report-progress {{
     max-width: 260px;
     overflow: hidden;
@@ -2577,6 +2578,7 @@ def _visualize_dax_test(
     top: 0;
     width: 1280px;
     height: 720px;
+    border: 0;
     overflow: hidden;
     opacity: 0;
     pointer-events: none;
@@ -6688,30 +6690,94 @@ function render({ model, el }) {
     });
     toolbar.appendChild(clearModelCacheBtn);
 
-    const reportCaptureHost = document.createElement("div");
-    reportCaptureHost.className = "dtx-report-host";
-    reportCaptureHost.setAttribute("aria-hidden", "true");
-    root.appendChild(reportCaptureHost);
+    const reportCaptureFrame = document.createElement("iframe");
+    reportCaptureFrame.className = "dtx-report-host";
+    reportCaptureFrame.setAttribute("aria-hidden", "true");
+    reportCaptureFrame.setAttribute("tabindex", "-1");
+    reportCaptureFrame.title = "Report query capture";
+    root.appendChild(reportCaptureFrame);
 
     let powerBiClientPromise = null;
+    function reportCaptureContext() {
+        const captureWindow = reportCaptureFrame.contentWindow;
+        const captureDocument = reportCaptureFrame.contentDocument;
+        if (!captureWindow || !captureDocument) return null;
+        let host = captureDocument.getElementById("report-capture-host");
+        if (!host) {
+            captureDocument.documentElement.style.width = "100%";
+            captureDocument.documentElement.style.height = "100%";
+            captureDocument.body.style.width = "100%";
+            captureDocument.body.style.height = "100%";
+            captureDocument.body.style.margin = "0";
+            host = captureDocument.createElement("div");
+            host.id = "report-capture-host";
+            host.style.width = "100%";
+            host.style.height = "100%";
+            captureDocument.body.appendChild(host);
+        }
+        return { captureWindow, captureDocument, host };
+    }
+    function resolvePowerBiClient(context) {
+        const client = context.captureWindow["powerbi-client"];
+        const models = client?.models;
+        if (!models) return null;
+        let powerbi = context.captureWindow.powerbi;
+        if (client?.service?.Service && client?.factories) {
+            powerbi = new client.service.Service(
+                client.factories.hpmFactory,
+                client.factories.wpmpFactory,
+                client.factories.routerFactory,
+            );
+        }
+        return powerbi?.embed && powerbi?.reset
+            ? { models, powerbi, host: context.host }
+            : null;
+    }
     function ensurePowerBiClient() {
-        if (window.powerbi && window["powerbi-client"]) return Promise.resolve();
         if (powerBiClientPromise) return powerBiClientPromise;
         powerBiClientPromise = new Promise((resolve, reject) => {
-            const script = document.createElement("script");
+            const context = reportCaptureContext();
+            if (!context) {
+                reject(new Error("The isolated report capture frame is unavailable"));
+                return;
+            }
+            const loadedClient = resolvePowerBiClient(context);
+            if (loadedClient) {
+                resolve(loadedClient);
+                return;
+            }
+            const existing = context.captureDocument.querySelector(
+                'script[data-sll-powerbi-client="true"]'
+            );
+            if (existing) existing.remove();
+            const script = context.captureDocument.createElement("script");
+            script.dataset.sllPowerbiClient = "true";
             script.src = "https://cdn.jsdelivr.net/npm/powerbi-client@2.23.1/dist/powerbi.min.js";
-            script.onload = resolve;
-            script.onerror = () => reject(new Error("Failed to load the Power BI client"));
-            document.head.appendChild(script);
+            script.async = true;
+            script.onload = () => {
+                const client = resolvePowerBiClient(context);
+                if (client) {
+                    resolve(client);
+                } else {
+                    reject(new Error("The Power BI client did not initialize correctly"));
+                }
+            };
+            script.onerror = () => {
+                script.remove();
+                reject(new Error("Failed to load the Power BI client"));
+            };
+            context.captureDocument.head.appendChild(script);
+        }).catch(error => {
+            powerBiClientPromise = null;
+            throw error;
         });
         return powerBiClientPromise;
     }
 
     async function cycleReportPages(embedUrl, accessToken) {
-        await ensurePowerBiClient();
-        const models = window["powerbi-client"].models;
-        window.powerbi.reset(reportCaptureHost);
-        const report = window.powerbi.embed(reportCaptureHost, {
+        const { models, powerbi, host } = await ensurePowerBiClient();
+        powerbi.reset(host);
+        const report = powerbi.embed(host, {
             type: "report",
             tokenType: models.TokenType.Embed,
             accessToken,
@@ -6756,7 +6822,7 @@ function render({ model, el }) {
             });
             report.on("error", finish);
         });
-        window.powerbi.reset(reportCaptureHost);
+        powerbi.reset(host);
     }
 
     async function runReportCapture(payload) {
@@ -7203,11 +7269,11 @@ function render({ model, el }) {
     seg.appendChild(segResult);
     seg.appendChild(segQueryPlan);
     seg.appendChild(segChart);
-    seg.appendChild(segHistory);
     seg.appendChild(segDependencies);
     seg.appendChild(segVertipaq);
     seg.appendChild(segPerf);
     seg.appendChild(segExecMetrics);
+    seg.appendChild(segHistory);
     viewToolbar.appendChild(seg);
 
     // ---------- DAX Query Plan toggle (Logical / Physical) ----------

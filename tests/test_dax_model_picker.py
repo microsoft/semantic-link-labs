@@ -264,18 +264,37 @@ def test_report_selector_uses_structured_compact_controls():
     assert ".dtx .dtx-report-select-icon {{" in source
     assert ".dtx .dtx-report-select-chevron {{" in source
     assert ".dtx .dtx-report-check.dtx-checked {{" in source
-    assert "    width: 34px;\n    height: 34px;" in source
+    capture_button_css = source[
+        source.index(".dtx .dtx-report-capture-btn {{") : source.index(
+            ".dtx .dtx-report-capture-btn:hover", source.index(".dtx .dtx-report-capture-btn {{")
+        )
+    ]
+    assert "width: 26px;" in capture_button_css
+    assert "height: 26px;" in capture_button_css
+    assert "min-width: 26px;" in capture_button_css
+    assert ".dtx .dtx-report-capture-btn svg {{ width: 14px; height: 14px; }}" in source
 
 
 def test_report_query_capture_cycles_pages_and_signals_completion():
     source = _source()
     capture_js = source[
-        source.index("function ensurePowerBiClient") : source.index(
-            "// ---------- Analyze", source.index("function ensurePowerBiClient")
+        source.index('const reportCaptureFrame = document.createElement("iframe")') : source.index(
+            "// ---------- Analyze", source.index('const reportCaptureFrame = document.createElement("iframe")')
         )
     ]
 
     assert "powerbi-client@2.23.1" in capture_js
+    assert "new client.service.Service(" in capture_js
+    assert 'document.createElement("iframe")' in capture_js
+    assert "reportCaptureFrame.contentDocument" in capture_js
+    assert 'let powerbi = context.captureWindow.powerbi;' in capture_js
+    assert "context.captureDocument.head.appendChild(script);" in capture_js
+    assert "document.head.appendChild(script);" not in capture_js
+    assert "host: context.host" in capture_js
+    assert 'window["powerbi-client"].models' not in capture_js
+    assert "powerbi.min.js" in capture_js
+    assert "await import(" not in capture_js
+    assert "script.onload" in capture_js
     assert 'report.on("loaded"' in capture_js
     assert "report.getPages()" in capture_js
     assert "Promise.resolve(page.setActive())" in capture_js
@@ -285,6 +304,17 @@ def test_report_query_capture_cycles_pages_and_signals_completion():
     assert "window.setTimeout(finish, 120000)" in capture_js
     assert 'model.set("report_capture_finish_trigger"' in capture_js
     assert 'model.on("change:report_capture_payload"' in source
+
+
+def test_trace_history_is_the_rightmost_results_tab():
+    source = _source()
+    tab_appends = source[
+        source.index("seg.appendChild(segTrace)") : source.index(
+            "viewToolbar.appendChild(seg)", source.index("seg.appendChild(segTrace)")
+        )
+    ]
+
+    assert tab_appends.rstrip().endswith("seg.appendChild(segHistory);")
 
 
 def test_report_query_capture_correlates_trace_rows_and_appends_history():
