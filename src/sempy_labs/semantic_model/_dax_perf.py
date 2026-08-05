@@ -751,7 +751,6 @@ def _trace_rows_from_df(df: pd.DataFrame) -> list:
     if event_col is None:
         return []
     detail_classes = {
-        "QueryEnd",
         "VertiPaqSEQueryEnd",
         "VertiPaqSEQueryCacheMatch",
         "DirectQueryEnd",
@@ -3171,6 +3170,19 @@ def _visualize_dax_test(
     color: var(--ui-text);
     font-weight: 600;
 }}
+.dtx .dtx-trace-callback {{
+    padding: 1px 2px;
+    border-radius: 3px;
+    background: var(--ui-warning-bg);
+    color: var(--ui-warning-text);
+    font-weight: 700;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}}
+.dtx .dtx-trace-callback * {{
+    color: inherit;
+    font-weight: inherit;
+}}
 .dtx table {{
     width: 100%;
     border-collapse: separate;
@@ -4511,16 +4523,32 @@ function highlightSqlLine(line) {
 }
 
 function renderTraceText(text, eventClass) {
+    const stripCconMarkers = value => String(value || "").replace(/<\/?ccon>/gi, "");
     return String(text || "").split(/\r?\n/).map(line => {
         const estimate = TRACE_ESTIMATE_RE.exec(line);
         if (estimate) {
             return `<span class="dtx-trace-estimate">Estimated size: rows = <span class="dtx-trace-estimate-value">${escapeHtml(estimate[1])}</span>  bytes = <span class="dtx-trace-estimate-value">${escapeHtml(estimate[2])}</span></span>`;
         }
-        return eventClass === "DirectQueryEnd"
-            ? highlightSqlLine(line)
+        const renderLine = value => eventClass === "DirectQueryEnd"
+            ? highlightSqlLine(value)
             : eventClass === "VertiPaqSEQueryEnd"
-                ? highlightXmSqlLine(line)
-                : escapeHtml(line);
+                ? highlightXmSqlLine(value)
+                : escapeHtml(value);
+        const callbackIndex = line.search(/\[?CallbackDataID\s*\(/i);
+        const callbackTail = callbackIndex < 0 ? "" : line.slice(callbackIndex);
+        const closingMarkerIndex = callbackTail.search(/<\/ccon>/i);
+        if (callbackIndex < 0 || closingMarkerIndex < 0) {
+            return renderLine(stripCconMarkers(line));
+        }
+        const callbackEnd = callbackIndex + closingMarkerIndex;
+        const closingMarkerLength = line.slice(callbackEnd).match(/^<\/ccon>/i)[0].length;
+        const callbackText = stripCconMarkers(line.slice(callbackIndex, callbackEnd));
+        const callbackHighlight = callbackText.replace(/[\s)]*$/, "");
+        const callbackSuffix = callbackText.slice(callbackHighlight.length);
+        return renderLine(stripCconMarkers(line.slice(0, callbackIndex)))
+            + `<span class="dtx-trace-callback">${renderLine(callbackHighlight)}</span>`
+            + renderLine(callbackSuffix)
+            + renderLine(stripCconMarkers(line.slice(callbackEnd + closingMarkerLength)));
     }).join("\n");
 }
 
@@ -5315,12 +5343,6 @@ function render({ model, el }) {
         builderCollapsed = !builderCollapsed;
         renderBuilderChrome();
     });
-    const builderToggle = document.createElement("button");
-    builderToggle.type = "button";
-    builderToggle.className = "dtx-builder-toggle dtx-builder-clear-toggle";
-    builderToggle.innerHTML = CLOSE_SVG;
-    builderToggle.title = "Clear query builder";
-    builderToggle.setAttribute("aria-label", "Clear query builder");
     const builderUndoBtn = document.createElement("button");
     builderUndoBtn.type = "button";
     builderUndoBtn.className = "dtx-builder-toggle dtx-builder-undo";
@@ -5329,7 +5351,6 @@ function render({ model, el }) {
     builderUndoBtn.setAttribute("aria-label", "Undo clear");
     builderHeader.appendChild(builderMark);
     builderHeader.appendChild(builderTitle);
-    builderHeader.appendChild(builderToggle);
     builderHeader.appendChild(builderUndoBtn);
     builderHeader.appendChild(builderCollapseBtn);
     builderPane.appendChild(builderHeader);
@@ -5471,7 +5492,6 @@ function render({ model, el }) {
         renderBuilderZones();
         renderBuilderChrome();
     }
-    builderToggle.addEventListener("click", clearBuilder);
     builderUndoBtn.addEventListener("click", undoBuilderClear);
     clearBtn.addEventListener("click", clearBuilder);
     const buildBtn = document.createElement("button");
@@ -5822,8 +5842,6 @@ function render({ model, el }) {
                 orderByZone.appendChild(makeOrderByChip(f));
             }
         }
-        builderToggle.style.display =
-            (builderFields.length || builderFilters.length) ? "" : "none";
     }
 
     function onBuildClick() {
@@ -6825,6 +6843,42 @@ function render({ model, el }) {
         powerbi.reset(host);
     }
 
+    function checkpointReportCapture(payload, report, index) {
+        const checkpointId = `${payload.nonce}-${index}-${Date.now()}`;
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = (error) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
+                model.off("change:report_capture_checkpoint_ack", onAck);
+                if (error) reject(error);
+                else resolve();
+            };
+            const onAck = () => {
+                if (model.get("report_capture_checkpoint_ack") === checkpointId) {
+                    finish();
+                }
+            };
+            const timer = window.setTimeout(
+                () => finish(new Error(`Timed out collecting queries for ${report.name}`)),
+                30000,
+            );
+            model.on("change:report_capture_checkpoint_ack", onAck);
+            model.set("report_capture_checkpoint", {
+                nonce: payload.nonce,
+                checkpoint_id: checkpointId,
+                report_id: report.id,
+                report_name: report.name,
+                workspace_name: report.workspace_name || "",
+            });
+            model.set("report_capture_checkpoint_trigger",
+                (model.get("report_capture_checkpoint_trigger") || 0) + 1);
+            model.save_changes();
+            onAck();
+        });
+    }
+
     async function runReportCapture(payload) {
         if (!payload || !payload.nonce || !payload.token) return;
         let clientError = "";
@@ -6836,6 +6890,10 @@ function render({ model, el }) {
                     `Cycling pages — ${report.name} (${index + 1}/${reports.length})`);
                 model.save_changes();
                 await cycleReportPages(report.embed_url, payload.token);
+                model.set("report_capture_progress",
+                    `Collecting queries — ${report.name} (${index + 1}/${reports.length})`);
+                model.save_changes();
+                await checkpointReportCapture(payload, report, index);
             }
         } catch (error) {
             clientError = error && error.message ? error.message : String(error);
@@ -7701,14 +7759,21 @@ function render({ model, el }) {
             const run = String(h.start_time || "");
             const runTime = fmtRunTime(run);
             const metrics = renderMetrics(h.execution_metrics);
+            const method = String(h.method || "Query");
+            const reportName = method === "Report" ? String(h.report_name || "") : "";
+            const reportWorkspace = method === "Report"
+                ? String(h.report_workspace_name || h.workspace_name || "") : "";
             return `<tr>
                 <td title="${escapeHtml(run)}">${escapeHtml(runTime)}</td>
+                <td>${escapeHtml(reportName)}</td>
+                <td>${escapeHtml(reportWorkspace)}</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.duration))} ms</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.fe_duration))} ms</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.se_duration))} ms</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.cpu))} ms</td>
                 <td>${escapeHtml(String(h.cache || ""))}</td>
                 <td class="dtx-hist-metrics">${metrics ? `<pre>${metrics}</pre>` : ""}</td>
+                <td>${escapeHtml(method)}</td>
                 <td class="dtx-hist-query" data-history-index="${index}" tabindex="0" role="button" aria-label="Copy query from trace history" title="Copy query to clipboard"><pre>${escapeHtml(q)}</pre></td>
             </tr>`;
         }).join("");
@@ -7716,12 +7781,15 @@ function render({ model, el }) {
             <table class="dtx-history-table">
                 <thead><tr>
                     <th>Run</th>
+                    <th>Report</th>
+                    <th>Workspace</th>
                     <th style="text-align:right">Total</th>
                     <th style="text-align:right">FE</th>
                     <th style="text-align:right">SE</th>
                     <th style="text-align:right">CPU</th>
                     <th>Cache</th>
                     <th>Execution metrics</th>
+                    <th>Method</th>
                     <th>Query</th>
                 </tr></thead>
                 <tbody>${body}</tbody>
@@ -8598,6 +8666,9 @@ export default { render };
         report_capture_progress = traitlets.Unicode("").tag(sync=True)
         report_capture_payload = traitlets.Dict({}).tag(sync=True)
         report_capture_client_error = traitlets.Unicode("").tag(sync=True)
+        report_capture_checkpoint = traitlets.Dict({}).tag(sync=True)
+        report_capture_checkpoint_trigger = traitlets.Int(0).tag(sync=True)
+        report_capture_checkpoint_ack = traitlets.Unicode("").tag(sync=True)
         dataset_chosen = traitlets.Bool(False).tag(sync=True)
         available_workspaces = traitlets.List([]).tag(sync=True)
         available_datasets = traitlets.List([]).tag(sync=True)
@@ -8741,6 +8812,9 @@ export default { render };
         report_capture_progress="",
         report_capture_payload={},
         report_capture_client_error="",
+        report_capture_checkpoint={},
+        report_capture_checkpoint_trigger=0,
+        report_capture_checkpoint_ack="",
     )
 
     # Expose the most recent dataframes for programmatic access.
@@ -8782,7 +8856,12 @@ export default { render };
         "started": False,
         "warmed_up": False,
     }
-    report_capture_state = {"active": False, "baseline": 0, "nonce": ""}
+    report_capture_state = {
+        "active": False,
+        "baseline": 0,
+        "nonce": "",
+        "entries": [],
+    }
     trace_lock = threading.Lock()
 
     def _teardown_trace_locked() -> None:
@@ -8942,30 +9021,45 @@ export default { render };
                 raise RuntimeError("Power BI did not return an embed token.")
 
             nonce = str(time.time_ns())
+            report_payload = [
+                {**report, "workspace_name": str(widget.workspace_name or "")}
+                for report in reports
+            ]
             report_capture_state.update(
-                {"active": True, "baseline": baseline, "nonce": nonce}
+                {
+                    "active": True,
+                    "baseline": baseline,
+                    "nonce": nonce,
+                    "entries": [],
+                }
             )
             with state_lock:
                 run_state["current_run_id"] += 1
             widget.report_capture_client_error = ""
+            widget.report_capture_checkpoint = {}
+            widget.report_capture_checkpoint_ack = ""
             widget.report_capture_payload = {
                 "nonce": nonce,
                 "token": token,
-                "reports": reports,
+                "reports": report_payload,
             }
         except Exception as exc:  # noqa: BLE001
-            report_capture_state.update({"active": False, "baseline": 0, "nonce": ""})
+            report_capture_state.update(
+                {"active": False, "baseline": 0, "nonce": "", "entries": []}
+            )
             widget.report_capture_payload = {}
             widget.report_capture_loading = False
             widget.report_capture_progress = ""
             widget.error_message = f"Failed to start report query capture: {exc}"
 
-    def _finish_report_capture() -> None:
-        if not report_capture_state["active"]:
-            widget.report_capture_loading = False
-            widget.report_capture_progress = ""
-            return
+    def _checkpoint_report_capture() -> None:
+        checkpoint = dict(widget.report_capture_checkpoint or {})
+        checkpoint_id = str(checkpoint.get("checkpoint_id") or "")
         try:
+            if not report_capture_state["active"]:
+                return
+            if str(checkpoint.get("nonce") or "") != report_capture_state["nonce"]:
+                return
             time.sleep(0.8)
             baseline = int(report_capture_state["baseline"])
             with trace_lock:
@@ -8974,29 +9068,22 @@ export default { render };
                 total_count = 0 if logs is None else len(logs)
                 if trace_ctx["trace"] is trace:
                     trace_ctx["baseline"] = total_count
+            report_capture_state["baseline"] = total_count
             if logs is None or total_count <= baseline:
                 new_logs = pd.DataFrame()
             else:
                 new_logs = logs.iloc[baseline:].reset_index(drop=True)
-
             captured = _captured_queries_from_df(new_logs)
-            widget.last_df = new_logs  # type: ignore[attr-defined]
-            widget.trace_rows = _trace_rows_from_df(new_logs)
-            widget.query_plan_rows = []
-            widget.execution_metrics = []
-            widget.total_duration = sum(item["duration"] for item in captured)
-            widget.fe_duration = sum(item["fe_duration"] for item in captured)
-            widget.se_duration = sum(item["se_duration"] for item in captured)
-            widget.cpu_time = sum(item["cpu"] for item in captured)
-            widget.query_executed = bool(captured)
-            widget.view_mode = "trace"
-
             stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            entries = []
+            report_name = str(checkpoint.get("report_name") or "")
+            report_workspace_name = str(checkpoint.get("workspace_name") or "")
             for index, item in enumerate(captured):
-                entries.append(
+                report_capture_state["entries"].append(
                     {
-                        "run_id": f"report-{report_capture_state['nonce']}-{index}",
+                        "run_id": f"report-{report_capture_state['nonce']}-{checkpoint_id}-{index}",
+                        "method": "Report",
+                        "report_name": report_name,
+                        "report_workspace_name": report_workspace_name,
                         "dax_query": item["dax_query"],
                         "start_time": stamp,
                         "end_time": stamp,
@@ -9013,15 +9100,29 @@ export default { render };
                         "impersonation": "None",
                     }
                 )
+        except Exception as exc:  # noqa: BLE001
+            widget.report_capture_client_error = str(exc)
+        finally:
+            if checkpoint_id:
+                widget.report_capture_checkpoint_ack = checkpoint_id
+
+    def _finish_report_capture() -> None:
+        if not report_capture_state["active"]:
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+            return
+        try:
+            entries = list(report_capture_state["entries"])
             if entries:
                 widget.trace_history = list(reversed(entries)) + list(
                     widget.trace_history
                 )
+                widget.view_mode = "history"
 
             client_error = (widget.report_capture_client_error or "").strip()
             if client_error:
                 widget.error_message = f"Report capture ended early: {client_error}"
-            elif not captured:
+            elif not entries:
                 widget.error_message = (
                     "No DAX queries were captured. The selected reports may have "
                     "no visible data visuals or may have returned cached results."
@@ -9031,8 +9132,11 @@ export default { render };
         except Exception as exc:  # noqa: BLE001
             widget.error_message = f"Failed to collect report queries: {exc}"
         finally:
-            report_capture_state.update({"active": False, "baseline": 0, "nonce": ""})
+            report_capture_state.update(
+                {"active": False, "baseline": 0, "nonce": "", "entries": []}
+            )
             widget.report_capture_payload = {}
+            widget.report_capture_checkpoint = {}
             widget.report_capture_loading = False
             widget.report_capture_progress = ""
 
@@ -9045,6 +9149,11 @@ export default { render };
         if change["new"] == change["old"]:
             return
         threading.Thread(target=_finish_report_capture, daemon=True).start()
+
+    def _on_report_capture_checkpoint(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_checkpoint_report_capture, daemon=True).start()
 
     def _update_history_execution_metrics(history_id, metric_rows: list) -> None:
         metrics = _execution_metrics_dict(metric_rows)
@@ -9256,6 +9365,9 @@ export default { render };
                 _imp_value = "None"
             _entry = {
                 "run_id": run_id,
+                "method": "Query",
+                "report_name": "",
+                "report_workspace_name": "",
                 "dax_query": query,
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -9605,6 +9717,9 @@ export default { render };
                 _imp_value = "None"
             _entry = {
                 "run_id": _history_id,
+                "method": "Query",
+                "report_name": "",
+                "report_workspace_name": "",
                 "dax_query": query,
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -9762,6 +9877,9 @@ export default { render };
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
     widget.observe(_on_performance, names="performance_trigger")
     widget.observe(_on_report_capture_start, names="report_capture_start_trigger")
+    widget.observe(
+        _on_report_capture_checkpoint, names="report_capture_checkpoint_trigger"
+    )
     widget.observe(_on_report_capture_finish, names="report_capture_finish_trigger")
 
     def _build_history_excel() -> None:
@@ -9769,10 +9887,24 @@ export default { render };
         import io
 
         history = list(widget.trace_history)
-        columns = ["Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics", "Query"]
+        columns = [
+            "Run",
+            "Report",
+            "Workspace",
+            "Total",
+            "FE",
+            "SE",
+            "CPU",
+            "Cache",
+            "Execution metrics",
+            "Method",
+            "Query",
+        ]
         rows = [
             {
                 "Run": entry.get("start_time", ""),
+                "Report": entry.get("report_name", ""),
+                "Workspace": entry.get("report_workspace_name", ""),
                 "Total": entry.get("duration", ""),
                 "FE": entry.get("fe_duration", ""),
                 "SE": entry.get("se_duration", ""),
@@ -9781,6 +9913,7 @@ export default { render };
                 "Execution metrics": json.dumps(
                     entry.get("execution_metrics") or {}, indent=2
                 ),
+                "Method": entry.get("method", "Query"),
                 "Query": entry.get("dax_query", ""),
             }
             for entry in history

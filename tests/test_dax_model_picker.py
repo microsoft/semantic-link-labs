@@ -324,6 +324,11 @@ def test_report_query_capture_correlates_trace_rows_and_appends_history():
             "def _run_dax_trace", source.index("def _captured_queries_from_df")
         )
     ]
+    checkpoint_worker = source[
+        source.index("def _checkpoint_report_capture") : source.index(
+            "def _finish_report_capture", source.index("def _checkpoint_report_capture")
+        )
+    ]
     finish_worker = source[
         source.index("def _finish_report_capture") : source.index(
             "def _on_report_capture_start", source.index("def _finish_report_capture")
@@ -334,22 +339,27 @@ def test_report_query_capture_correlates_trace_rows_and_appends_history():
     assert 'str.contains("Internal", case=False, na=False)' in normalizer
     assert "storage_by_request.get(request_id, 0)" in normalizer
     assert 'df[df[event_col] == "QueryEnd"]' in normalizer
-    assert "captured = _captured_queries_from_df(new_logs)" in finish_worker
-    assert '"run_id": f"report-{report_capture_state[\'nonce\']}-{index}"' in finish_worker
+    assert "captured = _captured_queries_from_df(new_logs)" in checkpoint_worker
+    assert '"method": "Report"' in checkpoint_worker
+    assert '"report_name": report_name' in checkpoint_worker
+    assert '"report_workspace_name": report_workspace_name' in checkpoint_worker
     assert "widget.trace_history = list(reversed(entries))" in finish_worker
+    assert 'widget.view_mode = "history"' in finish_worker
+    assert "widget.trace_rows" not in finish_worker
+    assert 'model.set("report_capture_checkpoint_trigger"' in source
+    assert 'model.get("report_capture_checkpoint_ack") === checkpointId' in source
     assert 'widget.observe(_on_report_capture_start, names="report_capture_start_trigger")' in source
     assert 'widget.observe(_on_report_capture_finish, names="report_capture_finish_trigger")' in source
 
 
-def test_query_builder_header_clear_can_be_undone():
+def test_query_builder_footer_clear_can_be_undone():
     source = _source()
 
-    clear_position = source.index("builderHeader.appendChild(builderToggle)")
     undo_position = source.index("builderHeader.appendChild(builderUndoBtn)")
     collapse_position = source.index("builderHeader.appendChild(builderCollapseBtn)")
-    assert clear_position < undo_position < collapse_position
-    assert 'builderToggle.title = "Clear query builder"' in source
-    assert "builderToggle.addEventListener(\"click\", clearBuilder)" in source
+    assert undo_position < collapse_position
+    assert "builderToggle" not in source
+    assert "dtx-builder-clear-toggle" not in source
     assert "fields: structuredClone(builderFields)" in source
     assert "filters: structuredClone(builderFilters)" in source
     assert "orderBy: structuredClone(builderOrderBy)" in source
@@ -359,7 +369,6 @@ def test_query_builder_header_clear_can_be_undone():
     assert "builderFilters = clearedBuilderState.filters" in source
     assert "builderOrderBy = clearedBuilderState.orderBy" in source
     assert "clearBtn.addEventListener(\"click\", clearBuilder)" in source
-    assert 'builderToggle.title = "Hide query builder"' not in source
 
 
 def test_query_builder_clears_after_model_change():
@@ -385,14 +394,13 @@ def test_query_builder_clears_after_model_change():
     assert "resetBuilderForModelChange();" in active_model_listener
 
 
-def test_panel_header_actions_are_larger_and_clear_requires_contents():
+def test_panel_header_actions_are_larger():
     source = _source()
 
     assert ".dtx .dtx-sidebar-toggle,\n.dtx .dtx-sidebar-refresh,\n.dtx .dtx-builder-toggle {{" in source
     assert "    width: 28px;\n    height: 28px;" in source
     assert ".dtx .dtx-sidebar-toggle svg,\n.dtx .dtx-sidebar-refresh svg,\n.dtx .dtx-builder-toggle svg {{" in source
     assert "    width: 16px;\n    height: 16px;" in source
-    assert "builderToggle.style.display =\n            (builderFields.length || builderFilters.length) ? \"\" : \"none\";" in source
 
 
 def test_fullscreen_uses_viewport_height_for_panes_and_query_editor():
@@ -650,6 +658,12 @@ def test_trace_details_include_direct_query_and_optimizer_fields():
 
     assert '"EventSubclass"' not in direct_query_schema
     assert '"DirectQueryEnd",' in trace_serializer
+    detail_classes = trace_serializer[
+        trace_serializer.index("detail_classes = {") : trace_serializer.index(
+            "rows_df =", trace_serializer.index("detail_classes = {")
+        )
+    ]
+    assert '"QueryEnd"' not in detail_classes
     assert 'if subclass_v == "VertiPaqScanInternal":' in trace_serializer
     assert "marshalling bytes" in trace_serializer
     assert '"rows": int(estimate.group(1)) if estimate else None' in trace_serializer
@@ -682,6 +696,16 @@ def test_trace_details_format_timings_and_sql_like_text():
     assert "html += escapeHtml(line.slice(last, match.index));" in trace_helpers
     assert "Estimated size: rows = " in trace_helpers
     assert "  bytes = " in trace_helpers
+    assert 'replace(/<\\/?ccon>/gi, "")' in trace_helpers
+    assert 'const closingMarkerIndex = callbackTail.search(/<\\/ccon>/i)' in trace_helpers
+    assert 'const callbackHighlight = callbackText.replace(/[\\s)]*$/, "")' in trace_helpers
+    assert "const callbackSuffix = callbackText.slice(callbackHighlight.length)" in trace_helpers
+    assert "line.slice(callbackEnd + closingMarkerLength)" in trace_helpers
+    assert 'class="dtx-trace-callback"' in trace_helpers
+    assert ".dtx .dtx-trace-callback {{" in source
+    assert "background: var(--ui-warning-bg);" in source
+    assert "color: var(--ui-warning-text);" in source
+    assert "font-weight: 700;" in source
     assert "volume, marshalling bytes" not in trace_table
     assert "renderTraceText(r.text, r.event_class)" in trace_table
 
@@ -704,7 +728,10 @@ def test_trace_history_matches_optimizer_columns_and_metrics_dictionary():
         )
     ]
 
-    headings = ("Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics", "Query")
+    headings = (
+        "Run", "Report", "Workspace", "Total", "FE", "SE", "CPU", "Cache",
+        "Execution metrics", "Method", "Query",
+    )
     positions = [history_table.index(f">{heading}</th>") for heading in headings]
     assert positions == sorted(positions)
     assert 'const renderMetrics = (metrics) =>' in history_table
@@ -722,7 +749,12 @@ def test_trace_history_matches_optimizer_columns_and_metrics_dictionary():
     assert 'const runTime = fmtRunTime(run)' in history_table
     assert 'str(row.get("label") or row.get("key") or "")' in metrics_helper
     assert '"directQueryTotalRows", "DirectQuery Total Rows"' in source
-    assert 'columns = ["Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics", "Query"]' in history_export
+    assert '"Method",\n            "Query",' in history_export
+    assert '"Method": entry.get("method", "Query")' in history_export
+    assert 'const method = String(h.method || "Query")' in history_table
+    assert 'const reportName = method === "Report"' in history_table
+    assert history_table.index("<th>Method</th>") < history_table.index("<th>Query</th>")
+    assert source.count('"method": "Query"') == 2
 
 
 def test_trace_history_backfills_late_execution_metrics():
