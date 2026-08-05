@@ -729,8 +729,8 @@ def test_trace_history_matches_optimizer_columns_and_metrics_dictionary():
     ]
 
     headings = (
-        "Run", "Report", "Workspace", "Total", "FE", "SE", "CPU", "Cache",
-        "Execution metrics", "Method", "Query",
+        "Run", "Total", "FE", "SE", "CPU", "Cache", "Execution metrics",
+        "Method", "Query", "Report", "Workspace",
     )
     positions = [history_table.index(f">{heading}</th>") for heading in headings]
     assert positions == sorted(positions)
@@ -749,12 +749,42 @@ def test_trace_history_matches_optimizer_columns_and_metrics_dictionary():
     assert 'const runTime = fmtRunTime(run)' in history_table
     assert 'str(row.get("label") or row.get("key") or "")' in metrics_helper
     assert '"directQueryTotalRows", "DirectQuery Total Rows"' in source
-    assert '"Method",\n            "Query",' in history_export
+    assert '"Method",\n            "Query",\n            "Report",\n            "Workspace",' in history_export
     assert '"Method": entry.get("method", "Query")' in history_export
     assert 'const method = String(h.method || "Query")' in history_table
     assert 'const reportName = method === "Report"' in history_table
-    assert history_table.index("<th>Method</th>") < history_table.index("<th>Query</th>")
+    assert history_table.index(">Method</th>") < history_table.index(">Query</th>")
+    assert history_table.index(">Query</th>") < history_table.index(">Report</th>")
+    assert history_table.index(">Report</th>") < history_table.index(">Workspace</th>")
     assert source.count('"method": "Query"') == 2
+
+
+def test_output_tables_are_resizable_and_trace_history_is_sortable():
+    source = _source()
+    table_setup = source[
+        source.index("const outputColumnWidths = new Map()") : source.index(
+            "const chartControls", source.index("const outputColumnWidths = new Map()")
+        )
+    ]
+    history_table = source[
+        source.index("const historySortState") : source.index(
+            "function renderQueryPlanTable", source.index("const historySortState")
+        )
+    ]
+
+    assert "function installColumnResizers(table)" in table_setup
+    assert 'handle.className = "dtx-column-resizer"' in table_setup
+    assert 'handle.addEventListener("pointerdown"' in table_setup
+    assert "outputColumnWidths.set(key, [...widths])" in table_setup
+    assert "new MutationObserver(enhanceOutputTables)" in table_setup
+    assert "outputTableObserver.disconnect();" in source
+    assert ".dtx .dtx-column-resizer {{" in source
+    assert 'const historySortState = { key: "", direction: "ascending" }' in history_table
+    assert "function historySortValue(entry, key)" in history_table
+    assert 'data-history-sort="query"' in history_table
+    assert 'data-history-sort="workspace"' in history_table
+    assert 'header.setAttribute("aria-sort", historySortState.direction)' in history_table
+    assert "indexedHistory.sort((left, right) =>" in history_table
 
 
 def test_trace_history_backfills_late_execution_metrics():

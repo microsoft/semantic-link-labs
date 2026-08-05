@@ -3203,6 +3203,45 @@ def _visualize_dax_test(
     border-bottom: 1px solid var(--ui-border-strong);
     white-space: nowrap;
 }}
+.dtx thead th.dtx-resizable {{
+    position: sticky;
+}}
+.dtx .dtx-column-resizer {{
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: -3px;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+}}
+.dtx .dtx-column-resizer::after {{
+    content: "";
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: 3px;
+    width: 1px;
+    background: transparent;
+}}
+.dtx .dtx-column-resizer:hover::after,
+.dtx .dtx-column-resizer.dtx-resizing::after {{
+    background: var(--ui-accent);
+}}
+.dtx .dtx-history-table th[data-history-sort] {{
+    cursor: pointer;
+    user-select: none;
+}}
+.dtx .dtx-history-table th[data-history-sort]::after {{
+    content: "";
+    display: inline-block;
+    width: 12px;
+    margin-left: 5px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-history-table th[aria-sort="ascending"]::after {{ content: "▲"; }}
+.dtx .dtx-history-table th[aria-sort="descending"]::after {{ content: "▼"; }}
 .dtx tbody tr {{ background: var(--ui-bg); }}
 .dtx tbody td {{
     padding: 9px 16px;
@@ -7652,6 +7691,69 @@ function render({ model, el }) {
     tableWrap.className = "dtx-table-wrap";
     main.appendChild(tableWrap);
 
+    const outputColumnWidths = new Map();
+    function outputTableKey(table) {
+        const tableName = table.className || "output-table";
+        const headings = Array.from(table.querySelectorAll("thead th"))
+            .map(th => th.textContent.trim()).join("|");
+        return `${tableName}:${headings}`;
+    }
+    function installColumnResizers(table) {
+        const headers = Array.from(table.querySelectorAll("thead th"));
+        if (!headers.length || table.dataset.resizable === "true") return;
+        table.dataset.resizable = "true";
+        const key = outputTableKey(table);
+        const saved = outputColumnWidths.get(key);
+        const colgroup = document.createElement("colgroup");
+        const widths = headers.map((header, index) =>
+            saved?.[index] || Math.max(72, Math.ceil(header.getBoundingClientRect().width))
+        );
+        widths.forEach(width => {
+            const col = document.createElement("col");
+            col.style.width = `${width}px`;
+            colgroup.appendChild(col);
+        });
+        table.insertBefore(colgroup, table.firstChild);
+        table.style.tableLayout = "fixed";
+        table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
+        headers.forEach((header, index) => {
+            header.classList.add("dtx-resizable");
+            const handle = document.createElement("span");
+            handle.className = "dtx-column-resizer";
+            handle.setAttribute("role", "separator");
+            handle.setAttribute("aria-label", `Resize ${header.textContent.trim()} column`);
+            handle.addEventListener("pointerdown", event => {
+                event.preventDefault();
+                event.stopPropagation();
+                const startX = event.clientX;
+                const startWidth = widths[index];
+                handle.classList.add("dtx-resizing");
+                handle.setPointerCapture(event.pointerId);
+                const onMove = moveEvent => {
+                    widths[index] = Math.max(56, startWidth + moveEvent.clientX - startX);
+                    colgroup.children[index].style.width = `${widths[index]}px`;
+                    table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
+                };
+                const onEnd = () => {
+                    handle.classList.remove("dtx-resizing");
+                    outputColumnWidths.set(key, [...widths]);
+                    handle.removeEventListener("pointermove", onMove);
+                    handle.removeEventListener("pointerup", onEnd);
+                    handle.removeEventListener("pointercancel", onEnd);
+                };
+                handle.addEventListener("pointermove", onMove);
+                handle.addEventListener("pointerup", onEnd);
+                handle.addEventListener("pointercancel", onEnd);
+            });
+            header.appendChild(handle);
+        });
+    }
+    function enhanceOutputTables() {
+        tableWrap.querySelectorAll("table").forEach(installColumnResizers);
+    }
+    const outputTableObserver = new MutationObserver(enhanceOutputTables);
+    outputTableObserver.observe(tableWrap, { childList: true, subtree: true });
+
     const chartControls = document.createElement("div");
     chartControls.className = "dtx-chart-controls";
     chartControls.style.display = "none";
@@ -7726,6 +7828,19 @@ function render({ model, el }) {
         }
     }
 
+    const historySortState = { key: "", direction: "ascending" };
+    function historySortValue(entry, key) {
+        if (["duration", "fe_duration", "se_duration", "cpu"].includes(key)) {
+            return Number(entry[key] || 0);
+        }
+        if (key === "execution_metrics") return JSON.stringify(entry.execution_metrics || {});
+        if (key === "query") return String(entry.dax_query || "");
+        if (key === "report") return String(entry.report_name || "");
+        if (key === "workspace") {
+            return String(entry.report_workspace_name || entry.workspace_name || "");
+        }
+        return String(entry[key] || "");
+    }
     function renderHistoryTable() {
         const hist = model.get("trace_history") || [];
         const fmt = (n) => Number(n).toLocaleString();
@@ -7754,7 +7869,20 @@ function render({ model, el }) {
             tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No queries have been executed in this session yet.</td></tr></tbody></table>`;
             return;
         }
-        const body = hist.map((h, index) => {
+        const indexedHistory = hist.map((h, index) => ({ h, index }));
+        if (historySortState.key) {
+            indexedHistory.sort((left, right) => {
+                const a = historySortValue(left.h, historySortState.key);
+                const b = historySortValue(right.h, historySortState.key);
+                const result = typeof a === "number" && typeof b === "number"
+                    ? a - b
+                    : String(a).localeCompare(String(b), undefined, {
+                        numeric: true, sensitivity: "base",
+                    });
+                return historySortState.direction === "ascending" ? result : -result;
+            });
+        }
+        const body = indexedHistory.map(({ h, index }) => {
             const q = String(h.dax_query || "");
             const run = String(h.start_time || "");
             const runTime = fmtRunTime(run);
@@ -7765,8 +7893,6 @@ function render({ model, el }) {
                 ? String(h.report_workspace_name || h.workspace_name || "") : "";
             return `<tr>
                 <td title="${escapeHtml(run)}">${escapeHtml(runTime)}</td>
-                <td>${escapeHtml(reportName)}</td>
-                <td>${escapeHtml(reportWorkspace)}</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.duration))} ms</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.fe_duration))} ms</td>
                 <td class="dtx-num">${escapeHtml(fmt(h.se_duration))} ms</td>
@@ -7775,25 +7901,44 @@ function render({ model, el }) {
                 <td class="dtx-hist-metrics">${metrics ? `<pre>${metrics}</pre>` : ""}</td>
                 <td>${escapeHtml(method)}</td>
                 <td class="dtx-hist-query" data-history-index="${index}" tabindex="0" role="button" aria-label="Copy query from trace history" title="Copy query to clipboard"><pre>${escapeHtml(q)}</pre></td>
+                <td>${escapeHtml(reportName)}</td>
+                <td>${escapeHtml(reportWorkspace)}</td>
             </tr>`;
         }).join("");
         tableWrap.innerHTML = `
             <table class="dtx-history-table">
                 <thead><tr>
-                    <th>Run</th>
-                    <th>Report</th>
-                    <th>Workspace</th>
-                    <th style="text-align:right">Total</th>
-                    <th style="text-align:right">FE</th>
-                    <th style="text-align:right">SE</th>
-                    <th style="text-align:right">CPU</th>
-                    <th>Cache</th>
-                    <th>Execution metrics</th>
-                    <th>Method</th>
-                    <th>Query</th>
+                    <th data-history-sort="start_time">Run</th>
+                    <th data-history-sort="duration" style="text-align:right">Total</th>
+                    <th data-history-sort="fe_duration" style="text-align:right">FE</th>
+                    <th data-history-sort="se_duration" style="text-align:right">SE</th>
+                    <th data-history-sort="cpu" style="text-align:right">CPU</th>
+                    <th data-history-sort="cache">Cache</th>
+                    <th data-history-sort="execution_metrics">Execution metrics</th>
+                    <th data-history-sort="method">Method</th>
+                    <th data-history-sort="query">Query</th>
+                    <th data-history-sort="report">Report</th>
+                    <th data-history-sort="workspace">Workspace</th>
                 </tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
+
+        tableWrap.querySelectorAll("th[data-history-sort]").forEach(header => {
+            const key = header.dataset.historySort;
+            if (key === historySortState.key) {
+                header.setAttribute("aria-sort", historySortState.direction);
+            } else {
+                header.setAttribute("aria-sort", "none");
+            }
+            header.addEventListener("click", event => {
+                if (event.target.closest(".dtx-column-resizer")) return;
+                historySortState.direction = historySortState.key === key
+                    && historySortState.direction === "ascending"
+                    ? "descending" : "ascending";
+                historySortState.key = key;
+                renderHistoryTable();
+            });
+        });
 
         const copyHistoryQuery = (cell) => {
             const index = Number(cell.dataset.historyIndex);
@@ -8543,7 +8688,8 @@ function render({ model, el }) {
     return () => {
         try {
             document.removeEventListener("pointerdown", hideReportMenuOnOutsidePointer);
-            if (window.powerbi) window.powerbi.reset(reportCaptureHost);
+            outputTableObserver.disconnect();
+            reportCaptureFrame.remove();
             model.set("close_trigger", (model.get("close_trigger") || 0) + 1);
             model.save_changes();
         } catch (e) {}
@@ -9889,8 +10035,6 @@ export default { render };
         history = list(widget.trace_history)
         columns = [
             "Run",
-            "Report",
-            "Workspace",
             "Total",
             "FE",
             "SE",
@@ -9899,12 +10043,12 @@ export default { render };
             "Execution metrics",
             "Method",
             "Query",
+            "Report",
+            "Workspace",
         ]
         rows = [
             {
                 "Run": entry.get("start_time", ""),
-                "Report": entry.get("report_name", ""),
-                "Workspace": entry.get("report_workspace_name", ""),
                 "Total": entry.get("duration", ""),
                 "FE": entry.get("fe_duration", ""),
                 "SE": entry.get("se_duration", ""),
@@ -9915,6 +10059,8 @@ export default { render };
                 ),
                 "Method": entry.get("method", "Query"),
                 "Query": entry.get("dax_query", ""),
+                "Report": entry.get("report_name", ""),
+                "Workspace": entry.get("report_workspace_name", ""),
             }
             for entry in history
         ]
