@@ -1766,6 +1766,11 @@ _FALLBACK_DAX_PERFORMANCE_ICON = (
     '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
     "</svg>"
 )
+_FALLBACK_ACTIVITY_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>'
+)
 _FALLBACK_HAMMER_ICON = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
@@ -3242,6 +3247,22 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-history-table th[aria-sort="ascending"]::after {{ content: "▲"; }}
 .dtx .dtx-history-table th[aria-sort="descending"]::after {{ content: "▼"; }}
+.dtx .dtx-monitoring-table th[data-monitoring-sort] {{ cursor: pointer; user-select: none; }}
+.dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
+.dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
+.dtx .dtx-monitoring-filter-row th {{ top: 35px; padding: 4px 8px 7px; }}
+.dtx .dtx-monitoring-filter {{
+    width: 100%;
+    height: 27px;
+    padding: 0 7px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1.2;
+}}
 .dtx tbody tr {{ background: var(--ui-bg); }}
 .dtx tbody td {{
     padding: 9px 16px;
@@ -3609,6 +3630,124 @@ def _visualize_dax_test(
     align-items: stretch;
     min-height: 0;
 }}
+.dtx .dtx-monitoring {{
+    border-top: 1px solid var(--ui-border-strong);
+    background: var(--ui-bg);
+}}
+.dtx .dtx-monitoring.dtx-monitoring-hidden {{ display: none; }}
+.dtx .dtx-monitoring.dtx-monitoring-fullscreen {{
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    background: var(--ui-bg);
+}}
+.dtx .dtx-monitoring-head {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 64px;
+    padding: 12px 20px;
+}}
+.dtx .dtx-monitoring-title-btn {{
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 0;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+}}
+.dtx .dtx-monitoring-title-btn svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-monitoring-title-btn .dtx-monitoring-activity {{ color: var(--ui-accent); }}
+.dtx .dtx-monitoring-subtitle {{ color: var(--ui-text-tertiary); font-weight: 400; }}
+.dtx .dtx-monitoring-controls {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}}
+.dtx .dtx-monitoring-target,
+.dtx .dtx-monitoring-field {{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+}}
+.dtx .dtx-monitoring-target {{
+    max-width: 310px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    color: var(--ui-text);
+    font-weight: 600;
+    overflow: hidden;
+}}
+.dtx .dtx-monitoring-target svg {{ width: 16px; height: 16px; flex: 0 0 auto; }}
+.dtx .dtx-monitoring-target span {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+.dtx .dtx-monitoring-field select,
+.dtx .dtx-monitoring-field input {{
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 12px;
+}}
+.dtx .dtx-monitoring-field input {{ width: 68px; }}
+.dtx .dtx-monitoring-action {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-monitoring-action:hover:not(:disabled) {{ color: var(--ui-accent); border-color: var(--ui-accent); }}
+.dtx .dtx-monitoring-action:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx .dtx-monitoring-action svg {{ width: 17px; height: 17px; }}
+.dtx .dtx-monitoring-content {{
+    min-height: 190px;
+    max-height: 360px;
+    overflow: auto;
+    border-top: 1px solid var(--ui-border);
+}}
+.dtx .dtx-monitoring-fullscreen .dtx-monitoring-content {{ flex: 1 1 0; max-height: none; }}
+.dtx .dtx-monitoring-empty {{
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 30px;
+    color: var(--ui-text-secondary);
+    text-align: center;
+}}
+.dtx .dtx-monitoring-empty svg {{ width: 34px; height: 34px; color: var(--ui-text-tertiary); }}
+.dtx .dtx-monitoring-empty strong {{ color: var(--ui-text-secondary); font-size: 14px; }}
+.dtx .dtx-monitoring-empty span {{ color: var(--ui-text-tertiary); font-size: 12px; }}
+.dtx .dtx-monitoring-error {{ color: var(--ui-danger-text); }}
+.dtx .dtx-monitoring-table td {{ vertical-align: top; }}
+.dtx .dtx-monitoring-query {{ cursor: pointer; }}
+.dtx .dtx-monitoring-query pre {{ margin: 0; white-space: pre-wrap; font: 11px/1.45 ui-monospace, monospace; }}
+.dtx .dtx-monitoring-query:hover {{ color: var(--ui-accent); }}
 .dtx .dtx-sidebar {{
     flex: 0 0 260px;
     width: 260px;
@@ -4374,6 +4513,9 @@ def _visualize_dax_test(
     dax_performance_icon = _UI_ICONS.get(
         "dax_performance", _FALLBACK_DAX_PERFORMANCE_ICON
     ).replace("`", "\\`")
+    activity_icon = _UI_ICONS.get("activity", _FALLBACK_ACTIVITY_ICON).replace(
+        "`", "\\`"
+    )
     cpu_icon = _UI_ICONS["cpu"].replace("`", "\\`")
     database_icon = _UI_ICONS["database"].replace("`", "\\`")
     zap_icon = _UI_ICONS["zap"].replace("`", "\\`")
@@ -4636,6 +4778,7 @@ function render({ model, el }) {
     const FULLSCREEN_SVG = `__DTX_FULLSCREEN__`;
     const FULLSCREEN_EXIT_SVG = `__DTX_FULLSCREEN_EXIT__`;
     const DAX_PERFORMANCE_SVG = `__DTX_DAX_PERFORMANCE__`;
+    const ACTIVITY_SVG = `__DTX_ACTIVITY__`;
     const CPU_SVG = `__DTX_CPU__`;
     const DATABASE_SVG = `__DTX_DATABASE__`;
     const ZAP_SVG = `__DTX_ZAP__`;
@@ -4820,8 +4963,18 @@ function render({ model, el }) {
         builderVisible = !builderVisible;
         renderBuilderChrome();
     });
+    let monitoringVisible = true;
+    const monitoringShowBtn = document.createElement("button");
+    monitoringShowBtn.type = "button";
+    monitoringShowBtn.className = "dtx-builder-show-btn";
+    monitoringShowBtn.innerHTML = ACTIVITY_SVG;
+    monitoringShowBtn.addEventListener("click", () => {
+        monitoringVisible = !monitoringVisible;
+        renderMonitoringChrome();
+    });
     header.appendChild(modelViewShowBtn);
     header.appendChild(builderShowBtn);
+    header.appendChild(monitoringShowBtn);
     header.appendChild(themeBtn);
     header.appendChild(fullscreenBtn);
     renderFullscreenBtn();
@@ -7694,19 +7847,20 @@ function render({ model, el }) {
     const outputColumnWidths = new Map();
     function outputTableKey(table) {
         const tableName = table.className || "output-table";
-        const headings = Array.from(table.querySelectorAll("thead th"))
+        const headings = Array.from(table.querySelectorAll("thead tr:first-child th"))
             .map(th => th.textContent.trim()).join("|");
         return `${tableName}:${headings}`;
     }
     function installColumnResizers(table) {
-        const headers = Array.from(table.querySelectorAll("thead th"));
+        const headers = Array.from(table.querySelectorAll("thead tr:first-child th"));
         if (!headers.length || table.dataset.resizable === "true") return;
         table.dataset.resizable = "true";
         const key = outputTableKey(table);
         const saved = outputColumnWidths.get(key);
         const colgroup = document.createElement("colgroup");
         const widths = headers.map((header, index) =>
-            saved?.[index] || Math.max(72, Math.ceil(header.getBoundingClientRect().width))
+            saved?.[index] || Number(header.dataset.columnWidth)
+                || Math.max(72, Math.ceil(header.getBoundingClientRect().width))
         );
         widths.forEach(width => {
             const col = document.createElement("col");
@@ -7753,6 +7907,263 @@ function render({ model, el }) {
     }
     const outputTableObserver = new MutationObserver(enhanceOutputTables);
     outputTableObserver.observe(tableWrap, { childList: true, subtree: true });
+
+    // ---------- Workspace monitoring ----------
+    let monitoringOpen = true;
+    let monitoringFullscreen = false;
+    let monitoringSort = null;
+    const monitoringFilters = {};
+    const monitoringPane = document.createElement("section");
+    monitoringPane.className = "dtx-monitoring";
+    const monitoringHead = document.createElement("div");
+    monitoringHead.className = "dtx-monitoring-head";
+    monitoringPane.appendChild(monitoringHead);
+    const monitoringTitleBtn = document.createElement("button");
+    monitoringTitleBtn.type = "button";
+    monitoringTitleBtn.className = "dtx-monitoring-title-btn";
+    monitoringHead.appendChild(monitoringTitleBtn);
+    const monitoringControls = document.createElement("div");
+    monitoringControls.className = "dtx-monitoring-controls";
+    monitoringHead.appendChild(monitoringControls);
+
+    const monitoringTarget = document.createElement("div");
+    monitoringTarget.className = "dtx-monitoring-target";
+    monitoringTarget.innerHTML = `${SWAP_SVG}<span></span>`;
+    monitoringTarget.title = "Monitoring the connected semantic model";
+    monitoringControls.appendChild(monitoringTarget);
+
+    const rangeLabel = document.createElement("label");
+    rangeLabel.className = "dtx-monitoring-field";
+    rangeLabel.textContent = "Range";
+    const rangeSelect = document.createElement("select");
+    [
+        ["15m", "Last 15 min"], ["1h", "Last hour"], ["4h", "Last 4 hours"],
+        ["12h", "Last 12 hours"], ["1d", "Last 24 hours"],
+        ["3d", "Last 3 days"], ["7d", "Last 7 days"], ["30d", "Last 30 days"],
+    ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        if (value === "1d") option.selected = true;
+        rangeSelect.appendChild(option);
+    });
+    rangeLabel.appendChild(rangeSelect);
+    monitoringControls.appendChild(rangeLabel);
+
+    const topLabel = document.createElement("label");
+    topLabel.className = "dtx-monitoring-field";
+    topLabel.textContent = "Top";
+    const topInput = document.createElement("input");
+    topInput.type = "number";
+    topInput.min = "1";
+    topInput.max = "200";
+    topInput.value = "20";
+    topLabel.appendChild(topInput);
+    monitoringControls.appendChild(topLabel);
+
+    const monitoringReloadBtn = document.createElement("button");
+    monitoringReloadBtn.type = "button";
+    monitoringReloadBtn.className = "dtx-monitoring-action";
+    monitoringReloadBtn.innerHTML = REFRESH_SVG;
+    monitoringReloadBtn.title = "Reload workspace monitoring";
+    monitoringReloadBtn.setAttribute("aria-label", "Reload workspace monitoring");
+    monitoringControls.appendChild(monitoringReloadBtn);
+    const monitoringFullscreenBtn = document.createElement("button");
+    monitoringFullscreenBtn.type = "button";
+    monitoringFullscreenBtn.className = "dtx-monitoring-action";
+    monitoringControls.appendChild(monitoringFullscreenBtn);
+
+    const monitoringContent = document.createElement("div");
+    monitoringContent.className = "dtx-monitoring-content";
+    monitoringPane.appendChild(monitoringContent);
+    container.appendChild(monitoringPane);
+
+    function renderMonitoringChrome() {
+        const chosen = model.get("dataset_chosen") === true;
+        monitoringShowBtn.style.display = chosen ? "" : "none";
+        monitoringPane.classList.toggle("dtx-monitoring-hidden", !chosen || !monitoringVisible);
+        monitoringPane.classList.toggle("dtx-monitoring-fullscreen", monitoringFullscreen);
+        monitoringShowBtn.classList.toggle("dtx-active", monitoringVisible);
+        const showLabel = monitoringVisible
+            ? "Hide workspace monitoring" : "Show workspace monitoring";
+        monitoringShowBtn.title = showLabel;
+        monitoringShowBtn.setAttribute("aria-label", showLabel);
+        monitoringShowBtn.setAttribute("aria-pressed", String(monitoringVisible));
+        monitoringTitleBtn.innerHTML = `${monitoringOpen ? CHEVRON_DOWN_SVG : CARET_SVG}`
+            + `<span class="dtx-monitoring-activity">${ACTIVITY_SVG}</span>`
+            + `<span>Workspace monitoring</span>`
+            + `<span class="dtx-monitoring-subtitle">· slowest recent queries</span>`;
+        monitoringTitleBtn.setAttribute("aria-expanded", String(monitoringOpen));
+        monitoringControls.style.display = monitoringOpen ? "" : "none";
+        monitoringContent.style.display = monitoringOpen ? "" : "none";
+        monitoringFullscreenBtn.innerHTML = monitoringFullscreen
+            ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
+        const fullscreenLabel = monitoringFullscreen ? "Exit full screen" : "Full screen";
+        monitoringFullscreenBtn.title = fullscreenLabel;
+        monitoringFullscreenBtn.setAttribute("aria-label", fullscreenLabel);
+        monitoringTarget.querySelector("span").textContent =
+            `${model.get("dataset_name") || "—"} · ${model.get("workspace_name") || "—"}`;
+    }
+
+    function renderMonitoringContent() {
+        const loading = model.get("workspace_monitoring_loading") === true;
+        const loaded = model.get("workspace_monitoring_loaded") === true;
+        const enabled = model.get("workspace_monitoring_enabled") !== false;
+        const error = String(model.get("workspace_monitoring_error") || "");
+        const columns = model.get("workspace_monitoring_columns") || [];
+        const rows = model.get("workspace_monitoring_rows") || [];
+        monitoringReloadBtn.disabled = loading || model.get("dataset_chosen") !== true;
+        if (error) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty dtx-monitoring-error">`
+                + `${ACTIVITY_SVG}<strong>${escapeHtml(error)}</strong></div>`;
+            return;
+        }
+        if (loading) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>Reading workspace monitoring…</strong></div>`;
+            return;
+        }
+        if (!loaded) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>Press Reload to read the slowest recent queries.</strong>`
+                + `<span>Queries the workspace's monitoring database for QueryEnd events for this model.</span></div>`;
+            return;
+        }
+        if (!enabled) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>Workspace monitoring is not enabled</strong>`
+                + `<span>Enable workspace monitoring in the workspace settings to see query history.</span></div>`;
+            return;
+        }
+        if (!rows.length) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>No queries found for this model and range.</strong></div>`;
+            return;
+        }
+        const isNumeric = column => /ms$/i.test(String(column));
+        const isTime = column => String(column).toLowerCase() === "timestamp";
+        const isQuery = column => String(column).toLowerCase() === "eventtext";
+        const cleanQuery = value => String(value || "")
+            .replace(/\s*\[WaitTime:[^\]]*\]\s*$/i, "").trimEnd();
+        const headerLabel = column => ({
+            durationms: "Duration (MS)", cputimems: "CPU", eventtext: "Query",
+            visualid: "Visual ID", reportid: "Report ID",
+            reportname: "Report Name", reportworkspace: "Report Workspace",
+        }[String(column).toLowerCase()] || String(column));
+        const displayValue = (column, value) => {
+            if (value == null || value === "") return "";
+            if (isTime(column)) {
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+            }
+            if (isNumeric(column)) {
+                const number = Number(value);
+                return Number.isFinite(number) ? Math.round(number).toLocaleString() : String(value);
+            }
+            return String(value);
+        };
+        const queryIndex = columns.findIndex(isQuery);
+        let viewRows = rows.map((row, index) => ({ row, index }));
+        const activeFilters = Object.entries(monitoringFilters)
+            .filter(([, value]) => String(value).trim());
+        if (activeFilters.length) {
+            viewRows = viewRows.filter(({ row }) => activeFilters.every(([index, value]) =>
+                String(row[Number(index)] ?? "").toLowerCase()
+                    .includes(String(value).trim().toLowerCase())
+            ));
+        }
+        if (monitoringSort) {
+            const { index, direction } = monitoringSort;
+            const column = columns[index];
+            viewRows.sort((left, right) => {
+                const a = left.row[index] ?? "";
+                const b = right.row[index] ?? "";
+                let result;
+                if (isTime(column)) result = new Date(a).getTime() - new Date(b).getTime();
+                else if (isNumeric(column)) result = Number(a) - Number(b);
+                else result = String(a).localeCompare(String(b), undefined, { numeric: true });
+                if (Number.isNaN(result)) result = String(a).localeCompare(String(b));
+                return direction === "ascending" ? result : -result;
+            });
+        }
+        const head = columns.map((column, index) => {
+            const width = isQuery(column) ? 480 : isTime(column) ? 180 : isNumeric(column) ? 120 : 200;
+            const sort = monitoringSort?.index === index ? monitoringSort.direction : "none";
+            return `<th data-monitoring-sort="${index}" data-column-width="${width}" aria-sort="${sort}">${escapeHtml(headerLabel(column))}</th>`;
+        }).join("");
+        const filters = columns.map((column, index) =>
+            `<th><input class="dtx-monitoring-filter" data-monitoring-filter="${index}" value="${escapeHtml(monitoringFilters[index] || "")}" placeholder="Filter ${escapeHtml(headerLabel(column))}"></th>`
+        ).join("");
+        const bodyHtml = viewRows.map(({ row, index: rowIndex }) => `<tr>${columns.map((column, index) => {
+            const rawValue = row[index] == null ? "" : String(row[index]);
+            if (index === queryIndex) {
+                const query = cleanQuery(rawValue);
+                return `<td class="dtx-monitoring-query" data-monitoring-index="${rowIndex}" tabindex="0" role="button" title="Use this query"><pre>${escapeHtml(query)}</pre></td>`;
+            }
+            return `<td>${escapeHtml(displayValue(column, rawValue))}</td>`;
+        }).join("")}</tr>`).join("");
+        monitoringContent.innerHTML = `<table class="dtx-monitoring-table"><thead><tr>${head}</tr><tr class="dtx-monitoring-filter-row">${filters}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+        const useQuery = cell => {
+            const row = rows[Number(cell.dataset.monitoringIndex)] || [];
+            const query = queryIndex >= 0 ? cleanQuery(row[queryIndex]) : "";
+            if (!query) return;
+            model.set("dax_query", query);
+            model.save_changes();
+            showToast("Monitoring query loaded into editor");
+        };
+        monitoringContent.querySelectorAll(".dtx-monitoring-query").forEach(cell => {
+            cell.addEventListener("click", () => useQuery(cell));
+            cell.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    useQuery(cell);
+                }
+            });
+        });
+        monitoringContent.querySelectorAll("th[data-monitoring-sort]").forEach(header => {
+            header.addEventListener("click", event => {
+                if (event.target.closest(".dtx-column-resizer")) return;
+                const index = Number(header.dataset.monitoringSort);
+                monitoringSort = monitoringSort?.index === index
+                    ? monitoringSort.direction === "ascending"
+                        ? { index, direction: "descending" } : null
+                    : { index, direction: "ascending" };
+                renderMonitoringContent();
+            });
+        });
+        monitoringContent.querySelectorAll(".dtx-monitoring-filter").forEach(input => {
+            input.addEventListener("input", () => {
+                monitoringFilters[Number(input.dataset.monitoringFilter)] = input.value;
+                renderMonitoringContent();
+                const replacement = monitoringContent.querySelector(
+                    `[data-monitoring-filter="${input.dataset.monitoringFilter}"]`
+                );
+                if (replacement) {
+                    replacement.focus();
+                    replacement.setSelectionRange(input.value.length, input.value.length);
+                }
+            });
+        });
+        installColumnResizers(monitoringContent.querySelector("table"));
+    }
+
+    monitoringTitleBtn.addEventListener("click", () => {
+        monitoringOpen = !monitoringOpen;
+        if (!monitoringOpen) monitoringFullscreen = false;
+        renderMonitoringChrome();
+    });
+    monitoringReloadBtn.addEventListener("click", () => {
+        const top = Math.min(200, Math.max(1, Math.round(Number(topInput.value) || 20)));
+        topInput.value = String(top);
+        model.set("workspace_monitoring_request", { range: rangeSelect.value, top });
+        model.set("workspace_monitoring_trigger",
+            (model.get("workspace_monitoring_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    monitoringFullscreenBtn.addEventListener("click", () => {
+        monitoringFullscreen = !monitoringFullscreen;
+        renderMonitoringChrome();
+    });
 
     const chartControls = document.createElement("div");
     chartControls.className = "dtx-chart-controls";
@@ -8494,6 +8905,14 @@ function render({ model, el }) {
     model.on("change:result_truncated", renderTable);
     model.on("change:view_mode", renderTable);
     model.on("change:trace_history", renderTable);
+    model.on("change:workspace_monitoring_loading", renderMonitoringContent);
+    model.on("change:workspace_monitoring_loaded", renderMonitoringContent);
+    model.on("change:workspace_monitoring_enabled", renderMonitoringContent);
+    model.on("change:workspace_monitoring_error", renderMonitoringContent);
+    model.on("change:workspace_monitoring_columns", renderMonitoringContent);
+    model.on("change:workspace_monitoring_rows", renderMonitoringContent);
+    model.on("change:dataset_name", renderMonitoringChrome);
+    model.on("change:workspace_name", renderMonitoringChrome);
     model.on("change:query_plan_rows", renderTable);
     model.on("change:query_plan_type", renderTable);
     model.on("change:execution_metrics", renderTable);
@@ -8615,6 +9034,7 @@ function render({ model, el }) {
         }
         renderPicker(); renderRunBtn(); renderClearModelCacheBtn(); renderSubtitle();
         renderBuildBtn(); renderBuilderChrome(); renderModelViewChrome();
+        renderMonitoringChrome(); renderMonitoringContent();
     });
     model.on("change:available_workspaces", renderPicker);
     model.on("change:available_datasets", renderPicker);
@@ -8631,6 +9051,8 @@ function render({ model, el }) {
         if (model.get("dataset_chosen") === true) connectingToModel = false;
         pickerOpen = false;
         resetBuilderForModelChange();
+        monitoringSort = null;
+        Object.keys(monitoringFilters).forEach(key => delete monitoringFilters[key]);
         // Force a fresh dependency computation for the newly activated model.
         lastDepQuery = null;
         renderPicker();
@@ -8668,6 +9090,8 @@ function render({ model, el }) {
     renderHighlight();
     autoGrowEditor();
     renderBuilderChrome();
+    renderMonitoringChrome();
+    renderMonitoringContent();
     renderBuilderZones();
     renderBuildBtn();
 
@@ -8742,6 +9166,7 @@ export default { render };
         .replace("__DTX_FULLSCREEN__", fullscreen_icon)
         .replace("__DTX_FULLSCREEN_EXIT__", fullscreen_exit_icon)
         .replace("__DTX_DAX_PERFORMANCE__", dax_performance_icon)
+        .replace("__DTX_ACTIVITY__", activity_icon)
         .replace("__DTX_CPU__", cpu_icon)
         .replace("__DTX_DATABASE__", database_icon)
         .replace("__DTX_ZAP__", zap_icon)
@@ -8834,6 +9259,14 @@ export default { render };
         nl_to_dax_error = traitlets.Unicode("").tag(sync=True)
         query_builder_state = traitlets.Unicode("").tag(sync=True)
         build_query_trigger = traitlets.Int(0).tag(sync=True)
+        workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)
+        workspace_monitoring_trigger = traitlets.Int(0).tag(sync=True)
+        workspace_monitoring_loading = traitlets.Bool(False).tag(sync=True)
+        workspace_monitoring_loaded = traitlets.Bool(False).tag(sync=True)
+        workspace_monitoring_enabled = traitlets.Bool(True).tag(sync=True)
+        workspace_monitoring_error = traitlets.Unicode("").tag(sync=True)
+        workspace_monitoring_columns = traitlets.List([]).tag(sync=True)
+        workspace_monitoring_rows = traitlets.List([]).tag(sync=True)
         close_trigger = traitlets.Int(0).tag(sync=True)
 
     initial_result = _result_payload_from_df(result_df)
@@ -8945,6 +9378,14 @@ export default { render };
         nl_to_dax_error="",
         query_builder_state="",
         build_query_trigger=0,
+        workspace_monitoring_request={},
+        workspace_monitoring_trigger=0,
+        workspace_monitoring_loading=False,
+        workspace_monitoring_loaded=False,
+        workspace_monitoring_enabled=True,
+        workspace_monitoring_error="",
+        workspace_monitoring_columns=[],
+        workspace_monitoring_rows=[],
         impersonation_mode=(
             "user" if effective_user_name else ("role" if role else "none")
         ),
@@ -10016,12 +10457,93 @@ export default { render };
             return
         threading.Thread(target=_compute_performance, daemon=True).start()
 
+    def _load_workspace_monitoring() -> None:
+        allowed_ranges = {"15m", "1h", "4h", "12h", "1d", "3d", "7d", "30d"}
+        request = dict(widget.workspace_monitoring_request or {})
+        time_range = str(request.get("range") or "1d")
+        if time_range not in allowed_ranges:
+            time_range = "1d"
+        try:
+            top_n = min(200, max(1, int(request.get("top") or 20)))
+        except (TypeError, ValueError):
+            top_n = 20
+        dataset = str(widget.dataset_name or "")
+        workspace = model_ctx["workspace_id"]
+        safe_dataset = dataset.replace("\\", "\\\\").replace('"', '\\"')
+        query = (
+            "SemanticModelLogs\n"
+            '| where OperationName == "QueryEnd" and '
+            '(EventText startswith "EVALUATE" or EventText startswith "DEFINE")\n'
+            f'| where ItemName == "{safe_dataset}"\n'
+            f"| where Timestamp >= ago({time_range})\n"
+            "| extend ctx = parse_json(dynamic_to_json(ApplicationContext))\n"
+            "| extend ReportId = tostring(ctx.Sources[0].ReportId)\n"
+            "| extend VisualId = tostring(ctx.Sources[0].VisualId)\n"
+            "| project Timestamp, DurationMs, CpuTimeMs, ExecutingUser, "
+            "ReportId, VisualId, EventText\n"
+            f"| top {top_n} by DurationMs desc"
+        )
+        widget.workspace_monitoring_loading = True
+        widget.workspace_monitoring_error = ""
+        try:
+            if not dataset or not workspace:
+                raise ValueError("Choose a semantic model first.")
+            from sempy_labs import query_workspace_monitoring
+
+            monitoring_df = query_workspace_monitoring(
+                query=query,
+                workspace=workspace,
+            )
+            if (
+                dataset != str(widget.dataset_name or "")
+                or workspace != model_ctx["workspace_id"]
+            ):
+                return
+            if "ReportId" in monitoring_df.columns:
+                report_lookup = {
+                    str(report.get("id") or "").lower(): str(
+                        report.get("name") or ""
+                    )
+                    for report in (widget.available_reports or [])
+                }
+                monitoring_df = monitoring_df.copy()
+                monitoring_df["ReportName"] = monitoring_df["ReportId"].map(
+                    lambda value: report_lookup.get(str(value or "").lower(), "")
+                )
+                monitoring_df["ReportWorkspace"] = monitoring_df[
+                    "ReportName"
+                ].map(lambda value: str(widget.workspace_name or "") if value else "")
+            payload = _result_payload_from_df(monitoring_df, max_rows=top_n)
+            widget.workspace_monitoring_columns = payload["columns"]
+            widget.workspace_monitoring_rows = payload["rows"]
+            widget.workspace_monitoring_enabled = True
+            widget.workspace_monitoring_loaded = True
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc)
+            if "Monitoring KQL database" in message:
+                widget.workspace_monitoring_columns = []
+                widget.workspace_monitoring_rows = []
+                widget.workspace_monitoring_enabled = False
+                widget.workspace_monitoring_loaded = True
+            else:
+                widget.workspace_monitoring_error = (
+                    f"Failed to read workspace monitoring: {message}"
+                )
+        finally:
+            widget.workspace_monitoring_loading = False
+
+    def _on_workspace_monitoring(change):
+        if change["new"] == change["old"] or widget.workspace_monitoring_loading:
+            return
+        threading.Thread(target=_load_workspace_monitoring, daemon=True).start()
+
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
     widget.observe(_on_clear_model_cache, names="cache_clear_trigger")
     widget.observe(_on_dependencies, names="dependencies_trigger")
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
     widget.observe(_on_performance, names="performance_trigger")
+    widget.observe(_on_workspace_monitoring, names="workspace_monitoring_trigger")
     widget.observe(_on_report_capture_start, names="report_capture_start_trigger")
     widget.observe(
         _on_report_capture_checkpoint, names="report_capture_checkpoint_trigger"
@@ -10270,6 +10792,12 @@ export default { render };
         # Clear any performance analysis produced for the previous model.
         widget.performance_findings = []
         widget.performance_summary = {}
+        widget.workspace_monitoring_loading = False
+        widget.workspace_monitoring_loaded = False
+        widget.workspace_monitoring_enabled = True
+        widget.workspace_monitoring_error = ""
+        widget.workspace_monitoring_columns = []
+        widget.workspace_monitoring_rows = []
         widget.query_executed = False
         # Reset impersonation so a stale role/user from a prior model isn't
         # reused against a model that may not define it.

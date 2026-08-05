@@ -787,6 +787,54 @@ def test_output_tables_are_resizable_and_trace_history_is_sortable():
     assert "indexedHistory.sort((left, right) =>" in history_table
 
 
+def test_workspace_monitoring_matches_tools_app_behavior():
+    source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
+    panel_start = source.index("// ---------- Workspace monitoring ----------")
+    panel = source[panel_start : source.index("const chartControls", panel_start)]
+    worker_start = source.index("def _load_workspace_monitoring()")
+    worker = source[worker_start : source.index("widget.observe(_on_run", worker_start)]
+
+    assert '"activity": (' in ui_source
+    assert "header.appendChild(builderShowBtn);\n    header.appendChild(monitoringShowBtn);" in source
+    assert 'monitoringShowBtn.innerHTML = ACTIVITY_SVG' in source
+    assert '? "Hide workspace monitoring" : "Show workspace monitoring"' in panel
+    assert '<span>Workspace monitoring</span>' in panel
+    assert '· slowest recent queries</span>' in panel
+    assert '["15m", "Last 15 min"]' in panel
+    assert '["30d", "Last 30 days"]' in panel
+    assert 'topInput.max = "200"' in panel
+    assert 'model.set("workspace_monitoring_trigger"' in panel
+    assert 'installColumnResizers(monitoringContent.querySelector("table"))' in panel
+    assert 'model.set("dax_query", query)' in panel
+    assert 'data-monitoring-sort="${index}"' in panel
+    assert 'class="dtx-monitoring-filter"' in panel
+    assert 'monitoringFilters[Number(input.dataset.monitoringFilter)] = input.value' in panel
+    assert 'monitoringSort.direction === "ascending"' in panel
+    assert '.replace(/\\s*\\[WaitTime:' in panel
+    assert 'durationms: "Duration (MS)"' in panel
+    assert 'eventtext: "Query"' in panel
+    assert 'date.toLocaleString()' in panel
+    assert 'workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)' in source
+    assert 'workspace_monitoring_rows = traitlets.List([]).tag(sync=True)' in source
+    assert '"SemanticModelLogs\\n"' in worker
+    assert 'OperationName == "QueryEnd"' in worker
+    assert 'EventText startswith "EVALUATE"' in worker
+    assert 'EventText startswith "DEFINE"' in worker
+    assert 'f\'| where ItemName == "{safe_dataset}"\\n\'' in worker
+    assert 'f"| where Timestamp >= ago({time_range})\\n"' in worker
+    assert 'f"| top {top_n} by DurationMs desc"' in worker
+    assert "query_workspace_monitoring(" in worker
+    assert 'dataset != str(widget.dataset_name or "")' in worker
+    assert 'workspace != model_ctx["workspace_id"]' in worker
+    assert 'monitoring_df["ReportName"]' in worker
+    assert 'monitoring_df["ReportWorkspace"]' in worker
+    assert 'names="workspace_monitoring_trigger"' in source
+    assert "widget.workspace_monitoring_loaded = False" in source
+
+
 def test_trace_history_backfills_late_execution_metrics():
     source = _source()
     update_helper = source[
