@@ -810,10 +810,16 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'installColumnResizers(monitoringContent.querySelector("table"))' in panel
     assert 'model.set("dax_query", query)' in panel
     assert 'data-monitoring-sort="${index}"' in panel
-    assert 'class="dtx-monitoring-filter"' in panel
-    assert 'monitoringFilters[Number(input.dataset.monitoringFilter)] = input.value' in panel
+    assert 'monitoringSearchInput.className = "dtx-monitoring-search"' in panel
+    assert 'monitoringSearch = monitoringSearchInput.value' in panel
+    assert 'row.some((value, index) =>' in panel
+    assert 'class="dtx-monitoring-filter"' not in panel
+    assert 'monitoringResizer.className = "dtx-monitoring-resizer"' in panel
+    assert 'startHeight + startY - moveEvent.clientY' in panel
+    assert 'monitoringContent.style.height = `${monitoringContentHeight}px`' in panel
+    assert ".dtx .dtx-monitoring-content {{\n    min-height: 190px;\n    max-height: none;" in source
     assert 'monitoringSort.direction === "ascending"' in panel
-    assert '.replace(/\\s*\\[WaitTime:' in panel
+    assert 'cleanDaxQuery(rawValue)' in panel
     assert 'durationms: "Duration (MS)"' in panel
     assert 'eventtext: "Query"' in panel
     assert 'date.toLocaleString()' in panel
@@ -866,6 +872,8 @@ def test_trace_history_queries_copy_and_clear_with_user_feedback():
     ]
 
     assert 'data-history-index="${index}"' in history_table
+    assert 'const q = cleanDaxQuery(h.dax_query)' in history_table
+    assert 'const query = entry ? cleanDaxQuery(entry.dax_query) : ""' in history_table
     assert 'tabindex="0" role="button"' in history_table
     assert 'writeClipboard(query)' in history_table
     assert 'event.key === "Enter" || event.key === " "' in history_table

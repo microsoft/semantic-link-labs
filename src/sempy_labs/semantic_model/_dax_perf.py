@@ -3250,19 +3250,6 @@ def _visualize_dax_test(
 .dtx .dtx-monitoring-table th[data-monitoring-sort] {{ cursor: pointer; user-select: none; }}
 .dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
 .dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
-.dtx .dtx-monitoring-filter-row th {{ top: 35px; padding: 4px 8px 7px; }}
-.dtx .dtx-monitoring-filter {{
-    width: 100%;
-    height: 27px;
-    padding: 0 7px;
-    border: 1px solid var(--ui-border);
-    border-radius: 5px;
-    background: var(--ui-bg);
-    color: var(--ui-text);
-    font-family: inherit;
-    font-size: 11px;
-    line-height: 1.2;
-}}
 .dtx tbody tr {{ background: var(--ui-bg); }}
 .dtx tbody td {{
     padding: 9px 16px;
@@ -3633,7 +3620,32 @@ def _visualize_dax_test(
 .dtx .dtx-monitoring {{
     border-top: 1px solid var(--ui-border-strong);
     background: var(--ui-bg);
+    position: relative;
 }}
+.dtx .dtx-monitoring-resizer {{
+    position: absolute;
+    z-index: 4;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: row-resize;
+    touch-action: none;
+}}
+.dtx .dtx-monitoring-resizer::after {{
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: transparent;
+}}
+.dtx .dtx-monitoring-resizer:hover::after,
+.dtx .dtx-monitoring-resizer.dtx-monitoring-resizing::after {{
+    background: var(--ui-accent);
+}}
+.dtx .dtx-monitoring-fullscreen .dtx-monitoring-resizer {{ display: none; }}
 .dtx .dtx-monitoring.dtx-monitoring-hidden {{ display: none; }}
 .dtx .dtx-monitoring.dtx-monitoring-fullscreen {{
     position: fixed;
@@ -3706,6 +3718,17 @@ def _visualize_dax_test(
     font-size: 12px;
 }}
 .dtx .dtx-monitoring-field input {{ width: 68px; }}
+.dtx .dtx-monitoring-search {{
+    width: min(240px, 30vw);
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: inherit;
+    font-size: 12px;
+}}
 .dtx .dtx-monitoring-action {{
     display: inline-flex;
     align-items: center;
@@ -3724,7 +3747,7 @@ def _visualize_dax_test(
 .dtx .dtx-monitoring-action svg {{ width: 17px; height: 17px; }}
 .dtx .dtx-monitoring-content {{
     min-height: 190px;
-    max-height: 360px;
+    max-height: none;
     overflow: auto;
     border-top: 1px solid var(--ui-border);
 }}
@@ -4731,6 +4754,12 @@ function renderTraceText(text, eventClass) {
             + renderLine(callbackSuffix)
             + renderLine(stripCconMarkers(line.slice(callbackEnd + closingMarkerLength)));
     }).join("\n");
+}
+
+function cleanDaxQuery(value) {
+    return String(value || "")
+        .replace(/\s*\[WaitTime:[^\]]*\]\s*$/i, "")
+        .trimEnd();
 }
 
 function render({ model, el }) {
@@ -7912,9 +7941,16 @@ function render({ model, el }) {
     let monitoringOpen = true;
     let monitoringFullscreen = false;
     let monitoringSort = null;
-    const monitoringFilters = {};
+    let monitoringSearch = "";
+    let monitoringContentHeight = 260;
     const monitoringPane = document.createElement("section");
     monitoringPane.className = "dtx-monitoring";
+    const monitoringResizer = document.createElement("div");
+    monitoringResizer.className = "dtx-monitoring-resizer";
+    monitoringResizer.setAttribute("role", "separator");
+    monitoringResizer.setAttribute("aria-orientation", "horizontal");
+    monitoringResizer.setAttribute("aria-label", "Resize workspace monitoring panel");
+    monitoringPane.appendChild(monitoringResizer);
     const monitoringHead = document.createElement("div");
     monitoringHead.className = "dtx-monitoring-head";
     monitoringPane.appendChild(monitoringHead);
@@ -7931,6 +7967,13 @@ function render({ model, el }) {
     monitoringTarget.innerHTML = `${SWAP_SVG}<span></span>`;
     monitoringTarget.title = "Monitoring the connected semantic model";
     monitoringControls.appendChild(monitoringTarget);
+
+    const monitoringSearchInput = document.createElement("input");
+    monitoringSearchInput.type = "search";
+    monitoringSearchInput.className = "dtx-monitoring-search";
+    monitoringSearchInput.placeholder = "Search monitoring results";
+    monitoringSearchInput.setAttribute("aria-label", "Search workspace monitoring results");
+    monitoringControls.appendChild(monitoringSearchInput);
 
     const rangeLabel = document.createElement("label");
     rangeLabel.className = "dtx-monitoring-field";
@@ -7996,6 +8039,8 @@ function render({ model, el }) {
         monitoringTitleBtn.setAttribute("aria-expanded", String(monitoringOpen));
         monitoringControls.style.display = monitoringOpen ? "" : "none";
         monitoringContent.style.display = monitoringOpen ? "" : "none";
+        monitoringContent.style.height = monitoringFullscreen
+            ? "" : `${monitoringContentHeight}px`;
         monitoringFullscreenBtn.innerHTML = monitoringFullscreen
             ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
         const fullscreenLabel = monitoringFullscreen ? "Exit full screen" : "Full screen";
@@ -8043,8 +8088,6 @@ function render({ model, el }) {
         const isNumeric = column => /ms$/i.test(String(column));
         const isTime = column => String(column).toLowerCase() === "timestamp";
         const isQuery = column => String(column).toLowerCase() === "eventtext";
-        const cleanQuery = value => String(value || "")
-            .replace(/\s*\[WaitTime:[^\]]*\]\s*$/i, "").trimEnd();
         const headerLabel = column => ({
             durationms: "Duration (MS)", cputimems: "CPU", eventtext: "Query",
             visualid: "Visual ID", reportid: "Report ID",
@@ -8064,13 +8107,13 @@ function render({ model, el }) {
         };
         const queryIndex = columns.findIndex(isQuery);
         let viewRows = rows.map((row, index) => ({ row, index }));
-        const activeFilters = Object.entries(monitoringFilters)
-            .filter(([, value]) => String(value).trim());
-        if (activeFilters.length) {
-            viewRows = viewRows.filter(({ row }) => activeFilters.every(([index, value]) =>
-                String(row[Number(index)] ?? "").toLowerCase()
-                    .includes(String(value).trim().toLowerCase())
-            ));
+        const search = monitoringSearch.trim().toLowerCase();
+        if (search) {
+            viewRows = viewRows.filter(({ row }) => row.some((value, index) => {
+                const searchable = index === queryIndex
+                    ? cleanDaxQuery(value) : displayValue(columns[index], value);
+                return String(searchable).toLowerCase().includes(search);
+            }));
         }
         if (monitoringSort) {
             const { index, direction } = monitoringSort;
@@ -8091,21 +8134,18 @@ function render({ model, el }) {
             const sort = monitoringSort?.index === index ? monitoringSort.direction : "none";
             return `<th data-monitoring-sort="${index}" data-column-width="${width}" aria-sort="${sort}">${escapeHtml(headerLabel(column))}</th>`;
         }).join("");
-        const filters = columns.map((column, index) =>
-            `<th><input class="dtx-monitoring-filter" data-monitoring-filter="${index}" value="${escapeHtml(monitoringFilters[index] || "")}" placeholder="Filter ${escapeHtml(headerLabel(column))}"></th>`
-        ).join("");
         const bodyHtml = viewRows.map(({ row, index: rowIndex }) => `<tr>${columns.map((column, index) => {
             const rawValue = row[index] == null ? "" : String(row[index]);
             if (index === queryIndex) {
-                const query = cleanQuery(rawValue);
+                const query = cleanDaxQuery(rawValue);
                 return `<td class="dtx-monitoring-query" data-monitoring-index="${rowIndex}" tabindex="0" role="button" title="Use this query"><pre>${escapeHtml(query)}</pre></td>`;
             }
             return `<td>${escapeHtml(displayValue(column, rawValue))}</td>`;
         }).join("")}</tr>`).join("");
-        monitoringContent.innerHTML = `<table class="dtx-monitoring-table"><thead><tr>${head}</tr><tr class="dtx-monitoring-filter-row">${filters}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+        monitoringContent.innerHTML = `<table class="dtx-monitoring-table"><thead><tr>${head}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
         const useQuery = cell => {
             const row = rows[Number(cell.dataset.monitoringIndex)] || [];
-            const query = queryIndex >= 0 ? cleanQuery(row[queryIndex]) : "";
+            const query = queryIndex >= 0 ? cleanDaxQuery(row[queryIndex]) : "";
             if (!query) return;
             model.set("dax_query", query);
             model.save_changes();
@@ -8131,21 +8171,38 @@ function render({ model, el }) {
                 renderMonitoringContent();
             });
         });
-        monitoringContent.querySelectorAll(".dtx-monitoring-filter").forEach(input => {
-            input.addEventListener("input", () => {
-                monitoringFilters[Number(input.dataset.monitoringFilter)] = input.value;
-                renderMonitoringContent();
-                const replacement = monitoringContent.querySelector(
-                    `[data-monitoring-filter="${input.dataset.monitoringFilter}"]`
-                );
-                if (replacement) {
-                    replacement.focus();
-                    replacement.setSelectionRange(input.value.length, input.value.length);
-                }
-            });
-        });
         installColumnResizers(monitoringContent.querySelector("table"));
     }
+
+    monitoringSearchInput.addEventListener("input", () => {
+        monitoringSearch = monitoringSearchInput.value;
+        renderMonitoringContent();
+    });
+    monitoringResizer.addEventListener("pointerdown", event => {
+        if (monitoringFullscreen || !monitoringOpen) return;
+        event.preventDefault();
+        const startY = event.clientY;
+        const startHeight = monitoringContent.getBoundingClientRect().height;
+        monitoringResizer.classList.add("dtx-monitoring-resizing");
+        monitoringResizer.setPointerCapture(event.pointerId);
+        const onMove = moveEvent => {
+            const maxHeight = Math.max(260, window.innerHeight - 150);
+            monitoringContentHeight = Math.min(
+                maxHeight,
+                Math.max(190, startHeight + startY - moveEvent.clientY),
+            );
+            monitoringContent.style.height = `${monitoringContentHeight}px`;
+        };
+        const onEnd = () => {
+            monitoringResizer.classList.remove("dtx-monitoring-resizing");
+            monitoringResizer.removeEventListener("pointermove", onMove);
+            monitoringResizer.removeEventListener("pointerup", onEnd);
+            monitoringResizer.removeEventListener("pointercancel", onEnd);
+        };
+        monitoringResizer.addEventListener("pointermove", onMove);
+        monitoringResizer.addEventListener("pointerup", onEnd);
+        monitoringResizer.addEventListener("pointercancel", onEnd);
+    });
 
     monitoringTitleBtn.addEventListener("click", () => {
         monitoringOpen = !monitoringOpen;
@@ -8294,7 +8351,7 @@ function render({ model, el }) {
             });
         }
         const body = indexedHistory.map(({ h, index }) => {
-            const q = String(h.dax_query || "");
+            const q = cleanDaxQuery(h.dax_query);
             const run = String(h.start_time || "");
             const runTime = fmtRunTime(run);
             const metrics = renderMetrics(h.execution_metrics);
@@ -8354,7 +8411,7 @@ function render({ model, el }) {
         const copyHistoryQuery = (cell) => {
             const index = Number(cell.dataset.historyIndex);
             const entry = (model.get("trace_history") || [])[index];
-            const query = entry ? String(entry.dax_query || "") : "";
+            const query = entry ? cleanDaxQuery(entry.dax_query) : "";
             if (!query) return;
             writeClipboard(query)
                 .then(() => showToast("Query copied to clipboard"))
@@ -9052,7 +9109,8 @@ function render({ model, el }) {
         pickerOpen = false;
         resetBuilderForModelChange();
         monitoringSort = null;
-        Object.keys(monitoringFilters).forEach(key => delete monitoringFilters[key]);
+        monitoringSearch = "";
+        monitoringSearchInput.value = "";
         // Force a fresh dependency computation for the newly activated model.
         lastDepQuery = null;
         renderPicker();
