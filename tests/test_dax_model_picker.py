@@ -759,6 +759,33 @@ def test_trace_history_matches_optimizer_columns_and_metrics_dictionary():
     assert source.count('"method": "Query"') == 2
 
 
+def test_results_tabs_stay_next_to_title_on_wide_screens():
+    source = _source()
+    toolbar_css = source[
+        source.index(".dtx .dtx-view-toolbar {{") : source.index(
+            ".dtx .dtx-seg {{", source.index(".dtx .dtx-view-toolbar {{")
+        )
+    ]
+
+    assert "gap: 12px;" in toolbar_css
+    assert "margin-right: auto;" not in toolbar_css
+    assert "flex: 0 0 auto;" in toolbar_css
+
+
+def test_define_measure_indents_measure_under_define():
+    source = _source()
+    define_measure = source[
+        source.index("function defineMeasure(meta)") : source.index(
+            'textarea.addEventListener("dragover"',
+            source.index("function defineMeasure(meta)"),
+        )
+    ]
+
+    assert 'const measureLine = "    MEASURE " + ref + " = " + expr;' in define_measure
+    assert 'newText = "DEFINE\\n" + measureLine + "\\n\\n" + existing;' in define_measure
+    assert 'existing.slice(0, idx) + "\\n" + measureLine' in define_measure
+
+
 def test_output_tables_are_resizable_and_trace_history_is_sortable():
     source = _source()
     table_setup = source[
@@ -811,6 +838,20 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'model.set("dax_query", query)' in panel
     assert 'data-monitoring-sort="${index}"' in panel
     assert 'monitoringSearchInput.className = "dtx-monitoring-search"' in panel
+    assert 'monitoringControls.appendChild(monitoringSearchInput)' in panel
+    assert 'monitoringActions.className = "dtx-monitoring-actions"' in panel
+    assert 'monitoringActions.appendChild(rangeLabel)' in panel
+    assert 'monitoringActions.appendChild(topLabel)' in panel
+    assert 'monitoringActions.appendChild(monitoringReloadBtn)' in panel
+    assert 'monitoringActions.appendChild(monitoringFullscreenBtn)' in panel
+    assert "monitoringTarget" not in panel
+    assert ".dtx .dtx-monitoring-target" not in source
+    assert ".dtx .dtx-monitoring-actions {{\n    display: flex;" in source
+    assert "margin-left: auto;" in source[
+        source.index(".dtx .dtx-monitoring-actions {{") : source.index(
+            ".dtx .dtx-monitoring-field {{"
+        )
+    ]
     assert 'monitoringSearch = monitoringSearchInput.value' in panel
     assert 'row.some((value, index) =>' in panel
     assert 'class="dtx-monitoring-filter"' not in panel
@@ -822,6 +863,16 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'cleanDaxQuery(rawValue)' in panel
     assert 'durationms: "Duration (MS)"' in panel
     assert 'eventtext: "Query"' in panel
+    assert 'executinguser: "Executing User"' in panel
+    assert 'reportid: 320, visualid: 320, executinguser: 260' in panel
+    assert ".dtx .dtx-monitoring-table td {{\n    vertical-align: top;\n    overflow: hidden;" in source
+    monitoring_head_css = source[
+        source.index(".dtx .dtx-monitoring-head {{") : source.index(
+            ".dtx .dtx-monitoring-title-btn {{"
+        )
+    ]
+    assert "justify-content: flex-start;" in monitoring_head_css
+    assert "justify-content: space-between;" not in monitoring_head_css
     assert 'date.toLocaleString()' in panel
     assert 'workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)' in source
     assert 'workspace_monitoring_rows = traitlets.List([]).tag(sync=True)' in source

@@ -2839,7 +2839,7 @@ def _visualize_dax_test(
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ui-text-tertiary);
-    margin-right: auto;
+    flex: 0 0 auto;
 }}
 .dtx .dtx-seg {{
     display: inline-flex;
@@ -3659,7 +3659,7 @@ def _visualize_dax_test(
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
     min-height: 64px;
     padding: 12px 20px;
@@ -3686,7 +3686,13 @@ def _visualize_dax_test(
     align-items: center;
     gap: 10px;
 }}
-.dtx .dtx-monitoring-target,
+.dtx .dtx-monitoring-actions {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}}
 .dtx .dtx-monitoring-field {{
     display: inline-flex;
     align-items: center;
@@ -3694,18 +3700,6 @@ def _visualize_dax_test(
     color: var(--ui-text-secondary);
     font-size: 12px;
 }}
-.dtx .dtx-monitoring-target {{
-    max-width: 310px;
-    height: 34px;
-    padding: 0 12px;
-    border: 1px solid var(--ui-border-strong);
-    border-radius: 7px;
-    color: var(--ui-text);
-    font-weight: 600;
-    overflow: hidden;
-}}
-.dtx .dtx-monitoring-target svg {{ width: 16px; height: 16px; flex: 0 0 auto; }}
-.dtx .dtx-monitoring-target span {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
 .dtx .dtx-monitoring-field select,
 .dtx .dtx-monitoring-field input {{
     height: 34px;
@@ -3767,7 +3761,11 @@ def _visualize_dax_test(
 .dtx .dtx-monitoring-empty strong {{ color: var(--ui-text-secondary); font-size: 14px; }}
 .dtx .dtx-monitoring-empty span {{ color: var(--ui-text-tertiary); font-size: 12px; }}
 .dtx .dtx-monitoring-error {{ color: var(--ui-danger-text); }}
-.dtx .dtx-monitoring-table td {{ vertical-align: top; }}
+.dtx .dtx-monitoring-table td {{
+    vertical-align: top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
 .dtx .dtx-monitoring-query {{ cursor: pointer; }}
 .dtx .dtx-monitoring-query pre {{ margin: 0; white-space: pre-wrap; font: 11px/1.45 ui-monospace, monospace; }}
 .dtx .dtx-monitoring-query:hover {{ color: var(--ui-accent); }}
@@ -7431,7 +7429,7 @@ function render({ model, el }) {
         const expr = String(meta.expression == null ? "" : meta.expression).trim();
         const ref = (table ? daxTableRef(table) : "")
             + "[" + String(name).replace(/\]/g, "]]") + "]";
-        const measureLine = "MEASURE " + ref + " = " + expr;
+        const measureLine = "    MEASURE " + ref + " = " + expr;
         const existing = textarea.value;
         const lead = /^(\s*)DEFINE\b[^\n]*/i.exec(existing);
         let newText;
@@ -7962,18 +7960,16 @@ function render({ model, el }) {
     monitoringControls.className = "dtx-monitoring-controls";
     monitoringHead.appendChild(monitoringControls);
 
-    const monitoringTarget = document.createElement("div");
-    monitoringTarget.className = "dtx-monitoring-target";
-    monitoringTarget.innerHTML = `${SWAP_SVG}<span></span>`;
-    monitoringTarget.title = "Monitoring the connected semantic model";
-    monitoringControls.appendChild(monitoringTarget);
-
     const monitoringSearchInput = document.createElement("input");
     monitoringSearchInput.type = "search";
     monitoringSearchInput.className = "dtx-monitoring-search";
     monitoringSearchInput.placeholder = "Search monitoring results";
     monitoringSearchInput.setAttribute("aria-label", "Search workspace monitoring results");
     monitoringControls.appendChild(monitoringSearchInput);
+
+    const monitoringActions = document.createElement("div");
+    monitoringActions.className = "dtx-monitoring-actions";
+    monitoringHead.appendChild(monitoringActions);
 
     const rangeLabel = document.createElement("label");
     rangeLabel.className = "dtx-monitoring-field";
@@ -7991,7 +7987,7 @@ function render({ model, el }) {
         rangeSelect.appendChild(option);
     });
     rangeLabel.appendChild(rangeSelect);
-    monitoringControls.appendChild(rangeLabel);
+    monitoringActions.appendChild(rangeLabel);
 
     const topLabel = document.createElement("label");
     topLabel.className = "dtx-monitoring-field";
@@ -8002,7 +7998,7 @@ function render({ model, el }) {
     topInput.max = "200";
     topInput.value = "20";
     topLabel.appendChild(topInput);
-    monitoringControls.appendChild(topLabel);
+    monitoringActions.appendChild(topLabel);
 
     const monitoringReloadBtn = document.createElement("button");
     monitoringReloadBtn.type = "button";
@@ -8010,11 +8006,11 @@ function render({ model, el }) {
     monitoringReloadBtn.innerHTML = REFRESH_SVG;
     monitoringReloadBtn.title = "Reload workspace monitoring";
     monitoringReloadBtn.setAttribute("aria-label", "Reload workspace monitoring");
-    monitoringControls.appendChild(monitoringReloadBtn);
+    monitoringActions.appendChild(monitoringReloadBtn);
     const monitoringFullscreenBtn = document.createElement("button");
     monitoringFullscreenBtn.type = "button";
     monitoringFullscreenBtn.className = "dtx-monitoring-action";
-    monitoringControls.appendChild(monitoringFullscreenBtn);
+    monitoringActions.appendChild(monitoringFullscreenBtn);
 
     const monitoringContent = document.createElement("div");
     monitoringContent.className = "dtx-monitoring-content";
@@ -8038,6 +8034,7 @@ function render({ model, el }) {
             + `<span class="dtx-monitoring-subtitle">· slowest recent queries</span>`;
         monitoringTitleBtn.setAttribute("aria-expanded", String(monitoringOpen));
         monitoringControls.style.display = monitoringOpen ? "" : "none";
+        monitoringActions.style.display = monitoringOpen ? "" : "none";
         monitoringContent.style.display = monitoringOpen ? "" : "none";
         monitoringContent.style.height = monitoringFullscreen
             ? "" : `${monitoringContentHeight}px`;
@@ -8046,8 +8043,6 @@ function render({ model, el }) {
         const fullscreenLabel = monitoringFullscreen ? "Exit full screen" : "Full screen";
         monitoringFullscreenBtn.title = fullscreenLabel;
         monitoringFullscreenBtn.setAttribute("aria-label", fullscreenLabel);
-        monitoringTarget.querySelector("span").textContent =
-            `${model.get("dataset_name") || "—"} · ${model.get("workspace_name") || "—"}`;
     }
 
     function renderMonitoringContent() {
@@ -8091,8 +8086,14 @@ function render({ model, el }) {
         const headerLabel = column => ({
             durationms: "Duration (MS)", cputimems: "CPU", eventtext: "Query",
             visualid: "Visual ID", reportid: "Report ID",
+            executinguser: "Executing User",
             reportname: "Report Name", reportworkspace: "Report Workspace",
         }[String(column).toLowerCase()] || String(column));
+        const columnWidth = column => ({
+            reportid: 320, visualid: 320, executinguser: 260,
+            reportname: 240, reportworkspace: 240,
+        }[String(column).toLowerCase()]
+            || (isQuery(column) ? 480 : isTime(column) ? 180 : isNumeric(column) ? 120 : 200));
         const displayValue = (column, value) => {
             if (value == null || value === "") return "";
             if (isTime(column)) {
@@ -8130,7 +8131,7 @@ function render({ model, el }) {
             });
         }
         const head = columns.map((column, index) => {
-            const width = isQuery(column) ? 480 : isTime(column) ? 180 : isNumeric(column) ? 120 : 200;
+            const width = columnWidth(column);
             const sort = monitoringSort?.index === index ? monitoringSort.direction : "none";
             return `<th data-monitoring-sort="${index}" data-column-width="${width}" aria-sort="${sort}">${escapeHtml(headerLabel(column))}</th>`;
         }).join("");
