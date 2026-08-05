@@ -169,6 +169,54 @@ def test_model_view_and_collapsed_query_builder_are_identifiable():
     assert "#08282d" not in source
 
 
+def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
+    source = _source()
+    tree_render = source[
+        source.index("function makeLeaf(") : source.index(
+            'const main = document.createElement("div")'
+        )
+    ]
+    caret_css = source[
+        source.index(".dtx .dtx-tree-caret {{") : source.index(
+            ".dtx .dtx-tree-icon {{"
+        )
+    ]
+    datatype_css = source[
+        source.index(".dtx .dtx-tree-type {{") : source.index(
+            ".dtx .dtx-tree-children {{"
+        )
+    ]
+    label_css = source[
+        source.index(".dtx .dtx-tree-node > .dtx-tree-label {{") : source.index(
+            ".dtx .dtx-tree-counts {{"
+        )
+    ]
+
+    assert tree_render.count(
+        '<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>'
+    ) == 3
+    assert '<span class="dtx-tree-caret">${CARET_SVG}</span>' not in tree_render
+    make_leaf = tree_render[
+        tree_render.index("function makeLeaf(") : tree_render.index(
+            "// Group items by their"
+        )
+    ]
+    assert 'leaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`' in make_leaf
+    assert 'lleaf.style.paddingLeft = (pad + 14) + "px"' in tree_render
+    assert 'lleaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`' in tree_render
+    assert "width: 18px;" in caret_css
+    assert "height: 18px;" in caret_css
+    assert "flex: 0 0 18px;" in caret_css
+    assert "transform: rotate(-90deg);" in caret_css
+    assert "transform: rotate(0deg);" in caret_css
+    assert "font-size: 14px;" in label_css
+    assert "font-weight: 600;" in label_css
+    assert "background:" not in datatype_css
+    assert "border:" not in datatype_css
+    assert "border-radius:" not in datatype_css
+    assert "padding:" not in datatype_css
+
+
 def test_model_view_flattens_type_groups_and_preserves_display_folders():
     source = _source()
     renderer = source[
@@ -900,6 +948,48 @@ def test_dependency_columns_table_uses_compact_content_widths():
     assert "overflow: hidden;" in dependency_css
     assert "text-overflow: ellipsis;" in dependency_css
     assert ".dtx table.dtx-dep-col-table {{" not in dependency_css
+
+
+def test_optional_query_controls_hide_only_when_measured_width_does_not_fit():
+    source = _source()
+    responsive = source[
+        source.index("let responsiveOptionsFrame = null") : source.index(
+            'const runBtn = document.createElement("button")'
+        )
+    ]
+
+    assert 'const availableWidth = queryOptions.clientWidth' in responsive
+    assert "Math.ceil(impWrap.scrollWidth)" in responsive
+    assert "const reportParts = [reportLabel, reportSelectBtn, reportCaptureBtn, reportProgress]" in responsive
+    report_measurement = responsive[
+        responsive.index("const reportParts") : responsive.index("const reportWidth")
+    ]
+    assert "reportMenu" not in report_measurement
+    assert 'const stacked = optionsStyle.flexDirection === "column"' in responsive
+    assert "? Math.max(impersonationWidth, reportWidth)" in responsive
+    assert ": impersonationWidth + gap + reportWidth" in responsive
+    assert 'model.get("report_capture_loading") === true' in responsive
+    assert "if (capturing) hideImpersonation = true" in responsive
+    assert "else hideReport = true" in responsive
+    assert 'queryOptions.classList.add("dtx-hide-report-capture")' in responsive
+    assert "impersonationWidth > availableWidth + 2" in responsive
+    assert 'queryOptions.classList.add("dtx-hide-impersonation")' in responsive
+    assert responsive.index('classList.add("dtx-hide-report-capture")') < responsive.index(
+        'classList.add("dtx-hide-impersonation")'
+    )
+    assert 'queryOptions.classList.remove(' in responsive
+    assert 'reportSelectBtn.setAttribute("aria-expanded", "false")' in responsive
+    assert "reportCapture.contains(focusedControl)" in responsive
+    assert "impWrap.contains(focusedControl)" in responsive
+    assert "textarea.focus({ preventScroll: true })" in responsive
+    assert 'new ResizeObserver(scheduleResponsiveQueryOptions)' in responsive
+    assert 'queryOptionsObserver?.observe(queryOptions)' in responsive
+    assert 'window.addEventListener("resize", scheduleResponsiveQueryOptions)' in responsive
+    assert 'queryOptionsObserver?.disconnect()' in source
+    assert 'window.removeEventListener("resize", scheduleResponsiveQueryOptions)' in source
+    assert 'window.cancelAnimationFrame(responsiveOptionsFrame)' in source
+    assert ".dtx .dtx-query-options.dtx-hide-report-capture .dtx-report-capture," in source
+    assert ".dtx .dtx-query-options.dtx-hide-impersonation .dtx-imp-wrap {{ display: none; }}" in source
 
 
 def test_workspace_monitoring_matches_tools_app_behavior():

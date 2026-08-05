@@ -2075,6 +2075,9 @@ def _visualize_dax_test(
     gap: 16px;
     margin: 0 24px 14px;
 }}
+.dtx .dtx-query-options.dtx-hide-report-capture .dtx-report-capture,
+.dtx .dtx-query-options.dtx-hide-impersonation .dtx-imp-wrap {{ display: none; }}
+.dtx .dtx-query-options.dtx-no-optional-controls {{ margin-bottom: 0; }}
 .dtx .dtx-query-toolbar {{
     display: flex;
     align-items: center;
@@ -4060,23 +4063,24 @@ def _visualize_dax_test(
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 12px;
-    height: 12px;
+    width: 18px;
+    height: 18px;
     color: var(--ui-text-tertiary);
-    flex: 0 0 12px;
+    flex: 0 0 18px;
+    transform: rotate(-90deg);
     transition: transform 120ms ease;
 }}
-.dtx .dtx-tree-node.dtx-open > .dtx-tree-caret {{ transform: rotate(90deg); }}
+.dtx .dtx-tree-node.dtx-open > .dtx-tree-caret {{ transform: rotate(0deg); }}
 .dtx .dtx-tree-folder-header.dtx-open > .dtx-tree-caret,
 .dtx .dtx-tree-group-header.dtx-open > .dtx-tree-caret,
-.dtx .dtx-tree-leaf.dtx-open > .dtx-tree-caret {{ transform: rotate(90deg); }}
+.dtx .dtx-tree-leaf.dtx-open > .dtx-tree-caret {{ transform: rotate(0deg); }}
 .dtx .dtx-tree-caret-spacer {{
     display: inline-flex;
-    width: 12px;
-    height: 12px;
-    flex: 0 0 12px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
 }}
-.dtx .dtx-tree-caret svg {{ width: 12px; height: 12px; }}
+.dtx .dtx-tree-caret svg {{ width: 18px; height: 18px; }}
 .dtx .dtx-tree-icon {{
     display: inline-flex;
     align-items: center;
@@ -4137,10 +4141,6 @@ def _visualize_dax_test(
     text-transform: lowercase;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: var(--ui-surface-2);
-    border: 1px solid var(--ui-border);
     white-space: nowrap;
 }}
 .dtx .dtx-tree-children {{ display: none; padding-left: 14px; }}
@@ -5364,7 +5364,8 @@ function render({ model, el }) {
         const typeHtml = dataType
             ? `<span class="dtx-tree-type" title="${escapeHtml(dataType)}">${escapeHtml(dataType)}</span>`
             : "";
-        leaf.innerHTML = `<span class="dtx-tree-icon">${iconSvg}</span>`
+        leaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`
+            + `<span class="dtx-tree-icon">${iconSvg}</span>`
             + `<span class="dtx-tree-label${hidden ? " dtx-hidden" : ""}"`
             + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
             + typeHtml;
@@ -5407,7 +5408,7 @@ function render({ model, el }) {
         const header = document.createElement("div");
         header.className = "dtx-tree-folder-header";
         header.style.paddingLeft = pad + "px";
-        header.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span>`
+        header.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
             + `<span class="dtx-tree-icon">${FOLDER_SVG}</span>`
             + `<span class="dtx-tree-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
         const children = document.createElement("div");
@@ -5449,7 +5450,7 @@ function render({ model, el }) {
             node.style.paddingLeft = pad + "px";
             const tip = it.description ? it.description : it.name;
             node.innerHTML = (hasLevels
-                    ? `<span class="dtx-tree-caret">${CARET_SVG}</span>`
+                    ? `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
                     : `<span class="dtx-tree-caret-spacer"></span>`)
                 + `<span class="dtx-tree-icon">${HIERARCHY_SVG}</span>`
                 + `<span class="dtx-tree-label${it.hidden ? " dtx-hidden" : ""}"`
@@ -5464,9 +5465,10 @@ function render({ model, el }) {
                 for (const lvl of it.levels) {
                     const lleaf = document.createElement("div");
                     lleaf.className = "dtx-tree-leaf dtx-tree-level";
-                    lleaf.style.paddingLeft = (pad + 18) + "px";
+                    lleaf.style.paddingLeft = (pad + 14) + "px";
                     const ltip = lvl.description ? lvl.description : lvl.name;
-                    lleaf.innerHTML = `<span class="dtx-tree-icon">${LEVEL_SVG}</span>`
+                    lleaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`
+                        + `<span class="dtx-tree-icon">${LEVEL_SVG}</span>`
                         + `<span class="dtx-tree-label"`
                         + ` title="${escapeHtml(ltip)}">${escapeHtml(lvl.name)}</span>`;
                     lchildren.appendChild(lleaf);
@@ -5581,7 +5583,7 @@ function render({ model, el }) {
             if ((tbl.hierarchies || []).length) {
                 countParts.push(`${tbl.hierarchies.length}h`);
             }
-            node.innerHTML = `<span class="dtx-tree-caret">${CARET_SVG}</span>`
+            node.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
                 + `<span class="dtx-tree-icon">${tblIcon}</span>`
                 + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
                 + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`
@@ -6844,6 +6846,7 @@ function render({ model, el }) {
             impInput.style.display = "none";
             impRoleSel.style.display = "none";
         }
+        scheduleResponsiveQueryOptions();
     }
     Object.entries(impButtons).forEach(([mode, button]) => {
         button.addEventListener("click", () => {
@@ -6953,6 +6956,7 @@ function render({ model, el }) {
         });
         reportMenu.style.display = reportMenuOpen && reports.length ? "" : "none";
         renderRunBtn();
+        scheduleResponsiveQueryOptions();
     }
     reportSelectBtn.addEventListener("click", () => {
         reportMenuOpen = !reportMenuOpen;
@@ -6981,6 +6985,72 @@ function render({ model, el }) {
     reportCapture.appendChild(reportCaptureBtn);
     reportCapture.appendChild(reportProgress);
     queryOptions.appendChild(reportCapture);
+
+    let responsiveOptionsFrame = null;
+    function updateResponsiveQueryOptions() {
+        responsiveOptionsFrame = null;
+        queryOptions.classList.remove(
+            "dtx-hide-report-capture",
+            "dtx-hide-impersonation",
+            "dtx-no-optional-controls",
+        );
+        const availableWidth = queryOptions.clientWidth;
+        if (!availableWidth) return;
+        const optionsStyle = window.getComputedStyle(queryOptions);
+        const gap = parseFloat(optionsStyle.gap) || 0;
+        const impersonationWidth = Math.ceil(impWrap.scrollWidth);
+        const reportStyle = window.getComputedStyle(reportCapture);
+        const reportGap = parseFloat(reportStyle.gap) || 0;
+        const reportParts = [reportLabel, reportSelectBtn, reportCaptureBtn, reportProgress]
+            .filter(part => part.getClientRects().length && part.getBoundingClientRect().width > 0);
+        const reportWidth = Math.ceil(
+            reportParts.reduce(
+                (width, part) => width + part.getBoundingClientRect().width,
+                0,
+            ) + reportGap * Math.max(0, reportParts.length - 1),
+        );
+        const stacked = optionsStyle.flexDirection === "column";
+        const requiredWidth = stacked
+            ? Math.max(impersonationWidth, reportWidth)
+            : impersonationWidth + gap + reportWidth;
+        const capturing = model.get("report_capture_loading") === true;
+        let hideReport = false;
+        let hideImpersonation = false;
+        if (requiredWidth > availableWidth + 2) {
+            if (capturing) hideImpersonation = true;
+            else hideReport = true;
+        }
+        if (reportWidth > availableWidth + 2) hideReport = true;
+        if (impersonationWidth > availableWidth + 2) hideImpersonation = true;
+        const focusedControl = document.activeElement;
+        if (hideReport) {
+            queryOptions.classList.add("dtx-hide-report-capture");
+            reportMenuOpen = false;
+            reportMenu.style.display = "none";
+            reportSelectBtn.setAttribute("aria-expanded", "false");
+        }
+        if (hideImpersonation) {
+            queryOptions.classList.add("dtx-hide-impersonation");
+        }
+        if ((hideReport && reportCapture.contains(focusedControl))
+            || (hideImpersonation && impWrap.contains(focusedControl))) {
+            textarea.focus({ preventScroll: true });
+        }
+        queryOptions.classList.toggle(
+            "dtx-no-optional-controls",
+            queryOptions.classList.contains("dtx-hide-report-capture")
+                && queryOptions.classList.contains("dtx-hide-impersonation"),
+        );
+    }
+    function scheduleResponsiveQueryOptions() {
+        if (responsiveOptionsFrame !== null) return;
+        responsiveOptionsFrame = window.requestAnimationFrame(updateResponsiveQueryOptions);
+    }
+    const queryOptionsObserver = typeof ResizeObserver === "undefined"
+        ? null : new ResizeObserver(scheduleResponsiveQueryOptions);
+    queryOptionsObserver?.observe(queryOptions);
+    window.addEventListener("resize", scheduleResponsiveQueryOptions);
+    scheduleResponsiveQueryOptions();
 
     const runBtn = document.createElement("button");
     runBtn.type = "button";
@@ -9392,6 +9462,11 @@ function render({ model, el }) {
     return () => {
         try {
             document.removeEventListener("pointerdown", hideReportMenuOnOutsidePointer);
+            window.removeEventListener("resize", scheduleResponsiveQueryOptions);
+            queryOptionsObserver?.disconnect();
+            if (responsiveOptionsFrame !== null) {
+                window.cancelAnimationFrame(responsiveOptionsFrame);
+            }
             outputTableObserver.disconnect();
             reportCaptureFrame.remove();
             model.set("close_trigger", (model.get("close_trigger") || 0) + 1);
