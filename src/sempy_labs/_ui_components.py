@@ -157,6 +157,22 @@ ICONS: dict[str, str] = {
         '<path d="M3 6v4c0 1.1.9 2 2 2h3"/>'
         '<path d="M3 10v6c0 1.1.9 2 2 2h3"/></svg>'
     ),
+    "git_branch": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<line x1="6" x2="6" y1="3" y2="15"/>'
+        '<circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>'
+        '<path d="M18 9a9 9 0 0 1-9 9"/></svg>'
+    ),
+    "workflow": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect width="8" height="8" x="3" y="3" rx="2"/>'
+        '<path d="M7 11v4a2 2 0 0 0 2 2h4"/>'
+        '<rect width="8" height="8" x="13" y="13" rx="2"/></svg>'
+    ),
     "plus": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '

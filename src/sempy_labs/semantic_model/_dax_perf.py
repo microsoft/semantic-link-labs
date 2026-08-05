@@ -1787,6 +1787,20 @@ _FALLBACK_LIST_TREE_ICON = (
     '<path d="M3 6v4c0 1.1.9 2 2 2h3"/>'
     '<path d="M3 10v6c0 1.1.9 2 2 2h3"/></svg>'
 )
+_FALLBACK_GIT_BRANCH_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><line x1="6" x2="6" y1="3" y2="15"/>'
+    '<circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>'
+    '<path d="M18 9a9 9 0 0 1-9 9"/></svg>'
+)
+_FALLBACK_WORKFLOW_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><rect width="8" height="8" x="3" y="3" rx="2"/>'
+    '<path d="M7 11v4a2 2 0 0 0 2 2h4"/>'
+    '<rect width="8" height="8" x="13" y="13" rx="2"/></svg>'
+)
 _FALLBACK_SHIELD_CHECK_ICON = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
@@ -3467,6 +3481,9 @@ def _visualize_dax_test(
     background: var(--ui-bg-secondary);
 }}
 .dtx .dtx-object-deps-seg button {{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     padding: 4px 9px;
     border: 0;
     border-radius: 5px;
@@ -3477,6 +3494,7 @@ def _visualize_dax_test(
     font-weight: 600;
     cursor: pointer;
 }}
+.dtx .dtx-object-deps-seg button svg {{ width: 13px; height: 13px; }}
 .dtx .dtx-object-deps-seg button.dtx-active {{
     background: var(--ui-accent);
     color: var(--ui-on-accent);
@@ -3575,14 +3593,28 @@ def _visualize_dax_test(
     height: 48px;
     padding: 7px 9px;
     overflow: hidden;
-    border: 1px solid var(--ui-border-strong);
+    border: 1px solid color-mix(in srgb, var(--dtx-dep-node-color, var(--ui-text-tertiary)) 50%, transparent);
     border-radius: 8px;
-    background: var(--ui-bg-solid);
+    background: color-mix(in srgb, var(--dtx-dep-node-color, var(--ui-text-tertiary)) 10%, var(--ui-bg-solid));
     color: var(--ui-text);
     box-shadow: var(--ui-shadow-sm);
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none;
 }}
-.dtx .dtx-object-deps-node:hover {{ border-color: var(--ui-accent); }}
+.dtx .dtx-object-deps-node:hover {{
+    border-color: var(--dtx-dep-node-color, var(--ui-accent));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--dtx-dep-node-color, var(--ui-accent)) 20%, transparent), var(--ui-shadow-sm);
+}}
+.dtx .dtx-object-deps-node.dtx-dragging {{ cursor: grabbing; z-index: 3; }}
+.dtx .dtx-object-deps-node-measure {{ --dtx-dep-node-color: #22c55e; }}
+.dtx .dtx-object-deps-node-column {{ --dtx-dep-node-color: #3b82f6; }}
+.dtx .dtx-object-deps-node-hierarchy {{ --dtx-dep-node-color: #8b5cf6; }}
+.dtx .dtx-object-deps-node-calculation-item {{ --dtx-dep-node-color: #f59e0b; }}
+.dtx .dtx-object-deps-node-table {{ --dtx-dep-node-color: #f97316; }}
+.dtx .dtx-object-deps-node-other {{ --dtx-dep-node-color: #64748b; }}
+.dtx .dtx-object-deps-node .dtx-object-deps-icon {{
+    color: var(--dtx-dep-node-color, var(--ui-text-secondary));
+}}
 .dtx .dtx-object-deps-node-text {{ min-width: 0; text-align: left; }}
 .dtx .dtx-object-deps-node-label {{
     display: block;
@@ -4813,6 +4845,12 @@ def _visualize_dax_test(
     list_tree_icon = _UI_ICONS.get("list_tree", _FALLBACK_LIST_TREE_ICON).replace(
         "`", "\\`"
     )
+    git_branch_icon = _UI_ICONS.get(
+        "git_branch", _FALLBACK_GIT_BRANCH_ICON
+    ).replace("`", "\\`")
+    workflow_icon = _UI_ICONS.get("workflow", _FALLBACK_WORKFLOW_ICON).replace(
+        "`", "\\`"
+    )
     shield_check_icon = _UI_ICONS.get(
         "shield_check", _FALLBACK_SHIELD_CHECK_ICON
     ).replace("`", "\\`")
@@ -5071,6 +5109,8 @@ function render({ model, el }) {
     const PANEL_EXPAND_SVG = `__DTX_PANEL_EXPAND__`;
     const BUILDER_SVG = `__DTX_BUILDER__`;
     const LIST_TREE_SVG = `__DTX_LIST_TREE__`;
+    const GIT_BRANCH_SVG = `__DTX_GIT_BRANCH__`;
+    const WORKFLOW_SVG = `__DTX_WORKFLOW__`;
     const SHIELD_CHECK_SVG = `__DTX_SHIELD_CHECK__`;
     const USERS_SVG = `__DTX_USERS__`;
     const USER_SVG = `__DTX_USER__`;
@@ -5573,7 +5613,7 @@ function render({ model, el }) {
     objectDepsOverlay.innerHTML = `
         <div class="dtx-object-deps-dialog" role="dialog" aria-modal="true" aria-label="Dependencies">
             <div class="dtx-object-deps-head">
-                <span class="dtx-object-deps-icon">${ANALYZE_SVG}</span>
+                <span class="dtx-object-deps-icon">${GIT_BRANCH_SVG}</span>
                 <span class="dtx-object-deps-title"></span>
                 <button type="button" class="dtx-object-deps-close" aria-label="Close">${CLOSE_SVG}</button>
             </div>
@@ -5584,8 +5624,8 @@ function render({ model, el }) {
                 </div>
                 <span class="dtx-object-deps-description"></span>
                 <div class="dtx-object-deps-seg dtx-object-deps-view-seg">
-                    <button type="button" data-view="tree">Tree</button>
-                    <button type="button" data-view="graph">Node graph</button>
+                    <button type="button" data-view="tree">${LIST_TREE_SVG}<span>Tree</span></button>
+                    <button type="button" data-view="graph">${WORKFLOW_SVG}<span>Node graph</span></button>
                 </div>
             </div>
             <div class="dtx-object-deps-content"></div>
@@ -5599,7 +5639,10 @@ function render({ model, el }) {
     let objectDepsDirection = "dependsOn";
     let objectDepsView = "tree";
     let objectDepsZoom = 1;
+    let objectDepsRequestTimer = null;
+    let objectDepsTimedOut = false;
     const objectDepsCollapsed = new Set();
+    const objectDepsGraphPositions = new Map();
 
     function objectDepCategory(value) {
         const type = String(value || "").toUpperCase();
@@ -5621,6 +5664,9 @@ function render({ model, el }) {
             measure: MEASURE_SVG, column: COLUMN_SVG, hierarchy: HIERARCHY_SVG,
             calculationItem: CALC_ITEM_SVG, table: TABLE_SVG,
         })[kind] || COLUMN_SVG;
+    }
+    function objectDepNodeClass(kind) {
+        return `dtx-object-deps-node-${kind === "calculationItem" ? "calculation-item" : kind}`;
     }
     function objectDepLabel(kind, tableName, objectName) {
         if (kind === "table") return objectName;
@@ -5692,6 +5738,10 @@ function render({ model, el }) {
             new Set(), 0);
     }
     function closeObjectDependencies() {
+        if (objectDepsRequestTimer !== null) {
+            window.clearTimeout(objectDepsRequestTimer);
+            objectDepsRequestTimer = null;
+        }
         objectDepsOverlay.classList.remove("dtx-open");
         objectDepsTarget = null;
     }
@@ -5701,13 +5751,28 @@ function render({ model, el }) {
         objectDepsView = "tree";
         objectDepsZoom = 1;
         objectDepsCollapsed.clear();
+        objectDepsGraphPositions.clear();
+        objectDepsTimedOut = false;
         objectDepsOverlay.classList.add("dtx-open");
+        const requestId = (model.get("object_dependency_trigger") || 0) + 1;
         model.set("object_dependency_target", objectDepsTarget);
+        model.set("object_dependencies_loading", true);
         model.set("object_dependencies_loaded", false);
         model.set("object_dependency_error", "");
-        model.set("object_dependency_trigger",
-            (model.get("object_dependency_trigger") || 0) + 1);
+        model.set("object_dependency_trigger", requestId);
         model.save_changes();
+        if (objectDepsRequestTimer !== null) {
+            window.clearTimeout(objectDepsRequestTimer);
+        }
+        objectDepsRequestTimer = window.setTimeout(() => {
+            objectDepsRequestTimer = null;
+            if (objectDepsTarget
+                    && model.get("object_dependency_trigger") === requestId
+                    && model.get("object_dependencies_loaded") !== true) {
+                objectDepsTimedOut = true;
+                renderObjectDependencies();
+            }
+        }, 30000);
         renderObjectDependencies();
         objectDepsClose.focus();
     }
@@ -5802,16 +5867,25 @@ function render({ model, el }) {
             maxRows = Math.max(maxRows, nodes.length);
             maxLevel = Math.max(maxLevel, level);
         }
-        const stageWidth = pad * 2 + (maxLevel + 1) * nodeWidth + maxLevel * columnGap;
-        const stageHeight = pad * 2 + maxRows * nodeHeight + (maxRows - 1) * rowGap;
+        const stageWidth = Math.max(
+            920, pad * 2 + (maxLevel + 1) * nodeWidth + maxLevel * columnGap);
+        const stageHeight = Math.max(
+            520, pad * 2 + maxRows * nodeHeight + (maxRows - 1) * rowGap);
         const positions = new Map();
         for (const [level, nodes] of levels) {
             const columnHeight = nodes.length * nodeHeight + (nodes.length - 1) * rowGap;
             const top = pad + (stageHeight - pad * 2 - columnHeight) / 2;
-            nodes.forEach((node, index) => positions.set(node.key, {
-                x: pad + level * (nodeWidth + columnGap),
-                y: top + index * (nodeHeight + rowGap),
-            }));
+            nodes.forEach((node, index) => {
+                const automatic = {
+                    x: pad + level * (nodeWidth + columnGap),
+                    y: top + index * (nodeHeight + rowGap),
+                };
+                const saved = objectDepsGraphPositions.get(node.key);
+                positions.set(node.key, saved ? {
+                    x: Math.max(pad, Math.min(stageWidth - nodeWidth - pad, saved.x)),
+                    y: Math.max(pad, Math.min(stageHeight - nodeHeight - pad, saved.y)),
+                } : automatic);
+            });
         }
         objectDepsContent.innerHTML = "";
         objectDepsContent.style.overflow = "hidden";
@@ -5831,6 +5905,7 @@ function render({ model, el }) {
         svg.setAttribute("height", String(stageHeight));
         svg.style.position = "absolute";
         svg.style.inset = "0";
+        svg.style.overflow = "visible";
         svg.style.pointerEvents = "none";
         const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
         const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
@@ -5844,39 +5919,99 @@ function render({ model, el }) {
         marker.setAttribute("orient", "auto");
         const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
         arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
-        arrow.setAttribute("fill", "currentColor");
+        arrow.setAttribute("fill", "var(--ui-text-secondary)");
         marker.appendChild(arrow);
         defs.appendChild(marker);
         svg.appendChild(defs);
-        for (const [fromKey, toKey] of edgeMap.values()) {
-            const from = positions.get(fromKey), to = positions.get(toKey);
-            if (!from || !to) continue;
+        const edgePaths = new Map();
+        for (const [edgeKey] of edgeMap) {
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            const x1 = from.x + nodeWidth, y1 = from.y + nodeHeight / 2;
-            const x2 = to.x, y2 = to.y + nodeHeight / 2;
-            const middle = x1 + Math.max(28, (x2 - x1) / 2);
-            path.setAttribute("d", `M ${x1} ${y1} C ${middle} ${y1}, ${middle} ${y2}, ${x2} ${y2}`);
             path.setAttribute("fill", "none");
-            path.setAttribute("stroke", "currentColor");
-            path.setAttribute("stroke-opacity", "0.45");
-            path.setAttribute("stroke-width", "1.5");
+            path.setAttribute("stroke", "var(--ui-text-secondary)");
+            path.setAttribute("stroke-opacity", "0.7");
+            path.setAttribute("stroke-width", "1.6");
             path.setAttribute("marker-end", `url(#${markerId})`);
             svg.appendChild(path);
+            edgePaths.set(edgeKey, path);
+        }
+        function updateObjectDependencyEdges() {
+            for (const [edgeKey, [fromKey, toKey]] of edgeMap) {
+                const from = positions.get(fromKey), to = positions.get(toKey);
+                const path = edgePaths.get(edgeKey);
+                if (!from || !to || !path) continue;
+                const fromRight = from.x + nodeWidth;
+                const toRight = to.x + nodeWidth;
+                const fromY = from.y + nodeHeight / 2;
+                const toY = to.y + nodeHeight / 2;
+                let startX, endX, control1X, control2X;
+                if (to.x >= fromRight + 12) {
+                    startX = fromRight;
+                    endX = to.x - 4;
+                    control1X = control2X = (startX + endX) / 2;
+                } else if (from.x >= toRight + 12) {
+                    startX = from.x;
+                    endX = toRight + 4;
+                    control1X = control2X = (startX + endX) / 2;
+                } else {
+                    startX = fromRight;
+                    endX = toRight + 4;
+                    control1X = control2X = Math.max(fromRight, toRight) + 56;
+                }
+                path.setAttribute("d", `M ${startX} ${fromY} C ${control1X} ${fromY}, ${control2X} ${toY}, ${endX} ${toY}`);
+            }
         }
         stage.appendChild(svg);
         for (const node of nodeMap.values()) {
             const pos = positions.get(node.key);
             const button = document.createElement("button");
             button.type = "button";
-            button.className = "dtx-object-deps-node";
+            button.className = `dtx-object-deps-node ${objectDepNodeClass(node.kind)}`;
             button.style.left = `${pos.x}px`;
             button.style.top = `${pos.y}px`;
-            button.title = `${objectDepLabel(node.kind, node.table, node.object)} — click to focus`;
+            button.title = `${objectDepLabel(node.kind, node.table, node.object)} — drag to move, click to focus`;
             button.innerHTML = `<span class="dtx-object-deps-icon">${objectDepIcon(node.kind)}</span>`
                 + `<span class="dtx-object-deps-node-text">`
                 + `<span class="dtx-object-deps-node-label">${escapeHtml(objectDepLabel(node.kind, node.table, node.object))}</span>`
                 + `<span class="dtx-object-deps-node-kind">${escapeHtml(objectDepKindLabel(node.kind))}</span></span>`;
+            let suppressClick = false;
+            button.addEventListener("pointerdown", event => {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const originX = pos.x;
+                const originY = pos.y;
+                let moved = false;
+                button.classList.add("dtx-dragging");
+                button.setPointerCapture(event.pointerId);
+                const onMove = moveEvent => {
+                    const deltaX = (moveEvent.clientX - startX) / objectDepsZoom;
+                    const deltaY = (moveEvent.clientY - startY) / objectDepsZoom;
+                    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) moved = true;
+                    pos.x = Math.max(
+                        pad, Math.min(stageWidth - nodeWidth - pad, originX + deltaX));
+                    pos.y = Math.max(
+                        pad, Math.min(stageHeight - nodeHeight - pad, originY + deltaY));
+                    button.style.left = `${pos.x}px`;
+                    button.style.top = `${pos.y}px`;
+                    objectDepsGraphPositions.set(node.key, {x: pos.x, y: pos.y});
+                    updateObjectDependencyEdges();
+                };
+                const onEnd = () => {
+                    suppressClick = moved;
+                    button.classList.remove("dtx-dragging");
+                    button.removeEventListener("pointermove", onMove);
+                    button.removeEventListener("pointerup", onEnd);
+                    button.removeEventListener("pointercancel", onEnd);
+                    if (moved) setTimeout(() => { suppressClick = false; }, 0);
+                };
+                button.addEventListener("pointermove", onMove);
+                button.addEventListener("pointerup", onEnd);
+                button.addEventListener("pointercancel", onEnd);
+            });
             button.addEventListener("click", () => {
+                if (suppressClick) return;
                 objectDepsTarget = {
                     kind: node.kind,
                     table: node.kind === "table" ? "" : node.table,
@@ -5884,10 +6019,12 @@ function render({ model, el }) {
                     label: objectDepLabel(node.kind, node.table, node.object),
                 };
                 objectDepsCollapsed.clear();
+                objectDepsGraphPositions.clear();
                 renderObjectDependencies();
             });
             stage.appendChild(button);
         }
+        updateObjectDependencyEdges();
         space.appendChild(stage);
         viewport.appendChild(space);
         let pan = null;
@@ -5951,6 +6088,15 @@ function render({ model, el }) {
         const loading = model.get("object_dependencies_loading") === true;
         const loaded = model.get("object_dependencies_loaded") === true;
         const error = String(model.get("object_dependency_error") || "");
+        if ((loaded || error) && objectDepsRequestTimer !== null) {
+            window.clearTimeout(objectDepsRequestTimer);
+            objectDepsRequestTimer = null;
+        }
+        if (loaded || error) objectDepsTimedOut = false;
+        if (objectDepsTimedOut) {
+            objectDepsContent.innerHTML = '<div class="dtx-object-deps-status dtx-error">Dependency loading timed out. Close and reopen this view to retry.</div>';
+            return;
+        }
         if (loading || (!loaded && !error)) {
             objectDepsContent.innerHTML = '<div class="dtx-object-deps-status">Reading dependencies…</div>';
             return;
@@ -5975,6 +6121,7 @@ function render({ model, el }) {
         button.addEventListener("click", () => {
             objectDepsDirection = button.dataset.direction;
             objectDepsCollapsed.clear();
+            objectDepsGraphPositions.clear();
             renderObjectDependencies();
         });
     });
@@ -10176,6 +10323,8 @@ export default { render };
         .replace("__DTX_PANEL_EXPAND__", panel_expand_icon)
         .replace("__DTX_BUILDER__", builder_icon)
         .replace("__DTX_LIST_TREE__", list_tree_icon)
+        .replace("__DTX_GIT_BRANCH__", git_branch_icon)
+        .replace("__DTX_WORKFLOW__", workflow_icon)
         .replace("__DTX_SHIELD_CHECK__", shield_check_icon)
         .replace("__DTX_USERS__", users_icon)
         .replace("__DTX_USER__", user_icon)
@@ -11212,19 +11361,24 @@ export default { render };
         widget.dependencies_loading = True
         threading.Thread(target=_compute_dependencies, daemon=True).start()
 
-    def _compute_object_dependencies() -> None:
+    def _compute_object_dependencies(request_id: int) -> None:
         dataset_snapshot = model_ctx["dataset_id"]
         workspace_snapshot = model_ctx["workspace_id"]
 
-        def _is_active_model() -> bool:
+        def _is_current_request() -> bool:
             return (
                 str(model_ctx["dataset_id"]) == str(dataset_snapshot)
                 and str(model_ctx["workspace_id"]) == str(workspace_snapshot)
+                and widget.object_dependency_trigger == request_id
             )
 
         try:
+            if _is_current_request():
+                widget.object_dependencies_loading = True
+                widget.object_dependencies_loaded = False
+                widget.object_dependency_error = ""
             if dataset_snapshot is None:
-                if _is_active_model():
+                if _is_current_request():
                     widget.object_dependency_edges = []
                     widget.object_dependencies_loaded = True
                 return
@@ -11260,28 +11414,30 @@ export default { render };
                 }
                 for _, row in dependency_df.iterrows()
             ]
-            if _is_active_model():
+            if _is_current_request():
                 widget.object_dependency_edges = edges
                 widget.object_dependencies_loaded = True
                 widget.object_dependency_error = ""
         except Exception as exc:  # noqa: BLE001
-            if _is_active_model():
+            if _is_current_request():
                 widget.object_dependency_edges = []
                 widget.object_dependencies_loaded = False
                 widget.object_dependency_error = (
                     f"Failed to read object dependencies: {exc}"
                 )
         finally:
-            if _is_active_model():
+            if _is_current_request():
                 widget.object_dependencies_loading = False
 
     def _on_object_dependencies(change):
-        if change["new"] == change["old"] or widget.object_dependencies_loading:
+        if change["new"] == change["old"]:
             return
-        widget.object_dependencies_loading = True
-        widget.object_dependencies_loaded = False
-        widget.object_dependency_error = ""
-        threading.Thread(target=_compute_object_dependencies, daemon=True).start()
+        request_id = int(change["new"])
+        threading.Thread(
+            target=_compute_object_dependencies,
+            args=(request_id,),
+            daemon=True,
+        ).start()
 
     def _compute_vertipaq() -> None:
         """Run the Vertipaq Analyzer against the active semantic model and push

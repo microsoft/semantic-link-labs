@@ -968,7 +968,7 @@ def test_dependency_columns_table_uses_compact_content_widths():
 def test_object_dependencies_use_raw_model_graph_with_isolated_state():
     source = _source()
     worker = source[
-        source.index("def _compute_object_dependencies()") : source.index(
+        source.index("def _compute_object_dependencies(request_id: int)") : source.index(
             "def _compute_vertipaq()"
         )
     ]
@@ -982,8 +982,12 @@ def test_object_dependencies_use_raw_model_graph_with_isolated_state():
     assert "FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY" in worker
     assert '[OBJECT_TYPE] AS [Object Type]' in worker
     assert '[REFERENCED_OBJECT_TYPE] AS [Referenced Object Type]' in worker
+    assert "def _is_current_request() -> bool" in worker
     assert 'str(model_ctx["dataset_id"]) == str(dataset_snapshot)' in worker
     assert 'str(model_ctx["workspace_id"]) == str(workspace_snapshot)' in worker
+    assert "widget.object_dependency_trigger == request_id" in worker
+    assert "or widget.object_dependencies_loading" not in worker
+    assert "args=(request_id,)" in worker
     assert "widget.object_dependency_edges = edges" in worker
     assert 'names="object_dependency_trigger"' in source
     activation = source[
@@ -1013,19 +1017,41 @@ def test_model_objects_open_bidirectional_dependency_tree_and_graph():
     assert 'data-direction="referencedBy"' in dependency_ui
     assert 'data-view="tree"' in dependency_ui
     assert 'data-view="graph"' in dependency_ui
+    assert '<span class="dtx-object-deps-icon">${GIT_BRANCH_SVG}</span>' in dependency_ui
+    assert 'data-view="tree">${LIST_TREE_SVG}<span>Tree</span>' in dependency_ui
+    assert 'data-view="graph">${WORKFLOW_SVG}<span>Node graph</span>' in dependency_ui
+    assert '"git_branch": (' in SOURCE_PATH.parents[1].joinpath(
+        "_ui_components.py"
+    ).read_text(encoding="utf-8")
+    assert '"workflow": (' in SOURCE_PATH.parents[1].joinpath(
+        "_ui_components.py"
+    ).read_text(encoding="utf-8")
     assert "function buildObjectDependencyTree()" in dependency_ui
     assert 'depth >= 30' in dependency_ui
     assert 'objectDepsDirection === "dependsOn" && kind === "column"' in dependency_ui
     assert "function renderObjectDependencyTree(tree)" in dependency_ui
     assert "function renderObjectDependencyGraph(tree)" in dependency_ui
+    assert "function objectDepNodeClass(kind)" in dependency_ui
+    assert "const objectDepsGraphPositions = new Map()" in dependency_ui
+    assert "function updateObjectDependencyEdges()" in dependency_ui
+    assert 'button.addEventListener("pointerdown"' in dependency_ui
+    assert "objectDepsGraphPositions.set(node.key" in dependency_ui
+    assert "updateObjectDependencyEdges();" in dependency_ui
+    assert "to.x >= fromRight + 12" in dependency_ui
+    assert "from.x >= toRight + 12" in dependency_ui
+    assert "Math.max(fromRight, toRight) + 56" in dependency_ui
+    assert 'svg.style.overflow = "visible"' in dependency_ui
     assert "objectDepsZoom = Math.max(0.3" in dependency_ui
     assert "objectDepsZoom = Math.min(2.5" in dependency_ui
     assert 'viewport.addEventListener("pointermove"' in dependency_ui
     assert 'button.addEventListener("click", () => {' in dependency_ui
     assert 'model.set("object_dependency_target", objectDepsTarget)' in dependency_ui
+    assert 'model.set("object_dependencies_loading", true)' in dependency_ui
     assert 'model.set("object_dependencies_loaded", false)' in dependency_ui
     assert 'model.set("object_dependency_error", "")' in dependency_ui
     assert 'model.set("object_dependency_trigger"' in dependency_ui
+    assert "objectDepsRequestTimer = window.setTimeout" in dependency_ui
+    assert "Dependency loading timed out. Close and reopen this view to retry." in dependency_ui
     assert 'path.setAttribute("marker-end", `url(#${markerId})`)' in dependency_ui
     assert dependency_ui.count('"This object has no dependencies."') == 2
     assert 'model.on("change:object_dependencies_loading", renderObjectDependencies)' in source
@@ -1051,6 +1077,20 @@ def test_model_objects_open_bidirectional_dependency_tree_and_graph():
     assert "it.description, pad, null," in calculation_item
     assert ".dtx .dtx-object-deps-overlay {{" in source
     assert ".dtx .dtx-object-deps-graph {{" in source
+    for object_type in (
+        "measure",
+        "column",
+        "hierarchy",
+        "calculation-item",
+        "table",
+        "other",
+    ):
+        assert f".dtx .dtx-object-deps-node-{object_type} {{" in source
+    assert "50%, transparent);" in source[
+        source.index(".dtx .dtx-object-deps-node {{") : source.index(
+            ".dtx .dtx-object-deps-node-text {{"
+        )
+    ]
 
 
 def test_optional_query_controls_hide_only_when_measured_width_does_not_fit():
