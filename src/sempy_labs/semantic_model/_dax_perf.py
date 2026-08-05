@@ -1963,6 +1963,28 @@ def _visualize_dax_test(
 .dtx:fullscreen .dtx-main > * {{ flex-shrink: 0; }}
 .dtx:fullscreen .dtx-query {{ min-height: 300px; max-height: 60vh; }}
 .dtx *, .dtx *::before, .dtx *::after {{ box-sizing: border-box; }}
+.dtx button.dtx-button-pressed:not(:disabled) {{
+    transform: scale(0.95);
+    filter: brightness(0.9);
+    transition-duration: 0ms !important;
+}}
+.dtx button.dtx-button-acknowledged:not(:disabled) {{
+    animation: dtx-button-acknowledge 180ms ease-out;
+}}
+@keyframes dtx-button-acknowledge {{
+    0% {{ transform: scale(0.95); filter: brightness(0.9); }}
+    100% {{ transform: scale(1); filter: brightness(1); }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+    .dtx button.dtx-button-pressed:not(:disabled) {{
+        transform: none !important;
+        filter: brightness(0.85);
+    }}
+    .dtx button.dtx-button-acknowledged:not(:disabled) {{
+        animation: none;
+        filter: brightness(0.9);
+    }}
+}}
 .dtx .dtx-container {{
     background: var(--ui-bg);
     border: 1px solid var(--ui-border);
@@ -3250,6 +3272,9 @@ def _visualize_dax_test(
 .dtx .dtx-monitoring-table th[data-monitoring-sort] {{ cursor: pointer; user-select: none; }}
 .dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
 .dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
+.dtx .dtx-vertipaq-table th[data-vertipaq-sort] {{ cursor: pointer; user-select: none; }}
+.dtx .dtx-vertipaq-table th[data-vertipaq-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
+.dtx .dtx-vertipaq-table th[data-vertipaq-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
 .dtx tbody tr {{ background: var(--ui-bg); }}
 .dtx tbody td {{
     padding: 9px 16px;
@@ -3390,6 +3415,16 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-plan-seg {{ margin-right: 8px; }}
 .dtx .dtx-dep-seg {{ margin-right: 8px; }}
+.dtx table.dtx-dependency-columns-table {{
+    width: auto;
+    min-width: 500px;
+    max-width: 100%;
+    table-layout: fixed;
+}}
+.dtx table.dtx-dependency-columns-table td {{
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
 .dtx table.dtx-plan-table td.dtx-plan-pane {{
     color: var(--ui-text-secondary);
     vertical-align: top;
@@ -3664,6 +3699,25 @@ def _visualize_dax_test(
     min-height: 64px;
     padding: 12px 20px;
 }}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-head {{
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 8px 20px 2px;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed {{
+    flex: 0 0 40px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    overflow: hidden;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed + .sl-attribution {{
+    margin-top: 0;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-resizer {{ display: none; }}
 .dtx .dtx-monitoring-title-btn {{
     display: inline-flex;
     align-items: center;
@@ -3677,7 +3731,11 @@ def _visualize_dax_test(
     font-weight: 650;
     cursor: pointer;
 }}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-subtitle {{ display: none; }}
 .dtx .dtx-monitoring-title-btn svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-title-btn > svg {{
+    transform: rotate(-90deg);
+}}
 .dtx .dtx-monitoring-title-btn .dtx-monitoring-activity {{ color: var(--ui-accent); }}
 .dtx .dtx-monitoring-subtitle {{ color: var(--ui-text-tertiary); font-weight: 400; }}
 .dtx .dtx-monitoring-controls {{
@@ -4817,6 +4875,66 @@ function render({ model, el }) {
         renderThemeBtn();
     }
     el.appendChild(root);
+
+    const buttonFeedbackTimers = new WeakMap();
+    let pointerPressedButton = null;
+    let keyboardPressedButton = null;
+    function enabledEventButton(event) {
+        const button = event.target?.closest?.("button");
+        return button && root.contains(button) && !button.disabled ? button : null;
+    }
+    function releaseButtonFeedback(button) {
+        button?.classList.remove("dtx-button-pressed");
+    }
+    root.addEventListener("pointerdown", event => {
+        const button = enabledEventButton(event);
+        if (!button) return;
+        releaseButtonFeedback(pointerPressedButton);
+        pointerPressedButton = button;
+        button.classList.add("dtx-button-pressed");
+    }, true);
+    function releasePointerButton() {
+        releaseButtonFeedback(pointerPressedButton);
+        pointerPressedButton = null;
+    }
+    root.addEventListener("pointerup", releasePointerButton, true);
+    root.addEventListener("pointercancel", releasePointerButton, true);
+    root.addEventListener("pointerleave", event => {
+        if (event.target === root) releasePointerButton();
+    }, true);
+    root.addEventListener("keydown", event => {
+        if (event.repeat || (event.key !== "Enter" && event.key !== " ")) return;
+        const button = enabledEventButton(event);
+        if (!button) return;
+        releaseButtonFeedback(keyboardPressedButton);
+        keyboardPressedButton = button;
+        button.classList.add("dtx-button-pressed");
+    }, true);
+    root.addEventListener("keyup", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        releaseButtonFeedback(keyboardPressedButton);
+        keyboardPressedButton = null;
+    }, true);
+    root.addEventListener("focusout", event => {
+        if (event.target === keyboardPressedButton) {
+            releaseButtonFeedback(keyboardPressedButton);
+            keyboardPressedButton = null;
+        }
+    }, true);
+    root.addEventListener("click", event => {
+        const button = enabledEventButton(event);
+        if (!button) return;
+        releaseButtonFeedback(button);
+        button.classList.remove("dtx-button-acknowledged");
+        void button.offsetWidth;
+        button.classList.add("dtx-button-acknowledged");
+        const previousTimer = buttonFeedbackTimers.get(button);
+        if (previousTimer) window.clearTimeout(previousTimer);
+        buttonFeedbackTimers.set(button, window.setTimeout(() => {
+            button.classList.remove("dtx-button-acknowledged");
+            buttonFeedbackTimers.delete(button);
+        }, 180));
+    }, true);
 
     const toast = document.createElement("div");
     toast.className = "dtx-toast";
@@ -7936,7 +8054,7 @@ function render({ model, el }) {
     outputTableObserver.observe(tableWrap, { childList: true, subtree: true });
 
     // ---------- Workspace monitoring ----------
-    let monitoringOpen = true;
+    let monitoringOpen = false;
     let monitoringFullscreen = false;
     let monitoringSort = null;
     let monitoringSearch = "";
@@ -8014,6 +8132,8 @@ function render({ model, el }) {
 
     const monitoringContent = document.createElement("div");
     monitoringContent.className = "dtx-monitoring-content";
+    monitoringContent.id = `dtx-monitoring-content-${Math.random().toString(36).slice(2)}`;
+    monitoringTitleBtn.setAttribute("aria-controls", monitoringContent.id);
     monitoringPane.appendChild(monitoringContent);
     container.appendChild(monitoringPane);
 
@@ -8022,13 +8142,14 @@ function render({ model, el }) {
         monitoringShowBtn.style.display = chosen ? "" : "none";
         monitoringPane.classList.toggle("dtx-monitoring-hidden", !chosen || !monitoringVisible);
         monitoringPane.classList.toggle("dtx-monitoring-fullscreen", monitoringFullscreen);
+        monitoringPane.classList.toggle("dtx-monitoring-collapsed", !monitoringOpen);
         monitoringShowBtn.classList.toggle("dtx-active", monitoringVisible);
         const showLabel = monitoringVisible
             ? "Hide workspace monitoring" : "Show workspace monitoring";
         monitoringShowBtn.title = showLabel;
         monitoringShowBtn.setAttribute("aria-label", showLabel);
         monitoringShowBtn.setAttribute("aria-pressed", String(monitoringVisible));
-        monitoringTitleBtn.innerHTML = `${monitoringOpen ? CHEVRON_DOWN_SVG : CARET_SVG}`
+        monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`
             + `<span class="dtx-monitoring-activity">${ACTIVITY_SVG}</span>`
             + `<span>Workspace monitoring</span>`
             + `<span class="dtx-monitoring-subtitle">· slowest recent queries</span>`;
@@ -8530,8 +8651,11 @@ function render({ model, el }) {
                 + `</tr>`;
         }).join("");
         tableWrap.innerHTML = `
-            <table class="dtx-dep-col-table">
-                <thead><tr><th>Table Name</th><th>Column Name</th></tr></thead>
+            <table class="dtx-dep-col-table dtx-dependency-columns-table">
+                <thead><tr>
+                    <th data-column-width="220">Table Name</th>
+                    <th data-column-width="280">Column Name</th>
+                </tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
     }
@@ -8563,6 +8687,7 @@ function render({ model, el }) {
         });
     }
 
+    const vertipaqSortBySection = new Map();
     function renderVertipaqTable() {
         if (model.get("vertipaq_loading") === true) {
             tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
@@ -8577,20 +8702,113 @@ function render({ model, el }) {
         if (!section) section = sections[0];
         const cols = section.columns || [];
         const rows = section.rows || [];
-        const head = cols.map(c => `<th>${escapeHtml(String(c))}</th>`).join("");
+        const parseNumeric = value => {
+            if (typeof value === "number" && !Number.isFinite(value)) return null;
+            if (typeof value !== "number" && typeof value !== "string") return null;
+            const text = String(value).trim();
+            const match = /^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
+            if (!match || !(match[2] || match[3])) return null;
+            const exponent = Number(match[4] || 0);
+            if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 10000) return null;
+            let digits = `${match[2]}${match[3] || ""}`.replace(/^0+/, "");
+            if (!digits) return { sign: 0, digits: "0", scale: 0 };
+            let scale = exponent - (match[3] || "").length;
+            while (digits.endsWith("0")) {
+                digits = digits.slice(0, -1);
+                scale += 1;
+            }
+            return { sign: match[1] === "-" ? -1 : 1, digits, scale };
+        };
+        const compareNumeric = (left, right) => {
+            if (left.sign !== right.sign) return left.sign - right.sign;
+            if (left.sign === 0) return 0;
+            const leftMagnitude = left.digits.length + left.scale;
+            const rightMagnitude = right.digits.length + right.scale;
+            let result = leftMagnitude - rightMagnitude;
+            if (result === 0) {
+                const width = Math.max(left.digits.length, right.digits.length);
+                result = left.digits.padEnd(width, "0").localeCompare(
+                    right.digits.padEnd(width, "0")
+                );
+            }
+            return left.sign * result;
+        };
+        const formatNumeric = parsed => {
+            if (parsed.sign === 0) return "0";
+            const point = parsed.digits.length + parsed.scale;
+            const integer = point <= 0
+                ? "0"
+                : point >= parsed.digits.length
+                    ? parsed.digits + "0".repeat(point - parsed.digits.length)
+                    : parsed.digits.slice(0, point);
+            const fraction = point <= 0
+                ? "0".repeat(-point) + parsed.digits
+                : point < parsed.digits.length ? parsed.digits.slice(point) : "";
+            const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return `${parsed.sign < 0 ? "-" : ""}${grouped}${fraction ? `.${fraction}` : ""}`;
+        };
+        const isBlank = value => value === null || value === undefined
+            || (typeof value === "string" && value.trim() === "");
+        const numericColumns = cols.map((_, index) => {
+            const values = rows.map(row => row[index]).filter(value => !isBlank(value));
+            return values.length > 0 && values.every(value => parseNumeric(value) !== null);
+        });
+        const sortState = vertipaqSortBySection.get(section.name) || null;
+        const viewRows = rows.map((row, index) => ({ row, index }));
+        if (sortState && sortState.index < cols.length) {
+            viewRows.sort((left, right) => {
+                const a = left.row[sortState.index];
+                const b = right.row[sortState.index];
+                const aBlank = isBlank(a);
+                const bBlank = isBlank(b);
+                if (aBlank !== bBlank) return aBlank ? 1 : -1;
+                let result = numericColumns[sortState.index]
+                    ? compareNumeric(parseNumeric(a), parseNumeric(b))
+                    : String(a ?? "").localeCompare(String(b ?? ""), undefined, {
+                        numeric: true, sensitivity: "base",
+                    });
+                if (result === 0) return left.index - right.index;
+                return sortState.direction === "ascending" ? result : -result;
+            });
+        }
+        const head = cols.map((column, index) => {
+            const direction = sortState?.index === index ? sortState.direction : "none";
+            return `<th scope="col" data-vertipaq-sort="${index}" tabindex="0" aria-sort="${direction}">${escapeHtml(String(column))}</th>`;
+        }).join("");
+        const displayValue = (value, index) => {
+            if (isBlank(value)) return "";
+            if (!numericColumns[index]) return String(value);
+            return formatNumeric(parseNumeric(value));
+        };
         let body;
         if (!rows.length) {
             body = `<tr><td colspan="${Math.max(cols.length, 1)}" class="dtx-empty">No rows.</td></tr>`;
         } else {
-            body = rows.map(r => `<tr>`
-                + r.map(v => `<td>${escapeHtml(v === null || v === undefined ? "" : String(v))}</td>`).join("")
+            body = viewRows.map(({ row }) => `<tr>`
+                + row.map((value, index) => `<td class="${numericColumns[index] ? "dtx-num" : ""}">${escapeHtml(displayValue(value, index))}</td>`).join("")
                 + `</tr>`).join("");
         }
         tableWrap.innerHTML = `
-            <table class="dtx-dep-col-table">
+            <table class="dtx-dep-col-table dtx-vertipaq-table">
                 <thead><tr>${head}</tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
+        const sortColumn = header => {
+            const index = Number(header.dataset.vertipaqSort);
+            const direction = sortState?.index === index && sortState.direction === "ascending"
+                ? "descending" : "ascending";
+            vertipaqSortBySection.set(section.name, { index, direction });
+            renderVertipaqTable();
+        };
+        tableWrap.querySelectorAll("th[data-vertipaq-sort]").forEach(header => {
+            header.addEventListener("click", () => sortColumn(header));
+            header.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    sortColumn(header);
+                }
+            });
+        });
     }
 
     function renderChart() {
@@ -8978,7 +9196,10 @@ function render({ model, el }) {
     model.on("change:dependencies_loading", renderTable);
     model.on("change:dependency_columns", renderTable);
     model.on("change:dependency_view", renderTable);
-    model.on("change:vertipaq_sections", renderTable);
+    model.on("change:vertipaq_sections", () => {
+        vertipaqSortBySection.clear();
+        renderTable();
+    });
     model.on("change:vertipaq_section", renderTable);
     model.on("change:vertipaq_loading", renderTable);
     model.on("change:performance_findings", renderTable);

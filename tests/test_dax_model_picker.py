@@ -640,6 +640,69 @@ def test_play_button_is_a_rounded_rectangle():
     assert "    border-radius: 50%;" in button_css
 
 
+def test_every_enabled_button_has_immediate_pointer_and_keyboard_feedback():
+    source = _source()
+    feedback = source[
+        source.index("const buttonFeedbackTimers = new WeakMap()") : source.index(
+            'const toast = document.createElement("div")'
+        )
+    ]
+
+    assert 'event.target?.closest?.("button")' in feedback
+    assert "root.contains(button) && !button.disabled" in feedback
+    assert 'root.addEventListener("pointerdown"' in feedback
+    assert 'root.addEventListener("pointerup", releasePointerButton, true)' in feedback
+    assert 'root.addEventListener("pointercancel", releasePointerButton, true)' in feedback
+    assert 'if (event.target === root) releasePointerButton();' in feedback
+    assert 'root.addEventListener("keydown"' in feedback
+    assert 'root.addEventListener("keyup"' in feedback
+    assert 'root.addEventListener("focusout"' in feedback
+    assert 'root.addEventListener("click"' in feedback
+    assert "let pointerPressedButton = null;" in feedback
+    assert "let keyboardPressedButton = null;" in feedback
+    assert "releaseButtonFeedback(keyboardPressedButton);" in feedback
+    assert "button.addEventListener" not in feedback
+    assert 'button.classList.add("dtx-button-pressed")' in feedback
+    assert 'button.classList.add("dtx-button-acknowledged")' in feedback
+    assert "void button.offsetWidth;" in feedback
+    assert "}, 180));" in feedback
+    assert ".dtx button.dtx-button-pressed:not(:disabled) {{" in source
+    assert ".dtx button.dtx-button-acknowledged:not(:disabled) {{" in source
+    assert "@keyframes dtx-button-acknowledge {{" in source
+    assert "@media (prefers-reduced-motion: reduce) {{" in source
+    assert "transform: none !important;" in source
+    assert "animation: none;" in source
+
+
+def test_vertipaq_output_sorts_numeric_columns_and_formats_numbers():
+    source = _source()
+    renderer = source[
+        source.index("const vertipaqSortBySection = new Map()") : source.index(
+            "function renderChart()"
+        )
+    ]
+
+    assert "values.every(value => parseNumeric(value) !== null)" in renderer
+    assert "? compareNumeric(parseNumeric(a), parseNumeric(b))" in renderer
+    assert 'localeCompare(String(b ?? ""), undefined, {' in renderer
+    assert 'sortState.direction === "ascending" ? result : -result' in renderer
+    assert "if (result === 0) return left.index - right.index;" in renderer
+    assert 'integer.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",")' in renderer
+    assert "formatNumeric(parseNumeric(value))" in renderer
+    assert "Number.isSafeInteger(exponent)" in renderer
+    assert 'digits.padEnd(width, "0").localeCompare(' in renderer
+    assert 'numericColumns[index] ? "dtx-num" : ""' in renderer
+    assert 'data-vertipaq-sort="${index}"' in renderer
+    assert 'scope="col"' in renderer
+    assert 'role="button"' not in renderer
+    assert 'aria-sort="${direction}"' in renderer
+    assert 'header.addEventListener("click"' in renderer
+    assert 'event.key === "Enter" || event.key === " "' in renderer
+    assert 'vertipaqSortBySection.set(section.name, { index, direction })' in renderer
+    assert 'vertipaqSortBySection.clear();' in source
+    assert ".dtx .dtx-vertipaq-table th[data-vertipaq-sort]" in source
+
+
 def test_trace_details_include_direct_query_and_optimizer_fields():
     source = _source()
     direct_query_schema = source[
@@ -814,6 +877,31 @@ def test_output_tables_are_resizable_and_trace_history_is_sortable():
     assert "indexedHistory.sort((left, right) =>" in history_table
 
 
+def test_dependency_columns_table_uses_compact_content_widths():
+    source = _source()
+    dependency_columns = source[
+        source.index("function renderDependencyColumns()") : source.index(
+            "function renderDependenciesTable()"
+        )
+    ]
+    dependency_css = source[
+        source.index(".dtx table.dtx-dependency-columns-table {{") : source.index(
+            ".dtx table.dtx-plan-table td.dtx-plan-pane {{"
+        )
+    ]
+
+    assert 'class="dtx-dep-col-table dtx-dependency-columns-table"' in dependency_columns
+    assert '<th data-column-width="220">Table Name</th>' in dependency_columns
+    assert '<th data-column-width="280">Column Name</th>' in dependency_columns
+    assert "width: auto;" in dependency_css
+    assert "min-width: 500px;" in dependency_css
+    assert "max-width: 100%;" in dependency_css
+    assert "table-layout: fixed;" in dependency_css
+    assert "overflow: hidden;" in dependency_css
+    assert "text-overflow: ellipsis;" in dependency_css
+    assert ".dtx table.dtx-dep-col-table {{" not in dependency_css
+
+
 def test_workspace_monitoring_matches_tools_app_behavior():
     source = _source()
     ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
@@ -856,6 +944,12 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'row.some((value, index) =>' in panel
     assert 'class="dtx-monitoring-filter"' not in panel
     assert 'monitoringResizer.className = "dtx-monitoring-resizer"' in panel
+    assert "let monitoringOpen = false;" in panel
+    assert 'monitoringPane.classList.toggle("dtx-monitoring-collapsed", !monitoringOpen)' in panel
+    assert 'monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`' in panel
+    assert 'monitoringOpen ? CHEVRON_DOWN_SVG : CARET_SVG' not in panel
+    assert 'monitoringContent.id = `dtx-monitoring-content-${Math.random().toString(36).slice(2)}`' in panel
+    assert 'monitoringTitleBtn.setAttribute("aria-controls", monitoringContent.id)' in panel
     assert 'startHeight + startY - moveEvent.clientY' in panel
     assert 'monitoringContent.style.height = `${monitoringContentHeight}px`' in panel
     assert ".dtx .dtx-monitoring-content {{\n    min-height: 190px;\n    max-height: none;" in source
@@ -873,6 +967,34 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     ]
     assert "justify-content: flex-start;" in monitoring_head_css
     assert "justify-content: space-between;" not in monitoring_head_css
+    collapsed_css = source[
+        source.index(
+            ".dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-head {{"
+        ) : source.index(".dtx .dtx-monitoring-title-btn svg {{")
+    ]
+    assert "min-height: 40px;" in collapsed_css
+    assert "max-height: 40px;" in collapsed_css
+    assert "padding: 8px 20px 2px;" in collapsed_css
+    assert "height: 26px;" not in collapsed_css
+    assert "font-size: 12px;" not in collapsed_css
+    assert "width: 10px;" not in collapsed_css
+    assert ".dtx-monitoring-activity," not in collapsed_css
+    assert ".dtx-monitoring-subtitle {{ display: none; }}" in collapsed_css
+    assert ".dtx-monitoring-resizer {{ display: none; }}" in collapsed_css
+    assert "flex: 0 0 40px;" in collapsed_css
+    assert "overflow: hidden;" in collapsed_css
+    assert ".dtx-monitoring-collapsed + .sl-attribution {{" in collapsed_css
+    assert "margin-top: 0;" in collapsed_css
+    assert "margin-bottom: 2px;" in collapsed_css
+    collapsed_chevron_css = source[
+        source.index(
+            ".dtx .dtx-monitoring.dtx-monitoring-collapsed "
+            ".dtx-monitoring-title-btn > svg {{"
+        ) : source.index(
+            ".dtx .dtx-monitoring-title-btn .dtx-monitoring-activity {{"
+        )
+    ]
+    assert "transform: rotate(-90deg);" in collapsed_chevron_css
     assert 'date.toLocaleString()' in panel
     assert 'workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)' in source
     assert 'workspace_monitoring_rows = traitlets.List([]).tag(sync=True)' in source
