@@ -965,6 +965,94 @@ def test_dependency_columns_table_uses_compact_content_widths():
     assert ".dtx table.dtx-dep-col-table {{" not in dependency_css
 
 
+def test_object_dependencies_use_raw_model_graph_with_isolated_state():
+    source = _source()
+    worker = source[
+        source.index("def _compute_object_dependencies()") : source.index(
+            "def _compute_vertipaq()"
+        )
+    ]
+
+    assert "object_dependency_target = traitlets.Dict({}).tag(sync=True)" in source
+    assert "object_dependency_trigger = traitlets.Int(0).tag(sync=True)" in source
+    assert "object_dependencies_loading = traitlets.Bool(False).tag(sync=True)" in source
+    assert "object_dependencies_loaded = traitlets.Bool(False).tag(sync=True)" in source
+    assert "object_dependency_edges = traitlets.List([]).tag(sync=True)" in source
+    assert 'object_dependency_error = traitlets.Unicode("").tag(sync=True)' in source
+    assert "FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY" in worker
+    assert '[OBJECT_TYPE] AS [Object Type]' in worker
+    assert '[REFERENCED_OBJECT_TYPE] AS [Referenced Object Type]' in worker
+    assert 'str(model_ctx["dataset_id"]) == str(dataset_snapshot)' in worker
+    assert 'str(model_ctx["workspace_id"]) == str(workspace_snapshot)' in worker
+    assert "widget.object_dependency_edges = edges" in worker
+    assert 'names="object_dependency_trigger"' in source
+    activation = source[
+        source.index("def _activate_selected_dataset()") : source.index(
+            "def _on_select_dataset", source.index("def _activate_selected_dataset()")
+        )
+    ]
+    assert "widget.object_dependency_edges = []" in activation
+
+
+def test_model_objects_open_bidirectional_dependency_tree_and_graph():
+    source = _source()
+    dependency_ui = source[
+        source.index("// ---------- Semantic model object dependencies") : source.index(
+            "function makeDraggable"
+        )
+    ]
+    model_tree = source[
+        source.index("function makeLeaf(") : source.index(
+            'const main = document.createElement("div")'
+        )
+    ]
+
+    assert 'label: "View dependencies"' in dependency_ui
+    assert "function installObjectContextMenu(element, meta, extraItems)" in dependency_ui
+    assert 'data-direction="dependsOn"' in dependency_ui
+    assert 'data-direction="referencedBy"' in dependency_ui
+    assert 'data-view="tree"' in dependency_ui
+    assert 'data-view="graph"' in dependency_ui
+    assert "function buildObjectDependencyTree()" in dependency_ui
+    assert 'depth >= 30' in dependency_ui
+    assert 'objectDepsDirection === "dependsOn" && kind === "column"' in dependency_ui
+    assert "function renderObjectDependencyTree(tree)" in dependency_ui
+    assert "function renderObjectDependencyGraph(tree)" in dependency_ui
+    assert "objectDepsZoom = Math.max(0.3" in dependency_ui
+    assert "objectDepsZoom = Math.min(2.5" in dependency_ui
+    assert 'viewport.addEventListener("pointermove"' in dependency_ui
+    assert 'button.addEventListener("click", () => {' in dependency_ui
+    assert 'model.set("object_dependency_target", objectDepsTarget)' in dependency_ui
+    assert 'model.set("object_dependencies_loaded", false)' in dependency_ui
+    assert 'model.set("object_dependency_error", "")' in dependency_ui
+    assert 'model.set("object_dependency_trigger"' in dependency_ui
+    assert 'path.setAttribute("marker-end", `url(#${markerId})`)' in dependency_ui
+    assert dependency_ui.count('"This object has no dependencies."') == 2
+    assert 'model.on("change:object_dependencies_loading", renderObjectDependencies)' in source
+    assert 'model.on("change:object_dependencies_loaded", renderObjectDependencies)' in source
+    assert 'model.on("change:object_dependency_edges", renderObjectDependencies)' in source
+    assert 'model.on("change:object_dependency_error", renderObjectDependencies)' in source
+    active_model_listener = source[
+        source.index('model.on("change:active_dataset_id"') : source.index(
+            'model.on("change:picker_loading"'
+        )
+    ]
+    assert "closeObjectDependencies();" in active_model_listener
+    assert 'kind: "table"' in model_tree
+    assert 'kind: "column"' in model_tree
+    assert 'kind: "measure"' in model_tree
+    assert 'kind: "hierarchy"' in model_tree
+    assert 'kind: "calculationItem"' in model_tree
+    calculation_item = model_tree[
+        model_tree.index("CALC_ITEM_SVG") : model_tree.index(
+            "renderFolderTree(parentEl", model_tree.index("CALC_ITEM_SVG")
+        )
+    ]
+    assert "it.description, pad, null," in calculation_item
+    assert ".dtx .dtx-object-deps-overlay {{" in source
+    assert ".dtx .dtx-object-deps-graph {{" in source
+
+
 def test_optional_query_controls_hide_only_when_measured_width_does_not_fit():
     source = _source()
     responsive = source[

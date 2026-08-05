@@ -3399,6 +3399,236 @@ def _visualize_dax_test(
     font-weight: 500;
     cursor: pointer;
 }}
+.dtx .dtx-object-deps-overlay {{
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.45);
+}}
+.dtx .dtx-object-deps-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-object-deps-dialog {{
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 1000px);
+    height: min(80vh, 760px);
+    min-height: 360px;
+    overflow: hidden;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-lg);
+}}
+.dtx .dtx-object-deps-head,
+.dtx .dtx-object-deps-toolbar {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ui-border);
+}}
+.dtx .dtx-object-deps-title {{
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ui-text);
+    font-size: 14px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-close {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-close:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-object-deps-seg {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-object-deps-seg button {{
+    padding: 4px 9px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-seg button.dtx-active {{
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-object-deps-description {{
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-view-seg {{ margin-left: auto; }}
+.dtx .dtx-object-deps-content {{
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px;
+}}
+.dtx .dtx-object-deps-status {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    padding: 24px;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    text-align: center;
+}}
+.dtx .dtx-object-deps-status.dtx-error {{ color: var(--ui-danger-text); }}
+.dtx .dtx-object-deps-row {{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 3px 10px 3px 0;
+    border-radius: 6px;
+    color: var(--ui-text);
+}}
+.dtx .dtx-object-deps-row:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-object-deps-toggle {{
+    display: inline-flex;
+    flex: 0 0 20px;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-toggle svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-object-deps-spacer {{ flex: 0 0 20px; width: 20px; }}
+.dtx .dtx-object-deps-icon {{
+    display: inline-flex;
+    flex: 0 0 16px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-object-deps-icon svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-object-deps-label {{
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-kind {{
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text-tertiary);
+    font-size: 10px;
+}}
+.dtx .dtx-object-deps-cycle {{ color: var(--ui-text-tertiary); font-size: 11px; }}
+.dtx .dtx-object-deps-graph {{
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    background: var(--ui-bg-secondary);
+    cursor: grab;
+}}
+.dtx .dtx-object-deps-graph.dtx-panning {{ cursor: grabbing; user-select: none; }}
+.dtx .dtx-object-deps-stage {{ position: absolute; transform-origin: top left; }}
+.dtx .dtx-object-deps-node {{
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 210px;
+    height: 48px;
+    padding: 7px 9px;
+    overflow: hidden;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-sm);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-node:hover {{ border-color: var(--ui-accent); }}
+.dtx .dtx-object-deps-node-text {{ min-width: 0; text-align: left; }}
+.dtx .dtx-object-deps-node-label {{
+    display: block;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-node-kind {{
+    display: block;
+    margin-top: 2px;
+    color: var(--ui-text-tertiary);
+    font-size: 9px;
+    text-transform: uppercase;
+}}
+.dtx .dtx-object-deps-zoom {{
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-sm);
+}}
+.dtx .dtx-object-deps-zoom button {{
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--ui-text);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-zoom button:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-object-deps-zoom span {{
+    min-width: 42px;
+    color: var(--ui-text-secondary);
+    font-size: 10px;
+    text-align: center;
+}}
 .dtx .dtx-confirm-cancel {{
     background: transparent;
     color: var(--ui-text);
@@ -5337,6 +5567,436 @@ function render({ model, el }) {
     window.addEventListener("blur", hideContextMenu);
     window.addEventListener("scroll", hideContextMenu, true);
 
+    // ---------- Semantic model object dependencies ----------
+    const objectDepsOverlay = document.createElement("div");
+    objectDepsOverlay.className = "dtx-object-deps-overlay";
+    objectDepsOverlay.innerHTML = `
+        <div class="dtx-object-deps-dialog" role="dialog" aria-modal="true" aria-label="Dependencies">
+            <div class="dtx-object-deps-head">
+                <span class="dtx-object-deps-icon">${ANALYZE_SVG}</span>
+                <span class="dtx-object-deps-title"></span>
+                <button type="button" class="dtx-object-deps-close" aria-label="Close">${CLOSE_SVG}</button>
+            </div>
+            <div class="dtx-object-deps-toolbar">
+                <div class="dtx-object-deps-seg dtx-object-deps-direction">
+                    <button type="button" data-direction="dependsOn">Depends on</button>
+                    <button type="button" data-direction="referencedBy">Referenced by</button>
+                </div>
+                <span class="dtx-object-deps-description"></span>
+                <div class="dtx-object-deps-seg dtx-object-deps-view-seg">
+                    <button type="button" data-view="tree">Tree</button>
+                    <button type="button" data-view="graph">Node graph</button>
+                </div>
+            </div>
+            <div class="dtx-object-deps-content"></div>
+        </div>`;
+    root.appendChild(objectDepsOverlay);
+    const objectDepsTitle = objectDepsOverlay.querySelector(".dtx-object-deps-title");
+    const objectDepsDescription = objectDepsOverlay.querySelector(".dtx-object-deps-description");
+    const objectDepsContent = objectDepsOverlay.querySelector(".dtx-object-deps-content");
+    const objectDepsClose = objectDepsOverlay.querySelector(".dtx-object-deps-close");
+    let objectDepsTarget = null;
+    let objectDepsDirection = "dependsOn";
+    let objectDepsView = "tree";
+    let objectDepsZoom = 1;
+    const objectDepsCollapsed = new Set();
+
+    function objectDepCategory(value) {
+        const type = String(value || "").toUpperCase();
+        if (type.includes("MEASURE")) return "measure";
+        if (type.includes("HIERARCHY")) return "hierarchy";
+        if (type.includes("CALCULATION_ITEM") || type.includes("CALC_ITEM")) return "calculationItem";
+        if (type.includes("COLUMN")) return "column";
+        if (type.includes("TABLE") || type === "ROWS" || type === "PARTITION") return "table";
+        return "other";
+    }
+    function objectDepKindLabel(kind) {
+        return ({
+            measure: "Measure", column: "Column", hierarchy: "Hierarchy",
+            calculationItem: "Calculation item", table: "Table", other: "Object",
+        })[kind] || "Object";
+    }
+    function objectDepIcon(kind) {
+        return ({
+            measure: MEASURE_SVG, column: COLUMN_SVG, hierarchy: HIERARCHY_SVG,
+            calculationItem: CALC_ITEM_SVG, table: TABLE_SVG,
+        })[kind] || COLUMN_SVG;
+    }
+    function objectDepLabel(kind, tableName, objectName) {
+        if (kind === "table") return objectName;
+        if (kind === "measure") return daxMeasureRef(objectName);
+        return tableName ? daxColumnRef(tableName, objectName) : objectName;
+    }
+    function objectDepKey(kind, tableName, objectName) {
+        return `${kind}|${String(tableName || "").toLowerCase()}|${String(objectName || "").toLowerCase()}`;
+    }
+    function buildObjectDependencyTree() {
+        if (!objectDepsTarget) return null;
+        const edges = model.get("object_dependency_edges") || [];
+        const adjacency = new Map();
+        const add = (key, value) => {
+            const values = adjacency.get(key) || [];
+            values.push(value);
+            adjacency.set(key, values);
+        };
+        for (const edge of edges) {
+            const from = {
+                kind: objectDepCategory(edge.object_type),
+                table: String(edge.table || ""), object: String(edge.object || ""),
+            };
+            const to = {
+                kind: objectDepCategory(edge.referenced_object_type),
+                table: String(edge.referenced_table || ""),
+                object: String(edge.referenced_object || ""),
+            };
+            if (objectDepsDirection === "dependsOn") {
+                add(objectDepKey(from.kind, from.table, from.object), to);
+            } else {
+                add(objectDepKey(to.kind, to.table, to.object), from);
+            }
+        }
+        let sequence = 0;
+        const build = (kind, tableName, objectName, ancestors, depth) => {
+            const key = objectDepKey(kind, tableName, objectName);
+            const repeated = ancestors.has(key);
+            const node = {
+                id: `object-dep-${sequence++}`, key, kind,
+                table: tableName, object: objectName, repeated, children: [],
+            };
+            if (repeated || depth >= 30) return node;
+            const nextAncestors = new Set(ancestors);
+            nextAncestors.add(key);
+            const seen = new Set();
+            for (const child of adjacency.get(key) || []) {
+                const childKey = objectDepKey(child.kind, child.table, child.object);
+                if (!seen.has(childKey)) {
+                    seen.add(childKey);
+                    node.children.push(build(
+                        child.kind, child.table, child.object, nextAncestors, depth + 1));
+                }
+            }
+            if (objectDepsDirection === "dependsOn" && kind === "column" && tableName) {
+                const tableKey = objectDepKey("table", tableName, tableName);
+                if (!seen.has(tableKey) && !ancestors.has(tableKey)) {
+                    node.children.push(build(
+                        "table", tableName, tableName, nextAncestors, depth + 1));
+                }
+            }
+            return node;
+        };
+        const rootKind = objectDepsTarget.kind;
+        const rootTable = rootKind === "table"
+            ? objectDepsTarget.name : objectDepsTarget.table;
+        return build(
+            rootKind, rootTable || "", objectDepsTarget.name || rootTable || "",
+            new Set(), 0);
+    }
+    function closeObjectDependencies() {
+        objectDepsOverlay.classList.remove("dtx-open");
+        objectDepsTarget = null;
+    }
+    function openObjectDependencies(target) {
+        objectDepsTarget = Object.assign({}, target);
+        objectDepsDirection = "dependsOn";
+        objectDepsView = "tree";
+        objectDepsZoom = 1;
+        objectDepsCollapsed.clear();
+        objectDepsOverlay.classList.add("dtx-open");
+        model.set("object_dependency_target", objectDepsTarget);
+        model.set("object_dependencies_loaded", false);
+        model.set("object_dependency_error", "");
+        model.set("object_dependency_trigger",
+            (model.get("object_dependency_trigger") || 0) + 1);
+        model.save_changes();
+        renderObjectDependencies();
+        objectDepsClose.focus();
+    }
+    function renderObjectDependencyTree(tree) {
+        const fragment = document.createDocumentFragment();
+        const renderNode = (node, depth) => {
+            const wrap = document.createElement("div");
+            const row = document.createElement("div");
+            row.className = "dtx-object-deps-row";
+            row.style.paddingLeft = `${8 + depth * 18}px`;
+            if (node.children.length) {
+                const toggle = document.createElement("button");
+                toggle.type = "button";
+                toggle.className = "dtx-object-deps-toggle";
+                const open = !objectDepsCollapsed.has(node.id);
+                toggle.innerHTML = CHEVRON_DOWN_SVG;
+                toggle.style.transform = open ? "" : "rotate(-90deg)";
+                toggle.setAttribute("aria-label", open ? "Collapse" : "Expand");
+                toggle.addEventListener("click", () => {
+                    if (open) objectDepsCollapsed.add(node.id);
+                    else objectDepsCollapsed.delete(node.id);
+                    renderObjectDependencies();
+                });
+                row.appendChild(toggle);
+            } else {
+                const spacer = document.createElement("span");
+                spacer.className = "dtx-object-deps-spacer";
+                row.appendChild(spacer);
+            }
+            const icon = document.createElement("span");
+            icon.className = "dtx-object-deps-icon";
+            icon.innerHTML = objectDepIcon(node.kind);
+            row.appendChild(icon);
+            const label = document.createElement("span");
+            label.className = "dtx-object-deps-label";
+            label.textContent = objectDepLabel(node.kind, node.table, node.object);
+            label.title = label.textContent;
+            row.appendChild(label);
+            const kind = document.createElement("span");
+            kind.className = "dtx-object-deps-kind";
+            kind.textContent = objectDepKindLabel(node.kind);
+            row.appendChild(kind);
+            if (node.repeated) {
+                const cycle = document.createElement("span");
+                cycle.className = "dtx-object-deps-cycle";
+                cycle.textContent = "↩";
+                cycle.title = "Already shown higher in this path";
+                row.appendChild(cycle);
+            }
+            wrap.appendChild(row);
+            if (node.children.length && !objectDepsCollapsed.has(node.id)) {
+                for (const child of node.children) wrap.appendChild(renderNode(child, depth + 1));
+            }
+            return wrap;
+        };
+        fragment.appendChild(renderNode(tree, 0));
+        objectDepsContent.replaceChildren(fragment);
+        if (!tree.children.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-object-deps-status";
+            empty.textContent = objectDepsDirection === "dependsOn"
+                ? "This object has no dependencies."
+                : "No objects depend on this object.";
+            objectDepsContent.appendChild(empty);
+        }
+    }
+    function renderObjectDependencyGraph(tree) {
+        const nodeMap = new Map();
+        const edgeMap = new Map();
+        const visit = (node, level) => {
+            const existing = nodeMap.get(node.key);
+            if (!existing || level < existing.level) {
+                nodeMap.set(node.key, Object.assign({}, node, {level}));
+            }
+            for (const child of node.children) {
+                edgeMap.set(`${node.key}\u0001${child.key}`, [node.key, child.key]);
+                if (!child.repeated) visit(child, level + 1);
+            }
+        };
+        visit(tree, 0);
+        const levels = new Map();
+        for (const node of nodeMap.values()) {
+            const list = levels.get(node.level) || [];
+            list.push(node);
+            levels.set(node.level, list);
+        }
+        const nodeWidth = 210, nodeHeight = 48, columnGap = 74, rowGap = 20, pad = 32;
+        let maxRows = 1, maxLevel = 0;
+        for (const [level, nodes] of levels) {
+            nodes.sort((a, b) => objectDepLabel(a.kind, a.table, a.object)
+                .localeCompare(objectDepLabel(b.kind, b.table, b.object)));
+            maxRows = Math.max(maxRows, nodes.length);
+            maxLevel = Math.max(maxLevel, level);
+        }
+        const stageWidth = pad * 2 + (maxLevel + 1) * nodeWidth + maxLevel * columnGap;
+        const stageHeight = pad * 2 + maxRows * nodeHeight + (maxRows - 1) * rowGap;
+        const positions = new Map();
+        for (const [level, nodes] of levels) {
+            const columnHeight = nodes.length * nodeHeight + (nodes.length - 1) * rowGap;
+            const top = pad + (stageHeight - pad * 2 - columnHeight) / 2;
+            nodes.forEach((node, index) => positions.set(node.key, {
+                x: pad + level * (nodeWidth + columnGap),
+                y: top + index * (nodeHeight + rowGap),
+            }));
+        }
+        objectDepsContent.innerHTML = "";
+        objectDepsContent.style.overflow = "hidden";
+        const viewport = document.createElement("div");
+        viewport.className = "dtx-object-deps-graph";
+        const space = document.createElement("div");
+        space.style.position = "relative";
+        space.style.width = `${stageWidth * objectDepsZoom}px`;
+        space.style.height = `${stageHeight * objectDepsZoom}px`;
+        const stage = document.createElement("div");
+        stage.className = "dtx-object-deps-stage";
+        stage.style.width = `${stageWidth}px`;
+        stage.style.height = `${stageHeight}px`;
+        stage.style.transform = `scale(${objectDepsZoom})`;
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", String(stageWidth));
+        svg.setAttribute("height", String(stageHeight));
+        svg.style.position = "absolute";
+        svg.style.inset = "0";
+        svg.style.pointerEvents = "none";
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        const markerId = `dtx-object-dep-arrow-${Math.random().toString(36).slice(2)}`;
+        marker.setAttribute("id", markerId);
+        marker.setAttribute("viewBox", "0 0 10 10");
+        marker.setAttribute("refX", "9");
+        marker.setAttribute("refY", "5");
+        marker.setAttribute("markerWidth", "7");
+        marker.setAttribute("markerHeight", "7");
+        marker.setAttribute("orient", "auto");
+        const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+        arrow.setAttribute("fill", "currentColor");
+        marker.appendChild(arrow);
+        defs.appendChild(marker);
+        svg.appendChild(defs);
+        for (const [fromKey, toKey] of edgeMap.values()) {
+            const from = positions.get(fromKey), to = positions.get(toKey);
+            if (!from || !to) continue;
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const x1 = from.x + nodeWidth, y1 = from.y + nodeHeight / 2;
+            const x2 = to.x, y2 = to.y + nodeHeight / 2;
+            const middle = x1 + Math.max(28, (x2 - x1) / 2);
+            path.setAttribute("d", `M ${x1} ${y1} C ${middle} ${y1}, ${middle} ${y2}, ${x2} ${y2}`);
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", "currentColor");
+            path.setAttribute("stroke-opacity", "0.45");
+            path.setAttribute("stroke-width", "1.5");
+            path.setAttribute("marker-end", `url(#${markerId})`);
+            svg.appendChild(path);
+        }
+        stage.appendChild(svg);
+        for (const node of nodeMap.values()) {
+            const pos = positions.get(node.key);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "dtx-object-deps-node";
+            button.style.left = `${pos.x}px`;
+            button.style.top = `${pos.y}px`;
+            button.title = `${objectDepLabel(node.kind, node.table, node.object)} — click to focus`;
+            button.innerHTML = `<span class="dtx-object-deps-icon">${objectDepIcon(node.kind)}</span>`
+                + `<span class="dtx-object-deps-node-text">`
+                + `<span class="dtx-object-deps-node-label">${escapeHtml(objectDepLabel(node.kind, node.table, node.object))}</span>`
+                + `<span class="dtx-object-deps-node-kind">${escapeHtml(objectDepKindLabel(node.kind))}</span></span>`;
+            button.addEventListener("click", () => {
+                objectDepsTarget = {
+                    kind: node.kind,
+                    table: node.kind === "table" ? "" : node.table,
+                    name: node.object,
+                    label: objectDepLabel(node.kind, node.table, node.object),
+                };
+                objectDepsCollapsed.clear();
+                renderObjectDependencies();
+            });
+            stage.appendChild(button);
+        }
+        space.appendChild(stage);
+        viewport.appendChild(space);
+        let pan = null;
+        viewport.addEventListener("pointerdown", event => {
+            if (event.target !== viewport && event.target !== space && event.target !== stage) return;
+            pan = {x: event.clientX, y: event.clientY,
+                left: viewport.scrollLeft, top: viewport.scrollTop};
+            viewport.classList.add("dtx-panning");
+            viewport.setPointerCapture(event.pointerId);
+        });
+        viewport.addEventListener("pointermove", event => {
+            if (!pan) return;
+            viewport.scrollLeft = pan.left - (event.clientX - pan.x);
+            viewport.scrollTop = pan.top - (event.clientY - pan.y);
+        });
+        const endPan = () => { pan = null; viewport.classList.remove("dtx-panning"); };
+        viewport.addEventListener("pointerup", endPan);
+        viewport.addEventListener("pointercancel", endPan);
+        objectDepsContent.appendChild(viewport);
+        const zoom = document.createElement("div");
+        zoom.className = "dtx-object-deps-zoom";
+        const zoomOut = document.createElement("button");
+        zoomOut.type = "button"; zoomOut.textContent = "−"; zoomOut.title = "Zoom out";
+        const zoomLabel = document.createElement("span");
+        zoomLabel.textContent = `${Math.round(objectDepsZoom * 100)}%`;
+        const zoomIn = document.createElement("button");
+        zoomIn.type = "button"; zoomIn.textContent = "+"; zoomIn.title = "Zoom in";
+        zoomOut.addEventListener("click", () => {
+            objectDepsZoom = Math.max(0.3, objectDepsZoom - 0.1);
+            renderObjectDependencies();
+        });
+        zoomIn.addEventListener("click", () => {
+            objectDepsZoom = Math.min(2.5, objectDepsZoom + 0.1);
+            renderObjectDependencies();
+        });
+        zoom.append(zoomOut, zoomLabel, zoomIn);
+        objectDepsContent.appendChild(zoom);
+        if (!tree.children.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-object-deps-status";
+            empty.style.position = "absolute";
+            empty.style.inset = "0";
+            empty.style.pointerEvents = "none";
+            empty.textContent = objectDepsDirection === "dependsOn"
+                ? "This object has no dependencies."
+                : "No objects depend on this object.";
+            objectDepsContent.appendChild(empty);
+        }
+    }
+    function renderObjectDependencies() {
+        if (!objectDepsTarget || !objectDepsOverlay.classList.contains("dtx-open")) return;
+        objectDepsTitle.textContent = `Dependencies — ${objectDepsTarget.label}`;
+        objectDepsDescription.textContent = objectDepsDirection === "dependsOn"
+            ? "Objects this object depends on"
+            : "Objects that depend on this object";
+        objectDepsOverlay.querySelectorAll("[data-direction]").forEach(button =>
+            button.classList.toggle("dtx-active", button.dataset.direction === objectDepsDirection));
+        objectDepsOverlay.querySelectorAll("[data-view]").forEach(button =>
+            button.classList.toggle("dtx-active", button.dataset.view === objectDepsView));
+        objectDepsContent.style.overflow = "auto";
+        const loading = model.get("object_dependencies_loading") === true;
+        const loaded = model.get("object_dependencies_loaded") === true;
+        const error = String(model.get("object_dependency_error") || "");
+        if (loading || (!loaded && !error)) {
+            objectDepsContent.innerHTML = '<div class="dtx-object-deps-status">Reading dependencies…</div>';
+            return;
+        }
+        if (error) {
+            objectDepsContent.innerHTML = `<div class="dtx-object-deps-status dtx-error">${escapeHtml(error)}</div>`;
+            return;
+        }
+        const tree = buildObjectDependencyTree();
+        if (!tree) return;
+        if (objectDepsView === "graph") renderObjectDependencyGraph(tree);
+        else renderObjectDependencyTree(tree);
+    }
+    objectDepsClose.addEventListener("click", closeObjectDependencies);
+    objectDepsOverlay.addEventListener("click", event => {
+        if (event.target === objectDepsOverlay) closeObjectDependencies();
+    });
+    objectDepsOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") closeObjectDependencies();
+    });
+    objectDepsOverlay.querySelectorAll("[data-direction]").forEach(button => {
+        button.addEventListener("click", () => {
+            objectDepsDirection = button.dataset.direction;
+            objectDepsCollapsed.clear();
+            renderObjectDependencies();
+        });
+    });
+    objectDepsOverlay.querySelectorAll("[data-view]").forEach(button => {
+        button.addEventListener("click", () => {
+            objectDepsView = button.dataset.view;
+            renderObjectDependencies();
+        });
+    });
+
+    function installObjectContextMenu(element, meta, extraItems) {
+        element.addEventListener("contextmenu", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const items = [...(extraItems || []), {
+                label: "View dependencies",
+                action: () => openObjectDependencies(meta),
+            }];
+            showContextMenu(event.clientX, event.clientY, items);
+        });
+    }
+
     function makeDraggable(elem, dragText, meta) {
         elem.setAttribute("draggable", "true");
         elem.classList.add("dtx-draggable");
@@ -5356,7 +6016,9 @@ function render({ model, el }) {
         });
     }
 
-    function makeLeaf(iconSvg, name, hidden, dataType, dragText, description, pad, meta) {
+    function makeLeaf(
+        iconSvg, name, hidden, dataType, dragText, description, pad, meta, contextMeta
+    ) {
         const leaf = document.createElement("div");
         leaf.className = "dtx-tree-leaf";
         leaf.style.paddingLeft = (pad == null ? 6 : pad) + "px";
@@ -5370,14 +6032,12 @@ function render({ model, el }) {
             + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
             + typeHtml;
         if (dragText) makeDraggable(leaf, dragText, meta);
-        if (meta && meta.kind === "measure") {
-            leaf.addEventListener("contextmenu", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showContextMenu(e.clientX, e.clientY, [
-                    { label: "Define", action: () => defineMeasure(meta) },
-                ]);
-            });
+        const objectMeta = contextMeta || meta;
+        if (objectMeta) {
+            const extraItems = objectMeta.kind === "measure"
+                ? [{ label: "Define", action: () => defineMeasure(objectMeta) }]
+                : [];
+            installObjectContextMenu(leaf, objectMeta, extraItems);
         }
         return leaf;
     }
@@ -5456,6 +6116,10 @@ function render({ model, el }) {
                 + `<span class="dtx-tree-label${it.hidden ? " dtx-hidden" : ""}"`
                 + ` title="${escapeHtml(tip)}">${escapeHtml(it.name)}</span>`;
             makeDraggable(node, daxColumnRef(tableName, it.name));
+            installObjectContextMenu(node, {
+                kind: "hierarchy", table: tableName, name: it.name,
+                label: daxColumnRef(tableName, it.name),
+            });
             frag.appendChild(node);
             if (hasLevels) {
                 const lchildren = document.createElement("div");
@@ -5499,7 +6163,7 @@ function render({ model, el }) {
                     daxMeasureRef(it.name), it.description, pad,
                     {kind: "measure", table: table.name, name: it.name,
                         data_type: it.data_type, expression: it.expression,
-                        ref: daxMeasureRef(it.name)});
+                        ref: daxMeasureRef(it.name), label: daxMeasureRef(it.name)});
             }
             if (it._kind === "column") {
                 return makeLeaf(
@@ -5507,12 +6171,15 @@ function render({ model, el }) {
                     daxColumnRef(table.name, it.name), it.description, pad,
                     {kind: "column", table: table.name, name: it.name,
                         data_type: it.data_type,
-                        ref: daxColumnRef(table.name, it.name)});
+                        ref: daxColumnRef(table.name, it.name),
+                        label: daxColumnRef(table.name, it.name)});
             }
             if (it._kind === "hierarchy") return hierarchyBuilder(it, pad);
             return makeLeaf(
                 CALC_ITEM_SVG, it.name, !!it.hidden, it.data_type,
-                daxColumnRef(table.name, it.name), it.description, pad, null);
+                daxColumnRef(table.name, it.name), it.description, pad, null,
+                {kind: "calculationItem", table: table.name, name: it.name,
+                    label: daxColumnRef(table.name, it.name)});
         };
         renderFolderTree(parentEl, buildFolderTree(objects), build, 0);
     }
@@ -5589,6 +6256,9 @@ function render({ model, el }) {
                 + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`
                 + `<span class="dtx-tree-counts">${escapeHtml(countParts.join(" · "))}</span>`;
             makeDraggable(node, daxTableRef(tbl.name));
+            installObjectContextMenu(node, {
+                kind: "table", table: "", name: tbl.name, label: tbl.name,
+            });
             const children = document.createElement("div");
             children.className = "dtx-tree-children";
             renderTableObjects(children, tbl);
@@ -9268,6 +9938,10 @@ function render({ model, el }) {
     model.on("change:dependencies_loading", renderTable);
     model.on("change:dependency_columns", renderTable);
     model.on("change:dependency_view", renderTable);
+    model.on("change:object_dependencies_loading", renderObjectDependencies);
+    model.on("change:object_dependencies_loaded", renderObjectDependencies);
+    model.on("change:object_dependency_edges", renderObjectDependencies);
+    model.on("change:object_dependency_error", renderObjectDependencies);
     model.on("change:vertipaq_sections", () => {
         vertipaqSortBySection.clear();
         renderTable();
@@ -9407,6 +10081,7 @@ function render({ model, el }) {
         monitoringSearchInput.value = "";
         // Force a fresh dependency computation for the newly activated model.
         lastDepQuery = null;
+        closeObjectDependencies();
         renderPicker();
     });
     model.on("change:picker_loading", () => {
@@ -9571,6 +10246,12 @@ export default { render };
         dependencies_trigger = traitlets.Int(0).tag(sync=True)
         dependency_columns = traitlets.List([]).tag(sync=True)
         dependency_view = traitlets.Unicode("tree").tag(sync=True)
+        object_dependency_target = traitlets.Dict({}).tag(sync=True)
+        object_dependency_trigger = traitlets.Int(0).tag(sync=True)
+        object_dependencies_loading = traitlets.Bool(False).tag(sync=True)
+        object_dependencies_loaded = traitlets.Bool(False).tag(sync=True)
+        object_dependency_edges = traitlets.List([]).tag(sync=True)
+        object_dependency_error = traitlets.Unicode("").tag(sync=True)
         vertipaq_sections = traitlets.List([]).tag(sync=True)
         vertipaq_section = traitlets.Unicode("").tag(sync=True)
         vertipaq_loading = traitlets.Bool(False).tag(sync=True)
@@ -9704,6 +10385,12 @@ export default { render };
         dependencies_trigger=0,
         dependency_columns=[],
         dependency_view="tree",
+        object_dependency_target={},
+        object_dependency_trigger=0,
+        object_dependencies_loading=False,
+        object_dependencies_loaded=False,
+        object_dependency_edges=[],
+        object_dependency_error="",
         vertipaq_sections=[],
         vertipaq_section="",
         vertipaq_loading=False,
@@ -10525,6 +11212,77 @@ export default { render };
         widget.dependencies_loading = True
         threading.Thread(target=_compute_dependencies, daemon=True).start()
 
+    def _compute_object_dependencies() -> None:
+        dataset_snapshot = model_ctx["dataset_id"]
+        workspace_snapshot = model_ctx["workspace_id"]
+
+        def _is_active_model() -> bool:
+            return (
+                str(model_ctx["dataset_id"]) == str(dataset_snapshot)
+                and str(model_ctx["workspace_id"]) == str(workspace_snapshot)
+            )
+
+        try:
+            if dataset_snapshot is None:
+                if _is_active_model():
+                    widget.object_dependency_edges = []
+                    widget.object_dependencies_loaded = True
+                return
+            dependency_df = fabric.evaluate_dax(
+                dataset=dataset_snapshot,
+                workspace=workspace_snapshot,
+                dax_string="""
+                SELECT
+                    [OBJECT_TYPE] AS [Object Type],
+                    [TABLE] AS [Table],
+                    [OBJECT] AS [Object],
+                    [REFERENCED_OBJECT_TYPE] AS [Referenced Object Type],
+                    [REFERENCED_TABLE] AS [Referenced Table],
+                    [REFERENCED_OBJECT] AS [Referenced Object]
+                FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY
+                """,
+            )
+
+            def _value(row, name: str) -> str:
+                value = row.get(f"[{name}]", row.get(name, ""))
+                return "" if value is None or pd.isna(value) else str(value)
+
+            edges = [
+                {
+                    "object_type": _value(row, "Object Type"),
+                    "table": _value(row, "Table"),
+                    "object": _value(row, "Object"),
+                    "referenced_object_type": _value(
+                        row, "Referenced Object Type"
+                    ),
+                    "referenced_table": _value(row, "Referenced Table"),
+                    "referenced_object": _value(row, "Referenced Object"),
+                }
+                for _, row in dependency_df.iterrows()
+            ]
+            if _is_active_model():
+                widget.object_dependency_edges = edges
+                widget.object_dependencies_loaded = True
+                widget.object_dependency_error = ""
+        except Exception as exc:  # noqa: BLE001
+            if _is_active_model():
+                widget.object_dependency_edges = []
+                widget.object_dependencies_loaded = False
+                widget.object_dependency_error = (
+                    f"Failed to read object dependencies: {exc}"
+                )
+        finally:
+            if _is_active_model():
+                widget.object_dependencies_loading = False
+
+    def _on_object_dependencies(change):
+        if change["new"] == change["old"] or widget.object_dependencies_loading:
+            return
+        widget.object_dependencies_loading = True
+        widget.object_dependencies_loaded = False
+        widget.object_dependency_error = ""
+        threading.Thread(target=_compute_object_dependencies, daemon=True).start()
+
     def _compute_vertipaq() -> None:
         """Run the Vertipaq Analyzer against the active semantic model and push
         its result tables (Model Summary, Tables, Partitions, Columns,
@@ -10898,6 +11656,7 @@ export default { render };
     widget.observe(_on_cancel, names="cancel_trigger")
     widget.observe(_on_clear_model_cache, names="cache_clear_trigger")
     widget.observe(_on_dependencies, names="dependencies_trigger")
+    widget.observe(_on_object_dependencies, names="object_dependency_trigger")
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
     widget.observe(_on_performance, names="performance_trigger")
     widget.observe(_on_workspace_monitoring, names="workspace_monitoring_trigger")
@@ -11149,6 +11908,11 @@ export default { render };
         # Clear any performance analysis produced for the previous model.
         widget.performance_findings = []
         widget.performance_summary = {}
+        widget.object_dependency_target = {}
+        widget.object_dependencies_loading = False
+        widget.object_dependencies_loaded = False
+        widget.object_dependency_edges = []
+        widget.object_dependency_error = ""
         widget.workspace_monitoring_loading = False
         widget.workspace_monitoring_loaded = False
         widget.workspace_monitoring_enabled = True
