@@ -171,6 +171,9 @@ def test_model_view_and_collapsed_query_builder_are_identifiable():
 
 def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
     source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
     tree_render = source[
         source.index("function makeLeaf(") : source.index(
             'const main = document.createElement("div")'
@@ -202,6 +205,9 @@ def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
         )
     ]
     assert 'leaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`' in make_leaf
+    assert 'leaf.style.paddingLeft = (pad == null ? 6 : pad) + "px"' in make_leaf
+    assert "const pad = 6 + depth * 14;" in tree_render
+    assert "const pad = 30 + depth * 14;" not in tree_render
     assert 'lleaf.style.paddingLeft = (pad + 14) + "px"' in tree_render
     assert 'lleaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`' in tree_render
     assert "width: 18px;" in caret_css
@@ -215,6 +221,15 @@ def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
     assert "border:" not in datatype_css
     assert "border-radius:" not in datatype_css
     assert "padding:" not in datatype_css
+    level_icon = ui_source[
+        ui_source.index('    "level": (') : ui_source.index(
+            '    "play": (', ui_source.index('    "level": (')
+        )
+    ]
+    assert 'stroke-width="1.8"' in level_icon
+    assert 'stroke-linecap="round"' in level_icon
+    assert '<path d="M2.5 4h11M5.5 8h8M8.5 12h5"/>' in level_icon
+    assert "L12 11.75" not in level_icon
 
 
 def test_model_view_flattens_type_groups_and_preserves_display_folders():
@@ -1017,6 +1032,8 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'data-monitoring-sort="${index}"' in panel
     assert 'monitoringSearchInput.className = "dtx-monitoring-search"' in panel
     assert 'monitoringControls.appendChild(monitoringSearchInput)' in panel
+    assert "const hasQueryOutput = loaded && enabled && !loading && !error && rows.length > 0;" in panel
+    assert "monitoringSearchInput.hidden = !hasQueryOutput;" in panel
     assert 'monitoringActions.className = "dtx-monitoring-actions"' in panel
     assert 'monitoringActions.appendChild(rangeLabel)' in panel
     assert 'monitoringActions.appendChild(topLabel)' in panel
@@ -1037,6 +1054,12 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert "let monitoringOpen = false;" in panel
     assert 'monitoringPane.classList.toggle("dtx-monitoring-collapsed", !monitoringOpen)' in panel
     assert 'monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`' in panel
+    title_markup = panel.index('monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`')
+    chrome_render = panel.index("function renderMonitoringChrome()")
+    assert title_markup < chrome_render
+    assert "monitoringTitleBtn.innerHTML" not in panel[
+        chrome_render : panel.index("function renderMonitoringContent()")
+    ]
     assert 'monitoringOpen ? CHEVRON_DOWN_SVG : CARET_SVG' not in panel
     assert 'monitoringContent.id = `dtx-monitoring-content-${Math.random().toString(36).slice(2)}`' in panel
     assert 'monitoringTitleBtn.setAttribute("aria-controls", monitoringContent.id)' in panel

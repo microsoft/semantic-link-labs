@@ -5359,7 +5359,7 @@ function render({ model, el }) {
     function makeLeaf(iconSvg, name, hidden, dataType, dragText, description, pad, meta) {
         const leaf = document.createElement("div");
         leaf.className = "dtx-tree-leaf";
-        leaf.style.paddingLeft = (pad == null ? 30 : pad) + "px";
+        leaf.style.paddingLeft = (pad == null ? 6 : pad) + "px";
         const tip = description ? description : name;
         const typeHtml = dataType
             ? `<span class="dtx-tree-type" title="${escapeHtml(dataType)}">${escapeHtml(dataType)}</span>`
@@ -5426,7 +5426,7 @@ function render({ model, el }) {
     }
 
     function renderFolderTree(parentEl, node, build, depth) {
-        const pad = 30 + depth * 14;
+        const pad = 6 + depth * 14;
         const folderNames = Array.from(node.folders.keys()).sort(
             (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
         for (const fname of folderNames) {
@@ -8143,6 +8143,10 @@ function render({ model, el }) {
     const monitoringTitleBtn = document.createElement("button");
     monitoringTitleBtn.type = "button";
     monitoringTitleBtn.className = "dtx-monitoring-title-btn";
+    monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`
+        + `<span class="dtx-monitoring-activity">${ACTIVITY_SVG}</span>`
+        + `<span>Workspace monitoring</span>`
+        + `<span class="dtx-monitoring-subtitle">· slowest recent queries</span>`;
     monitoringHead.appendChild(monitoringTitleBtn);
     const monitoringControls = document.createElement("div");
     monitoringControls.className = "dtx-monitoring-controls";
@@ -8219,10 +8223,6 @@ function render({ model, el }) {
         monitoringShowBtn.title = showLabel;
         monitoringShowBtn.setAttribute("aria-label", showLabel);
         monitoringShowBtn.setAttribute("aria-pressed", String(monitoringVisible));
-        monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`
-            + `<span class="dtx-monitoring-activity">${ACTIVITY_SVG}</span>`
-            + `<span>Workspace monitoring</span>`
-            + `<span class="dtx-monitoring-subtitle">· slowest recent queries</span>`;
         monitoringTitleBtn.setAttribute("aria-expanded", String(monitoringOpen));
         monitoringControls.style.display = monitoringOpen ? "" : "none";
         monitoringActions.style.display = monitoringOpen ? "" : "none";
@@ -8243,6 +8243,8 @@ function render({ model, el }) {
         const error = String(model.get("workspace_monitoring_error") || "");
         const columns = model.get("workspace_monitoring_columns") || [];
         const rows = model.get("workspace_monitoring_rows") || [];
+        const hasQueryOutput = loaded && enabled && !loading && !error && rows.length > 0;
+        monitoringSearchInput.hidden = !hasQueryOutput;
         monitoringReloadBtn.disabled = loading || model.get("dataset_chosen") !== true;
         if (error) {
             monitoringContent.innerHTML = `<div class="dtx-monitoring-empty dtx-monitoring-error">`

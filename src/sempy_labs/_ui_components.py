@@ -176,10 +176,9 @@ ICONS: dict[str, str] = {
     ),
     "level": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
-        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
-        'stroke-linejoin="round" aria-hidden="true">'
-        '<path d="M4 3v7.5c0 .7.55 1.25 1.25 1.25H12"/>'
-        '<path d="M9.5 9.5L12 11.75 9.5 14"/></svg>'
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'aria-hidden="true">'
+        '<path d="M2.5 4h11M5.5 8h8M8.5 12h5"/></svg>'
     ),
     "play": (
         '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">'
