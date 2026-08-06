@@ -171,9 +171,11 @@ def refresh_sql_endpoint_metadata(
         "Error Code": "string",
         "Error Message": "string",
     }
+    
+    result_value = result.get("value", [])
 
-    if result:
-        df = pd.json_normalize(result.get("value"))
+    if result_value:
+        df = pd.json_normalize(result_value)
 
         # Extract error code and message, set to None if no error
         df["Error Code"] = df.get("error.errorCode", None)
