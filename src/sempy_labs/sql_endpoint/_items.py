@@ -171,7 +171,7 @@ def refresh_sql_endpoint_metadata(
         "Error Code": "string",
         "Error Message": "string",
     }
-    
+
     result_value = result.get("value", [])
 
     if result_value:
