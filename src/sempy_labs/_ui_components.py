@@ -363,6 +363,7 @@ ICONS: dict[str, str] = {
         '<path d="M2.6 8a5.4 5.4 0 1 0 1.7-3.9"/>'
         '<path d="M2.5 2.8v2.6h2.6"/>'
         '<path d="M8 5.2V8l2 1.4"/></svg>'
+    ),
     "scan_search": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -543,6 +544,13 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/>'
         '<path d="M5.2 7.4L8 10.2l2.8-2.8"/><path d="M8 10v-7.6"/></svg>'
+    ),
+    "trash": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2.5 4.5h11M6 2.5h4M4.5 4.5l.6 9h5.8l.6-9"/>'
+        '<path d="M6.5 7v4M9.5 7v4"/></svg>'
     ),
 }
 
