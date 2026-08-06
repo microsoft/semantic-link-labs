@@ -20,6 +20,9 @@ def test_dax_model_picker_source_has_valid_python_syntax():
 
 def test_no_dataset_uses_searchable_theme_aware_pickers():
     source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
     picker_start = source.index("// ---------- Model picker (first screen")
     picker_end = source.index("// ---------- Query options + editor ----------", picker_start)
     picker_source = source[picker_start:picker_end]
@@ -43,6 +46,8 @@ def test_no_dataset_uses_searchable_theme_aware_pickers():
             ".dtx .dtx-picker-field .slls-ss-panel"
         )
     ]
+    assert '"__SLLS_SS_CARET__", ICONS["chevron_down"]' in ui_source
+    assert ".slls-ss.slls-ss-open .slls-ss-caret { transform: rotate(180deg); }" in ui_source
 
 
 def test_header_view_actions_are_right_aligned_with_theme_last():

@@ -1021,9 +1021,9 @@ SEARCH_SELECT_CSS: str = """\
 .slls-ss-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .slls-ss-value { flex: 1 1 auto; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slls-ss-value.slls-ss-placeholder { color: var(--ui-text-tertiary); }
-.slls-ss-caret { display: inline-flex; flex-shrink: 0; color: var(--ui-text-tertiary); transform: rotate(90deg); transition: transform 140ms ease; }
-.slls-ss-caret svg { display: block; width: 15px; height: 15px; }
-.slls-ss.slls-ss-open .slls-ss-caret { transform: rotate(-90deg); }
+.slls-ss-caret { display: inline-flex; flex-shrink: 0; color: var(--ui-text-tertiary); transition: transform 140ms ease; }
+.slls-ss-caret svg { display: block; width: 16px; height: 16px; }
+.slls-ss.slls-ss-open .slls-ss-caret { transform: rotate(180deg); }
 .slls-ss-panel {
     display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70;
     min-width: 240px; padding: 6px; background: var(--ui-bg-solid);
@@ -1238,7 +1238,7 @@ function createSearchSelect(config) {
 """
 
 SEARCH_SELECT_JS = SEARCH_SELECT_JS.replace(
-    "__SLLS_SS_CARET__", ICONS["caret_right"]
+    "__SLLS_SS_CARET__", ICONS["chevron_down"]
 ).replace("__SLLS_SS_SEARCH__", ICONS["search"])
 
 
