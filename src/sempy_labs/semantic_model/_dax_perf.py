@@ -916,6 +916,35 @@ def _result_payload_from_df(df: pd.DataFrame, max_rows: int = 5000) -> dict:
     }
 
 
+def _prepare_embedded_vertipaq_dataframe(name: str, df: pd.DataFrame) -> pd.DataFrame:
+    """Filter Vertipaq Analyzer data for the embedded performance tool view."""
+
+    view = df.copy()
+    if name == "Columns":
+        if "Type" in view.columns:
+            view = view[
+                view["Type"].astype("string").str.casefold() != "rownumber"
+            ]
+        view = view.drop(columns=["Source Column"], errors="ignore")
+    elif name == "Partitions":
+        has_direct_lake = "Mode" in view.columns and view["Mode"].astype(
+            "string"
+        ).str.casefold().eq("directlake").any()
+        if not has_direct_lake:
+            view = view.drop(
+                columns=[
+                    "Direct Lake Type",
+                    "Source Name",
+                    "Source Type",
+                    "Source Workspace",
+                    "Source Schema Name",
+                    "Source Table Name",
+                ],
+                errors="ignore",
+            )
+    return view.reset_index(drop=True)
+
+
 def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
     """Collect a lightweight metadata tree of the semantic model for the
     sidebar (tables → columns / measures / hierarchies)."""
@@ -2888,6 +2917,10 @@ def _visualize_dax_test(
     gap: 12px;
     padding: 4px 24px 10px 24px;
 }}
+.dtx .dtx-vp-seg {{
+    margin: 0 24px 10px 24px;
+    width: fit-content;
+}}
 .dtx .dtx-view-title {{
     font-size: 11px;
     font-weight: 600;
@@ -3308,6 +3341,25 @@ def _visualize_dax_test(
 .dtx .dtx-vertipaq-table th[data-vertipaq-sort] {{ cursor: pointer; user-select: none; }}
 .dtx .dtx-vertipaq-table th[data-vertipaq-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
 .dtx .dtx-vertipaq-table th[data-vertipaq-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
+.dtx .dtx-vertipaq-table .dtx-vp-frozen {{
+    position: sticky;
+    left: 0;
+    background: var(--ui-bg);
+}}
+.dtx .dtx-vertipaq-table tbody tr:nth-child(even) .dtx-vp-frozen {{
+    background: var(--ui-bg-tertiary);
+}}
+.dtx .dtx-vertipaq-table tbody tr:hover .dtx-vp-frozen {{
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-vertipaq-table td.dtx-vp-frozen {{ z-index: 2; }}
+.dtx .dtx-vertipaq-table th.dtx-vp-frozen {{
+    z-index: 5;
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-vertipaq-table .dtx-vp-frozen-edge {{
+    box-shadow: inset -1px 0 0 var(--ui-border-strong);
+}}
 .dtx tbody tr {{ background: var(--ui-bg); }}
 .dtx tbody td {{
     padding: 9px 16px;
@@ -8802,7 +8854,7 @@ function render({ model, el }) {
     const vpSeg = document.createElement("div");
     vpSeg.className = "dtx-seg dtx-vp-seg";
     vpSeg.style.display = "none";
-    viewToolbar.insertBefore(vpSeg, seg);
+    main.appendChild(vpSeg);
 
     function buildVertipaqSeg() {
         const sections = model.get("vertipaq_sections") || [];
@@ -9077,6 +9129,7 @@ function render({ model, el }) {
             handleClass: "dtx-column-resizer",
             resizableClass: "dtx-resizable",
             resizingClass: "dtx-resizing",
+            onWidthsChanged: updateVertipaqFrozen,
         });
     }
     function enhanceOutputTables() {
@@ -9727,6 +9780,22 @@ function render({ model, el }) {
     }
 
     const vertipaqSortBySection = new Map();
+    function updateVertipaqFrozen(table) {
+        if (!table?.classList.contains("dtx-vertipaq-table")) return;
+        const headers = Array.from(table.querySelectorAll("thead th"));
+        const rows = table.querySelectorAll("tbody tr");
+        let left = 0;
+        headers.forEach((header, index) => {
+            if (!header.classList.contains("dtx-vp-frozen")) return;
+            const offset = `${left}px`;
+            header.style.left = offset;
+            rows.forEach(row => {
+                if (row.cells[index]) row.cells[index].style.left = offset;
+            });
+            left += header.getBoundingClientRect().width;
+        });
+    }
+
     function renderVertipaqTable() {
         if (model.get("vertipaq_loading") === true) {
             tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
@@ -9741,6 +9810,19 @@ function render({ model, el }) {
         if (!section) section = sections[0];
         const cols = section.columns || [];
         const rows = section.rows || [];
+        const frozenNames = {
+            Tables: ["Table Name"],
+            Partitions: ["Table Name", "Partition Name"],
+            Columns: ["Table Name", "Column Name"],
+        }[section.name] || [];
+        const frozenIndexes = cols
+            .map((column, index) => frozenNames.includes(column) ? index : -1)
+            .filter(index => index >= 0);
+        const frozenEdge = frozenIndexes.length
+            ? frozenIndexes[frozenIndexes.length - 1] : -1;
+        const frozenClasses = index => frozenIndexes.includes(index)
+            ? ` dtx-vp-frozen${index === frozenEdge ? " dtx-vp-frozen-edge" : ""}`
+            : "";
         const parseNumeric = value => {
             if (typeof value === "number" && !Number.isFinite(value)) return null;
             if (typeof value !== "number" && typeof value !== "string") return null;
@@ -9812,7 +9894,7 @@ function render({ model, el }) {
         }
         const head = cols.map((column, index) => {
             const direction = sortState?.index === index ? sortState.direction : "none";
-            return `<th scope="col" data-vertipaq-sort="${index}" tabindex="0" aria-sort="${direction}">${escapeHtml(String(column))}</th>`;
+            return `<th class="${frozenClasses(index).trim()}" scope="col" data-vertipaq-sort="${index}" tabindex="0" aria-sort="${direction}">${escapeHtml(String(column))}</th>`;
         }).join("");
         const displayValue = (value, index) => {
             if (isBlank(value)) return "";
@@ -9824,7 +9906,7 @@ function render({ model, el }) {
             body = `<tr><td colspan="${Math.max(cols.length, 1)}" class="dtx-empty">No rows.</td></tr>`;
         } else {
             body = viewRows.map(({ row }) => `<tr>`
-                + row.map((value, index) => `<td class="${numericColumns[index] ? "dtx-num" : ""}">${escapeHtml(displayValue(value, index))}</td>`).join("")
+                + row.map((value, index) => `<td class="${numericColumns[index] ? "dtx-num" : ""}${frozenClasses(index)}">${escapeHtml(displayValue(value, index))}</td>`).join("")
                 + `</tr>`).join("");
         }
         tableWrap.innerHTML = `
@@ -9832,6 +9914,9 @@ function render({ model, el }) {
                 <thead><tr>${head}</tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
+        requestAnimationFrame(() => updateVertipaqFrozen(
+            tableWrap.querySelector(".dtx-vertipaq-table")
+        ));
         const sortColumn = header => {
             const index = Number(header.dataset.vertipaqSort);
             const direction = sortState?.index === index && sortState.direction === "ascending"
@@ -11622,7 +11707,8 @@ export default { render };
             widget.last_vertipaq = result  # type: ignore[attr-defined]
             sections = []
             for name, sdf in (result or {}).items():
-                payload = _result_payload_from_df(sdf)
+                embedded_df = _prepare_embedded_vertipaq_dataframe(str(name), sdf)
+                payload = _result_payload_from_df(embedded_df)
                 sections.append(
                     {
                         "name": str(name),

@@ -766,6 +766,39 @@ def test_vertipaq_output_sorts_numeric_columns_and_formats_numbers():
     assert ".dtx .dtx-vertipaq-table th[data-vertipaq-sort]" in source
 
 
+def test_embedded_vertipaq_layout_filters_and_freezes_identifier_columns():
+    source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
+    renderer = source[
+        source.index("const vertipaqSortBySection = new Map()") : source.index(
+            "function renderChart()"
+        )
+    ]
+    worker = source[
+        source.index("def _compute_vertipaq()") : source.index(
+            "def _on_vertipaq", source.index("def _compute_vertipaq()")
+        )
+    ]
+
+    assert "main.appendChild(vpSeg);" in source
+    assert "viewToolbar.insertBefore(vpSeg, seg);" not in source
+    assert 'Tables: ["Table Name"]' in renderer
+    assert 'Partitions: ["Table Name", "Partition Name"]' in renderer
+    assert 'Columns: ["Table Name", "Column Name"]' in renderer
+    assert 'classList.contains("dtx-vp-frozen")' in renderer
+    assert "onWidthsChanged: updateVertipaqFrozen" in source
+    assert 'typeof options.onWidthsChanged === "function"' in ui_source
+    assert '_prepare_embedded_vertipaq_dataframe(str(name), sdf)' in worker
+    assert 'view = view.drop(columns=["Source Column"], errors="ignore")' in source
+    assert '!= "rownumber"' in source
+    assert '"Direct Lake Type"' in source
+    assert '"Source Schema Name"' in source
+    assert '"Source Table Name"' in source
+    assert '.eq("directlake").any()' in source
+
+
 def test_trace_details_include_direct_query_and_optimizer_fields():
     source = _source()
     direct_query_schema = source[

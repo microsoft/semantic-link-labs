@@ -381,6 +381,9 @@ function sllsInstallColumnResizers(table, config) {
             colgroup.children[index].style.width = `${width}px`;
         });
         table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
+        if (typeof options.onWidthsChanged === "function") {
+            options.onWidthsChanged(table, [...widths]);
+        }
     }
 
     function contentWidth(index) {
