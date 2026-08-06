@@ -914,6 +914,9 @@ def test_define_measure_indents_measure_under_define():
 
 def test_output_tables_are_resizable_and_trace_history_is_sortable():
     source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
     table_setup = source[
         source.index("const outputColumnWidths = new Map()") : source.index(
             "const chartControls", source.index("const outputColumnWidths = new Map()")
@@ -926,9 +929,13 @@ def test_output_tables_are_resizable_and_trace_history_is_sortable():
     ]
 
     assert "function installColumnResizers(table)" in table_setup
-    assert 'handle.className = "dtx-column-resizer"' in table_setup
-    assert 'handle.addEventListener("pointerdown"' in table_setup
-    assert "outputColumnWidths.set(key, [...widths])" in table_setup
+    assert "sllsInstallColumnResizers(table" in table_setup
+    assert 'handleClass: "dtx-column-resizer"' in table_setup
+    assert "TABLE_COLUMN_RESIZE_JS" in ui_source
+    assert 'handle.addEventListener("pointerdown"' in ui_source
+    assert 'handle.addEventListener("dblclick"' in ui_source
+    assert "widths[index] = contentWidth(index)" in ui_source
+    assert "widthsStore.set(key, [...widths])" in ui_source
     assert "new MutationObserver(enhanceOutputTables)" in table_setup
     assert "outputTableObserver.disconnect();" in source
     assert ".dtx .dtx-column-resizer {{" in source
@@ -1239,6 +1246,10 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'date.toLocaleString()' in panel
     assert 'workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)' in source
     assert 'workspace_monitoring_rows = traitlets.List([]).tag(sync=True)' in source
+    assert 'workspace_monitoring_tokens = traitlets.List([]).tag(sync=True)' in source
+    assert 'const monitoringTokens = model.get("workspace_monitoring_tokens") || [];' in panel
+    assert '/^\\s*(?:EVALUATE|DEFINE)\\b/i.test(query)' in panel
+    assert 'renderDaxTokens(monitoringTokens[rowIndex] || [], query)' in panel
     assert '"SemanticModelLogs\\n"' in worker
     assert 'OperationName == "QueryEnd"' in worker
     assert 'EventText startswith "EVALUATE"' in worker
@@ -1251,6 +1262,7 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'workspace != model_ctx["workspace_id"]' in worker
     assert 'monitoring_df["ReportName"]' in worker
     assert 'monitoring_df["ReportWorkspace"]' in worker
+    assert '_monitoring_dax_spans(str(row[query_index] or ""))' in worker
     assert 'names="workspace_monitoring_trigger"' in source
     assert "widget.workspace_monitoring_loaded = False" in source
 

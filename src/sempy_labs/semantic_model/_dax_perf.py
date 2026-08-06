@@ -1608,6 +1608,21 @@ def _classify_dax_spans(dax_expression: str) -> list:
     return spans
 
 
+def _clean_monitoring_query(value: str) -> str:
+    """Return the Workspace Monitoring query exactly as displayed in the UI."""
+
+    return re.sub(r"\s*\[WaitTime:[^\]]*\]\s*$", "", value, flags=re.IGNORECASE).rstrip()
+
+
+def _monitoring_dax_spans(value: str) -> list:
+    """Classify a Workspace Monitoring query when it is DAX."""
+
+    query = _clean_monitoring_query(value)
+    if not re.match(r"^\s*(?:EVALUATE|DEFINE)\b", query, flags=re.IGNORECASE):
+        return []
+    return _classify_dax_spans(query)
+
+
 _FALLBACK_SEARCH_SELECT_CSS = r"""
 .slls-ss { position: relative; display: flex; width: 100%; }
 .slls-ss-btn {
@@ -1873,6 +1888,7 @@ def _visualize_dax_test(
     _UI_SEARCH_SELECT_JS = getattr(
         _ui_components, "SEARCH_SELECT_JS", _FALLBACK_SEARCH_SELECT_JS
     )
+    _UI_TABLE_COLUMN_RESIZE_JS = _ui_components.TABLE_COLUMN_RESIZE_JS
 
     # The DAX is intentionally NOT auto-formatted on load (formatting calls
     # the external DAX Formatter service and would slow down ``test()``).
@@ -3055,15 +3071,15 @@ def _visualize_dax_test(
     z-index: 2;
 }}
 .dtx .dtx-query-hl span {{ background: transparent; }}
-.dtx .dtx-query-hl .dtx-tk-function,
-.dtx .dtx-query-hl .dtx-tk-keyword {{ color: var(--ui-syntax-keyword) !important; }}
-.dtx .dtx-query-hl .dtx-tk-variable {{ color: var(--ui-syntax-variable) !important; }}
-.dtx .dtx-query-hl .dtx-tk-number {{ color: var(--ui-syntax-number) !important; }}
-.dtx .dtx-query-hl .dtx-tk-virtual_column {{ color: var(--ui-syntax-virtual-column) !important; }}
-.dtx .dtx-query-hl .dtx-tk-string {{ color: var(--ui-syntax-string) !important; }}
-.dtx .dtx-query-hl .dtx-tk-comment {{ color: var(--ui-syntax-comment) !important; font-style: italic; }}
-.dtx .dtx-query-hl .dtx-tk-operator,
-.dtx .dtx-query-hl .dtx-tk-punctuation {{ color: var(--ui-syntax-operator) !important; }}
+.dtx .dtx-tk-function,
+.dtx .dtx-tk-keyword {{ color: var(--ui-syntax-keyword) !important; }}
+.dtx .dtx-tk-variable {{ color: var(--ui-syntax-variable) !important; }}
+.dtx .dtx-tk-number {{ color: var(--ui-syntax-number) !important; }}
+.dtx .dtx-tk-virtual_column {{ color: var(--ui-syntax-virtual-column) !important; }}
+.dtx .dtx-tk-string {{ color: var(--ui-syntax-string) !important; }}
+.dtx .dtx-tk-comment {{ color: var(--ui-syntax-comment) !important; font-style: italic; }}
+.dtx .dtx-tk-operator,
+.dtx .dtx-tk-punctuation {{ color: var(--ui-syntax-operator) !important; }}
 .dtx .dtx-query {{
     width: 100%;
     min-height: 120px;
@@ -5099,7 +5115,8 @@ def _visualize_dax_test(
         "</svg>"
     ).replace("`", "\\`")
 
-    widget_js = _UI_SEARCH_SELECT_JS + "\n" + r"""
+    widget_js = (
+        _UI_SEARCH_SELECT_JS + "\n" + _UI_TABLE_COLUMN_RESIZE_JS + "\n" + r"""
 function escapeHtml(s) {
     return String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -8500,6 +8517,18 @@ function render({ model, el }) {
         }
     });
 
+    function renderDaxTokens(tokens, text) {
+        let total = 0;
+        for (const token of tokens) total += (token.text || "").length;
+        if (!tokens.length || total !== text.length) return escapeHtml(text);
+        return tokens.map(token => {
+            const tokenText = escapeHtml(token.text);
+            return token.kind
+                ? `<span class="dtx-tk-${token.kind}">${tokenText}</span>`
+                : tokenText;
+        }).join("");
+    }
+
     function renderHighlight() {
         const tokens = model.get("dax_tokens") || [];
         const text = textarea.value;
@@ -8515,20 +8544,9 @@ function render({ model, el }) {
             hl.scrollLeft = textarea.scrollLeft;
             return;
         }
-        let total = 0;
-        for (const t of tokens) total += (t.text || "").length;
-        if (tokens.length && total === text.length) {
-            hl.innerHTML = tokens.map(t => {
-                const txt = escapeHtml(t.text);
-                return t.kind
-                    ? `<span class="dtx-tk-${t.kind}">${txt}</span>`
-                    : txt;
-            }).join("") + "\n";
-        } else {
-            // Token list out of sync with current text (user is typing) —
-            // fall back to plain rendering until Python reclassifies.
-            hl.textContent = text + "\n";
-        }
+        // An out-of-sync token list (while the user is typing) falls back to
+        // escaped plain text until Python reclassifies the query.
+        hl.innerHTML = renderDaxTokens(tokens, text) + "\n";
         hl.scrollTop = textarea.scrollTop;
         hl.scrollLeft = textarea.scrollLeft;
     }
@@ -9052,54 +9070,13 @@ function render({ model, el }) {
         return `${tableName}:${headings}`;
     }
     function installColumnResizers(table) {
-        const headers = Array.from(table.querySelectorAll("thead tr:first-child th"));
-        if (!headers.length || table.dataset.resizable === "true") return;
-        table.dataset.resizable = "true";
-        const key = outputTableKey(table);
-        const saved = outputColumnWidths.get(key);
-        const colgroup = document.createElement("colgroup");
-        const widths = headers.map((header, index) =>
-            saved?.[index] || Number(header.dataset.columnWidth)
-                || Math.max(72, Math.ceil(header.getBoundingClientRect().width))
-        );
-        widths.forEach(width => {
-            const col = document.createElement("col");
-            col.style.width = `${width}px`;
-            colgroup.appendChild(col);
-        });
-        table.insertBefore(colgroup, table.firstChild);
-        table.style.tableLayout = "fixed";
-        table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
-        headers.forEach((header, index) => {
-            header.classList.add("dtx-resizable");
-            const handle = document.createElement("span");
-            handle.className = "dtx-column-resizer";
-            handle.setAttribute("role", "separator");
-            handle.setAttribute("aria-label", `Resize ${header.textContent.trim()} column`);
-            handle.addEventListener("pointerdown", event => {
-                event.preventDefault();
-                event.stopPropagation();
-                const startX = event.clientX;
-                const startWidth = widths[index];
-                handle.classList.add("dtx-resizing");
-                handle.setPointerCapture(event.pointerId);
-                const onMove = moveEvent => {
-                    widths[index] = Math.max(56, startWidth + moveEvent.clientX - startX);
-                    colgroup.children[index].style.width = `${widths[index]}px`;
-                    table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
-                };
-                const onEnd = () => {
-                    handle.classList.remove("dtx-resizing");
-                    outputColumnWidths.set(key, [...widths]);
-                    handle.removeEventListener("pointermove", onMove);
-                    handle.removeEventListener("pointerup", onEnd);
-                    handle.removeEventListener("pointercancel", onEnd);
-                };
-                handle.addEventListener("pointermove", onMove);
-                handle.addEventListener("pointerup", onEnd);
-                handle.addEventListener("pointercancel", onEnd);
-            });
-            header.appendChild(handle);
+        sllsInstallColumnResizers(table, {
+            widths: outputColumnWidths,
+            key: outputTableKey,
+            minWidth: 56,
+            handleClass: "dtx-column-resizer",
+            resizableClass: "dtx-resizable",
+            resizingClass: "dtx-resizing",
         });
     }
     function enhanceOutputTables() {
@@ -9228,6 +9205,7 @@ function render({ model, el }) {
         const error = String(model.get("workspace_monitoring_error") || "");
         const columns = model.get("workspace_monitoring_columns") || [];
         const rows = model.get("workspace_monitoring_rows") || [];
+        const monitoringTokens = model.get("workspace_monitoring_tokens") || [];
         const hasQueryOutput = loaded && enabled && !loading && !error && rows.length > 0;
         monitoringSearchInput.hidden = !hasQueryOutput;
         monitoringReloadBtn.disabled = loading || model.get("dataset_chosen") !== true;
@@ -9317,7 +9295,11 @@ function render({ model, el }) {
             const rawValue = row[index] == null ? "" : String(row[index]);
             if (index === queryIndex) {
                 const query = cleanDaxQuery(rawValue);
-                return `<td class="dtx-monitoring-query" data-monitoring-index="${rowIndex}" tabindex="0" role="button" title="Use this query"><pre>${escapeHtml(query)}</pre></td>`;
+                const isDax = /^\s*(?:EVALUATE|DEFINE)\b/i.test(query);
+                const queryHtml = isDax
+                    ? renderDaxTokens(monitoringTokens[rowIndex] || [], query)
+                    : escapeHtml(query);
+                return `<td class="dtx-monitoring-query" data-monitoring-index="${rowIndex}" tabindex="0" role="button" title="Use this query"><pre>${queryHtml}</pre></td>`;
             }
             return `<td>${escapeHtml(displayValue(column, rawValue))}</td>`;
         }).join("")}</tr>`).join("");
@@ -10244,6 +10226,7 @@ function render({ model, el }) {
     model.on("change:workspace_monitoring_error", renderMonitoringContent);
     model.on("change:workspace_monitoring_columns", renderMonitoringContent);
     model.on("change:workspace_monitoring_rows", renderMonitoringContent);
+    model.on("change:workspace_monitoring_tokens", renderMonitoringContent);
     model.on("change:dataset_name", renderMonitoringChrome);
     model.on("change:workspace_name", renderMonitoringChrome);
     model.on("change:query_plan_rows", renderTable);
@@ -10468,6 +10451,7 @@ function render({ model, el }) {
 }
 export default { render };
 """
+    )
     widget_js = (
         widget_js.replace("__DTX_SUN__", sun_icon)
         .replace("__DTX_MOON__", moon_icon)
@@ -10624,6 +10608,7 @@ export default { render };
         workspace_monitoring_error = traitlets.Unicode("").tag(sync=True)
         workspace_monitoring_columns = traitlets.List([]).tag(sync=True)
         workspace_monitoring_rows = traitlets.List([]).tag(sync=True)
+        workspace_monitoring_tokens = traitlets.List([]).tag(sync=True)
         close_trigger = traitlets.Int(0).tag(sync=True)
 
     initial_result = _result_payload_from_df(result_df)
@@ -10749,6 +10734,7 @@ export default { render };
         workspace_monitoring_error="",
         workspace_monitoring_columns=[],
         workspace_monitoring_rows=[],
+        workspace_monitoring_tokens=[],
         impersonation_mode=(
             "user" if effective_user_name else ("role" if role else "none")
         ),
@@ -11955,7 +11941,22 @@ export default { render };
                     "ReportName"
                 ].map(lambda value: str(widget.workspace_name or "") if value else "")
             payload = _result_payload_from_df(monitoring_df, max_rows=top_n)
+            query_index = next(
+                (
+                    index
+                    for index, column in enumerate(payload["columns"])
+                    if column.lower() == "eventtext"
+                ),
+                -1,
+            )
+            monitoring_tokens = [
+                _monitoring_dax_spans(str(row[query_index] or ""))
+                if query_index >= 0
+                else []
+                for row in payload["rows"]
+            ]
             widget.workspace_monitoring_columns = payload["columns"]
+            widget.workspace_monitoring_tokens = monitoring_tokens
             widget.workspace_monitoring_rows = payload["rows"]
             widget.workspace_monitoring_enabled = True
             widget.workspace_monitoring_loaded = True
@@ -11963,6 +11964,7 @@ export default { render };
             message = str(exc)
             if "Monitoring KQL database" in message:
                 widget.workspace_monitoring_columns = []
+                widget.workspace_monitoring_tokens = []
                 widget.workspace_monitoring_rows = []
                 widget.workspace_monitoring_enabled = False
                 widget.workspace_monitoring_loaded = True
@@ -12245,6 +12247,7 @@ export default { render };
         widget.workspace_monitoring_error = ""
         widget.workspace_monitoring_columns = []
         widget.workspace_monitoring_rows = []
+        widget.workspace_monitoring_tokens = []
         widget.query_executed = False
         # Reset impersonation so a stale role/user from a prior model isn't
         # reused against a model that may not define it.

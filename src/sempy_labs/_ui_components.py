@@ -355,6 +355,116 @@ ICONS: dict[str, str] = {
     ),
 }
 
+
+# Shared table-column resizing for interactive widgets. Call
+# ``sllsInstallColumnResizers(table, config)`` after rendering a table.
+TABLE_COLUMN_RESIZE_JS: str = r"""
+function sllsInstallColumnResizers(table, config) {
+    const options = config || {};
+    const headers = Array.from(table.querySelectorAll("thead tr:first-child th"));
+    if (!headers.length || table.dataset.resizable === "true") return;
+    table.dataset.resizable = "true";
+
+    const minWidth = Number(options.minWidth) || 56;
+    const widthsStore = options.widths || new Map();
+    const key = typeof options.key === "function"
+        ? options.key(table) : String(options.key || table.className || "table");
+    const saved = widthsStore.get(key);
+    const colgroup = document.createElement("colgroup");
+    const widths = headers.map((header, index) =>
+        saved?.[index] || Number(header.dataset.columnWidth)
+            || Math.max(minWidth, Math.ceil(header.getBoundingClientRect().width))
+    );
+
+    function applyWidths() {
+        widths.forEach((width, index) => {
+            colgroup.children[index].style.width = `${width}px`;
+        });
+        table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
+    }
+
+    function contentWidth(index) {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const cells = Array.from(table.rows)
+            .map(row => row.cells[index])
+            .filter(Boolean);
+        let widest = minWidth;
+        cells.forEach(cell => {
+            const style = getComputedStyle(cell);
+            context.font = style.font;
+            const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
+            const horizontalChrome =
+                (Number.parseFloat(style.paddingLeft) || 0)
+                + (Number.parseFloat(style.paddingRight) || 0)
+                + (Number.parseFloat(style.borderLeftWidth) || 0)
+                + (Number.parseFloat(style.borderRightWidth) || 0);
+            const lines = String(cell.textContent || "").split(/\r?\n/);
+            lines.forEach(line => {
+                const renderedLine = style.textTransform === "uppercase"
+                    ? line.toUpperCase() : line;
+                const spacing = Math.max(0, renderedLine.length - 1) * letterSpacing;
+                widest = Math.max(
+                    widest,
+                    Math.ceil(context.measureText(renderedLine).width + spacing + horizontalChrome + 2),
+                );
+            });
+        });
+        return widest;
+    }
+
+    widths.forEach(width => {
+        const col = document.createElement("col");
+        col.style.width = `${width}px`;
+        colgroup.appendChild(col);
+    });
+    table.insertBefore(colgroup, table.firstChild);
+    table.style.tableLayout = "fixed";
+    applyWidths();
+
+    headers.forEach((header, index) => {
+        header.classList.add(options.resizableClass || "slls-resizable");
+        const handle = document.createElement("span");
+        handle.className = options.handleClass || "slls-column-resizer";
+        handle.setAttribute("role", "separator");
+        handle.setAttribute("aria-label", `Resize ${header.textContent.trim()} column`);
+        handle.addEventListener("dblclick", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            widths[index] = contentWidth(index);
+            applyWidths();
+            widthsStore.set(key, [...widths]);
+        });
+        handle.addEventListener("pointerdown", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const startX = event.clientX;
+            const startWidth = widths[index];
+            handle.classList.add(options.resizingClass || "slls-resizing");
+            handle.setPointerCapture(event.pointerId);
+            const onMove = moveEvent => {
+                widths[index] = Math.max(
+                    minWidth,
+                    startWidth + moveEvent.clientX - startX,
+                );
+                applyWidths();
+            };
+            const onEnd = () => {
+                handle.classList.remove(options.resizingClass || "slls-resizing");
+                widthsStore.set(key, [...widths]);
+                handle.removeEventListener("pointermove", onMove);
+                handle.removeEventListener("pointerup", onEnd);
+                handle.removeEventListener("pointercancel", onEnd);
+            };
+            handle.addEventListener("pointermove", onMove);
+            handle.addEventListener("pointerup", onEnd);
+            handle.addEventListener("pointercancel", onEnd);
+        });
+        header.appendChild(handle);
+    });
+}
+"""
+
 # Backward-compatible name used by older widget implementations.
 ICONS["builder"] = ICONS["hammer"]
 
