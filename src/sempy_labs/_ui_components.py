@@ -32,6 +32,13 @@ ICONS: dict[str, str] = {
         '<rect x="2.5" y="3" width="11" height="10" rx="1.8"/>'
         '<path d="M2.5 6.75h11M8 6.75v6.25"/></svg>'
     ),
+    "calculation_group": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="3" width="11" height="10" rx="1.8"/>'
+        '<path d="M2.5 6.75h11M5.25 9.5h5.5M5.25 11.4h3.5"/></svg>'
+    ),
     "column": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -59,6 +66,13 @@ ICONS: dict[str, str] = {
         '<circle cx="3.75" cy="12.75" r="1.4"/>'
         '<circle cx="12.25" cy="12.75" r="1.4"/>'
         '<path d="M8 4.65V8M8 8H3.75v3.35M8 8h4.25v3.35"/></svg>'
+    ),
+    "calculation_item": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2.5" y="2.5" width="11" height="11" rx="2.4"/>'
+        '<path d="M9.75 5.75H7.4q-.9 0-.9.95V11M5.6 8.2h2.6"/></svg>'
     ),
     "partition": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
@@ -137,11 +151,92 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>'
     ),
+    "info": (
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/><path d="M8 7.25v4"/>'
+        '<path d="M8 4.5h.01"/></svg>'
+    ),
     "search": (
         '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">'
         '<path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 '
         "0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 "
         '0 012 8z" clip-rule="evenodd"/></svg>'
+    ),
+    "dax_performance": (
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M4.1 17.5a8.5 8.5 0 1 1 15.8 0"/>'
+        '<path d="m12 14.5 4.1-4.8"/>'
+        '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
+        '</svg>'
+    ),
+    "activity": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 12h4l3-9 4 18 3-9h4"/></svg>'
+    ),
+    "cpu": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect width="16" height="16" x="4" y="4" rx="2"/>'
+        '<rect width="6" height="6" x="9" y="9" rx="1"/>'
+        '<path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/>'
+        '</svg>'
+    ),
+    "database": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<ellipse cx="12" cy="5" rx="9" ry="3"/>'
+        '<path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>'
+        '<path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>'
+        '</svg>'
+    ),
+    "vertipaq": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="8" cy="3.3" rx="5.3" ry="1.7"/>'
+        '<path d="M2.7 3.3v9.4c0 .94 2.37 1.7 5.3 1.7s5.3-.76 5.3-1.7V3.3"/>'
+        '<circle cx="7" cy="7.4" r="3.1"/>'
+        '<path d="M5.4 6.5a2.1 2.1 0 0 0-.2 2.3"/>'
+        '<path d="M9.3 9.7 12.6 13"/></svg>'
+    ),
+    "zap": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M4 14a1 1 0 0 1-.78-1.63l9-11a.5.5 0 0 1 .87.43L11.92 8h7.18a1 1 0 0 1 .78 1.63l-9 11a.5.5 0 0 1-.87-.43l1.17-6.2z"/>'
+        '</svg>'
+    ),
+    "list_tree": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/>'
+        '<path d="M3 6v4c0 1.1.9 2 2 2h3"/>'
+        '<path d="M3 10v6c0 1.1.9 2 2 2h3"/></svg>'
+    ),
+    "git_branch": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<line x1="6" x2="6" y1="3" y2="15"/>'
+        '<circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>'
+        '<path d="M18 9a9 9 0 0 1-9 9"/></svg>'
+    ),
+    "workflow": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect width="8" height="8" x="3" y="3" rx="2"/>'
+        '<path d="M7 11v4a2 2 0 0 0 2 2h4"/>'
+        '<rect width="8" height="8" x="13" y="13" rx="2"/></svg>'
     ),
     "plus": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
@@ -152,6 +247,159 @@ ICONS: dict[str, str] = {
         "<svg width='8' height='10' viewBox='0 0 8 10' fill='currentColor'>"
         "<path d='M1 0l6 5-6 5V0z'/></svg>"
     ),
+    "folder": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2 4.25c0-.7.55-1.25 1.25-1.25h3l1.5 1.75h4.75c.7 0 '
+        "1.25.55 1.25 1.25v6c0 .7-.55 1.25-1.25 1.25H3.25C2.55 13.25 2 "
+        '12.7 2 12V4.25z"/></svg>'
+    ),
+    "level": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'aria-hidden="true">'
+        '<path d="M2.5 4h11M5.5 8h8M8.5 12h5"/></svg>'
+    ),
+    "play": (
+        '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">'
+        '<path d="M4 2.5v11l9-5.5z"/></svg>'
+    ),
+    "stop": (
+        '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">'
+        '<rect x="4" y="4" width="8" height="8" rx="1.2"/></svg>'
+    ),
+    "eraser": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6c1 1 1 2.5 0 3.4L11 21"/>'
+        '<path d="M22 21H7"/><path d="m5 11 9 9"/></svg>'
+    ),
+    "trash": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 6h18"/><path d="M8 6V4h8v2"/>'
+        '<path d="M19 6l-1 14H6L5 6"/>'
+        '<path d="M10 11v5M14 11v5"/></svg>'
+    ),
+    "camera": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3z"/>'
+        '<circle cx="12" cy="13" r="3"/></svg>'
+    ),
+    "report_file": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+        '<path d="M14 2v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg>'
+    ),
+    "chevron_down": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'
+    ),
+    "check": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
+    ),
+    "refresh": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89"/>'
+        '<path d="M13.5 2.5v3h-3"/></svg>'
+    ),
+    "swap": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M2.5 5.5h9"/><path d="M9 3l2.5 2.5L9 8"/>'
+        '<path d="M13.5 10.5h-9"/><path d="M7 8l-2.5 2.5L7 13"/></svg>'
+    ),
+    "sort_asc": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M5 12.5V3.5"/><path d="M2.5 6L5 3.5L7.5 6"/></svg>'
+    ),
+    "sort_desc": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M5 3.5v9"/><path d="M2.5 10L5 12.5L7.5 10"/></svg>'
+    ),
+    "panel_collapse": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="3" width="12" height="10" rx="1.5"/>'
+        '<path d="M6.5 3v10"/><path d="M10.5 6.5L8.5 8l2 1.5"/></svg>'
+    ),
+    "panel_expand": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="3" width="12" height="10" rx="1.5"/>'
+        '<path d="M6.5 3v10"/><path d="M8.5 6.5L10.5 8l-2 1.5"/></svg>'
+    ),
+    "hammer": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="m15 12-9.373 9.373a1 1 0 0 1-3.001-3L12 9"/>'
+        '<path d="m18 15 4-4"/>'
+        '<path d="m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172v-.344a2 2 0 0 0-.586-1.414l-1.657-1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5"/></svg>'
+    ),
+    "shield_check": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/>'
+        '<path d="m9 12 2 2 4-4"/></svg>'
+    ),
+    "users": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>'
+        '<circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>'
+    ),
+    "user": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/>'
+        '<circle cx="12" cy="7" r="4"/></svg>'
+    ),
+    "close": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg>'
+    ),
+    # A "maximize / full-screen" mark (four outward corner arrows) used by the
+    # header button that expands the whole tool to fill the screen.
+    "fullscreen": (
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 9 V5 a2 2 0 0 1 2 -2 h4"/>'
+        '<path d="M21 9 V5 a2 2 0 0 0 -2 -2 h-4"/>'
+        '<path d="M3 15 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M21 15 v4 a2 2 0 0 1 -2 2 h-4"/></svg>'
+    ),
+    # An "exit full-screen" mark (four inward corner arrows).
+    "fullscreen_exit": (
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9 3 v4 a2 2 0 0 1 -2 2 H3"/>'
+        '<path d="M15 3 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M9 21 v-4 a2 2 0 0 0 -2 -2 H3"/>'
+        '<path d="M15 21 v-4 a2 2 0 0 1 2 -2 h4"/></svg>'
     "back": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
@@ -555,6 +803,122 @@ ICONS: dict[str, str] = {
 }
 
 
+# Shared table-column resizing for interactive widgets. Call
+# ``sllsInstallColumnResizers(table, config)`` after rendering a table.
+TABLE_COLUMN_RESIZE_JS: str = r"""
+function sllsInstallColumnResizers(table, config) {
+    const options = config || {};
+    const headers = Array.from(table.querySelectorAll("thead tr:first-child th"));
+    if (!headers.length || table.dataset.resizable === "true") return;
+    table.dataset.resizable = "true";
+
+    const minWidth = Number(options.minWidth) || 56;
+    const widthsStore = options.widths || new Map();
+    const key = typeof options.key === "function"
+        ? options.key(table) : String(options.key || table.className || "table");
+    const saved = widthsStore.get(key);
+    const colgroup = document.createElement("colgroup");
+    const widths = headers.map((header, index) =>
+        saved?.[index] || Number(header.dataset.columnWidth)
+            || Math.max(minWidth, Math.ceil(header.getBoundingClientRect().width))
+    );
+
+    function applyWidths() {
+        widths.forEach((width, index) => {
+            colgroup.children[index].style.width = `${width}px`;
+        });
+        table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
+        if (typeof options.onWidthsChanged === "function") {
+            options.onWidthsChanged(table, [...widths]);
+        }
+    }
+
+    function contentWidth(index) {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const cells = Array.from(table.rows)
+            .map(row => row.cells[index])
+            .filter(Boolean);
+        let widest = minWidth;
+        cells.forEach(cell => {
+            const style = getComputedStyle(cell);
+            context.font = style.font;
+            const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
+            const horizontalChrome =
+                (Number.parseFloat(style.paddingLeft) || 0)
+                + (Number.parseFloat(style.paddingRight) || 0)
+                + (Number.parseFloat(style.borderLeftWidth) || 0)
+                + (Number.parseFloat(style.borderRightWidth) || 0);
+            const lines = String(cell.textContent || "").split(/\r?\n/);
+            lines.forEach(line => {
+                const renderedLine = style.textTransform === "uppercase"
+                    ? line.toUpperCase() : line;
+                const spacing = Math.max(0, renderedLine.length - 1) * letterSpacing;
+                widest = Math.max(
+                    widest,
+                    Math.ceil(context.measureText(renderedLine).width + spacing + horizontalChrome + 2),
+                );
+            });
+        });
+        return widest;
+    }
+
+    widths.forEach(width => {
+        const col = document.createElement("col");
+        col.style.width = `${width}px`;
+        colgroup.appendChild(col);
+    });
+    table.insertBefore(colgroup, table.firstChild);
+    table.style.tableLayout = "fixed";
+    applyWidths();
+
+    headers.forEach((header, index) => {
+        header.classList.add(options.resizableClass || "slls-resizable");
+        const handle = document.createElement("span");
+        handle.className = options.handleClass || "slls-column-resizer";
+        handle.setAttribute("role", "separator");
+        handle.setAttribute("aria-label", `Resize ${header.textContent.trim()} column`);
+        handle.addEventListener("dblclick", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            widths[index] = contentWidth(index);
+            applyWidths();
+            widthsStore.set(key, [...widths]);
+        });
+        handle.addEventListener("pointerdown", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const startX = event.clientX;
+            const startWidth = widths[index];
+            handle.classList.add(options.resizingClass || "slls-resizing");
+            handle.setPointerCapture(event.pointerId);
+            const onMove = moveEvent => {
+                widths[index] = Math.max(
+                    minWidth,
+                    startWidth + moveEvent.clientX - startX,
+                );
+                applyWidths();
+            };
+            const onEnd = () => {
+                handle.classList.remove(options.resizingClass || "slls-resizing");
+                widthsStore.set(key, [...widths]);
+                handle.removeEventListener("pointermove", onMove);
+                handle.removeEventListener("pointerup", onEnd);
+                handle.removeEventListener("pointercancel", onEnd);
+            };
+            handle.addEventListener("pointermove", onMove);
+            handle.addEventListener("pointerup", onEnd);
+            handle.addEventListener("pointercancel", onEnd);
+        });
+        header.appendChild(handle);
+    });
+}
+"""
+
+# Backward-compatible name used by older widget implementations.
+ICONS["builder"] = ICONS["hammer"]
+
+
 # ---------------------------------------------------------------------------
 # Theme CSS variables (Light + Dark palettes)
 # ---------------------------------------------------------------------------
@@ -563,6 +927,7 @@ LIGHT_THEME_VARS: str = """\
 --ui-bg: #ffffff;
 --ui-bg-secondary: #f5f5f7;
 --ui-bg-tertiary: #fbfbfd;
+--ui-bg-hover: #f0f0f2;
 --ui-surface: rgba(255, 255, 255, 0.85);
 --ui-surface-2: rgba(0, 0, 0, 0.025);
 --ui-border: rgba(0, 0, 0, 0.08);
@@ -573,6 +938,14 @@ LIGHT_THEME_VARS: str = """\
 --ui-accent: #0071e3;
 --ui-accent-hover: #0a6cdb;
 --ui-accent-soft: rgba(0, 113, 227, 0.12);
+--ui-on-accent: #ffffff;
+--ui-danger: #dc2626;
+--ui-danger-hover: #b91c1c;
+--ui-danger-bg: rgba(220, 38, 38, 0.10);
+--ui-danger-border: rgba(220, 38, 38, 0.35);
+--ui-danger-text: #b91c1c;
+--ui-warning-bg: #fef3c7;
+--ui-warning-text: #92400e;
 --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
@@ -583,6 +956,7 @@ DARK_THEME_VARS: str = """\
 --ui-bg: #1e1e22;
 --ui-bg-secondary: #2a2a30;
 --ui-bg-tertiary: #26262b;
+--ui-bg-hover: #2c2c33;
 --ui-surface: rgba(255, 255, 255, 0.04);
 --ui-surface-2: rgba(255, 255, 255, 0.03);
 --ui-border: rgba(255, 255, 255, 0.08);
@@ -593,6 +967,14 @@ DARK_THEME_VARS: str = """\
 --ui-accent: #0A84FF;
 --ui-accent-hover: #1a8cff;
 --ui-accent-soft: rgba(10, 132, 255, 0.18);
+--ui-on-accent: #ffffff;
+--ui-danger: #dc2626;
+--ui-danger-hover: #b91c1c;
+--ui-danger-bg: rgba(248, 113, 113, 0.12);
+--ui-danger-border: rgba(248, 113, 113, 0.35);
+--ui-danger-text: #fca5a5;
+--ui-warning-bg: rgba(250, 204, 21, 0.22);
+--ui-warning-text: #fde047;
 --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4);
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
@@ -600,6 +982,25 @@ DARK_THEME_VARS: str = """\
 
 
 # ---------------------------------------------------------------------------
+# DAX / code syntax-highlight palette
+# ---------------------------------------------------------------------------
+# Theme-independent token colors used to colorize DAX (or similar code) in
+# editors/highlighters. The values are tuned to read well on both the light
+# and dark surfaces above, so the same block is injected once into a widget's
+# base scope (it is not overridden in dark mode). Reference these via the
+# ``--ui-syntax-*`` custom properties — never hard-code the hex values.
+SYNTAX_HIGHLIGHT_VARS: str = """\
+--ui-syntax-keyword: #5E9EFF;
+--ui-syntax-function: #5E9EFF;
+--ui-syntax-variable: #5AC8B8;
+--ui-syntax-number: #FF9F45;
+--ui-syntax-virtual-column: #FF7A8A;
+--ui-syntax-string: #9BB87A;
+--ui-syntax-comment: #6A9955;
+--ui-syntax-operator: #A6A6A6;
+--ui-syntax-punctuation: #A6A6A6;
+"""
+
 # Searchable single-select (the standard workspace / semantic model picker)
 # ---------------------------------------------------------------------------
 # Every tool which asks the user to pick a workspace, a semantic model or any
@@ -919,6 +1320,25 @@ HEADER_CSS: str = """\
 }
 .sl-theme-btn:active { transform: scale(0.95); }
 .sl-theme-btn svg { display: block; width: 18px; height: 18px; }
+.sl-change-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    margin-top: 6px;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+}
+.sl-change-btn svg { display: block; width: 15px; height: 15px; }
+.sl-change-btn:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
 """
 
 
@@ -1021,6 +1441,7 @@ def render_header_html(
     theme_btn_id: Optional[str] = None,
     dark_mode: bool = False,
     fullscreen_btn_id: Optional[str] = None,
+    picker_btn_id: Optional[str] = None,
     title_icon: Optional[str] = None,
     extra_buttons: Optional[List[Dict[str, str]]] = None,
 ) -> str:
@@ -1041,6 +1462,12 @@ def render_header_html(
     dark_mode : bool, default=False
         Controls the initial icon shown on the theme toggle button.
     fullscreen_btn_id : str, default=None
+        If provided, includes a full-screen toggle button with this DOM id
+        (placed after the theme toggle). Pair with
+        :func:`fullscreen_toggle_script` to wire up behavior.
+    picker_btn_id : str, default=None
+        If provided, includes a small "change" (swap) button with this DOM id
+        in the title area. Used to reveal/toggle an interactive picker.
         If provided, includes a full-screen toggle button with this DOM id,
         placed immediately to the left of the theme toggle button. Pair with
         :func:`fullscreen_toggle_script` to wire up behavior.
@@ -1074,6 +1501,12 @@ def render_header_html(
             sub = f"<b>{ds}</b>" if ds else ws
         parts.append(f'<div class="sl-subtitle">{sub}</div>')
 
+    if picker_btn_id:
+        parts.append(
+            f'<button type="button" class="sl-change-btn" id="{picker_btn_id}" '
+            f'title="Change table" aria-label="Change table">{ICONS["swap"]}</button>'
+        )
+
     parts.append("</div>")  # titlewrap
 
     for btn in extra_buttons or []:
@@ -1102,6 +1535,13 @@ def render_header_html(
         parts.append(
             f'<button type="button" class="sl-theme-btn" id="{theme_btn_id}" '
             f'title="{label}" aria-label="{label}">{icon}</button>'
+        )
+
+    if fullscreen_btn_id:
+        parts.append(
+            f'<button type="button" class="sl-theme-btn" id="{fullscreen_btn_id}" '
+            f'title="Full screen" aria-label="Full screen">'
+            f'{ICONS["fullscreen"]}</button>'
         )
 
     parts.append("</div>")
@@ -1291,6 +1731,270 @@ def fullscreen_toggle_script(
 }})();
 </script>
 """
+
+
+# ---------------------------------------------------------------------------
+# Full-screen toggle (expand a widget to fill the screen)
+# ---------------------------------------------------------------------------
+# Shared JavaScript body that wires a full-screen toggle button. It assumes
+# the following identifiers are already in scope wherever it is embedded:
+#   - ``root``            : the widget's root DOM element (the element that
+#                           goes full screen).
+#   - ``btn``             : the toggle <button> element.
+#   - ``fullscreenClass`` : CSS class applied to ``root`` for the CSS-overlay
+#                           fallback (see :func:`fullscreen_css`).
+#   - ``enterSvg`` / ``exitSvg`` : button icon markup for the two states.
+#
+# This is a faithful port of the full-screen toggle in
+# ``sempy_labs.semantic_model._test_dax.test`` — the reference implementation
+# that behaves correctly across hosts. It uses the native Fullscreen API when
+# available (and allowed by the host), otherwise falls back to a fixed-position
+# CSS overlay (toggled via ``fullscreenClass``) that fills the viewport. For
+# this to deliver real, edge-to-edge full screen, the widget must render in the
+# notebook output *webview's* light DOM (i.e. as an ``anywidget`` or via
+# :func:`display_html_widget`) rather than the nested, sandboxed ``srcdoc``
+# iframe used for raw ``display(HTML)`` output — the webview permits the
+# Fullscreen API, the sandbox iframe does not.
+_FULLSCREEN_BODY: str = r"""
+    var cssFullscreen = false;
+    function isFullscreen() {
+        return cssFullscreen || document.fullscreenElement === root;
+    }
+    function renderFullscreenBtn() {
+        var on = isFullscreen();
+        btn.innerHTML = on ? exitSvg : enterSvg;
+        var label = on ? "Exit full screen" : "Full screen";
+        btn.title = label;
+        btn.setAttribute("aria-label", label);
+        root.classList.toggle(fullscreenClass, cssFullscreen);
+    }
+    function enterFullscreen() {
+        if (root.requestFullscreen) {
+            root.requestFullscreen().then(function () {
+                cssFullscreen = false;
+                renderFullscreenBtn();
+            }).catch(function () {
+                cssFullscreen = true;
+                renderFullscreenBtn();
+            });
+        } else {
+            cssFullscreen = true;
+            renderFullscreenBtn();
+        }
+    }
+    function exitFullscreen() {
+        if (document.fullscreenElement === root && document.exitFullscreen) {
+            document.exitFullscreen().catch(function () {});
+        }
+        cssFullscreen = false;
+        renderFullscreenBtn();
+    }
+    btn.addEventListener("click", function () {
+        if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
+    });
+    document.addEventListener("fullscreenchange", renderFullscreenBtn);
+    renderFullscreenBtn();
+"""
+
+
+def fullscreen_css(
+    root_selector: str,
+    fullscreen_class: str,
+    container_selector: Optional[str] = None,
+    bg_var: str = "var(--ui-bg)",
+) -> str:
+    """Return the CSS that powers the full-screen state of a widget.
+
+    The rules cover both full-screen mechanisms used by
+    :data:`_FULLSCREEN_BODY` / :func:`fullscreen_toggle_script`: the native
+    ``:fullscreen`` pseudo-class and the ``fullscreen_class`` CSS-overlay
+    fallback (applied to ``root_selector``).
+
+    Parameters
+    ----------
+    root_selector : str
+        A CSS selector for the widget's root element (the element that goes
+        full screen), e.g. ``".vpx-abc123"`` or ``".slls-pe"``.
+    fullscreen_class : str
+        The CSS class toggled on the root for the overlay fallback, e.g.
+        ``"vpx-fullscreen"``.
+    container_selector : str, default=None
+        Optional selector (relative to the root) for an inner container that
+        holds the visible "card" styling (border, radius, shadow). When the
+        widget draws that styling on the root itself, leave this as ``None``.
+    bg_var : str, default="var(--ui-bg)"
+        The CSS background value to paint behind the widget while full screen.
+
+    Returns
+    -------
+    str
+        The CSS as a single string.
+    """
+    fs = f"{root_selector}.{fullscreen_class}"
+    container_reset = (
+        "border: none; border-radius: 0; box-shadow: none; min-height: 100vh;"
+    )
+    base = (
+        "position: fixed; inset: 0; z-index: 99999; max-width: none; "
+        f"margin: 0; background: {bg_var}; overflow: auto;"
+    )
+    parts: list = []
+    if container_selector:
+        parts.append(f"{fs} {{ {base} padding: 0; }}")
+        parts.append(f"{fs} {container_selector} {{ {container_reset} }}")
+        parts.append(
+            f"{root_selector}:fullscreen {{ overflow: auto; background: {bg_var}; }}"
+        )
+        parts.append(
+            f"{root_selector}:fullscreen {container_selector} {{ {container_reset} }}"
+        )
+    else:
+        parts.append(f"{fs} {{ {base} {container_reset} }}")
+        parts.append(f"{root_selector}:fullscreen {{ {base} {container_reset} }}")
+    return "\n".join(parts)
+
+
+def fullscreen_setup_js(func_name: str = "sllsSetupFullscreen") -> str:
+    """Return a JS function definition that wires a full-screen toggle button.
+
+    Intended for ``anywidget``-style widgets that build their DOM in
+    JavaScript. Embed the returned source once at the top of the widget's
+    ESM module, then call ``func_name(root, btn, fullscreenClass, enterSvg,
+    exitSvg)`` after creating the toggle button.
+
+    Parameters
+    ----------
+    func_name : str, default="sllsSetupFullscreen"
+        The name of the generated JS function.
+
+    Returns
+    -------
+    str
+        The JS function definition (no ``<script>`` wrapper).
+    """
+    return (
+        f"function {func_name}(root, btn, fullscreenClass, enterSvg, exitSvg) {{"
+        + _FULLSCREEN_BODY
+        + "}\n"
+    )
+
+
+def fullscreen_toggle_script(
+    btn_id: str,
+    root_selector: str,
+    fullscreen_class: str,
+) -> str:
+    """Return a ``<script>`` block that wires a full-screen toggle button.
+
+    Intended for static-HTML widgets (the *Vertipaq* style). The button — see
+    :func:`render_header_html`'s ``fullscreen_btn_id`` parameter — toggles the
+    widget between its normal size and a full-screen view.
+
+    Parameters
+    ----------
+    btn_id : str
+        The DOM id of the full-screen toggle button.
+    root_selector : str
+        A CSS selector for the root element that should go full screen
+        (e.g. ``".vpx-abc123"``).
+    fullscreen_class : str
+        The CSS class toggled on the root for the overlay fallback (must match
+        the class passed to :func:`fullscreen_css`).
+
+    Returns
+    -------
+    str
+        A ``<script>`` block ready to be inserted into the rendered HTML.
+    """
+    enter = ICONS["fullscreen"].replace("`", "\\`")
+    exit_ = ICONS["fullscreen_exit"].replace("`", "\\`")
+    return (
+        "\n<script>\n(function() {\n"
+        f"    var btn = document.getElementById({btn_id!r});\n"
+        "    if (!btn) return;\n"
+        f"    var root = document.querySelector({root_selector!r});\n"
+        "    if (!root) return;\n"
+        f"    var fullscreenClass = {fullscreen_class!r};\n"
+        f"    var enterSvg = `{enter}`;\n"
+        f"    var exitSvg = `{exit_}`;\n" + _FULLSCREEN_BODY + "\n})();\n</script>\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rendering a self-contained HTML string as an anywidget
+# ---------------------------------------------------------------------------
+# ESM for a minimal anywidget that hosts a pre-built HTML string (styles +
+# markup + <script> blocks). It injects the HTML into the widget's light DOM
+# (which, in notebook hosts like VS Code, lives in the output *webview* rather
+# than the nested, sandboxed ``srcdoc`` iframe used for raw ``display(HTML)``
+# output). That matters for the full-screen toggle: the webview permits the
+# native Fullscreen API, so ``root.requestFullscreen()`` succeeds and the tool
+# expands edge-to-edge — exactly like the other anywidget-based tools — instead
+# of being blocked and collapsing inside a content-sized sandbox iframe.
+#
+# Scripts injected via ``innerHTML`` do not execute, so each ``<script>`` is
+# re-created as a fresh element (after the markup is attached to the document)
+# so the browser runs it and its DOM lookups resolve.
+_HTML_WIDGET_ESM: str = r"""
+function render({ model, el }) {
+    var html = model.get("html") || "";
+    var holder = document.createElement("div");
+    holder.innerHTML = html;
+    el.appendChild(holder);
+    var scripts = holder.querySelectorAll("script");
+    for (var i = 0; i < scripts.length; i++) {
+        var old = scripts[i];
+        var s = document.createElement("script");
+        for (var j = 0; j < old.attributes.length; j++) {
+            s.setAttribute(old.attributes[j].name, old.attributes[j].value);
+        }
+        s.textContent = old.textContent;
+        old.parentNode.replaceChild(s, old);
+    }
+}
+export default { render };
+"""
+
+
+def display_html_widget(html: str, fallback: bool = True) -> None:
+    """Display a self-contained HTML string via a lightweight anywidget.
+
+    The HTML (styles + markup + inline ``<script>`` blocks) is rendered into the
+    notebook output **webview's light DOM** instead of the nested, sandboxed
+    ``srcdoc`` iframe that hosts raw ``IPython.display.HTML`` output. This gives
+    script-driven widgets — e.g. the *Vertipaq* analyzer — the same full-screen
+    behavior as the other anywidget-based tools (the native Fullscreen API is
+    permitted in the webview but blocked in the sandbox iframe).
+
+    Parameters
+    ----------
+    html : str
+        A complete HTML fragment: any ``<style>``, the markup, and the inline
+        ``<script>`` blocks that drive it. Scripts are re-executed after the
+        markup is attached so their DOM lookups resolve.
+    fallback : bool, default=True
+        When ``True`` and the ``anywidget`` package is not installed, fall back
+        to ``IPython.display.display(HTML(html))``. When ``False``, raise
+        ``ImportError`` instead.
+    """
+    from IPython.display import display
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError:
+        if fallback:
+            from IPython.display import HTML
+
+            display(HTML(html))
+            return
+        raise
+
+    class _HtmlWidget(anywidget.AnyWidget):
+        _esm = _HTML_WIDGET_ESM
+        html = traitlets.Unicode("").tag(sync=True)
+
+    display(_HtmlWidget(html=html))
 
 
 # ---------------------------------------------------------------------------

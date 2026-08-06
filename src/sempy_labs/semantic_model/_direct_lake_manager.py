@@ -429,6 +429,17 @@ function render({ model, el }) {
     renderThemeBtn();
     header.appendChild(themeBtn);
 
+    // Full-screen toggle button (expands the manager to fill the screen).
+    const FULLSCREEN_SVG = `__SLLS_ICON_FULLSCREEN__`;
+    const FULLSCREEN_EXIT_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
+    const fullscreenBtn = document.createElement("button");
+    fullscreenBtn.className = "slls-dle-btn slls-dle-btn-icon";
+    fullscreenBtn.type = "button";
+    header.appendChild(fullscreenBtn);
+    sllsSetupFullscreen(
+        root, fullscreenBtn, "slls-dle-fullscreen", FULLSCREEN_SVG, FULLSCREEN_EXIT_SVG
+    );
+
     // ----------- Status banner (shared) -----------
     const status = document.createElement("div");
     status.className = "slls-dle-status";

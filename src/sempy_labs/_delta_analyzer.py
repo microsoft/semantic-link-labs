@@ -7,7 +7,6 @@ import uuid
 from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.parquet as pq
-from IPython.display import display, HTML
 from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
@@ -42,6 +41,9 @@ from sempy_labs._ui_components import (
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_css as _ui_fullscreen_css,
+    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
+    display_html_widget as _ui_display_html_widget,
     fullscreen_toggle_script as _ui_fullscreen_toggle_script,
     ProgressBar as _ProgressBar,
 )
@@ -68,7 +70,7 @@ def get_parquet_file_infos(path):
 
 @log
 def delta_analyzer(
-    table_name: str,
+    table_name: Optional[str] = None,
     approx_distinct_count: bool = True,
     export: bool = False,
     lakehouse: Optional[str | UUID] = None,
@@ -95,8 +97,10 @@ def delta_analyzer(
 
     Parameters
     ----------
-    table_name : str
+    table_name : str, default=None
         The delta table name.
+        Defaults to None which launches an interactive picker (when ``visualize=True``)
+        that lets you choose a workspace, lakehouse and table to analyze.
     approx_distinct_count: bool, default=True
         If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
@@ -129,6 +133,25 @@ def delta_analyzer(
     if not skip_cardinality:
         column_stats = True
 
+    # When no table is specified, launch the interactive picker so the user can
+    # choose a workspace, lakehouse and table to analyze.
+    if table_name is None:
+        if not visualize:
+            raise ValueError(
+                f"{icons.red_dot} The 'table_name' parameter is required when 'visualize=False'."
+            )
+        _visualize_delta_analyzer(
+            initial_dataframes=None,
+            table_name=None,
+            schema=None,
+            workspace=workspace,
+            lakehouse=lakehouse,
+            approx_distinct_count=approx_distinct_count,
+            column_stats=column_stats,
+            skip_cardinality=skip_cardinality,
+            dark_mode=dark_mode,
+        )
+        return {}
     if '.' in table_name:
         schema, table_name = table_name.split('.', 1)
 
@@ -462,28 +485,36 @@ def delta_analyzer(
             )
 
     if visualize:
-        _display_delta_analyzer_ui(
-            dataframes=dataframes,
+        _visualize_delta_analyzer(
+            initial_dataframes=dataframes,
             table_name=table_name,
             schema=schema,
+            workspace=workspace,
+            lakehouse=lakehouse,
+            approx_distinct_count=approx_distinct_count,
+            column_stats=column_stats,
+            skip_cardinality=skip_cardinality,
             dark_mode=dark_mode,
         )
 
     return dataframes
 
 
-def _display_delta_analyzer_ui(
+def _build_delta_analyzer_html(
     dataframes: Dict[str, pd.DataFrame],
     table_name: str,
     schema: Optional[str] = None,
     dark_mode: bool = False,
-) -> None:
-    """Renders an interactive HTML dashboard for delta analyzer results."""
+    show_picker_button: bool = False,
+) -> str:
+    """Builds the self-contained HTML (styles + markup + scripts) for the
+    interactive delta analyzer dashboard and returns it as a string."""
 
     uid = uuid.uuid4().hex[:8]
     root_selector = f".da-{uid}-root"
     theme_btn_id = f"da-theme-{uid}"
-    fullscreen_btn_id = f"da-fs-{uid}"
+    fullscreen_btn_id = f"da-fullscreen-{uid}"
+    fullscreen_class = "da-fullscreen"
 
     _skip_cols = {
         "Workspace Name",
@@ -719,15 +750,24 @@ def _display_delta_analyzer_ui(
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
         fullscreen_btn_id=fullscreen_btn_id,
+        picker_btn_id=(f"da-picker-{uid}" if show_picker_button else None),
     )
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    ui_fullscreen_css = _ui_fullscreen_css(
+        root_selector,
+        fullscreen_class,
+        container_selector=f".da-{uid}-container",
+        bg_var="var(--da-bg)",
+    )
+    )
     ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
     attribution_html = _ui_render_attribution_html()
 
     full_html = f"""
     <style>
         {ui_header_css_scoped}
+        {ui_fullscreen_css}
         .da-{uid}-root {{
             {_UI_LIGHT_VARS}
             --da-accent: var(--ui-accent);

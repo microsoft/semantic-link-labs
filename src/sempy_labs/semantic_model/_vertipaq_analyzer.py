@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-from IPython.display import display, HTML
 import zipfile
 import os
 import uuid
@@ -1899,6 +1898,7 @@ def visualize_vertipaq(
     styles = f"""
     <style>
     {ui_header_css_scoped}
+    {ui_fullscreen_css}
     .vpx-{uid} {{
         {_UI_LIGHT_VARS}
         --vpx-accent: var(--ui-accent);

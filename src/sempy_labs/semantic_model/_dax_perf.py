@@ -1,0 +1,12543 @@
+import sempy.fabric as fabric
+import pandas as pd
+from sempy_labs._helper_functions import (
+    resolve_item_name_and_id,
+)
+from typing import Optional, Tuple
+from sempy._utils._log import log
+from uuid import UUID
+import time
+import warnings
+import re
+import json
+from datetime import datetime, timezone
+
+
+def _get_trace_logs(trace) -> Optional[pd.DataFrame]:
+    """Return ``trace.get_trace_logs()`` while suppressing the noisy
+    ``"No trace logs have been recorded..."`` ``UserWarning`` that sempy emits
+    when the call happens before the engine has flushed any events. The polling
+    loops in this module call ``get_trace_logs`` repeatedly (often before logs
+    exist), so this warning is expected and not actionable for the user."""
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="No trace logs have been recorded",
+            category=UserWarning,
+        )
+        return trace.get_trace_logs()
+
+
+@log
+def dax_perf_optimizer(
+    dataset: Optional[str | UUID] = None,
+    dax_string: str = "",
+    workspace: Optional[str | UUID] = None,
+    clear_cache: bool = True,
+    visualize: bool = True,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
+    dark_mode: bool = False,
+) -> pd.DataFrame:
+    """
+    Runs a DAX query against a semantic model while capturing a server-side
+    trace, and computes high-level performance statistics (Total Duration,
+    Formula Engine Duration, Storage Engine Duration, and CPU time) using
+    the same conventions as `DAX Studio <https://github.com/DaxStudio/DaxStudio>`_.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID, default=None
+        Name or ID of the semantic model. Optional when ``visualize=True``:
+        if not provided, the interactive widget lets you choose a workspace
+        and a semantic model within it before running a query. Required when
+        ``visualize=False``.
+    dax_string : str, default=""
+        The DAX query to execute. May be left empty when ``visualize=True``
+        (you can type the query directly in the widget). Required when
+        ``visualize=False``.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    clear_cache : bool, default=True
+        If True, clears the dataset cache before running the query so the
+        run reflects a cold-cache state.
+    visualize : bool, default=True
+        If True, displays an interactive widget showing the high-level
+        timings (Duration, FE, SE, CPU), a per-event details table, and an
+        editable DAX editor with a Run button to re-execute the query.
+    effective_user_name : str, default=None
+        If set, runs the query impersonating this user (passed as the
+        ``effective_user_name`` parameter of ``fabric.evaluate_dax``). Use
+        this for user impersonation. Cannot be used together with ``role``.
+    role : str, default=None
+        If set, runs the query impersonating this security role (passed as
+        the ``role`` parameter of ``fabric.evaluate_dax``). Use this for
+        role impersonation. Cannot be used together with
+        ``effective_user_name``.
+    dark_mode : bool, default=False
+        If True, the interactive widget is initially displayed using its
+        dark color theme. Only applies when ``visualize=True``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe of the captured trace events, including the
+        ``Event Class``, ``Event Subclass``, ``Duration`` and ``Cpu Time``
+        for each event.
+    """
+
+    from sempy_labs._helper_functions import resolve_workspace_name_and_id
+
+    if effective_user_name and role:
+        raise ValueError(
+            "Cannot use both 'effective_user_name' (user impersonation) and "
+            "'role' (role impersonation) at the same time. Specify at most "
+            "one of them."
+        )
+
+    if not visualize:
+        if dataset is None:
+            raise ValueError(
+                "The 'dataset' parameter is required when 'visualize=False'."
+            )
+        if not (dax_string and dax_string.strip()):
+            raise ValueError(
+                "The 'dax_string' parameter is required when 'visualize=False'."
+            )
+
+    df = pd.DataFrame()
+    result_df = pd.DataFrame()
+    total_duration = fe_duration = se_duration = cpu_time = 0
+    dataset_name = None
+    dataset_id = None
+    workspace_name = None
+    workspace_id = None
+
+    if dataset is not None:
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+        dataset_name, dataset_id = resolve_item_name_and_id(
+            item=dataset, type="SemanticModel", workspace=workspace_id
+        )
+        if dax_string and dax_string.strip():
+            (
+                df,
+                total_duration,
+                fe_duration,
+                se_duration,
+                cpu_time,
+                result_df,
+            ) = _run_dax_trace(
+                dataset_id=dataset_id,
+                workspace_id=workspace_id,
+                dax_string=dax_string,
+                clear_cache=clear_cache,
+                effective_user_name=effective_user_name,
+                role=role,
+            )
+    elif workspace is not None:
+        # No dataset chosen yet, but a workspace was provided: resolve it so
+        # the widget's model picker can pre-select that workspace.
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    if visualize:
+        _visualize_dax_test(
+            df=df,
+            total_duration=total_duration,
+            fe_duration=fe_duration,
+            se_duration=se_duration,
+            cpu_time=cpu_time,
+            dax_string=dax_string,
+            dataset_id=dataset_id,
+            workspace_id=workspace_id,
+            dataset_name=(
+                (str(dataset_name) if dataset_name else str(dataset))
+                if dataset is not None
+                else None
+            ),
+            workspace_name=workspace_name,
+            clear_cache=clear_cache,
+            result_df=result_df,
+            effective_user_name=effective_user_name,
+            role=role,
+            dark_mode=dark_mode,
+        )
+
+    return df
+
+
+# Trace event schema captured by :func:`test` / :func:`_run_dax_trace`.
+_TEST_EVENT_SCHEMA: dict = {
+    "QueryBegin": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "NTUserName",
+        "TextData",
+        "StartTime",
+        "ApplicationName",
+        "ApplicationContext",
+        "RequestID",
+    ],
+    "QueryEnd": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "NTUserName",
+        "TextData",
+        "StartTime",
+        "EndTime",
+        "Duration",
+        "CpuTime",
+        "Success",
+        "ApplicationName",
+        "ApplicationContext",
+        "RequestID",
+    ],
+    "VertiPaqSEQueryBegin": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "NTUserName",
+        "TextData",
+        "StartTime",
+        "ApplicationName",
+        "ApplicationContext",
+        "RequestID",
+    ],
+    "VertiPaqSEQueryEnd": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "NTUserName",
+        "TextData",
+        "StartTime",
+        "EndTime",
+        "Duration",
+        "CpuTime",
+        "Success",
+        "ApplicationName",
+        "ApplicationContext",
+        "RequestID",
+    ],
+    "VertiPaqSEQueryCacheMatch": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "NTUserName",
+        "TextData",
+        "RequestID",
+    ],
+    "DirectQueryEnd": [
+        "EventClass",
+        "TextData",
+        "StartTime",
+        "EndTime",
+        "Duration",
+        "CpuTime",
+        "RequestID",
+    ],
+    "DAXQueryPlan": [
+        "EventClass",
+        "EventSubclass",
+        "CurrentTime",
+        "TextData",
+        "ApplicationName",
+        "ApplicationContext",
+        "RequestID",
+    ],
+    "ExecutionMetrics": [
+        "EventClass",
+        #"EventSubclass",
+        #"CurrentTime",
+        "TextData",
+        "ApplicationName",
+        "ApplicationContext",
+        "RequestID",
+    ]
+}
+
+
+def _normalize_dax_text(text) -> str:
+    """Normalize a DAX query string for matching a trace event's TextData to
+    the query typed in the DAX query pane (collapse all whitespace runs to a
+    single space and strip)."""
+
+    if text is None:
+        return ""
+    return re.sub(r"\s+", " ", str(text)).strip()
+
+
+def _trace_col(df: pd.DataFrame, *names: str) -> Optional[str]:
+    """Return the first of ``names`` that is a column of ``df`` (the trace
+    column naming differs between the space-delimited logs and the raw schema,
+    e.g. ``"Event Class"`` vs ``"EventClass"``)."""
+
+    for n in names:
+        if n in df.columns:
+            return n
+    return None
+
+
+def _resolve_query_request_id(new_logs: pd.DataFrame, dax_string: str) -> Optional[str]:
+    """Find the RequestID of the ``QueryBegin`` event that corresponds to the
+    DAX query executed from the query pane.
+
+    The interactive widget runs several auxiliary DAX queries against the same
+    model/trace (Vertipaq Analyzer, query dependencies, performance analysis).
+    Those events accumulate in the long-running trace between user runs, so
+    slicing the logs by row count alone is not enough to isolate the user's
+    query. Instead we match the executed query text against the ``QueryBegin``
+    ``TextData`` (preferring events from the SemPy application) and capture
+    that event's RequestID; every event for the user's query shares that same
+    RequestID.
+
+    Returns the RequestID as a string, or ``None`` if it cannot be determined
+    (in which case the caller keeps the unfiltered rows)."""
+
+    if new_logs is None or new_logs.empty:
+        return None
+    ec = _trace_col(new_logs, "Event Class", "EventClass")
+    td = _trace_col(new_logs, "Text Data", "TextData")
+    req_col = _trace_col(new_logs, "Request ID", "RequestID")
+    app = _trace_col(new_logs, "Application Name", "ApplicationName")
+    if ec is None or td is None or req_col is None:
+        return None
+
+    qb = new_logs[new_logs[ec] == "QueryBegin"]
+    if qb.empty:
+        return None
+
+    # Prefer QueryBegin events emitted by the SemPy application (the client used
+    # to run the query pane's query); fall back to all QueryBegin events.
+    candidates = qb
+    if app is not None:
+        sem = qb[qb[app].astype(str).str.contains("SemPy", case=False, na=False)]
+        if not sem.empty:
+            candidates = sem
+
+    target = _normalize_dax_text(dax_string)
+    matches = candidates[candidates[td].astype(str).map(_normalize_dax_text) == target]
+    if matches.empty:
+        # No exact text match (e.g. the engine reformatted the text): fall back
+        # to the most recent non-warm-up QueryBegin among the candidates.
+        matches = candidates[~candidates[td].astype(str).str.startswith("EVALUATE {1}")]
+    if matches.empty:
+        return None
+
+    val = matches[req_col].iloc[-1]
+    if pd.isna(val):
+        return None
+    return str(val).strip()
+
+
+def _filter_logs_to_request_id(
+    df: pd.DataFrame, request_id: Optional[str]
+) -> pd.DataFrame:
+    """Return only the rows of ``df`` whose RequestID matches ``request_id``.
+    If ``request_id`` is ``None`` or no RequestID column is present, ``df`` is
+    returned unchanged."""
+
+    if df is None or df.empty or request_id is None:
+        return df
+    req_col = _trace_col(df, "Request ID", "RequestID")
+    if req_col is None:
+        return df
+
+    def _norm(v) -> str:
+        if pd.isna(v):
+            return ""
+        return str(v).strip()
+
+    return df[df[req_col].map(_norm) == str(request_id).strip()].reset_index(drop=True)
+
+
+def _execute_and_capture(
+    trace,
+    dataset_id: str,
+    workspace_id: str,
+    dax_string: str,
+    effective_user_name: Optional[str],
+    role: Optional[str],
+    baseline_count: int,
+    run_warmup: bool = True,
+    wait_for_optional_events: bool = True,
+) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
+    """Run the real DAX query (optionally preceded by a one-time warm-up
+    evaluation) against an already-started ``trace`` and capture the trace
+    rows produced by this execution.
+
+    The trace is *not* stopped: events are read live via
+    :meth:`Trace.get_trace_logs`, which lets a single long-running trace serve
+    many queries. ``baseline_count`` is the number of log rows already consumed
+    by previous executions; only rows beyond it belong to this query.
+
+    ``run_warmup`` controls whether the throwaway ``EVALUATE {1}`` warm-up
+    query is executed first. This is only needed for the very first query run
+    against a semantic model (to prime caches/connection); subsequent queries
+    against the same model skip it.
+
+    ``wait_for_optional_events`` controls whether capture blocks for late DAX
+    query-plan events after the essential ``QueryEnd`` event arrives. The
+    interactive widget disables this wait and back-fills optional artifacts in
+    the background so timing stats can be displayed immediately.
+
+    Returns
+    -------
+    tuple
+        ``(result_df, new_logs, new_total_count)`` where ``new_logs`` are the
+        trace rows for this execution (rows after ``baseline_count``) and
+        ``new_total_count`` is the total log row count after this execution
+        (the next baseline).
+    """
+
+    if run_warmup:
+        # Warm-up evaluation; filtered out of results below. Only run for the
+        # first query against the model.
+        fabric.evaluate_dax(
+            dataset=dataset_id,
+            workspace=workspace_id,
+            dax_string="EVALUATE {1}",
+        )
+    # Run the actual DAX query.
+    result_df = fabric.evaluate_dax(
+        dataset=dataset_id,
+        workspace=workspace_id,
+        dax_string=dax_string,
+        effective_user_name=effective_user_name,
+        role=role,
+    )
+    # Wait for the trace to flush this query's events. ``fabric.evaluate_dax``
+    # has already returned, which means the engine has finished the query and
+    # *will* emit a QueryEnd event plus the query's DAX query plan events — we
+    # only need to wait for the trace buffer to flush them. Events frequently
+    # arrive across several separate flushes (and the logical/physical plan
+    # rows usually land *after* QueryEnd), so capture happens in two phases:
+    #   1. wait for the real query's QueryEnd, then
+    #   2. wait for the DAX query plan rows to stop growing.
+    # The common case breaks out of each phase in a fraction of a second; the
+    # generous caps only matter on a slow capacity / slow trace flush, where
+    # the previous short caps (2s / 5s) silently dropped the query plan and
+    # zeroed the trace timings.
+    logs: Optional[pd.DataFrame] = None
+
+    def _new_rows(_logs: Optional[pd.DataFrame]) -> pd.DataFrame:
+        if _logs is None:
+            return pd.DataFrame()
+        if len(_logs) > baseline_count:
+            return _logs.iloc[baseline_count:]
+        return _logs.iloc[0:0]
+
+    # Phase 1: wait for the real query's QueryEnd event (not the warm-up
+    # ``EVALUATE {1}``). Since the query has already completed, this is
+    # essentially guaranteed to arrive; break the instant it does.
+    qe_seen = False
+    _qe_deadline = time.monotonic() + 30.0
+    _first_qe_poll = True
+    while time.monotonic() < _qe_deadline:
+        if _first_qe_poll:
+            _first_qe_poll = False
+        else:
+            time.sleep(0.05)
+        try:
+            _l = _get_trace_logs(trace)
+        except Exception:
+            continue
+        if _l is not None and not _l.empty:
+            logs = _l
+        _new = _new_rows(logs)
+        _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
+        _td = "Text Data" if "Text Data" in _new.columns else "TextData"
+        if _ec not in _new.columns:
+            continue
+        _qe = _new[_new[_ec] == "QueryEnd"]
+        if _qe.empty:
+            continue
+        if _td in _new.columns:
+            # Break once a QueryEnd for the real query (not the warm-up
+            # EVALUATE {1}) has been captured.
+            _real = _qe[~_qe[_td].astype(str).str.startswith("EVALUATE {1}")]
+            if not _real.empty:
+                qe_seen = True
+                break
+        elif len(_qe) >= (2 if run_warmup else 1):
+            # No text available: warm-up + real query == 2 QueryEnd, or just
+            # the real query when the warm-up was skipped.
+            qe_seen = True
+            break
+
+    # Phase 2: wait for the DAX Query Plan events. The engine serializes these
+    # during query cleanup and almost always flushes them into the trace buffer
+    # *after* the QueryEnd captured above (often in a separate flush a second or
+    # more later). A normal ``EVALUATE`` query emits exactly two plan events — a
+    # logical plan and a physical plan — which can arrive in separate flushes,
+    # so this phase keeps polling until BOTH have been captured (the fast path),
+    # falling back to a "row count held steady" heuristic for the rare query
+    # whose plan shape differs.
+    #
+    # Because essentially every real DAX query produces a plan, the loop biases
+    # heavily toward waiting: it keeps polling for a generous window after
+    # QueryEnd rather than declaring "no plan" the moment the buffer is briefly
+    # quiet. Only a query that truly emits no plan (e.g. a trivial constant
+    # evaluation) pays the longer wait, and that is rare in practice.
+    def _plan_types(_n: pd.DataFrame, _ecol: str) -> set:
+        if _ecol not in _n.columns or "Event Subclass" not in _n.columns:
+            return set()
+        _pl = _n[_n[_ecol] == "DAXQueryPlan"]
+        _types: set = set()
+        for _sc in _pl["Event Subclass"].astype(str):
+            _low = _sc.lower()
+            if "physical" in _low or _sc.strip() == "2":
+                _types.add("physical")
+            elif "logical" in _low or _sc.strip() == "1":
+                _types.add("logical")
+            else:
+                _types.add(_sc)
+        return _types
+
+    # The inline wait below blocks until the DAX query plan has actually been
+    # captured: because essentially every real ``EVALUATE`` query emits both a
+    # logical and a physical plan, the loop keeps polling the trace until BOTH
+    # have arrived rather than giving up early and relying on the background
+    # back-fill. The plan rows are serialized during query cleanup and often
+    # flush into the trace buffer a second or more after QueryEnd (sometimes in
+    # several separate flushes), so a generous deadline is used. Only a query
+    # that genuinely produces no plan (e.g. a trivial constant evaluation) waits
+    # out the longer no-plan grace period below before giving up.
+    _plan_deadline = time.monotonic() + (30.0 if wait_for_optional_events else 0.0)
+    _plan_count = -1
+    _stable_since: Optional[float] = None
+    _qe_at: Optional[float] = time.monotonic() if qe_seen else None
+    while time.monotonic() < _plan_deadline:
+        try:
+            _l = _get_trace_logs(trace)
+        except Exception:
+            _l = None
+        if _l is not None and not _l.empty:
+            logs = _l
+        _new = _new_rows(logs)
+        _ec = "Event Class" if "Event Class" in _new.columns else "EventClass"
+        if not qe_seen and _ec in _new.columns:
+            # QueryEnd may still be in flight if phase 1 timed out; keep an eye
+            # out for it so the trace timings are not lost.
+            _qe = _new[_new[_ec] == "QueryEnd"]
+            if not _qe.empty:
+                qe_seen = True
+                _qe_at = time.monotonic()
+        _cur = int((_new[_ec] == "DAXQueryPlan").sum()) if _ec in _new.columns else 0
+        # Fast path: both a logical and a physical plan have been captured —
+        # this is the complete plan for a normal query, so stop immediately.
+        if {"logical", "physical"}.issubset(_plan_types(_new, _ec)):
+            break
+        if _cur != _plan_count:
+            # New plan row(s) arrived; reset the stability timer so we keep
+            # waiting for any further plan events still being flushed.
+            _plan_count = _cur
+            _stable_since = time.monotonic()
+        elif _stable_since is not None and (time.monotonic() - _stable_since >= 2.0):
+            # Plan count held steady. Only stop early if at least one plan row
+            # was captured AND it has been quiet for a couple of seconds past
+            # QueryEnd (a partial plan that is not going to be completed). If no
+            # plan row has arrived yet, keep waiting for the full deadline so a
+            # late-flushing plan is never missed.
+            if _cur > 0 and _qe_at is not None and (time.monotonic() - _qe_at >= 2.0):
+                break
+        time.sleep(0.1)
+
+    if logs is None:
+        try:
+            logs = _get_trace_logs(trace)
+        except Exception:
+            logs = pd.DataFrame()
+    if logs is None:
+        logs = pd.DataFrame()
+
+    if len(logs) > baseline_count:
+        new_logs = logs.iloc[baseline_count:].reset_index(drop=True)
+    else:
+        new_logs = logs.iloc[0:0].reset_index(drop=True)
+    # Restrict the captured rows to the request that ran the query pane's query
+    # so that events from auxiliary queries (Vertipaq Analyzer, dependencies,
+    # performance analysis) accumulated in the long-running trace are excluded.
+    _req_id = _resolve_query_request_id(new_logs, dax_string)
+    if _req_id is not None:
+        new_logs = _filter_logs_to_request_id(new_logs, _req_id)
+    return result_df, new_logs, len(logs)
+
+
+def _compute_trace_stats(
+    df: pd.DataFrame,
+) -> Tuple[pd.DataFrame, int, int, int, int]:
+    """Filter trace rows and compute DAX Studio style aggregate stats.
+
+    Returns
+    -------
+    tuple
+        ``(df, total_duration, fe_duration, se_duration, cpu_time)``
+    """
+
+    if df is None:
+        df = pd.DataFrame()
+    # Drop events from other sessions / warm-up evaluation.
+    if "Application Name" in df.columns:
+        df = df[~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])]
+    if "Text Data" in df.columns:
+        df = df[~df["Text Data"].astype(str).str.startswith("EVALUATE {1}")]
+    df = df.reset_index(drop=True)
+
+    if "Event Class" not in df.columns:
+        return df, 0, 0, 0, 0
+
+    # Compute aggregate stats using DAX Studio conventions:
+    #   Total Duration = QueryEnd.Duration
+    #   SE Duration    = sum of VertiPaqSEQueryEnd Duration, EXCLUDING
+    #                    internal sub-queries (EventSubclass contains
+    #                    "Internal") so we do not double-count time that
+    #                    is already rolled up into the parent scan.
+    #   FE Duration    = Total Duration - SE Duration
+    #   CPU            = QueryEnd.CpuTime
+    qe = df[df["Event Class"] == "QueryEnd"]
+    total_duration = int(qe["Duration"].iloc[-1]) if not qe.empty else 0
+    cpu_time = int(qe["Cpu Time"].iloc[-1]) if not qe.empty else 0
+
+    se_events = df[df["Event Class"] == "VertiPaqSEQueryEnd"]
+    if not se_events.empty:
+        not_internal = (
+            ~se_events["Event Subclass"]
+            .astype(str)
+            .str.contains("Internal", case=False, na=False)
+        )
+        se_duration = int(se_events.loc[not_internal, "Duration"].sum())
+    else:
+        se_duration = 0
+    fe_duration = max(total_duration - se_duration, 0)
+
+    return df, total_duration, fe_duration, se_duration, cpu_time
+
+
+def _captured_queries_from_df(df: pd.DataFrame) -> list:
+    """Build one timing record per report-issued ``QueryEnd`` trace event."""
+
+    if df is None or df.empty:
+        return []
+    event_col = _trace_col(df, "Event Class", "EventClass")
+    text_col = _trace_col(df, "Text Data", "TextData")
+    request_col = _trace_col(df, "Request ID", "RequestID")
+    duration_col = _trace_col(df, "Duration")
+    cpu_col = _trace_col(df, "Cpu Time", "CpuTime")
+    subclass_col = _trace_col(df, "Event Subclass", "EventSubclass")
+    if event_col is None or text_col is None:
+        return []
+
+    def _integer(row, column: Optional[str]) -> int:
+        if column is None:
+            return 0
+        try:
+            value = row.get(column, 0)
+            return 0 if pd.isna(value) else int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    def _text(row, column: Optional[str]) -> str:
+        if column is None:
+            return ""
+        value = row.get(column, "")
+        return "" if pd.isna(value) else str(value).strip()
+
+    storage_by_request: dict[str, int] = {}
+    if request_col is not None:
+        storage_events = df[df[event_col] == "VertiPaqSEQueryEnd"]
+        if subclass_col is not None and not storage_events.empty:
+            storage_events = storage_events[
+                ~storage_events[subclass_col]
+                .astype(str)
+                .str.contains("Internal", case=False, na=False)
+            ]
+        for _, row in storage_events.iterrows():
+            request_id = _text(row, request_col)
+            if request_id:
+                storage_by_request[request_id] = storage_by_request.get(
+                    request_id, 0
+                ) + _integer(row, duration_col)
+
+    queries = []
+    for _, row in df[df[event_col] == "QueryEnd"].iterrows():
+        query = _text(row, text_col)
+        if not query or query.startswith("EVALUATE {1}"):
+            continue
+        request_id = _text(row, request_col)
+        total = _integer(row, duration_col)
+        storage = storage_by_request.get(request_id, 0)
+        queries.append(
+            {
+                "dax_query": query,
+                "duration": total,
+                "cpu": _integer(row, cpu_col),
+                "fe_duration": max(total - storage, 0),
+                "se_duration": storage,
+            }
+        )
+    return queries
+
+
+def _run_dax_trace(
+    dataset_id: str,
+    workspace_id: str,
+    dax_string: str,
+    clear_cache: bool,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
+) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame]:
+    """Run a DAX query with a one-shot server-side trace and compute DAX
+    Studio style aggregate stats.
+
+    A fresh trace is created, started, used for this single query, and then
+    stopped. This is used for ``visualize=False`` and the initial query of the
+    interactive widget. The widget itself uses a single long-running trace for
+    subsequent queries (see ``_visualize_dax_test``).
+
+    Returns
+    -------
+    tuple
+        ``(df, total_duration, fe_duration, se_duration, cpu_time, result_df)``
+    """
+    from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+    if clear_cache:
+        _clear_cache_fn(dataset=dataset_id, workspace=workspace_id)
+
+    result_df: pd.DataFrame = pd.DataFrame()
+    df = pd.DataFrame()
+    with fabric.create_trace_connection(
+        dataset=dataset_id, workspace=workspace_id
+    ) as trace_connection:
+        with trace_connection.create_trace(_TEST_EVENT_SCHEMA) as trace:
+            trace.start()
+            result_df, df, _ = _execute_and_capture(
+                trace,
+                dataset_id,
+                workspace_id,
+                dax_string,
+                effective_user_name,
+                role,
+                0,
+            )
+            # Stop the one-shot trace; prefer its authoritative logs.
+            try:
+                stopped = trace.stop()
+                if stopped is not None and not stopped.empty:
+                    df = stopped
+            except Exception:
+                pass
+
+    df, total_duration, fe_duration, se_duration, cpu_time = _compute_trace_stats(df)
+
+    return df, total_duration, fe_duration, se_duration, cpu_time, result_df
+
+
+def _trace_rows_from_df(df: pd.DataFrame) -> list:
+    """Convert the captured trace dataframe to a list of plain-dict rows
+    suitable for serialization to the front-end."""
+
+    if df is None or df.empty:
+        return []
+    event_col = _trace_col(df, "Event Class", "EventClass")
+    subclass_col = _trace_col(df, "Event Subclass", "EventSubclass")
+    duration_col = _trace_col(df, "Duration")
+    cpu_col = _trace_col(df, "Cpu Time", "CpuTime")
+    text_col = _trace_col(df, "Text Data", "TextData")
+    if event_col is None:
+        return []
+    detail_classes = {
+        "VertiPaqSEQueryEnd",
+        "VertiPaqSEQueryCacheMatch",
+        "DirectQueryEnd",
+    }
+    rows_df = df[df[event_col].isin(detail_classes)]
+    out = []
+    for _, row in rows_df.iterrows():
+        event = str(row.get(event_col, "") or "")
+        subclass = row.get(subclass_col, "") if subclass_col else ""
+        subclass_v = "" if not pd.notna(subclass) else str(subclass)
+        if subclass_v == "VertiPaqScanInternal":
+            continue
+        dur = row.get(duration_col, 0) if duration_col else 0
+        cpu = row.get(cpu_col, 0) if cpu_col else 0
+        text = row.get(text_col, "") if text_col else ""
+        text_v = "" if not pd.notna(text) else str(text)
+        estimate = re.search(
+            r"Estimated size \(volume, marshalling bytes\):\s*(\d+),\s*(\d+)",
+            text_v,
+        )
+        try:
+            dur_v = int(dur) if pd.notna(dur) else 0
+        except (TypeError, ValueError):
+            dur_v = 0
+        try:
+            cpu_v = int(cpu) if pd.notna(cpu) else 0
+        except (TypeError, ValueError):
+            cpu_v = 0
+        out.append(
+            {
+                "event_class": event,
+                "event_subclass": subclass_v,
+                "duration": dur_v,
+                "cpu": cpu_v,
+                "rows": int(estimate.group(1)) if estimate else None,
+                "kb": int(estimate.group(2)) / 1024 if estimate else None,
+                "text": text_v,
+            }
+        )
+    return out
+
+
+def _query_plan_rows_from_df(df: pd.DataFrame) -> list:
+    """Convert the captured trace dataframe to a list of DAX Query Plan rows
+    (``{plan_type, event_subclass, text}``) suitable for serialization to the
+    front-end. ``plan_type`` is ``"Logical"`` or ``"Physical"`` based on the
+    event subclass (e.g. ``DAXVertiPaqLogicalPlan`` /
+    ``DAXVertiPaqPhysicalPlan``)."""
+
+    if df is None or df.empty or "Event Class" not in df.columns:
+        return []
+    rows_df = df[df["Event Class"] == "DAXQueryPlan"]
+    out = []
+    for _, row in rows_df.iterrows():
+        sc = str(row.get("Event Subclass", "") or "")
+        text = row.get("Text Data", "")
+        text = "" if not pd.notna(text) else str(text)
+        low = sc.lower()
+        if "physical" in low or sc.strip() == "2":
+            plan_type = "Physical"
+        elif "logical" in low or sc.strip() == "1":
+            plan_type = "Logical"
+        else:
+            plan_type = sc or "Unknown"
+        out.append(
+            {
+                "plan_type": plan_type,
+                "event_subclass": sc,
+                "text": text,
+            }
+        )
+    return out
+
+
+# Subset of the ``ExecutionMetrics`` TextData JSON surfaced in the widget's
+# Execution Metrics tab, in display order: (json_key, label).
+_EXECUTION_METRIC_FIELDS: list = [
+    ("vertipaqJobCpuTimeMs", "VertiPaq Job CPU Time (ms)"),
+    ("queryProcessingCpuTimeMs", "Query Processing CPU Time (ms)"),
+    ("totalCpuTimeMs", "Total CPU Time (ms)"),
+    ("executionDelayMs", "Execution Delay (ms)"),
+    ("approximatePeakMemConsumptionKB", "Approximate Peak Memory Consumption (KB)"),
+    ("directQueryTotalRows", "DirectQuery Total Rows"),
+]
+
+
+def _execution_metrics_from_df(df: pd.DataFrame) -> list:
+    """Convert the captured trace dataframe to a list of execution metric rows
+    (``{key, label, value}``) suitable for serialization to the front-end.
+
+    The ``ExecutionMetrics`` trace event carries a JSON document in its
+    ``TextData``; only the fields in :data:`_EXECUTION_METRIC_FIELDS` are
+    surfaced. Returns an empty list if no ``ExecutionMetrics`` event was
+    captured or its TextData cannot be parsed."""
+
+    if df is None or df.empty or "Event Class" not in df.columns:
+        return []
+    rows_df = df[df["Event Class"] == "ExecutionMetrics"]
+    if rows_df.empty:
+        return []
+    # Use the most recent ExecutionMetrics event for this query.
+    text = rows_df.iloc[-1].get("Text Data", "")
+    if not pd.notna(text):
+        return []
+    try:
+        data = json.loads(str(text))
+    except (ValueError, TypeError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    out = []
+    for key, label in _EXECUTION_METRIC_FIELDS:
+        if key not in data:
+            continue
+        val = data.get(key)
+        try:
+            val_v = int(val) if val is not None else 0
+        except (TypeError, ValueError):
+            try:
+                val_v = float(val)
+            except (TypeError, ValueError):
+                val_v = 0
+        out.append({"key": key, "label": label, "value": val_v})
+    return out
+
+
+def _execution_metrics_dict(metric_rows: list) -> dict:
+    """Convert execution metric rows to the dictionary shown in history."""
+
+    return {
+        str(row.get("label") or row.get("key") or ""): row.get("value")
+        for row in metric_rows or []
+        if row.get("label") or row.get("key")
+    }
+
+
+def _result_payload_from_df(df: pd.DataFrame, max_rows: int = 5000) -> dict:
+    """Convert a query result dataframe to a payload of ``{columns, rows,
+    total_rows, truncated}`` for the front-end."""
+
+    if df is None or not hasattr(df, "columns"):
+        return {"columns": [], "rows": [], "total_rows": 0, "truncated": False}
+    columns = [str(c) for c in df.columns]
+    total_rows = int(len(df))
+    truncated = total_rows > max_rows
+    view = df.head(max_rows) if truncated else df
+    rows: list = []
+    for _, r in view.iterrows():
+        row: list = []
+        for v in r.tolist():
+            if v is None:
+                row.append(None)
+            elif pd.isna(v):
+                row.append(None)
+            else:
+                row.append(v if isinstance(v, (int, float, bool, str)) else str(v))
+        rows.append(row)
+    return {
+        "columns": columns,
+        "rows": rows,
+        "total_rows": total_rows,
+        "truncated": truncated,
+    }
+
+
+def _prepare_embedded_vertipaq_dataframe(name: str, df: pd.DataFrame) -> pd.DataFrame:
+    """Filter Vertipaq Analyzer data for the embedded performance tool view."""
+
+    view = df.copy()
+    if name == "Columns":
+        if "Type" in view.columns:
+            view = view[
+                view["Type"].astype("string").str.casefold() != "rownumber"
+            ]
+        view = view.drop(columns=["Source Column"], errors="ignore")
+    elif name == "Partitions":
+        has_direct_lake = "Mode" in view.columns and view["Mode"].astype(
+            "string"
+        ).str.casefold().eq("directlake").any()
+        if not has_direct_lake:
+            view = view.drop(
+                columns=[
+                    "Direct Lake Type",
+                    "Source Name",
+                    "Source Type",
+                    "Source Workspace",
+                    "Source Schema Name",
+                    "Source Table Name",
+                ],
+                errors="ignore",
+            )
+    return view.reset_index(drop=True)
+
+
+def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
+    """Collect a lightweight metadata tree of the semantic model for the
+    sidebar (tables → columns / measures / hierarchies)."""
+
+    try:
+        from sempy_labs.tom import connect_semantic_model
+    except Exception:
+        return []
+
+    try:
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=True
+        ) as tom:
+            return _build_model_tree(tom)
+    except Exception:
+        return []
+
+
+def _build_model_tree(tom) -> list:
+    """Build the sidebar metadata tree from an already-open TOM connection."""
+
+    tree: list = []
+    try:
+        for table in tom.model.Tables:
+            tname = str(table.Name)
+            columns = sorted(
+                (
+                    {
+                        "name": str(c.Name),
+                        "hidden": bool(getattr(c, "IsHidden", False)),
+                        "data_type": str(getattr(c, "DataType", "") or ""),
+                        "description": str(getattr(c, "Description", "") or ""),
+                        "display_folder": str(getattr(c, "DisplayFolder", "") or ""),
+                    }
+                    for c in table.Columns
+                    if str(getattr(c, "Type", "")) != "RowNumber"
+                ),
+                key=lambda x: x["name"].lower(),
+            )
+            measures = sorted(
+                (
+                    {
+                        "name": str(m.Name),
+                        "hidden": bool(getattr(m, "IsHidden", False)),
+                        "description": str(getattr(m, "Description", "") or ""),
+                        "display_folder": str(getattr(m, "DisplayFolder", "") or ""),
+                        "expression": str(getattr(m, "Expression", "") or ""),
+                    }
+                    for m in table.Measures
+                ),
+                key=lambda x: x["name"].lower(),
+            )
+            hierarchies = sorted(
+                (
+                    {
+                        "name": str(h.Name),
+                        "hidden": bool(getattr(h, "IsHidden", False)),
+                        "description": str(getattr(h, "Description", "") or ""),
+                        "display_folder": str(getattr(h, "DisplayFolder", "") or ""),
+                        "levels": [
+                            {
+                                "name": str(lvl.Name),
+                                "description": str(
+                                    getattr(lvl, "Description", "") or ""
+                                ),
+                            }
+                            for lvl in sorted(
+                                h.Levels,
+                                key=lambda lvl: getattr(lvl, "Ordinal", 0),
+                            )
+                        ],
+                    }
+                    for h in table.Hierarchies
+                ),
+                key=lambda x: x["name"].lower(),
+            )
+            is_calc_group = getattr(table, "CalculationGroup", None) is not None
+            calculation_items: list = []
+            if is_calc_group:
+                calculation_items = sorted(
+                    (
+                        {
+                            "name": str(ci.Name),
+                            "description": str(getattr(ci, "Description", "") or ""),
+                        }
+                        for ci in table.CalculationGroup.CalculationItems
+                    ),
+                    key=lambda x: x["name"].lower(),
+                )
+            tree.append(
+                {
+                    "name": tname,
+                    "hidden": bool(getattr(table, "IsHidden", False)),
+                    "description": str(getattr(table, "Description", "") or ""),
+                    "calculation_group": bool(is_calc_group),
+                    "calculation_items": calculation_items,
+                    "columns": columns,
+                    "measures": measures,
+                    "hierarchies": hierarchies,
+                }
+            )
+    except Exception:
+        return []
+    tree.sort(key=lambda t: t["name"].lower())
+    return tree
+
+
+def _build_relationship_lookup(tom) -> dict:
+    """Build a mapping of relationship name -> a human-readable description of
+    the columns it joins (``'FromTable'[FromColumn] → 'ToTable'[ToColumn]``),
+    using an already-open TOM connection. Inactive relationships are flagged.
+    """
+
+    lookup: dict = {}
+    try:
+        for rel in tom.model.Relationships:
+            try:
+                detail = (
+                    f"'{rel.FromTable.Name}'[{rel.FromColumn.Name}]"
+                    f" → '{rel.ToTable.Name}'[{rel.ToColumn.Name}]"
+                )
+                if not bool(getattr(rel, "IsActive", True)):
+                    detail += " (inactive)"
+                lookup[str(rel.Name)] = detail
+            except Exception:
+                continue
+    except Exception:
+        return {}
+    return lookup
+
+
+def _build_relationship_columns(tom) -> dict:
+    """Build a mapping of relationship name -> the list of ``(table, column)``
+    tuples it joins (the From and To columns), using an already-open TOM
+    connection. Used to include relationship columns in the unique list of
+    referenced columns."""
+
+    lookup: dict = {}
+    try:
+        for rel in tom.model.Relationships:
+            try:
+                lookup[str(rel.Name)] = [
+                    (str(rel.FromTable.Name), str(rel.FromColumn.Name)),
+                    (str(rel.ToTable.Name), str(rel.ToColumn.Name)),
+                ]
+            except Exception:
+                continue
+    except Exception:
+        return {}
+    return lookup
+
+
+def _build_rownumber_columns(tom) -> set:
+    """Build a set of ``(table_name, column_name)`` tuples for every column
+    whose TOM ``ColumnType`` is ``RowNumber``, using an already-open TOM
+    connection. These internal columns are excluded from the query
+    dependencies output."""
+
+    rownumber: set = set()
+    try:
+        for table in tom.model.Tables:
+            tname = str(table.Name)
+            for c in table.Columns:
+                try:
+                    if str(getattr(c, "Type", "")) == "RowNumber":
+                        rownumber.add((tname, str(c.Name)))
+                except Exception:
+                    continue
+    except Exception:
+        return set()
+    return rownumber
+
+
+def _build_dependency_tree(
+    rows: list, rel_lookup: dict, model_label: str, rownumber_cols: Optional[set] = None
+) -> list:
+    """Organize flat ``INFO.CALCDEPENDENCY`` rows into a hierarchical tree.
+
+    The tree has a single ``Model`` root whose children are a ``Tables`` group
+    (each referenced table, with its referenced columns / measures /
+    hierarchies grouped beneath it) and a ``Relationships`` group (each
+    referenced relationship, labeled with the columns it joins, looked up via
+    TOM in ``rel_lookup``). Columns whose TOM ``ColumnType`` is ``RowNumber``
+    (provided in ``rownumber_cols`` as ``(table, column)`` tuples) are omitted.
+    """
+
+    rownumber_cols = rownumber_cols or set()
+
+    def _classify(obj_type: str) -> str:
+        t = (obj_type or "").upper()
+        if "RELATIONSHIP" in t:
+            return "relationship"
+        if "MEASURE" in t:
+            return "measure"
+        if "HIERARCHY" in t:
+            return "hierarchy"
+        if "COLUMN" in t:
+            return "column"
+        if "CALC_GROUP" in t or "CALCULATION_GROUP" in t:
+            return "calc_group"
+        if t == "TABLE":
+            return "table"
+        return "other"
+
+    tables: dict = {}
+    relationships: list = []
+    seen_rel: set = set()
+
+    def _ensure_table(name: str) -> dict:
+        if name not in tables:
+            tables[name] = {
+                "columns": [],
+                "measures": [],
+                "hierarchies": [],
+                "other": [],
+            }
+        return tables[name]
+
+    def _add(bucket: list, value: str) -> None:
+        if value and value not in bucket:
+            bucket.append(value)
+
+    for r in rows:
+        kind = _classify(r.get("object_type"))
+        table = (r.get("table") or "").strip()
+        obj = (r.get("object") or "").strip()
+        if kind == "relationship":
+            if obj and obj not in seen_rel:
+                seen_rel.add(obj)
+                relationships.append(obj)
+        elif kind == "measure":
+            if table:
+                _add(_ensure_table(table)["measures"], obj)
+        elif kind == "column":
+            if table and (table, obj) not in rownumber_cols:
+                _add(_ensure_table(table)["columns"], obj)
+        elif kind == "hierarchy":
+            if table:
+                _add(_ensure_table(table)["hierarchies"], obj)
+        elif kind == "table":
+            _ensure_table(obj or table)
+        else:
+            if table:
+                _add(_ensure_table(table)["other"], obj)
+
+    def _leaf_group(label: str, kind: str, names: list) -> dict:
+        return {
+            "label": label,
+            "kind": "group",
+            "children": [
+                {"label": n, "kind": kind} for n in sorted(names, key=str.lower)
+            ],
+        }
+
+    table_nodes = []
+    for tname in sorted(tables, key=str.lower):
+        tdata = tables[tname]
+        tchildren = []
+        if tdata["columns"]:
+            tchildren.append(_leaf_group("Columns", "column", tdata["columns"]))
+        if tdata["measures"]:
+            tchildren.append(_leaf_group("Measures", "measure", tdata["measures"]))
+        if tdata["hierarchies"]:
+            tchildren.append(
+                _leaf_group("Hierarchies", "hierarchy", tdata["hierarchies"])
+            )
+        if tdata["other"]:
+            tchildren.append(_leaf_group("Other", "column", tdata["other"]))
+        table_nodes.append({"label": tname, "kind": "table", "children": tchildren})
+
+    children = []
+    if table_nodes:
+        children.append({"label": "Tables", "kind": "group", "children": table_nodes})
+    if relationships:
+        rel_nodes = []
+        for rname in relationships:
+            detail = rel_lookup.get(rname)
+            rel_nodes.append({"label": detail or rname, "kind": "relationship"})
+        rel_nodes.sort(key=lambda n: n["label"].lower())
+        children.append(
+            {"label": "Relationships", "kind": "group", "children": rel_nodes}
+        )
+
+    if not children:
+        return []
+    return [
+        {
+            "label": model_label or "Model",
+            "kind": "model",
+            "children": children,
+        }
+    ]
+
+
+def _build_dependency_columns(
+    rows: list,
+    rel_columns: Optional[dict] = None,
+    rownumber_cols: Optional[set] = None,
+) -> list:
+    """Build a unique, sorted list of the columns referenced by the query.
+
+    Each entry is a ``{"table": ..., "column": ...}`` dict. Columns directly
+    referenced by the query (``REFERENCED_OBJECT_TYPE`` containing ``COLUMN``)
+    as well as the columns participating in any referenced relationship (looked
+    up via TOM in ``rel_columns`` keyed by relationship name) are included.
+    Columns whose TOM ``ColumnType`` is ``RowNumber`` (provided in
+    ``rownumber_cols`` as ``(table, column)`` tuples) are omitted.
+    """
+
+    rel_columns = rel_columns or {}
+    rownumber_cols = rownumber_cols or set()
+    seen: set = set()
+    out: list = []
+
+    def _add(table: str, column: str) -> None:
+        table = (table or "").strip()
+        column = (column or "").strip()
+        if not table or not column:
+            return
+        key = (table, column)
+        if key in rownumber_cols or key in seen:
+            return
+        seen.add(key)
+        out.append({"table": table, "column": column})
+
+    for r in rows:
+        otype = (r.get("object_type") or "").upper()
+        if "RELATIONSHIP" in otype:
+            obj = (r.get("object") or "").strip()
+            for tbl, col in rel_columns.get(obj, []):
+                _add(tbl, col)
+        elif "COLUMN" in otype:
+            _add(r.get("table"), r.get("object"))
+
+    out.sort(key=lambda x: (x["table"].lower(), x["column"].lower()))
+    return out
+
+
+def _build_model_roles(tom) -> list:
+    """Build the sorted list of security role names from an already-open TOM
+    connection."""
+
+    try:
+        roles = [str(r.Name) for r in tom.model.Roles]
+    except Exception:
+        return []
+    roles.sort(key=lambda x: x.lower())
+    return roles
+
+
+def _collect_model_metadata(dataset_id: str, workspace_id: str) -> tuple:
+    """Collect both the sidebar metadata tree and the security role names in a
+    single TOM connection (avoids opening the XMLA connection twice).
+
+    Returns
+    -------
+    tuple
+        ``(tree, roles)``. Either may be an empty list if metadata cannot be
+        read.
+    """
+
+    try:
+        from sempy_labs.tom import connect_semantic_model
+    except Exception:
+        return [], []
+
+    try:
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=True
+        ) as tom:
+            return _build_model_tree(tom), _build_model_roles(tom)
+    except Exception:
+        return [], []
+
+
+def _list_reports_for_capture(dataset_id: str, workspace_id: str) -> list:
+    """List embeddable reports in ``workspace_id`` bound to ``dataset_id``."""
+
+    from sempy_labs.report._items import list_reports_base
+
+    reports = list_reports_base(workspace=workspace_id)
+    if reports is None or reports.empty:
+        return []
+    matches = reports[
+        (reports["Dataset Id"].astype(str) == str(dataset_id))
+        & (reports["Dataset Workspace Id"].astype(str) == str(workspace_id))
+    ]
+    result = [
+        {
+            "id": str(row["Report Id"]),
+            "name": str(row["Report Name"]),
+            "embed_url": (
+                "" if pd.isna(row["Embed Url"]) else str(row["Embed Url"])
+            ),
+        }
+        for _, row in matches.iterrows()
+    ]
+    result.sort(key=lambda item: item["name"].lower())
+    return result
+
+
+def _collect_model_roles(dataset_id: str, workspace_id: str) -> list:
+    """Collect the security role names defined in the semantic model, sorted
+    alphabetically (case-insensitive). Returns an empty list if the model has
+    no roles or the metadata cannot be read."""
+
+    try:
+        from sempy_labs.tom import connect_semantic_model
+    except Exception:
+        return []
+
+    roles: list = []
+    try:
+        with connect_semantic_model(
+            dataset=dataset_id, workspace=workspace_id, readonly=True
+        ) as tom:
+            roles = [str(r.Name) for r in tom.model.Roles]
+    except Exception:
+        return []
+    roles.sort(key=lambda x: x.lower())
+    return roles
+
+
+def _list_workspaces_for_picker() -> list:
+    """Return a list of ``{"id", "name"}`` dicts for the workspaces the user
+    can access, sorted alphabetically. Used by the interactive widget's model
+    picker when no ``dataset`` is supplied to :func:`test`."""
+
+    out: list = []
+    try:
+        dfW = fabric.list_workspaces()
+    except Exception:
+        return []
+    for _, r in dfW.iterrows():
+        out.append({"id": str(r["Id"]), "name": str(r["Name"])})
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def _list_datasets_for_picker(workspace_id: str) -> list:
+    """Return a list of ``{"id", "name"}`` dicts for the semantic models in
+    the given workspace, sorted alphabetically. Used by the interactive
+    widget's model picker."""
+
+    out: list = []
+    try:
+        dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
+    except Exception:
+        return []
+    for _, r in dfD.iterrows():
+        out.append({"id": str(r["Dataset Id"]), "name": str(r["Dataset Name"])})
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def _classify_filter_type(kind: str, data_type: str) -> str:
+    """Classify a query-builder field into a filter family used to pick the
+    available filter operators: ``measure``, ``numeric``, ``datetime``,
+    ``boolean`` or ``text``."""
+
+    if kind == "measure":
+        return "measure"
+    dt = (data_type or "").strip().lower()
+    if dt in ("int64", "double", "decimal", "currency", "int", "integer"):
+        return "numeric"
+    if dt in ("datetime", "date", "time"):
+        return "datetime"
+    if dt in ("boolean", "bool"):
+        return "boolean"
+    return "text"
+
+
+def _qb_quote_str(value: str) -> str:
+    """Return a DAX string literal for ``value`` (double quotes escaped)."""
+
+    return '"' + str(value).replace('"', '""') + '"'
+
+
+def _qb_numeric_literal(value: str) -> str:
+    """Return a numeric DAX literal for ``value`` or a quoted string if the
+    value is not numeric."""
+
+    raw = str(value).strip()
+    try:
+        float(raw)
+        return raw
+    except ValueError:
+        return _qb_quote_str(raw)
+
+
+def _qb_value_literal(filter_type: str, value: str) -> str:
+    """Return a DAX literal for a filter value based on its filter family."""
+
+    import re as _re
+
+    raw = str(value).strip()
+    if filter_type in ("numeric", "measure"):
+        return _qb_numeric_literal(raw)
+    if filter_type == "datetime":
+        m = _re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", raw)
+        if m:
+            return f"DATE({int(m.group(1))}, {int(m.group(2))}, " f"{int(m.group(3))})"
+        return _qb_quote_str(raw)
+    return _qb_quote_str(raw)
+
+
+def _qb_build_predicate(item: dict) -> Optional[str]:
+    """Build a single DAX boolean predicate for a query-builder filter item.
+    Returns None if the operator/value combination is unusable."""
+
+    ref = item.get("ref") or ""
+    if not ref:
+        return None
+    ftype = _classify_filter_type(item.get("kind", "column"), item.get("data_type", ""))
+    op = (item.get("op") or "").strip()
+    value = item.get("value", "")
+    value2 = item.get("value2", "")
+
+    if op == "blank":
+        return f"ISBLANK({ref})"
+    if op == "notblank":
+        return f"NOT ISBLANK({ref})"
+    if op == "istrue":
+        return f"{ref} = TRUE()"
+    if op == "isfalse":
+        return f"{ref} = FALSE()"
+
+    if op in ("in", "notin"):
+        items = [v.strip() for v in str(value).split(",")]
+        items = [v for v in items if v != ""]
+        if not items:
+            return None
+        literals = ", ".join(_qb_value_literal(ftype, v) for v in items)
+        predicate = f"{ref} IN {{{literals}}}"
+        return f"NOT({predicate})" if op == "notin" else predicate
+
+    if ftype == "text":
+        if op == "contains":
+            return f"CONTAINSSTRING({ref}, {_qb_quote_str(value)})"
+        if op == "startswith":
+            length = len(str(value))
+            return f"LEFT({ref}, {length}) = {_qb_quote_str(value)}"
+        if op == "eq":
+            return f"{ref} = {_qb_quote_str(value)}"
+        if op == "ne":
+            return f"{ref} <> {_qb_quote_str(value)}"
+        return None
+
+    symbol = {
+        "eq": "=",
+        "ne": "<>",
+        "gt": ">",
+        "ge": ">=",
+        "lt": "<",
+        "le": "<=",
+    }.get(op)
+    if op == "between":
+        lo = _qb_value_literal(ftype, value)
+        hi = _qb_value_literal(ftype, value2)
+        return f"{ref} >= {lo} && {ref} <= {hi}"
+    if symbol is not None:
+        return f"{ref} {symbol} {_qb_value_literal(ftype, value)}"
+    return None
+
+
+def _build_summarize_dax(state: dict, dataset_id: str, workspace_id: str) -> str:
+    """Build an ``EVALUATE SUMMARIZECOLUMNS(...)`` DAX statement from a
+    query-builder state (a dict with ``fields`` and ``filters`` lists).
+
+    The generated query follows the canonical "DAX as a query language"
+    pattern (see ``.claude/skills/sql_to_dax`` / the Query Builder SKILL):
+
+    1. ``EVALUATE``
+    2. ``SUMMARIZECOLUMNS(`` with elements in strict order:
+       a. attributes (group-by columns),
+       b. filters (column filters via ``FILTER(KEEPFILTERS(VALUES(col)), ...)``),
+       c. measures (``"Name", [Measure]``),
+    3. measure filters wrap the table via ``FILTER(SUMMARIZECOLUMNS(...), ...)``,
+    4. ``ORDER BY`` the enabled Order By items (``ASC``/``DESC``), or all
+       attribute columns ascending when no ``order_by`` is supplied.
+
+    Returns an empty string if there is nothing usable to build.
+    """
+
+    fields = state.get("fields") or []
+    filters = state.get("filters") or []
+
+    group_cols = [f for f in fields if f.get("kind") == "column"]
+    measures = [f for f in fields if f.get("kind") == "measure"]
+    if not group_cols and not measures:
+        return ""
+
+    def _tbl_ref(name: str) -> str:
+        return "'" + str(name).replace("'", "''") + "'"
+
+    def _mea_ref(name: str) -> str:
+        return "[" + str(name).replace("]", "]]") + "]"
+
+    def _col_ref(item: dict) -> str:
+        ref = item.get("ref")
+        if ref:
+            return str(ref)
+        return _tbl_ref(item.get("table")) + _mea_ref(item.get("name"))
+
+    # Split filters into column predicates (applied inline within
+    # SUMMARIZECOLUMNS) and measure predicates (applied via an outer FILTER
+    # over the summarized table, since measures are projected as columns).
+    col_filters: list = []
+    meas_preds: list = []
+    for item in filters:
+        pred = _qb_build_predicate(item)
+        if not pred:
+            continue
+        if item.get("kind") == "measure":
+            meas_preds.append(pred)
+        else:
+            col_filters.append(f"FILTER(KEEPFILTERS(VALUES({_col_ref(item)})), {pred})")
+
+    # SUMMARIZECOLUMNS elements: attributes, then column filters, then
+    # measures (in that exact order, as required by the engine).
+    parts: list = []
+    for c in group_cols:
+        parts.append(_col_ref(c))
+    parts.extend(col_filters)
+    for m in measures:
+        parts.append(f'{_qb_quote_str(m.get("name"))}, {_mea_ref(m.get("name"))}')
+
+    inner = "SUMMARIZECOLUMNS(" + ", ".join(parts) + ")"
+
+    # Measure-based filters cannot live inside SUMMARIZECOLUMNS; wrap the
+    # whole table in a FILTER referencing the measure columns.
+    if meas_preds:
+        inner = "FILTER(" + inner + ", " + " && ".join(meas_preds) + ")"
+
+    dax = "EVALUATE\n" + inner
+
+    # ORDER BY clause. When the builder supplies an explicit "order_by" list
+    # (from the Order By pane), only the enabled items contribute, each with
+    # its chosen direction (ASC for A-Z, DESC for Z-A), in pane order. When
+    # no "order_by" key is present (backward compatibility), fall back to
+    # ordering by all attribute columns ascending.
+    order_by = state.get("order_by")
+    if order_by is None:
+        if group_cols:
+            order_cols = ", ".join(_col_ref(c) for c in group_cols)
+            dax += "\nORDER BY " + order_cols
+    else:
+        order_parts: list = []
+        for item in order_by:
+            if not item.get("enabled"):
+                continue
+            ref = _col_ref(item)
+            if not ref:
+                continue
+            direction = "DESC" if str(item.get("dir", "")).lower() == "desc" else "ASC"
+            order_parts.append(f"{ref} {direction}")
+        if order_parts:
+            dax += "\nORDER BY " + ", ".join(order_parts)
+
+    return dax
+
+
+def _classify_dax_spans(dax_expression: str) -> list:
+    """Classify a DAX expression into a flat list of ``{text, kind}`` spans
+    using the project's DAX parser/tokenizer.
+
+    Spans cover the full string including inter-token whitespace (which has
+    ``kind = ""``) so the front-end can faithfully reproduce the input
+    layout while applying syntax colors.
+    """
+
+    if not dax_expression:
+        return []
+    try:
+        from sempy_labs.dax._format import _classify_tokens
+
+        classified = _classify_tokens(dax_expression)
+    except Exception:
+        return [{"text": dax_expression, "kind": ""}]
+
+    spans: list = []
+    cursor = 0
+    for token, kind in classified:
+        if token.position > cursor:
+            spans.append({"text": dax_expression[cursor : token.position], "kind": ""})
+        spans.append({"text": token.text, "kind": kind or ""})
+        cursor = token.position + len(token.text)
+    if cursor < len(dax_expression):
+        spans.append({"text": dax_expression[cursor:], "kind": ""})
+    return spans
+
+
+def _clean_monitoring_query(value: str) -> str:
+    """Return the Workspace Monitoring query exactly as displayed in the UI."""
+
+    return re.sub(r"\s*\[WaitTime:[^\]]*\]\s*$", "", value, flags=re.IGNORECASE).rstrip()
+
+
+def _monitoring_dax_spans(value: str) -> list:
+    """Classify a Workspace Monitoring query when it is DAX."""
+
+    query = _clean_monitoring_query(value)
+    if not re.match(r"^\s*(?:EVALUATE|DEFINE)\b", query, flags=re.IGNORECASE):
+        return []
+    return _classify_dax_spans(query)
+
+
+_FALLBACK_SEARCH_SELECT_CSS = r"""
+.slls-ss { position: relative; display: flex; width: 100%; }
+.slls-ss-btn {
+    display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
+    border: 1px solid var(--ui-border-strong); border-radius: 8px;
+    padding: 8px 10px; background: var(--ui-bg); color: var(--ui-text);
+    font: inherit; cursor: pointer;
+}
+.slls-ss-value { flex: 1 1 auto; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.slls-ss-caret { color: var(--ui-text-tertiary); font-size: 11px; }
+.slls-ss-panel {
+    display: none; position: absolute; top: calc(100% + 5px); left: 0; right: 0;
+    z-index: 30; padding: 6px; border: 1px solid var(--ui-border-strong);
+    border-radius: 10px; background: var(--ui-bg); box-shadow: var(--ui-shadow-md);
+}
+.slls-ss-open .slls-ss-panel { display: block; }
+.slls-ss-search {
+    width: 100%; margin-bottom: 5px; border: 1px solid var(--ui-border-strong);
+    border-radius: 8px; padding: 7px 9px; background: var(--ui-bg-secondary);
+    color: var(--ui-text); font: inherit; font-size: 13px;
+}
+.slls-ss-search:focus { outline: none; border-color: var(--ui-accent); }
+.slls-ss-list { max-height: 240px; overflow-y: auto; }
+.slls-ss-opt {
+    display: block; width: 100%; border: 0; border-radius: 7px;
+    padding: 7px 10px; background: transparent; color: var(--ui-text);
+    font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slls-ss-opt:hover { background: var(--ui-surface-2); }
+.slls-ss-opt.slls-ss-selected { color: var(--ui-accent); font-weight: 500; }
+.slls-ss-empty { padding: 9px 10px; color: var(--ui-text-tertiary); font-size: 12.5px; }
+.slls-ss-disabled { opacity: 0.6; }
+"""
+
+_FALLBACK_SEARCH_SELECT_JS = r"""
+function createSearchSelect(config) {
+    const cfg = config || {};
+    const wrap = document.createElement("div");
+    wrap.className = "slls-ss";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slls-ss-btn";
+    btn.setAttribute("aria-haspopup", "listbox");
+    btn.setAttribute("aria-expanded", "false");
+    if (cfg.ariaLabel) btn.setAttribute("aria-label", cfg.ariaLabel);
+    const valueLabel = document.createElement("span");
+    valueLabel.className = "slls-ss-value";
+    const caret = document.createElement("span");
+    caret.className = "slls-ss-caret";
+    caret.textContent = "\u25be";
+    btn.appendChild(valueLabel);
+    btn.appendChild(caret);
+    wrap.appendChild(btn);
+
+    const panel = document.createElement("div");
+    panel.className = "slls-ss-panel";
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "slls-ss-search";
+    search.placeholder = cfg.searchPlaceholder || "Search\u2026";
+    panel.appendChild(search);
+    const list = document.createElement("div");
+    list.className = "slls-ss-list";
+    list.setAttribute("role", "listbox");
+    panel.appendChild(list);
+    wrap.appendChild(panel);
+
+    let options = [];
+    let value = "";
+    let emptyLabel = cfg.emptyLabel || "No items";
+    let disabled = false;
+    function close() {
+        wrap.classList.remove("slls-ss-open");
+        btn.setAttribute("aria-expanded", "false");
+    }
+    function renderValue() {
+        const selected = options.find(option => String(option.value) === String(value));
+        valueLabel.textContent = selected ? selected.label : (cfg.placeholder || "Select\u2026");
+        btn.disabled = disabled;
+        wrap.classList.toggle("slls-ss-disabled", disabled);
+    }
+    function renderList() {
+        list.innerHTML = "";
+        const term = search.value.trim().toLowerCase();
+        const shown = term
+            ? options.filter(option => String(option.label).toLowerCase().includes(term))
+            : options;
+        if (!shown.length) {
+            const empty = document.createElement("div");
+            empty.className = "slls-ss-empty";
+            empty.textContent = options.length ? "No matches" : emptyLabel;
+            list.appendChild(empty);
+            return;
+        }
+        shown.forEach(option => {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.className = "slls-ss-opt";
+            row.classList.toggle("slls-ss-selected", String(option.value) === String(value));
+            row.textContent = option.label;
+            row.addEventListener("click", () => {
+                value = option.value;
+                renderValue();
+                close();
+                if (cfg.onChange) cfg.onChange(option);
+            });
+            list.appendChild(row);
+        });
+    }
+    btn.addEventListener("click", event => {
+        event.stopPropagation();
+        if (disabled) return;
+        const opening = !wrap.classList.contains("slls-ss-open");
+        wrap.classList.toggle("slls-ss-open", opening);
+        btn.setAttribute("aria-expanded", String(opening));
+        if (opening) {
+            search.value = "";
+            renderList();
+            search.focus();
+        }
+    });
+    panel.addEventListener("click", event => event.stopPropagation());
+    search.addEventListener("input", renderList);
+    search.addEventListener("keydown", event => {
+        if (event.key === "Escape") { close(); btn.focus(); }
+    });
+    document.addEventListener("click", close);
+    renderValue();
+    return {
+        el: wrap,
+        get value() { return value; },
+        get label() {
+            const selected = options.find(option => String(option.value) === String(value));
+            return selected ? selected.label : "";
+        },
+        focus() { btn.focus(); },
+        setOptions(items, selectedValue) {
+            options = items || [];
+            value = selectedValue || "";
+            renderValue();
+            renderList();
+        },
+        setEmptyLabel(text) { emptyLabel = text || "No items"; renderList(); },
+        setDisabled(flag) { disabled = !!flag; if (disabled) close(); renderValue(); },
+    };
+}
+"""
+
+_FALLBACK_DAX_PERFORMANCE_ICON = (
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
+    'stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M4.1 17.5a8.5 8.5 0 1 1 15.8 0"/>'
+    '<path d="m12 14.5 4.1-4.8"/>'
+    '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
+    "</svg>"
+)
+_FALLBACK_ACTIVITY_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>'
+)
+_FALLBACK_HAMMER_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="m15 12-9.373 9.373a1 1 0 0 1-3.001-3L12 9"/>'
+    '<path d="m18 15 4-4"/>'
+    '<path d="m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172v-.344a2 2 0 0 0-.586-1.414l-1.657-1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5"/></svg>'
+)
+_FALLBACK_LIST_TREE_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/>'
+    '<path d="M3 6v4c0 1.1.9 2 2 2h3"/>'
+    '<path d="M3 10v6c0 1.1.9 2 2 2h3"/></svg>'
+)
+_FALLBACK_GIT_BRANCH_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><line x1="6" x2="6" y1="3" y2="15"/>'
+    '<circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>'
+    '<path d="M18 9a9 9 0 0 1-9 9"/></svg>'
+)
+_FALLBACK_WORKFLOW_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><rect width="8" height="8" x="3" y="3" rx="2"/>'
+    '<path d="M7 11v4a2 2 0 0 0 2 2h4"/>'
+    '<rect width="8" height="8" x="13" y="13" rx="2"/></svg>'
+)
+_FALLBACK_SHIELD_CHECK_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/>'
+    '<path d="m9 12 2 2 4-4"/></svg>'
+)
+_FALLBACK_USERS_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>'
+    '<circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>'
+)
+_FALLBACK_USER_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/>'
+    '<circle cx="12" cy="7" r="4"/></svg>'
+)
+_FALLBACK_ERASER_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6c1 1 1 2.5 0 3.4L11 21"/>'
+    '<path d="M22 21H7"/><path d="m5 11 9 9"/></svg>'
+)
+
+
+def _visualize_dax_test(
+    df: pd.DataFrame,
+    total_duration: int,
+    fe_duration: int,
+    se_duration: int,
+    cpu_time: int,
+    dax_string: str,
+    dataset_id: Optional[str],
+    workspace_id: Optional[str],
+    dataset_name: Optional[str] = None,
+    workspace_name: Optional[str] = None,
+    dark_mode: bool = False,
+    clear_cache: bool = True,
+    result_df: Optional[pd.DataFrame] = None,
+    effective_user_name: Optional[str] = None,
+    role: Optional[str] = None,
+) -> None:
+    """Render an interactive editable DAX widget for :func:`test` results."""
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError as e:
+        raise ImportError(
+            "Visualizing 'test()' requires the 'anywidget' package. "
+            "Install it with: pip install anywidget"
+        ) from e
+
+    from IPython.display import display
+    from sempy_labs._daxformatter import _format_dax
+    from sempy_labs import _ui_components
+    from sempy_labs._ui_components import (
+        LIGHT_THEME_VARS as _UI_LIGHT_VARS,
+        DARK_THEME_VARS as _UI_DARK_VARS,
+        SYNTAX_HIGHLIGHT_VARS as _UI_SYNTAX_VARS,
+        HEADER_CSS as _UI_HEADER_CSS,
+        ATTRIBUTION_CSS as _UI_ATTRIBUTION_CSS,
+        ICONS as _UI_ICONS,
+    )
+    _UI_SEARCH_SELECT_CSS = getattr(
+        _ui_components, "SEARCH_SELECT_CSS", _FALLBACK_SEARCH_SELECT_CSS
+    )
+    _UI_SEARCH_SELECT_JS = getattr(
+        _ui_components, "SEARCH_SELECT_JS", _FALLBACK_SEARCH_SELECT_JS
+    )
+    _UI_TABLE_COLUMN_RESIZE_JS = _ui_components.TABLE_COLUMN_RESIZE_JS
+
+    # The DAX is intentionally NOT auto-formatted on load (formatting calls
+    # the external DAX Formatter service and would slow down ``test()``).
+    # The user can format on demand via the "Format" button in the widget.
+    # Still normalize line endings to "\n" so the classified token text
+    # matches the <textarea> length (a <textarea> normalizes "\r\n" to "\n"
+    # on assignment; a mismatch makes the front-end fall back to plain,
+    # uncolored rendering of the DAX).
+    formatted_initial = (dax_string or "").replace("\r\n", "\n").replace("\r", "\n")
+    initial_rows = _trace_rows_from_df(df)
+    initial_query_plan_rows = _query_plan_rows_from_df(df)
+    initial_execution_metrics = _execution_metrics_from_df(df)
+
+    widget_css = (
+        _UI_HEADER_CSS
+        + "\n"
+        + _UI_ATTRIBUTION_CSS
+        + "\n"
+        + _UI_SEARCH_SELECT_CSS
+        + "\n"
+        + f"""
+.dtx {{
+    {_UI_LIGHT_VARS}
+    {_UI_SYNTAX_VARS}
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+        "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ui-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}}
+.dtx.dtx-dark {{
+    {_UI_DARK_VARS}
+}}
+.dtx.dtx-fullscreen {{
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: var(--ui-bg);
+    overflow: hidden;
+}}
+.dtx.dtx-fullscreen .dtx-container {{
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}}
+.dtx.dtx-fullscreen .dtx-body {{
+    flex: 1 1 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}}
+.dtx.dtx-fullscreen .dtx-main {{
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}}
+.dtx.dtx-fullscreen .dtx-main > * {{ flex-shrink: 0; }}
+.dtx.dtx-fullscreen .dtx-query {{ min-height: 300px; max-height: 60vh; }}
+.dtx:fullscreen {{
+    overflow: hidden;
+    background: var(--ui-bg);
+}}
+.dtx:fullscreen .dtx-container {{
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}}
+.dtx:fullscreen .dtx-body {{
+    flex: 1 1 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}}
+.dtx:fullscreen .dtx-main {{
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}}
+.dtx:fullscreen .dtx-main > * {{ flex-shrink: 0; }}
+.dtx:fullscreen .dtx-query {{ min-height: 300px; max-height: 60vh; }}
+.dtx *, .dtx *::before, .dtx *::after {{ box-sizing: border-box; }}
+.dtx button.dtx-button-pressed:not(:disabled) {{
+    transform: scale(0.95);
+    filter: brightness(0.9);
+    transition-duration: 0ms !important;
+}}
+.dtx button.dtx-button-acknowledged:not(:disabled) {{
+    animation: dtx-button-acknowledge 180ms ease-out;
+}}
+@keyframes dtx-button-acknowledge {{
+    0% {{ transform: scale(0.95); filter: brightness(0.9); }}
+    100% {{ transform: scale(1); filter: brightness(1); }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+    .dtx button.dtx-button-pressed:not(:disabled) {{
+        transform: none !important;
+        filter: brightness(0.85);
+    }}
+    .dtx button.dtx-button-acknowledged:not(:disabled) {{
+        animation: none;
+        filter: brightness(0.9);
+    }}
+}}
+.dtx .dtx-container {{
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: var(--ui-shadow-lg);
+    overflow: hidden;
+}}
+.dtx .dtx-header {{
+    padding: 22px 24px 18px 24px;
+    background: var(--ui-bg);
+}}
+.dtx .dtx-tool-icon {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-tool-icon svg {{ width: 27px; height: 27px; }}
+.dtx .dtx-tool-icon svg path:nth-of-type(2) {{ stroke: var(--ui-accent); }}
+.dtx .dtx-tool-icon svg circle {{ fill: var(--ui-accent); }}
+.dtx .dtx-cards {{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 0 24px 18px 24px;
+}}
+.dtx .dtx-cards.dtx-cards-hidden {{ display: none; }}
+.dtx .dtx-card {{
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}}
+.dtx .dtx-card-label {{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-card-label svg {{
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+}}
+.dtx .dtx-card-value {{
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ui-text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}}
+.dtx .dtx-card-unit {{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ui-text-tertiary);
+    margin-left: 4px;
+}}
+.dtx .dtx-card-sub {{
+    font-size: 11px;
+    color: var(--ui-text-secondary);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+}}
+.dtx .dtx-query-block {{
+    margin: 0 24px 16px 24px;
+}}
+.dtx .dtx-query-options {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 24px 14px;
+}}
+.dtx .dtx-query-options.dtx-hide-report-capture .dtx-report-capture,
+.dtx .dtx-query-options.dtx-hide-impersonation .dtx-imp-wrap {{ display: none; }}
+.dtx .dtx-query-options.dtx-no-optional-controls {{ margin-bottom: 0; }}
+.dtx .dtx-query-toolbar {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}}
+.dtx .dtx-query-cache-row {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 24px;
+    margin-top: 8px;
+}}
+.dtx .dtx-run-progress {{
+    display: none;
+    position: relative;
+    height: 3px;
+    margin: -3px 0 8px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-run-progress.dtx-active {{ display: block; }}
+.dtx .dtx-run-progress::after {{
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: -35%;
+    width: 35%;
+    border-radius: inherit;
+    background: var(--ui-accent);
+    animation: dtx-run-progress 1s ease-in-out infinite;
+}}
+@keyframes dtx-run-progress {{
+    from {{ transform: translateX(0); }}
+    to {{ transform: translateX(390%); }}
+}}
+.dtx .dtx-query-titlegroup {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+}}
+.dtx .dtx-query-title {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-fmt-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    cursor: pointer;
+}}
+.dtx .dtx-fmt-btn svg {{
+    width: 24px;
+    height: auto;
+    display: block;
+}}
+.dtx .dtx-daxformat-btn svg {{ width: 18px; }}
+.dtx .dtx-fmt-btn:hover:not(:disabled) {{
+    border-color: var(--ui-accent);
+    background: var(--ui-surface-2);
+}}
+.dtx .dtx-fmt-btn:disabled {{
+    opacity: 0.45;
+    cursor: default;
+}}
+.dtx .dtx-fmt-btn.dtx-fmt-loading {{
+    cursor: progress;
+}}
+.dtx .dtx-analyze-btn {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-analyze-btn svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-analyze-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
+.dtx .dtx-clear-model-cache-btn {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-clear-model-cache-btn svg {{
+    width: 17px;
+    height: 17px;
+    fill: none !important;
+    stroke: currentColor !important;
+}}
+.dtx .dtx-clear-model-cache-btn svg * {{
+    fill: none !important;
+    stroke: currentColor !important;
+}}
+.dtx .dtx-clear-model-cache-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
+.dtx .dtx-nl-btn {{ color: var(--ui-accent); }}
+.dtx .dtx-nl-btn svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-nl-btn:hover:not(:disabled) {{ color: var(--ui-accent-hover, var(--ui-accent)); }}
+.dtx .dtx-nl-overlay {{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 50;
+    padding: 16px;
+}}
+.dtx .dtx-nl-modal {{
+    width: 480px;
+    max-width: 100%;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: var(--ui-shadow-lg, 0 12px 32px rgba(0, 0, 0, 0.35));
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}}
+.dtx .dtx-nl-head {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}}
+.dtx .dtx-nl-title {{
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ui-text);
+}}
+.dtx .dtx-nl-close {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-nl-close svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-nl-close:hover {{
+    border-color: var(--ui-border);
+    color: var(--ui-text);
+}}
+.dtx .dtx-nl-desc {{
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-nl-input {{
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+}}
+.dtx .dtx-nl-input:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+}}
+.dtx .dtx-nl-input:disabled {{
+    opacity: 0.6;
+    cursor: progress;
+}}
+.dtx .dtx-nl-error {{
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ui-danger, #d13438);
+}}
+.dtx .dtx-nl-actions {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}}
+.dtx .dtx-nl-cancel,
+.dtx .dtx-nl-submit {{
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--ui-border);
+}}
+.dtx .dtx-nl-cancel {{
+    background: transparent;
+    color: var(--ui-text);
+}}
+.dtx .dtx-nl-cancel:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-nl-submit {{
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-nl-submit:hover:not(:disabled) {{
+    background: var(--ui-accent-hover, var(--ui-accent));
+}}
+.dtx .dtx-nl-submit:disabled {{
+    opacity: 0.6;
+    cursor: progress;
+}}
+.dtx .dtx-fmt-btn.dtx-fmt-loading svg {{
+    animation: dtx-fmt-pulse 0.9s ease-in-out infinite;
+}}
+@keyframes dtx-fmt-pulse {{
+    0%, 100% {{ opacity: 1; }}
+    50% {{ opacity: 0.35; }}
+}}
+.dtx .dtx-hist-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-hist-btn svg {{
+    width: 16px;
+    height: 16px;
+}}
+.dtx .dtx-hist-btn:hover:not(:disabled) {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-hist-btn:disabled {{
+    opacity: 0.4;
+    cursor: default;
+}}
+.dtx .dtx-title-row {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}}
+.dtx .dtx-change-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    border: 1px solid var(--ui-border-strong);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    cursor: pointer;
+}}
+.dtx .dtx-change-btn svg {{
+    width: 18px;
+    height: 18px;
+}}
+.dtx .dtx-change-btn:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-builder-show-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    margin-right: 6px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-builder-show-btn svg {{
+    width: 20px;
+    height: 20px;
+}}
+.dtx .dtx-builder-show-btn:hover {{
+    border-color: var(--ui-border-strong);
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-builder-show-btn.dtx-active {{
+    border-color: var(--ui-accent);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-picker-cancel {{
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    line-height: 1;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-picker-cancel:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-query-placeholder {{
+    color: var(--ui-text-tertiary);
+    font-style: italic;
+}}
+.dtx .dtx-cache-label {{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}}
+.dtx .dtx-cache-label input {{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}}
+.dtx .dtx-cache-switch {{
+    position: relative;
+    width: 34px;
+    height: 20px;
+    flex: 0 0 34px;
+    border-radius: 10px;
+    background: var(--ui-border-strong);
+    transition: background 120ms ease;
+}}
+.dtx .dtx-cache-switch::after {{
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-sm);
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-cache-label input:checked + .dtx-cache-switch {{
+    background: var(--ui-accent);
+}}
+.dtx .dtx-cache-label input:checked + .dtx-cache-switch::after {{
+    transform: translateX(14px);
+}}
+.dtx .dtx-cache-label input:focus-visible + .dtx-cache-switch {{
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-imp-wrap {{
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 0 1 auto;
+}}
+.dtx .dtx-report-capture {{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}}
+.dtx .dtx-report-label {{
+    color: var(--ui-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-select {{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: 176px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}}
+.dtx .dtx-report-select:hover:not(:disabled) {{ border-color: var(--ui-text-tertiary); }}
+.dtx .dtx-report-select-icon {{
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-report-select-text {{
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-select-chevron {{
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    color: var(--ui-text-secondary);
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-report-select[aria-expanded="true"] .dtx-report-select-chevron {{ transform: rotate(180deg); }}
+.dtx .dtx-report-select:disabled,
+.dtx .dtx-report-capture-btn:disabled {{ opacity: 0.45; cursor: default; }}
+.dtx .dtx-report-menu {{
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 66px;
+    width: 220px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-md);
+}}
+.dtx .dtx-report-clear {{
+    width: 100%;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-accent);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}}
+.dtx .dtx-report-clear:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-report-option {{
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}}
+.dtx .dtx-report-option:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-report-check {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 6px;
+    color: transparent;
+}}
+.dtx .dtx-report-check.dtx-checked {{
+    border-color: var(--ui-accent);
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-report-check svg {{ width: 13px; height: 13px; }}
+.dtx .dtx-report-option-text {{
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-capture-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    padding: 0;
+    border: 1px solid var(--ui-accent);
+    border-radius: 7px;
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    cursor: pointer;
+}}
+.dtx .dtx-report-capture-btn:hover:not(:disabled) {{ background: var(--ui-accent-hover); }}
+.dtx .dtx-report-capture-btn svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-report-progress {{
+    max-width: 260px;
+    overflow: hidden;
+    color: var(--ui-text-secondary);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-report-host {{
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: 1280px;
+    height: 720px;
+    border: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}}
+.dtx .dtx-imp-label {{
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+}}
+.dtx .dtx-imp-segment {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 26px;
+    overflow: hidden;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-imp-mode {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    padding: 0 8px !important;
+    border: 0;
+    border-right: 1px solid var(--ui-border-strong);
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1 !important;
+    white-space: nowrap;
+    cursor: pointer;
+}}
+.dtx .dtx-imp-mode:last-child {{ border-right: 0; }}
+.dtx .dtx-imp-mode svg {{ width: 12px; height: 12px; }}
+.dtx .dtx-imp-mode:hover:not(:disabled):not(.dtx-active) {{
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+}}
+.dtx .dtx-imp-mode.dtx-active {{
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-imp-mode:disabled {{ opacity: 0.45; cursor: not-allowed; }}
+.dtx .dtx-imp-select {{
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 26px 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    cursor: pointer;
+    min-width: 0;
+    flex: 0 1 auto;
+    text-overflow: ellipsis;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ui-text-tertiary) 50%),
+        linear-gradient(135deg, var(--ui-text-tertiary) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}}
+.dtx .dtx-imp-select:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-imp-input {{
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    width: 220px;
+    min-width: 0;
+    flex: 0 1 auto;
+}}
+.dtx .dtx-imp-input:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+@media (max-width: 760px) {{
+    .dtx .dtx-query-options {{ align-items: flex-start; flex-direction: column; }}
+    .dtx .dtx-imp-wrap {{ align-items: flex-start; flex-wrap: wrap; }}
+}}
+.dtx .dtx-picker {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 430px;
+    padding: 32px;
+    background: var(--ui-bg);
+    overflow: auto;
+}}
+.dtx .dtx-picker-panel {{
+    width: 100%;
+    max-width: 900px;
+    box-sizing: border-box;
+    padding: 24px 28px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-md);
+}}
+.dtx .dtx-picker-top {{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}}
+.dtx .dtx-picker-head {{ min-width: 0; }}
+.dtx .dtx-picker-reload {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}}
+.dtx .dtx-picker-reload:hover {{ border-color: var(--ui-accent); color: var(--ui-accent); }}
+.dtx .dtx-picker-reload:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx .dtx-picker-reload svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-picker-reload.dtx-loading svg {{ animation: dtx-spin 0.8s linear infinite; }}
+@keyframes dtx-spin {{ to {{ transform: rotate(360deg); }} }}
+.dtx .dtx-picker-title {{
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ui-text);
+}}
+.dtx .dtx-picker-subtitle {{
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-picker-fields {{
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}}
+.dtx .dtx-picker-field {{
+    display: flex;
+    flex: 1 1 260px;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}}
+.dtx .dtx-picker-label {{
+    display: block;
+    font-size: 12px;
+    color: var(--ui-text-secondary);
+    padding-left: 8px;
+}}
+.dtx .dtx-picker-field .slls-ss-btn {{
+    min-height: 40px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--ui-surface);
+    font-size: 14px;
+}}
+.dtx .dtx-picker-field .slls-ss-panel {{ z-index: 30; }}
+.dtx .dtx-picker-actions {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}}
+.dtx .dtx-picker-spin {{ font-size: 12px; color: var(--ui-text-tertiary); }}
+.dtx .dtx-picker-btn {{
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--ui-accent);
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, opacity 120ms ease;
+}}
+.dtx .dtx-picker-btn:hover {{ background: var(--ui-accent-hover); }}
+.dtx .dtx-picker-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+@media (max-width: 640px) {{
+    .dtx .dtx-picker {{ min-height: 360px; padding: 20px 16px; }}
+    .dtx .dtx-picker-panel {{ padding: 20px; }}
+    .dtx .dtx-picker-top {{ align-items: stretch; flex-direction: column; }}
+    .dtx .dtx-picker-reload {{ align-self: flex-start; }}
+}}
+.dtx .dtx-icon-btn {{
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--ui-border-strong);
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 120ms ease, border-color 120ms ease,
+        color 120ms ease, transform 80ms ease;
+}}
+.dtx .dtx-icon-btn:hover {{
+    background: var(--ui-surface-2);
+    border-color: var(--ui-text-tertiary);
+    color: var(--ui-text);
+}}
+.dtx .dtx-icon-btn:active {{ transform: scale(0.95); }}
+.dtx .dtx-icon-btn svg {{ width: 16px; height: 16px; display: block; }}
+.dtx .dtx-icon-btn.dtx-icon-btn-on {{
+    color: var(--ui-accent);
+    border-color: var(--ui-accent);
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-icon-btn.dtx-icon-btn-on:hover {{
+    background: var(--ui-accent-soft);
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-view-toolbar {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 24px 10px 24px;
+}}
+.dtx .dtx-vp-seg {{
+    margin: 0 24px 10px 24px;
+    width: fit-content;
+}}
+.dtx .dtx-view-title {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+    flex: 0 0 auto;
+}}
+.dtx .dtx-seg {{
+    display: inline-flex;
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+}}
+.dtx .dtx-seg-btn {{
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}}
+.dtx .dtx-seg-btn:hover {{ color: var(--ui-text); }}
+.dtx .dtx-seg-btn.dtx-seg-btn-on {{
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-sm);
+}}
+.dtx .dtx-seg-btn[disabled] {{
+    opacity: 0.45;
+    cursor: not-allowed;
+}}
+.dtx .dtx-seg-btn[disabled]:hover {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-chart-wrap {{
+    padding: 12px 24px 20px 24px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}}
+.dtx .dtx-chart-empty {{
+    padding: 24px;
+    text-align: center;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+}}
+.dtx .dtx-chart-controls {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 0 24px 8px 24px;
+}}
+.dtx .dtx-chart-controls label {{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--ui-text-tertiary);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}}
+.dtx .dtx-chart-controls select {{
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 4px 26px 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ui-text-tertiary) 50%),
+        linear-gradient(135deg, var(--ui-text-tertiary) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}}
+.dtx .dtx-chart-controls select:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-chart-svg {{ display: block; max-width: 100%; }}
+.dtx .dtx-chart-bar {{ fill: var(--ui-accent); transition: opacity 100ms ease; }}
+.dtx .dtx-chart-bar:hover {{ opacity: 0.8; }}
+.dtx .dtx-chart-axis line, .dtx .dtx-chart-axis path {{ stroke: var(--ui-border-strong); fill: none; }}
+.dtx .dtx-chart-axis text {{ fill: var(--ui-text-secondary); font-size: 10px; font-family: inherit; }}
+.dtx .dtx-chart-grid line {{ stroke: var(--ui-border); stroke-dasharray: 2 3; }}
+.dtx .dtx-chart-legend {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 12px 16px 4px 56px;
+}}
+.dtx .dtx-legend-item {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-legend-swatch {{
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+}}
+.dtx .dtx-result-meta {{
+    padding: 0 24px 8px 24px;
+    font-size: 11px;
+    color: var(--ui-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}}
+.dtx .dtx-btn {{
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--ui-accent);
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    flex: none;
+    padding: 0;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms ease, border-color 120ms ease,
+        opacity 120ms ease, transform 80ms ease;
+}}
+.dtx .dtx-btn:hover {{ background: var(--ui-accent-hover); border-color: var(--ui-accent-hover); }}
+.dtx .dtx-btn:active {{ transform: scale(0.94); }}
+.dtx .dtx-btn[disabled] {{
+    opacity: 0.55;
+    cursor: not-allowed;
+}}
+.dtx .dtx-btn svg {{ width: 14px; height: 14px; display: block; }}
+.dtx .dtx-btn.dtx-btn-stop {{
+    background: var(--ui-danger);
+    border-color: var(--ui-danger);
+    border-radius: 50%;
+}}
+.dtx .dtx-btn.dtx-btn-stop:hover {{
+    background: var(--ui-danger-hover);
+    border-color: var(--ui-danger-hover);
+}}
+.dtx .dtx-query-wrap {{
+    position: relative;
+}}
+.dtx .dtx-query-hl {{
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ui-text);
+    background: transparent;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+}}
+.dtx .dtx-query-hl span {{ background: transparent; }}
+.dtx .dtx-tk-function,
+.dtx .dtx-tk-keyword {{ color: var(--ui-syntax-keyword) !important; }}
+.dtx .dtx-tk-variable {{ color: var(--ui-syntax-variable) !important; }}
+.dtx .dtx-tk-number {{ color: var(--ui-syntax-number) !important; }}
+.dtx .dtx-tk-virtual_column {{ color: var(--ui-syntax-virtual-column) !important; }}
+.dtx .dtx-tk-string {{ color: var(--ui-syntax-string) !important; }}
+.dtx .dtx-tk-comment {{ color: var(--ui-syntax-comment) !important; font-style: italic; }}
+.dtx .dtx-tk-operator,
+.dtx .dtx-tk-punctuation {{ color: var(--ui-syntax-operator) !important; }}
+.dtx .dtx-query {{
+    width: 100%;
+    min-height: 120px;
+    max-height: 386px;
+    padding: 12px 14px;
+    background: var(--ui-bg-tertiary);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: transparent;
+    caret-color: var(--ui-text);
+    -webkit-text-fill-color: transparent;
+    resize: vertical;
+    outline: none;
+    position: relative;
+    z-index: 1;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}}
+.dtx .dtx-query::selection {{
+    background: var(--ui-accent-soft);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}}
+.dtx .dtx-query:focus {{
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-expand-btn {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-expand-btn svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-expand-btn:hover:not(:disabled) {{ color: var(--ui-accent); }}
+.dtx .dtx-editor-overlay {{
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    padding: 24px;
+}}
+.dtx .dtx-editor-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-editor-modal {{
+    width: 95vw;
+    height: 90vh;
+    max-width: 1400px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: var(--ui-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}}
+.dtx .dtx-editor-head {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ui-border);
+}}
+.dtx .dtx-editor-title {{
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-editor-body {{
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    padding: 16px 18px;
+}}
+.dtx .dtx-editor-overlay .dtx-query-wrap {{
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}}
+.dtx .dtx-editor-overlay .dtx-query {{
+    height: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    resize: none;
+}}
+.dtx .dtx-error {{
+    margin: 0 24px 16px 24px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    background: var(--ui-danger-bg);
+    border: 1px solid var(--ui-danger-border);
+    color: var(--ui-danger-text);
+    white-space: pre-wrap;
+}}
+.dtx.dtx-dark .dtx-error {{
+    background: var(--ui-danger-bg);
+    border-color: var(--ui-danger-border);
+    color: var(--ui-danger-text);
+}}
+.dtx .dtx-section-title {{
+    padding: 4px 24px 10px 24px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-table-wrap {{
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 480px;
+    border-top: 1px solid var(--ui-border);
+}}
+.dtx .dtx-trace-table {{ min-width: 1040px; table-layout: fixed; }}
+.dtx .dtx-trace-table th:nth-child(1) {{ width: 150px; }}
+.dtx .dtx-trace-table th:nth-child(2) {{ width: 180px; }}
+.dtx .dtx-trace-table th:nth-child(3),
+.dtx .dtx-trace-table th:nth-child(4) {{ width: 100px; }}
+.dtx .dtx-trace-table th:nth-child(5),
+.dtx .dtx-trace-table th:nth-child(6) {{ width: 80px; }}
+.dtx td.dtx-trace-text {{ min-width: 360px; vertical-align: top; white-space: normal; }}
+.dtx .dtx-trace-text pre {{
+    margin: 0;
+    max-height: 160px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-trace-keyword {{
+    color: var(--ui-syntax-keyword);
+    font-weight: 600;
+}}
+.dtx .dtx-trace-string {{ color: var(--ui-syntax-string); }}
+.dtx .dtx-trace-comment {{
+    color: var(--ui-syntax-comment);
+    font-style: italic;
+}}
+.dtx .dtx-trace-number,
+.dtx .dtx-trace-estimate-value {{ color: var(--ui-syntax-number); }}
+.dtx .dtx-trace-estimate {{
+    color: var(--ui-text);
+    font-weight: 600;
+}}
+.dtx .dtx-trace-callback {{
+    padding: 1px 2px;
+    border-radius: 3px;
+    background: var(--ui-warning-bg);
+    color: var(--ui-warning-text);
+    font-weight: 700;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}}
+.dtx .dtx-trace-callback * {{
+    color: inherit;
+    font-weight: inherit;
+}}
+.dtx table {{
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+}}
+.dtx thead th {{
+    position: sticky;
+    top: 0;
+    padding: 10px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-secondary);
+    background: var(--ui-bg-secondary);
+    border-bottom: 1px solid var(--ui-border-strong);
+    white-space: nowrap;
+}}
+.dtx thead th.dtx-resizable {{
+    position: sticky;
+}}
+.dtx .dtx-column-resizer {{
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: -3px;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+}}
+.dtx .dtx-column-resizer::after {{
+    content: "";
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: 3px;
+    width: 1px;
+    background: transparent;
+}}
+.dtx .dtx-column-resizer:hover::after,
+.dtx .dtx-column-resizer.dtx-resizing::after {{
+    background: var(--ui-accent);
+}}
+.dtx .dtx-history-table th[data-history-sort] {{
+    cursor: pointer;
+    user-select: none;
+}}
+.dtx .dtx-history-table th[data-history-sort]::after {{
+    content: "";
+    display: inline-block;
+    width: 12px;
+    margin-left: 5px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-history-table th[aria-sort="ascending"]::after {{ content: "▲"; }}
+.dtx .dtx-history-table th[aria-sort="descending"]::after {{ content: "▼"; }}
+.dtx .dtx-monitoring-table th[data-monitoring-sort] {{ cursor: pointer; user-select: none; }}
+.dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
+.dtx .dtx-monitoring-table th[data-monitoring-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
+.dtx .dtx-vertipaq-table th[data-vertipaq-sort] {{ cursor: pointer; user-select: none; }}
+.dtx .dtx-vertipaq-table th[data-vertipaq-sort][aria-sort="ascending"]::after {{ content: " ▲"; color: var(--ui-accent); }}
+.dtx .dtx-vertipaq-table th[data-vertipaq-sort][aria-sort="descending"]::after {{ content: " ▼"; color: var(--ui-accent); }}
+.dtx .dtx-vertipaq-table .dtx-vp-frozen {{
+    position: sticky;
+    left: 0;
+    background: var(--ui-bg);
+}}
+.dtx .dtx-vertipaq-table tbody tr:nth-child(even) .dtx-vp-frozen {{
+    background: var(--ui-bg-tertiary);
+}}
+.dtx .dtx-vertipaq-table tbody tr:hover .dtx-vp-frozen {{
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-vertipaq-table td.dtx-vp-frozen {{ z-index: 2; }}
+.dtx .dtx-vertipaq-table th.dtx-vp-frozen {{
+    z-index: 5;
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-vertipaq-table .dtx-vp-frozen-edge {{
+    box-shadow: inset -1px 0 0 var(--ui-border-strong);
+}}
+.dtx tbody tr {{ background: var(--ui-bg); }}
+.dtx tbody td {{
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    background: var(--ui-bg);
+    white-space: nowrap;
+}}
+.dtx tbody tr:nth-child(even) td {{ background: var(--ui-bg-tertiary); }}
+.dtx tbody tr:hover td {{ background: var(--ui-surface-2); }}
+.dtx td.dtx-num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+.dtx td.dtx-hist-query {{
+    max-width: 420px;
+    color: var(--ui-text-secondary);
+    vertical-align: top;
+}}
+.dtx td.dtx-hist-query pre {{
+    margin: 0;
+    max-height: 160px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 12px;
+    line-height: 1.45;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: copy;
+}}
+.dtx td.dtx-hist-query {{ cursor: copy; }}
+.dtx td.dtx-hist-query:focus-visible {{
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+}}
+.dtx .dtx-history-table {{ min-width: 1260px; }}
+.dtx td.dtx-hist-metrics {{
+    max-width: 380px;
+    vertical-align: top;
+    white-space: normal;
+}}
+.dtx td.dtx-hist-metrics pre {{
+    margin: 0;
+    max-height: 180px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-hist-metric-number {{ color: var(--ui-syntax-number); }}
+.dtx .dtx-toast {{
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    z-index: 50;
+    padding: 8px 12px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-md);
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+    transition: opacity 120ms ease, transform 120ms ease;
+}}
+.dtx .dtx-toast.dtx-toast-visible {{
+    opacity: 1;
+    transform: translateY(0);
+}}
+.dtx .dtx-confirm-overlay {{
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+}}
+.dtx .dtx-confirm-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-confirm-dialog {{
+    width: 400px;
+    max-width: 100%;
+    padding: 18px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg);
+    box-shadow: var(--ui-shadow-lg);
+}}
+.dtx .dtx-confirm-title {{
+    margin: 0 0 8px;
+    color: var(--ui-text);
+    font-size: 15px;
+    font-weight: 600;
+}}
+.dtx .dtx-confirm-message {{
+    margin: 0;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+}}
+.dtx .dtx-confirm-actions {{
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+}}
+.dtx .dtx-confirm-actions button {{
+    padding: 7px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}}
+.dtx .dtx-info-overlay {{
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.45);
+}}
+.dtx .dtx-info-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-info-dialog {{
+    width: min(100%, 680px);
+    max-height: min(82vh, 720px);
+    overflow: auto;
+    padding: 20px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-lg);
+}}
+.dtx .dtx-info-head {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}}
+.dtx .dtx-info-logo {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-info-logo svg {{ width: 28px; height: 28px; }}
+.dtx .dtx-info-title {{
+    margin: 0;
+    color: var(--ui-text);
+    font-size: 17px;
+    font-weight: 650;
+}}
+.dtx .dtx-info-close {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-info-close:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-info-close svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-info-intro {{
+    margin: 0 0 16px;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}}
+.dtx .dtx-info-features {{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}}
+.dtx .dtx-info-feature {{
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+}}
+.dtx .dtx-info-feature-icon {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-info-feature-icon svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-info-feature-copy {{ min-width: 0; }}
+.dtx .dtx-info-feature strong {{
+    display: block;
+    margin-bottom: 2px;
+    color: var(--ui-text);
+    font-size: 13px;
+    font-weight: 600;
+}}
+@media (max-width: 640px) {{
+    .dtx .dtx-info-features {{ grid-template-columns: 1fr; }}
+}}
+.dtx .dtx-object-deps-overlay {{
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.45);
+}}
+.dtx .dtx-object-deps-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-object-deps-dialog {{
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 1000px);
+    height: min(80vh, 760px);
+    min-height: 360px;
+    overflow: hidden;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-lg);
+}}
+.dtx .dtx-object-deps-head,
+.dtx .dtx-object-deps-toolbar {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ui-border);
+}}
+.dtx .dtx-object-deps-title {{
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ui-text);
+    font-size: 14px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-close {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-close:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-object-deps-seg {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-object-deps-seg button {{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-seg button svg {{ width: 13px; height: 13px; }}
+.dtx .dtx-object-deps-seg button.dtx-active {{
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-object-deps-description {{
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-view-seg {{ margin-left: auto; }}
+.dtx .dtx-object-deps-content {{
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px;
+}}
+.dtx .dtx-object-deps-status {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    padding: 24px;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    text-align: center;
+}}
+.dtx .dtx-object-deps-status.dtx-error {{ color: var(--ui-danger-text); }}
+.dtx .dtx-object-deps-row {{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 3px 10px 3px 0;
+    border-radius: 6px;
+    color: var(--ui-text);
+}}
+.dtx .dtx-object-deps-row:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-object-deps-toggle {{
+    display: inline-flex;
+    flex: 0 0 20px;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-toggle svg {{ width: 15px; height: 15px; }}
+.dtx .dtx-object-deps-spacer {{ flex: 0 0 20px; width: 20px; }}
+.dtx .dtx-object-deps-icon {{
+    display: inline-flex;
+    flex: 0 0 16px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-object-deps-icon svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-object-deps-label {{
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-kind {{
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text-tertiary);
+    font-size: 10px;
+}}
+.dtx .dtx-object-deps-cycle {{ color: var(--ui-text-tertiary); font-size: 11px; }}
+.dtx .dtx-object-deps-graph {{
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    background: var(--ui-bg-secondary);
+    cursor: grab;
+}}
+.dtx .dtx-object-deps-graph.dtx-panning {{ cursor: grabbing; user-select: none; }}
+.dtx .dtx-object-deps-stage {{ position: absolute; transform-origin: top left; }}
+.dtx .dtx-object-deps-node {{
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 210px;
+    height: 48px;
+    padding: 7px 9px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--dtx-dep-node-color, var(--ui-text-tertiary)) 50%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--dtx-dep-node-color, var(--ui-text-tertiary)) 10%, var(--ui-bg-solid));
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-sm);
+    cursor: grab;
+    touch-action: none;
+}}
+.dtx .dtx-object-deps-node:hover {{
+    border-color: var(--dtx-dep-node-color, var(--ui-accent));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--dtx-dep-node-color, var(--ui-accent)) 20%, transparent), var(--ui-shadow-sm);
+}}
+.dtx .dtx-object-deps-node.dtx-dragging {{ cursor: grabbing; z-index: 3; }}
+.dtx .dtx-object-deps-node-measure {{ --dtx-dep-node-color: #22c55e; }}
+.dtx .dtx-object-deps-node-column {{ --dtx-dep-node-color: #3b82f6; }}
+.dtx .dtx-object-deps-node-hierarchy {{ --dtx-dep-node-color: #8b5cf6; }}
+.dtx .dtx-object-deps-node-calculation-item {{ --dtx-dep-node-color: #f59e0b; }}
+.dtx .dtx-object-deps-node-table {{ --dtx-dep-node-color: #f97316; }}
+.dtx .dtx-object-deps-node-other {{ --dtx-dep-node-color: #64748b; }}
+.dtx .dtx-object-deps-node .dtx-object-deps-icon {{
+    color: var(--dtx-dep-node-color, var(--ui-text-secondary));
+}}
+.dtx .dtx-object-deps-node-text {{ min-width: 0; text-align: left; }}
+.dtx .dtx-object-deps-node-label {{
+    display: block;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-object-deps-node-kind {{
+    display: block;
+    margin-top: 2px;
+    color: var(--ui-text-tertiary);
+    font-size: 9px;
+    text-transform: uppercase;
+}}
+.dtx .dtx-object-deps-zoom {{
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-sm);
+}}
+.dtx .dtx-object-deps-zoom button {{
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--ui-text);
+    cursor: pointer;
+}}
+.dtx .dtx-object-deps-zoom button:hover {{ background: var(--ui-bg-hover); }}
+.dtx .dtx-object-deps-zoom span {{
+    min-width: 42px;
+    color: var(--ui-text-secondary);
+    font-size: 10px;
+    text-align: center;
+}}
+.dtx .dtx-confirm-cancel {{
+    background: transparent;
+    color: var(--ui-text);
+}}
+.dtx .dtx-confirm-cancel:hover {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-confirm-clear {{
+    border-color: var(--ui-danger) !important;
+    background: var(--ui-danger);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-confirm-clear:hover {{
+    border-color: var(--ui-danger-hover) !important;
+    background: var(--ui-danger-hover);
+}}
+.dtx .dtx-plan-seg {{ margin-right: 8px; }}
+.dtx .dtx-dep-seg {{ margin-right: 8px; }}
+.dtx table.dtx-dependency-columns-table {{
+    width: auto;
+    min-width: 500px;
+    max-width: 100%;
+    table-layout: fixed;
+}}
+.dtx table.dtx-dependency-columns-table td {{
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx table.dtx-plan-table td.dtx-plan-pane {{
+    color: var(--ui-text-secondary);
+    vertical-align: top;
+    white-space: nowrap;
+    background: var(--ui-bg) !important;
+    padding: 10px 16px;
+}}
+.dtx table.dtx-plan-table td.dtx-plan-pane pre {{
+    margin: 0;
+    white-space: pre;
+    overflow-x: auto;
+    font-family: var(--dtx-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 12px;
+    line-height: 1.5;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}}
+.dtx .dtx-dep-tree {{
+    padding: 6px 4px;
+    user-select: none;
+}}
+.dtx .dtx-perf-summary {{
+    border: 1px solid var(--ui-border, rgba(127,127,127,0.25));
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: var(--ui-surface-2, rgba(127,127,127,0.06));
+}}
+.dtx .dtx-perf-summary-top {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    overflow: hidden;
+}}
+.dtx .dtx-perf-chip {{
+    font-size: 11.5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--ui-surface, rgba(127,127,127,0.12));
+    color: var(--ui-text-secondary);
+    border: 1px solid var(--ui-border, rgba(127,127,127,0.20));
+}}
+.dtx .dtx-perf-chip strong {{ color: var(--ui-text); font-weight: 600; }}
+.dtx .dtx-perf-chip-high {{ background: rgba(220,38,38,0.14); border-color: rgba(220,38,38,0.45); }}
+.dtx .dtx-perf-chip-medium {{ background: rgba(217,119,6,0.14); border-color: rgba(217,119,6,0.45); }}
+.dtx .dtx-perf-chip-low {{ background: rgba(202,138,4,0.12); border-color: rgba(202,138,4,0.40); }}
+.dtx .dtx-perf-chip-info {{ background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.40); }}
+.dtx .dtx-perf-balance {{
+    display: flex;
+    height: 9px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 10px;
+    background: var(--ui-surface, rgba(127,127,127,0.18));
+}}
+.dtx .dtx-perf-balance-fe {{ background: #4f8cff; }}
+.dtx .dtx-perf-balance-se {{ background: #f59e0b; }}
+.dtx .dtx-perf-balance-legend {{
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-perf-balance-legend i {{
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+}}
+.dtx .dtx-perf-sw-fe {{ background: #4f8cff; }}
+.dtx .dtx-perf-sw-se {{ background: #f59e0b; }}
+.dtx .dtx-perf-cards {{ display: flex; flex-direction: column; gap: 8px; }}
+.dtx .dtx-perf-card {{
+    border: 1px solid var(--ui-border, rgba(127,127,127,0.25));
+    border-left-width: 4px;
+    border-radius: 8px;
+    padding: 9px 12px;
+    background: var(--ui-surface, rgba(127,127,127,0.05));
+}}
+.dtx .dtx-perf-card-high {{ border-left-color: #dc2626; }}
+.dtx .dtx-perf-card-medium {{ border-left-color: #d97706; }}
+.dtx .dtx-perf-card-low {{ border-left-color: #ca8a04; }}
+.dtx .dtx-perf-card-info {{ border-left-color: #3b82f6; }}
+.dtx .dtx-perf-card-head {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+.dtx .dtx-perf-sev {{
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #fff;
+}}
+.dtx .dtx-perf-card-high .dtx-perf-sev {{ background: #dc2626; }}
+.dtx .dtx-perf-card-medium .dtx-perf-sev {{ background: #d97706; }}
+.dtx .dtx-perf-card-low .dtx-perf-sev {{ background: #ca8a04; }}
+.dtx .dtx-perf-card-info .dtx-perf-sev {{ background: #3b82f6; }}
+.dtx .dtx-perf-title {{ font-weight: 600; color: var(--ui-text); font-size: 13px; }}
+.dtx .dtx-perf-cat {{
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}}
+.dtx .dtx-perf-msg {{
+    margin-top: 6px;
+    font-size: 12.5px;
+    background: var(--ui-bg);
+    line-height: 1.45;
+}}
+.dtx .dtx-perf-rec {{
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ui-text);
+    line-height: 1.45;
+}}
+.dtx .dtx-perf-rec-label {{
+    font-weight: 600;
+    color: var(--ui-accent, #4f8cff);
+    margin-right: 4px;
+}}
+.dtx .dtx-perf-refs {{
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}}
+.dtx .dtx-perf-refs a {{
+    font-size: 11.5px;
+    color: var(--ui-accent, #4f8cff);
+    text-decoration: none;
+    word-break: break-all;
+}}
+.dtx .dtx-perf-refs a:hover {{ text-decoration: underline; }}
+.dtx .dtx-dep-row {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding-right: 8px;
+    border-radius: 6px;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+}}
+.dtx .dtx-dep-row.dtx-dep-haschildren {{ cursor: pointer; }}
+.dtx .dtx-dep-row:hover {{
+    background: var(--ui-surface-2, rgba(127,127,127,0.10));
+    color: var(--ui-text);
+}}
+.dtx .dtx-dep-caret {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex: none;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-dep-caret.dtx-open {{ transform: rotate(90deg); }}
+.dtx .dtx-dep-caret svg {{ width: 12px; height: 12px; }}
+.dtx .dtx-dep-caret-spacer {{ width: 14px; height: 14px; flex: none; }}
+.dtx .dtx-dep-icon {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: none;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+}}
+.dtx .dtx-dep-icon svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-dep-label {{ font-size: 13px; }}
+.dtx .dtx-dep-detail {{
+    font-size: 12px;
+    color: var(--ui-text-tertiary, var(--ui-text-secondary));
+    margin-left: 6px;
+    opacity: 0.85;
+}}
+.dtx .dtx-hist-download {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    max-height: 30px;
+    padding: 0;
+    color: var(--ui-text-secondary);
+    background: var(--ui-bg-secondary);
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}}
+.dtx .dtx-hist-download svg {{
+    width: 17px;
+    height: 17px;
+}}
+.dtx .dtx-hist-download:hover:not(:disabled) {{
+    background: var(--ui-surface-2);
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-hist-download:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx td.dtx-empty {{
+    text-align: center;
+    color: var(--ui-text-tertiary);
+    padding: 24px 16px;
+}}
+.dtx .dtx-running .dtx-card {{ opacity: 0.55; }}
+.dtx .dtx-body {{
+    display: flex;
+    align-items: stretch;
+    min-height: 0;
+}}
+.dtx .dtx-monitoring {{
+    border-top: 1px solid var(--ui-border-strong);
+    background: var(--ui-bg);
+    position: relative;
+}}
+.dtx .dtx-monitoring-resizer {{
+    position: absolute;
+    z-index: 4;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: row-resize;
+    touch-action: none;
+}}
+.dtx .dtx-monitoring-resizer::after {{
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: transparent;
+}}
+.dtx .dtx-monitoring-resizer:hover::after,
+.dtx .dtx-monitoring-resizer.dtx-monitoring-resizing::after {{
+    background: var(--ui-accent);
+}}
+.dtx .dtx-monitoring-fullscreen .dtx-monitoring-resizer {{ display: none; }}
+.dtx .dtx-monitoring.dtx-monitoring-hidden {{ display: none; }}
+.dtx .dtx-monitoring.dtx-monitoring-fullscreen {{
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    background: var(--ui-bg);
+}}
+.dtx .dtx-monitoring-head {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 64px;
+    padding: 12px 20px;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-head {{
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 8px 20px 2px;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed {{
+    flex: 0 0 40px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    overflow: hidden;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed + .sl-attribution {{
+    margin-top: 0;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-resizer {{ display: none; }}
+.dtx .dtx-monitoring-title-btn {{
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 0;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+}}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-subtitle {{ display: none; }}
+.dtx .dtx-monitoring-title-btn svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-monitoring.dtx-monitoring-collapsed .dtx-monitoring-title-btn > svg {{
+    transform: rotate(-90deg);
+}}
+.dtx .dtx-monitoring-title-btn .dtx-monitoring-activity {{ color: var(--ui-accent); }}
+.dtx .dtx-monitoring-subtitle {{ color: var(--ui-text-tertiary); font-weight: 400; }}
+.dtx .dtx-monitoring-controls {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}}
+.dtx .dtx-monitoring-actions {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}}
+.dtx .dtx-monitoring-field {{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+}}
+.dtx .dtx-monitoring-field select,
+.dtx .dtx-monitoring-field input {{
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 12px;
+}}
+.dtx .dtx-monitoring-field input {{ width: 68px; }}
+.dtx .dtx-monitoring-search {{
+    width: min(240px, 30vw);
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: inherit;
+    font-size: 12px;
+}}
+.dtx .dtx-monitoring-action {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 7px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-monitoring-action:hover:not(:disabled) {{ color: var(--ui-accent); border-color: var(--ui-accent); }}
+.dtx .dtx-monitoring-action:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx .dtx-monitoring-action svg {{ width: 17px; height: 17px; }}
+.dtx .dtx-monitoring-content {{
+    min-height: 190px;
+    max-height: none;
+    overflow: auto;
+    border-top: 1px solid var(--ui-border);
+}}
+.dtx .dtx-monitoring-fullscreen .dtx-monitoring-content {{ flex: 1 1 0; max-height: none; }}
+.dtx .dtx-monitoring-empty {{
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 30px;
+    color: var(--ui-text-secondary);
+    text-align: center;
+}}
+.dtx .dtx-monitoring-empty svg {{ width: 34px; height: 34px; color: var(--ui-text-tertiary); }}
+.dtx .dtx-monitoring-empty strong {{ color: var(--ui-text-secondary); font-size: 14px; }}
+.dtx .dtx-monitoring-empty span {{ color: var(--ui-text-tertiary); font-size: 12px; }}
+.dtx .dtx-monitoring-error {{ color: var(--ui-danger-text); }}
+.dtx .dtx-monitoring-table td {{
+    vertical-align: top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-monitoring-query {{ cursor: pointer; }}
+.dtx .dtx-monitoring-query pre {{ margin: 0; white-space: pre-wrap; font: 11px/1.45 ui-monospace, monospace; }}
+.dtx .dtx-monitoring-query:hover {{ color: var(--ui-accent); }}
+.dtx .dtx-sidebar {{
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 180px;
+    max-width: 70%;
+    border-right: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    display: flex;
+    flex-direction: column;
+    transition: flex-basis 180ms ease, max-width 180ms ease,
+        min-width 180ms ease;
+    overflow: hidden;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-resizing {{
+    transition: none;
+    user-select: none;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed {{
+    flex: 0 0 44px;
+    min-width: 44px;
+    max-width: 44px;
+}}
+.dtx .dtx-sidebar-resizer {{
+    flex: 0 0 5px;
+    cursor: col-resize;
+    background: transparent;
+    margin-left: -3px;
+    position: relative;
+    z-index: 2;
+    transition: background 120ms ease;
+}}
+.dtx .dtx-sidebar-resizer:hover,
+.dtx .dtx-sidebar-resizer.dtx-sidebar-resizing {{
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed + .dtx-sidebar-resizer {{
+    display: none;
+}}
+.dtx .dtx-sidebar-header {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px 10px 14px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    min-height: 44px;
+}}
+.dtx .dtx-sidebar-title {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+    margin-right: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-title,
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-refresh,
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-body {{
+    display: none;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-header {{
+    flex-direction: column;
+    padding: 10px 4px;
+    justify-content: center;
+    gap: 8px;
+}}
+.dtx .dtx-sidebar-mark {{
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-sidebar-mark svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-mark {{
+    display: inline-flex;
+    order: 2;
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-toggle {{
+    order: 1;
+    width: 32px;
+    height: 32px;
+    border-color: var(--ui-border);
+    background: var(--ui-surface);
+    border-radius: 7px;
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-toggle svg {{
+    width: 18px;
+    height: 18px;
+}}
+.dtx .dtx-sidebar-toggle,
+.dtx .dtx-sidebar-refresh,
+.dtx .dtx-builder-toggle {{
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms ease, color 120ms ease;
+}}
+.dtx .dtx-sidebar-toggle:hover,
+.dtx .dtx-sidebar-refresh:hover,
+.dtx .dtx-builder-toggle:hover {{
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+}}
+.dtx .dtx-sidebar-toggle svg,
+.dtx .dtx-sidebar-refresh svg,
+.dtx .dtx-builder-toggle svg {{
+    width: 16px;
+    height: 16px;
+}}
+.dtx .dtx-sidebar-refresh.dtx-spinning svg {{
+    animation: dtx-spin 0.9s linear infinite;
+}}
+@keyframes dtx-spin {{ to {{ transform: rotate(360deg); }} }}
+.dtx .dtx-sidebar-search {{
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+}}
+.dtx .dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-search {{ display: none; }}
+.dtx .dtx-sidebar-search input {{
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--ui-text);
+}}
+.dtx .dtx-sidebar-search input:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-sidebar-search input::placeholder {{ color: var(--ui-text-tertiary); }}
+.dtx .dtx-sidebar-body {{
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 4px 10px 4px;
+    flex: 1 1 auto;
+    font-family: "Segoe UI", SegoeUI, Arial, sans-serif;
+    font-size: 14px;
+}}
+.dtx .dtx-sidebar-empty {{
+    padding: 16px 14px;
+    font-size: 12px;
+    color: var(--ui-text-tertiary);
+    text-align: center;
+}}
+.dtx .dtx-tree-node {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--ui-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-tree-node:hover {{ background: var(--ui-surface-2); }}
+.dtx .dtx-tree-leaf.dtx-draggable {{ cursor: grab; }}
+.dtx .dtx-tree-leaf.dtx-draggable:active {{ cursor: grabbing; }}
+.dtx .dtx-tree-node.dtx-draggable > .dtx-tree-label {{ cursor: grab; }}
+.dtx .dtx-tree-node.dtx-draggable:active > .dtx-tree-label {{ cursor: grabbing; }}
+.dtx .dtx-query.dtx-drop-target {{
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
+.dtx .dtx-context-menu {{
+    position: fixed;
+    z-index: 9999;
+    min-width: 140px;
+    padding: 4px;
+    background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    color: var(--ui-text);
+}}
+.dtx .dtx-context-menu-item {{
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--ui-text);
+}}
+.dtx .dtx-context-menu-item:hover {{
+    background: var(--ui-bg-hover);
+}}
+.dtx .dtx-tree-leaf {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px 2px 6px;
+    border-radius: 4px;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+}}
+.dtx .dtx-tree-leaf:hover {{ background: var(--ui-surface-2); color: var(--ui-text); }}
+.dtx .dtx-tree-caret {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--ui-text-tertiary);
+    flex: 0 0 18px;
+    transform: rotate(-90deg);
+    transition: transform 120ms ease;
+}}
+.dtx .dtx-tree-node.dtx-open > .dtx-tree-caret {{ transform: rotate(0deg); }}
+.dtx .dtx-tree-folder-header.dtx-open > .dtx-tree-caret,
+.dtx .dtx-tree-group-header.dtx-open > .dtx-tree-caret,
+.dtx .dtx-tree-leaf.dtx-open > .dtx-tree-caret {{ transform: rotate(0deg); }}
+.dtx .dtx-tree-caret-spacer {{
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+}}
+.dtx .dtx-tree-caret svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-tree-icon {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-tree-icon svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-tree-label {{
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-tree-node > .dtx-tree-label {{
+    font-size: 14px;
+    font-weight: 600;
+}}
+.dtx .dtx-tree-counts {{
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding-left: 8px;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}}
+.dtx .dtx-tree-leaf .dtx-tree-label {{
+    font-size: 14px;
+    font-weight: 600;
+}}
+.dtx .dtx-tree-label.dtx-hidden {{
+    color: var(--ui-text-tertiary);
+    font-style: italic;
+}}
+.dtx.dtx-dark .dtx-tree-label.dtx-hidden {{
+    color: var(--ui-text-tertiary);
+}}
+.dtx:not(.dtx-dark) .dtx-tree-leaf .dtx-tree-label:not(.dtx-hidden),
+.dtx:not(.dtx-dark) .dtx-tree-node > .dtx-tree-label:not(.dtx-hidden),
+.dtx:not(.dtx-dark) .dtx-tree-folder-header .dtx-tree-label:not(.dtx-hidden) {{
+    color: var(--ui-text);
+}}
+.dtx.dtx-dark .dtx-tree-leaf .dtx-tree-label:not(.dtx-hidden),
+.dtx.dtx-dark .dtx-tree-node > .dtx-tree-label:not(.dtx-hidden),
+.dtx.dtx-dark .dtx-tree-folder-header .dtx-tree-label:not(.dtx-hidden) {{
+    color: var(--ui-text);
+}}
+.dtx .dtx-tree-type {{
+    margin-left: 6px;
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ui-text-tertiary);
+    text-transform: lowercase;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}}
+.dtx .dtx-tree-children {{ display: none; padding-left: 14px; }}
+.dtx .dtx-tree-node.dtx-open + .dtx-tree-children {{ display: block; }}
+.dtx .dtx-tree-subtree {{ display: none; }}
+.dtx .dtx-tree-folder-header {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--ui-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-tree-folder-header:hover {{ background: var(--ui-surface-2); color: var(--ui-text); }}
+.dtx .dtx-tree-folder-header .dtx-tree-icon {{ color: var(--ui-text-tertiary); }}
+.dtx .dtx-tree-folder-header .dtx-tree-label {{ font-size: 14px; font-weight: 600; }}
+.dtx .dtx-tree-level {{ color: var(--ui-text-tertiary); cursor: default; }}
+.dtx .dtx-tree-level:hover {{ background: var(--ui-surface-2); color: var(--ui-text-secondary); }}
+.dtx .dtx-tree-group {{
+    margin-top: 2px;
+}}
+.dtx .dtx-tree-group-header {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--ui-text-tertiary);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}}
+.dtx .dtx-tree-group-header:hover {{ background: var(--ui-surface-2); color: var(--ui-text-secondary); }}
+.dtx .dtx-tree-group-count {{
+    margin-left: auto;
+    font-weight: 500;
+    color: var(--ui-text-tertiary);
+    font-variant-numeric: tabular-nums;
+    font-size: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+}}
+.dtx .dtx-main {{
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding-left: 0;
+}}
+.dtx .dtx-builder {{
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 180px;
+    max-width: 70%;
+    border-right: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    display: flex;
+    flex-direction: column;
+    transition: flex-basis 180ms ease, max-width 180ms ease,
+        min-width 180ms ease;
+    overflow: hidden;
+}}
+.dtx .dtx-builder.dtx-builder-resizing {{
+    transition: none;
+    user-select: none;
+}}
+.dtx .dtx-builder.dtx-builder-hidden {{
+    display: none;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed {{
+    flex: 0 0 44px;
+    max-width: 44px;
+    min-width: 44px;
+}}
+.dtx .dtx-builder-resizer {{
+    flex: 0 0 5px;
+    cursor: col-resize;
+    background: transparent;
+    margin-left: -3px;
+    position: relative;
+    z-index: 2;
+    transition: background 120ms ease;
+}}
+.dtx .dtx-builder-resizer:hover,
+.dtx .dtx-builder-resizer.dtx-builder-resizing {{
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-builder.dtx-builder-collapsed + .dtx-builder-resizer,
+.dtx .dtx-builder.dtx-builder-hidden + .dtx-builder-resizer {{
+    display: none;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-title,
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-content {{
+    display: none;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-header {{
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 4px;
+}}
+.dtx .dtx-builder-mark {{
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-builder-mark svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-mark {{
+    display: inline-flex;
+    order: 2;
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle {{
+    display: none;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-toggle.dtx-builder-collapse {{
+    display: inline-flex;
+    order: 1;
+    width: 32px;
+    height: 32px;
+    border-color: var(--ui-border);
+    background: var(--ui-surface);
+    border-radius: 7px;
+}}
+.dtx .dtx-builder.dtx-builder-collapsed .dtx-builder-collapse svg {{
+    width: 18px;
+    height: 18px;
+}}
+.dtx .dtx-builder-header {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px 10px 14px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-secondary);
+    min-height: 44px;
+}}
+.dtx .dtx-builder-title {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+    margin-right: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-builder-toggle {{
+    flex: 0 0 auto;
+}}
+.dtx .dtx-builder-content {{
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+    padding: 10px;
+    gap: 12px;
+    overflow-y: auto;
+}}
+.dtx .dtx-builder-section {{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}}
+.dtx .dtx-builder-section-label {{
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-builder-zone {{
+    min-height: 70px;
+    border: 1px dashed var(--ui-border);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--ui-bg);
+    transition: border-color 120ms ease, background 120ms ease;
+}}
+.dtx .dtx-builder-zone.dtx-drop-over {{
+    border-color: var(--ui-accent);
+    background: var(--ui-bg-hover);
+}}
+.dtx .dtx-builder-placeholder {{
+    font-size: 11px;
+    color: var(--ui-text-tertiary);
+    text-align: center;
+    padding: 12px 4px;
+    pointer-events: none;
+}}
+.dtx .dtx-builder-chip {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: var(--ui-bg-secondary);
+    cursor: grab;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+    max-width: 100%;
+}}
+.dtx .dtx-builder-chip.dtx-chip-dragging {{ opacity: 0.5; }}
+.dtx .dtx-chip-icon {{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-chip-icon svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-chip-label {{
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    color: var(--ui-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.dtx .dtx-chip-remove {{
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--ui-text-tertiary);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 4px;
+}}
+.dtx .dtx-chip-remove:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-chip-op {{
+    flex: 1 1 100%;
+    font-size: 11px;
+    padding: 3px 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+}}
+.dtx .dtx-chip-values {{
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}}
+.dtx .dtx-builder-chip-filter {{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 6px;
+}}
+.dtx .dtx-filter-chip-head {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}}
+.dtx .dtx-builder-chip-filter .dtx-chip-op {{
+    width: 100%;
+    min-width: 0;
+}}
+.dtx .dtx-builder-chip-filter .dtx-chip-values {{
+    width: 100%;
+    min-width: 0;
+}}
+.dtx .dtx-chip-value {{
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    font-size: 11px;
+    padding: 3px 5px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+}}
+.dtx .dtx-chip-sep {{
+    flex: 0 0 auto;
+    font-size: 10px;
+    color: var(--ui-text-tertiary);
+}}
+.dtx .dtx-builder-chip-order {{ flex-wrap: nowrap; }}
+.dtx .dtx-builder-chip-order.dtx-chip-off .dtx-chip-label,
+.dtx .dtx-builder-chip-order.dtx-chip-off .dtx-chip-icon {{
+    opacity: 0.45;
+}}
+.dtx .dtx-order-toggle {{
+    flex: 0 0 auto;
+    width: 28px;
+    height: 16px;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+    background: var(--ui-bg);
+    position: relative;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+}}
+.dtx .dtx-order-toggle::after {{
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--ui-text-tertiary);
+    transition: transform 120ms ease, background 120ms ease;
+}}
+.dtx .dtx-order-toggle.dtx-on {{
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+}}
+.dtx .dtx-order-toggle.dtx-on::after {{
+    transform: translateX(12px);
+    background: var(--ui-on-accent);
+}}
+.dtx .dtx-order-dir {{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-order-dir svg {{ width: 12px; height: 12px; }}
+.dtx .dtx-order-dir:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-builder-footer {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 6px;
+}}
+.dtx .dtx-builder-clear {{
+    padding: 6px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    background: var(--ui-bg);
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+}}
+.dtx .dtx-builder-clear:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-build-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: 1px solid var(--ui-accent);
+    border-radius: 6px;
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}}
+.dtx .dtx-build-btn svg {{ width: 14px; height: 14px; }}
+.dtx .dtx-build-btn:hover {{ filter: brightness(1.05); }}
+.dtx .dtx-build-btn:disabled {{
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+}}
+"""
+    )
+
+    sun_icon = _UI_ICONS["sun"].replace("`", "\\`")
+    moon_icon = _UI_ICONS["moon"].replace("`", "\\`")
+    info_icon = _UI_ICONS["info"].replace("`", "\\`")
+    table_icon = _UI_ICONS["table"].replace("`", "\\`")
+    calc_group_icon = _UI_ICONS["calculation_group"].replace("`", "\\`")
+    calc_item_icon = _UI_ICONS["calculation_item"].replace("`", "\\`")
+    column_icon = _UI_ICONS["column"].replace("`", "\\`")
+    measure_icon = _UI_ICONS["measure"].replace("`", "\\`")
+    hierarchy_icon = _UI_ICONS["hierarchy"].replace("`", "\\`")
+    caret_icon = _UI_ICONS["caret_right"].replace("`", "\\`")
+    folder_icon = _UI_ICONS["folder"].replace("`", "\\`")
+    level_icon = _UI_ICONS["level"].replace("`", "\\`")
+    play_icon = _UI_ICONS["play"].replace("`", "\\`")
+    stop_icon = _UI_ICONS["stop"].replace("`", "\\`")
+    eraser_icon = _UI_ICONS.get("eraser", _FALLBACK_ERASER_ICON).replace(
+        "`", "\\`"
+    )
+    trash_icon = _UI_ICONS["trash"].replace("`", "\\`")
+    camera_icon = _UI_ICONS["camera"].replace("`", "\\`")
+    report_file_icon = _UI_ICONS["report_file"].replace("`", "\\`")
+    chevron_down_icon = _UI_ICONS["chevron_down"].replace("`", "\\`")
+    check_icon = _UI_ICONS["check"].replace("`", "\\`")
+    refresh_icon = _UI_ICONS["refresh"].replace("`", "\\`")
+    swap_icon = _UI_ICONS["swap"].replace("`", "\\`")
+    sort_asc_icon = _UI_ICONS["sort_asc"].replace("`", "\\`")
+    sort_desc_icon = _UI_ICONS["sort_desc"].replace("`", "\\`")
+    panel_collapse_icon = _UI_ICONS["panel_collapse"].replace("`", "\\`")
+    panel_expand_icon = _UI_ICONS["panel_expand"].replace("`", "\\`")
+    builder_icon = _UI_ICONS.get("hammer", _FALLBACK_HAMMER_ICON).replace(
+        "`", "\\`"
+    )
+    list_tree_icon = _UI_ICONS.get("list_tree", _FALLBACK_LIST_TREE_ICON).replace(
+        "`", "\\`"
+    )
+    git_branch_icon = _UI_ICONS.get(
+        "git_branch", _FALLBACK_GIT_BRANCH_ICON
+    ).replace("`", "\\`")
+    workflow_icon = _UI_ICONS.get("workflow", _FALLBACK_WORKFLOW_ICON).replace(
+        "`", "\\`"
+    )
+    shield_check_icon = _UI_ICONS.get(
+        "shield_check", _FALLBACK_SHIELD_CHECK_ICON
+    ).replace("`", "\\`")
+    users_icon = _UI_ICONS.get("users", _FALLBACK_USERS_ICON).replace("`", "\\`")
+    user_icon = _UI_ICONS.get("user", _FALLBACK_USER_ICON).replace("`", "\\`")
+    close_icon = _UI_ICONS["close"].replace("`", "\\`")
+    dax_performance_icon = _UI_ICONS.get(
+        "dax_performance", _FALLBACK_DAX_PERFORMANCE_ICON
+    ).replace("`", "\\`")
+    activity_icon = _UI_ICONS.get("activity", _FALLBACK_ACTIVITY_ICON).replace(
+        "`", "\\`"
+    )
+    cpu_icon = _UI_ICONS["cpu"].replace("`", "\\`")
+    database_icon = _UI_ICONS["database"].replace("`", "\\`")
+    vertipaq_icon = _UI_ICONS["vertipaq"].replace("`", "\\`")
+    zap_icon = _UI_ICONS["zap"].replace("`", "\\`")
+    # The DAX Formatter logo mark (the orange "formatted lines" glyph from
+    # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
+    # clearly visible in both light and dark themes.
+    daxformat_icon = (
+        '<svg viewBox="0 2.1 35 27.3" aria-hidden="true">'
+        '<rect x="0" y="2.1" width="19.8" height="7.2" fill="#E14E37"/>'
+        '<rect x="22.1" y="2.1" width="8.1" height="7.2" fill="#E14E37"/>'
+        '<rect x="11.6" y="12.2" width="16.5" height="7.2" fill="#E14E37"/>'
+        '<rect x="30.1" y="12.2" width="4.9" height="7.2" fill="#E14E37"/>'
+        '<rect x="6.2" y="22.2" width="10.5" height="7.2" fill="#E14E37"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    undo_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 7 v5 h5"/>'
+        '<path d="M3.5 12 a8 8 0 1 1 1.5 5"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    redo_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M21 7 v5 h-5"/>'
+        '<path d="M20.5 12 a8 8 0 1 0 -1.5 5"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    download_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M12 3 v12"/>'
+        '<path d="M7 10 l5 5 5-5"/>'
+        '<path d="M4 20 h16"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    cut_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<circle cx="6" cy="6" r="3"/>'
+        '<circle cx="6" cy="18" r="3"/>'
+        '<line x1="20" y1="4" x2="8.12" y2="15.88"/>'
+        '<line x1="14.47" y1="14.48" x2="20" y2="20"/>'
+        '<line x1="8.12" y1="8.12" x2="12" y2="12"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    copy_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>'
+        '<path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 '
+        'a2 2 0 0 1 2 2 v1"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    paste_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M16 4 h2 a2 2 0 0 1 2 2 v14 a2 2 0 0 1 -2 2 H6 '
+        'a2 2 0 0 1 -2 -2 V6 a2 2 0 0 1 2 -2 h2"/>'
+        '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # A "gauge / insights" mark used for the performance-analysis action.
+    analyze_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 3 v18 h18"/>'
+        '<path d="M7 15 l4 -5 3 3 4 -6"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # A "sparkles" mark used for generating DAX from natural language.
+    nldax_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M12 3 l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 '
+        '-1.6 -4.4 -4.4 -1.6 4.4 -1.6 z"/>'
+        '<path d="M19 14 l0.8 2.2 2.2 0.8 -2.2 0.8 -0.8 2.2 '
+        '-0.8 -2.2 -2.2 -0.8 2.2 -0.8 z"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # A "maximize / full-screen" mark (four outward corner arrows) used to
+    # open the DAX editor in a large pop-out window.
+    expand_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M8 3 H5 a2 2 0 0 0 -2 2 v3"/>'
+        '<path d="M16 3 h3 a2 2 0 0 1 2 2 v3"/>'
+        '<path d="M21 16 v3 a2 2 0 0 1 -2 2 h-3"/>'
+        '<path d="M3 16 v3 a2 2 0 0 0 2 2 h3"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # A "full-screen" mark (four outward corner arrows) used by the header
+    # button that expands the whole tool to fill the screen.
+    fullscreen_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3 9 V5 a2 2 0 0 1 2 -2 h4"/>'
+        '<path d="M21 9 V5 a2 2 0 0 0 -2 -2 h-4"/>'
+        '<path d="M3 15 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M21 15 v4 a2 2 0 0 1 -2 2 h-4"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+    # An "exit full-screen" mark (four inward corner arrows).
+    fullscreen_exit_icon = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M9 3 v4 a2 2 0 0 1 -2 2 H3"/>'
+        '<path d="M15 3 v4 a2 2 0 0 0 2 2 h4"/>'
+        '<path d="M9 21 v-4 a2 2 0 0 0 -2 -2 H3"/>'
+        '<path d="M15 21 v-4 a2 2 0 0 1 2 -2 h4"/>'
+        "</svg>"
+    ).replace("`", "\\`")
+
+    widget_js = (
+        _UI_SEARCH_SELECT_JS + "\n" + _UI_TABLE_COLUMN_RESIZE_JS + "\n" + r"""
+function escapeHtml(s) {
+    return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+const TRACE_XMSQL_KEYWORDS = [
+    "LEFT OUTER JOIN", "RIGHT OUTER JOIN", "FULL OUTER JOIN", "INNER JOIN",
+    "LEFT JOIN", "RIGHT JOIN", "CROSS JOIN", "OUTER JOIN", "GROUP BY",
+    "ORDER BY", "JOIN", "SELECT", "FROM", "WHERE", "WITH", "HAVING",
+    "UNION", "SET", "ON", "AS", "AND", "OR", "NOT", "IN", "ASC", "DESC"
+].join("|");
+const TRACE_XMSQL_TOKEN_RE = new RegExp(
+    `\\b(?:${TRACE_XMSQL_KEYWORDS})\\b|[A-Za-z_][A-Za-z0-9_]*(?=\\()`, "gi");
+const TRACE_XMSQL_BRACKET_RE = /(\[(?:\]\]|[^\]])*\])/;
+const TRACE_SQL_TOKEN_RE = new RegExp([
+    "(?<str>'(?:''|[^'])*')",
+    "(?<br>\\[(?:\\]\\]|[^\\]])*\\])",
+    '(?<qid>"(?:""|[^"])*")',
+    "(?<cmt>--.*)",
+    "(?<num>\\b\\d+(?:\\.\\d+)?\\b)",
+    `(?<kw>\\b(?:${TRACE_XMSQL_KEYWORDS}|DISTINCT|TOP|IS NULL|IS NOT NULL|BETWEEN|LIKE|CASE|WHEN|THEN|ELSE|END|CAST|CONVERT|COALESCE|ISNULL|NULL|COUNT|COUNT_BIG|SUM|MIN|MAX|AVG|OVER|PARTITION BY)\\b)`
+].join("|"), "gi");
+const TRACE_ESTIMATE_RE = /Estimated size \(volume, marshalling bytes\):\s*(\d+),\s*(\d+)/;
+
+function highlightXmSqlLine(line) {
+    return line.split(TRACE_XMSQL_BRACKET_RE).map(segment => {
+        if (!segment || segment.startsWith("[")) return escapeHtml(segment);
+        TRACE_XMSQL_TOKEN_RE.lastIndex = 0;
+        let html = "";
+        let last = 0;
+        let match;
+        while ((match = TRACE_XMSQL_TOKEN_RE.exec(segment)) !== null) {
+            html += escapeHtml(segment.slice(last, match.index));
+            html += `<span class="dtx-trace-keyword">${escapeHtml(match[0])}</span>`;
+            last = match.index + match[0].length;
+        }
+        return html + escapeHtml(segment.slice(last));
+    }).join("");
+}
+
+function highlightSqlLine(line) {
+    TRACE_SQL_TOKEN_RE.lastIndex = 0;
+    let html = "";
+    let last = 0;
+    let match;
+    while ((match = TRACE_SQL_TOKEN_RE.exec(line)) !== null) {
+        html += escapeHtml(line.slice(last, match.index));
+        const groups = match.groups || {};
+        const className = groups.str ? "dtx-trace-string"
+            : groups.cmt ? "dtx-trace-comment"
+            : groups.num ? "dtx-trace-number"
+            : groups.kw ? "dtx-trace-keyword" : "";
+        html += className
+            ? `<span class="${className}">${escapeHtml(match[0])}</span>`
+            : escapeHtml(match[0]);
+        last = match.index + match[0].length;
+    }
+    return html + escapeHtml(line.slice(last));
+}
+
+function renderTraceText(text, eventClass) {
+    const stripCconMarkers = value => String(value || "").replace(/<\/?ccon>/gi, "");
+    return String(text || "").split(/\r?\n/).map(line => {
+        const estimate = TRACE_ESTIMATE_RE.exec(line);
+        if (estimate) {
+            return `<span class="dtx-trace-estimate">Estimated size: rows = <span class="dtx-trace-estimate-value">${escapeHtml(estimate[1])}</span>  bytes = <span class="dtx-trace-estimate-value">${escapeHtml(estimate[2])}</span></span>`;
+        }
+        const renderLine = value => eventClass === "DirectQueryEnd"
+            ? highlightSqlLine(value)
+            : eventClass === "VertiPaqSEQueryEnd"
+                ? highlightXmSqlLine(value)
+                : escapeHtml(value);
+        const callbackIndex = line.search(/\[?CallbackDataID\s*\(/i);
+        const callbackTail = callbackIndex < 0 ? "" : line.slice(callbackIndex);
+        const closingMarkerIndex = callbackTail.search(/<\/ccon>/i);
+        if (callbackIndex < 0 || closingMarkerIndex < 0) {
+            return renderLine(stripCconMarkers(line));
+        }
+        const callbackEnd = callbackIndex + closingMarkerIndex;
+        const closingMarkerLength = line.slice(callbackEnd).match(/^<\/ccon>/i)[0].length;
+        const callbackText = stripCconMarkers(line.slice(callbackIndex, callbackEnd));
+        const callbackHighlight = callbackText.replace(/[\s)]*$/, "");
+        const callbackSuffix = callbackText.slice(callbackHighlight.length);
+        return renderLine(stripCconMarkers(line.slice(0, callbackIndex)))
+            + `<span class="dtx-trace-callback">${renderLine(callbackHighlight)}</span>`
+            + renderLine(callbackSuffix)
+            + renderLine(stripCconMarkers(line.slice(callbackEnd + closingMarkerLength)));
+    }).join("\n");
+}
+
+function cleanDaxQuery(value) {
+    return String(value || "")
+        .replace(/\s*\[WaitTime:[^\]]*\]\s*$/i, "")
+        .trimEnd();
+}
+
+function render({ model, el }) {
+    const SUN_SVG = `__DTX_SUN__`;
+    const MOON_SVG = `__DTX_MOON__`;
+    const INFO_SVG = `__DTX_INFO__`;
+    const PLAY_SVG = `__DTX_PLAY__`;
+    const STOP_SVG = `__DTX_STOP__`;
+    const ERASER_SVG = `__DTX_ERASER__`;
+    const TABLE_SVG = `__DTX_TABLE__`;
+    const CALC_GROUP_SVG = `__DTX_CALC_GROUP__`;
+    const CALC_ITEM_SVG = `__DTX_CALC_ITEM__`;
+    const COLUMN_SVG = `__DTX_COLUMN__`;
+    const MEASURE_SVG = `__DTX_MEASURE__`;
+    const HIERARCHY_SVG = `__DTX_HIERARCHY__`;
+    const CARET_SVG = `__DTX_CARET__`;
+    const FOLDER_SVG = `__DTX_FOLDER__`;
+    const LEVEL_SVG = `__DTX_LEVEL__`;
+    const REFRESH_SVG = `__DTX_REFRESH__`;
+    const SWAP_SVG = `__DTX_SWAP__`;
+    const SORT_ASC_SVG = `__DTX_SORT_ASC__`;
+    const SORT_DESC_SVG = `__DTX_SORT_DESC__`;
+    const PANEL_COLLAPSE_SVG = `__DTX_PANEL_COLLAPSE__`;
+    const PANEL_EXPAND_SVG = `__DTX_PANEL_EXPAND__`;
+    const BUILDER_SVG = `__DTX_BUILDER__`;
+    const LIST_TREE_SVG = `__DTX_LIST_TREE__`;
+    const GIT_BRANCH_SVG = `__DTX_GIT_BRANCH__`;
+    const WORKFLOW_SVG = `__DTX_WORKFLOW__`;
+    const SHIELD_CHECK_SVG = `__DTX_SHIELD_CHECK__`;
+    const USERS_SVG = `__DTX_USERS__`;
+    const USER_SVG = `__DTX_USER__`;
+    const CLOSE_SVG = `__DTX_CLOSE__`;
+    const DAXFORMAT_SVG = `__DTX_DAXFORMAT__`;
+    const UNDO_SVG = `__DTX_UNDO__`;
+    const REDO_SVG = `__DTX_REDO__`;
+    const DOWNLOAD_SVG = `__DTX_DOWNLOAD__`;
+    const TRASH_SVG = `__DTX_TRASH__`;
+    const CAMERA_SVG = `__DTX_CAMERA__`;
+    const REPORT_FILE_SVG = `__DTX_REPORT_FILE__`;
+    const CHEVRON_DOWN_SVG = `__DTX_CHEVRON_DOWN__`;
+    const CHECK_SVG = `__DTX_CHECK__`;
+    const CUT_SVG = `__DTX_CUT__`;
+    const COPY_SVG = `__DTX_COPY__`;
+    const PASTE_SVG = `__DTX_PASTE__`;
+    const ANALYZE_SVG = `__DTX_ANALYZE__`;
+    const NLDAX_SVG = `__DTX_NLDAX__`;
+    const EXPAND_SVG = `__DTX_EXPAND__`;
+    const FULLSCREEN_SVG = `__DTX_FULLSCREEN__`;
+    const FULLSCREEN_EXIT_SVG = `__DTX_FULLSCREEN_EXIT__`;
+    const DAX_PERFORMANCE_SVG = `__DTX_DAX_PERFORMANCE__`;
+    const ACTIVITY_SVG = `__DTX_ACTIVITY__`;
+    const CPU_SVG = `__DTX_CPU__`;
+    const DATABASE_SVG = `__DTX_DATABASE__`;
+    const VERTIPAQ_SVG = `__DTX_VERTIPAQ__`;
+    const ZAP_SVG = `__DTX_ZAP__`;
+
+    const root = document.createElement("div");
+    root.className = "dtx";
+    function applyTheme() {
+        root.classList.toggle("dtx-dark", model.get("dark_mode") === true);
+        renderThemeBtn();
+    }
+    el.appendChild(root);
+
+    const buttonFeedbackTimers = new WeakMap();
+    let pointerPressedButton = null;
+    let keyboardPressedButton = null;
+    function enabledEventButton(event) {
+        const button = event.target?.closest?.("button");
+        return button && root.contains(button) && !button.disabled ? button : null;
+    }
+    function releaseButtonFeedback(button) {
+        button?.classList.remove("dtx-button-pressed");
+    }
+    root.addEventListener("pointerdown", event => {
+        const button = enabledEventButton(event);
+        if (!button) return;
+        releaseButtonFeedback(pointerPressedButton);
+        pointerPressedButton = button;
+        button.classList.add("dtx-button-pressed");
+    }, true);
+    function releasePointerButton() {
+        releaseButtonFeedback(pointerPressedButton);
+        pointerPressedButton = null;
+    }
+    root.addEventListener("pointerup", releasePointerButton, true);
+    root.addEventListener("pointercancel", releasePointerButton, true);
+    root.addEventListener("pointerleave", event => {
+        if (event.target === root) releasePointerButton();
+    }, true);
+    root.addEventListener("keydown", event => {
+        if (event.repeat || (event.key !== "Enter" && event.key !== " ")) return;
+        const button = enabledEventButton(event);
+        if (!button) return;
+        releaseButtonFeedback(keyboardPressedButton);
+        keyboardPressedButton = button;
+        button.classList.add("dtx-button-pressed");
+    }, true);
+    root.addEventListener("keyup", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        releaseButtonFeedback(keyboardPressedButton);
+        keyboardPressedButton = null;
+    }, true);
+    root.addEventListener("focusout", event => {
+        if (event.target === keyboardPressedButton) {
+            releaseButtonFeedback(keyboardPressedButton);
+            keyboardPressedButton = null;
+        }
+    }, true);
+    root.addEventListener("click", event => {
+        const button = enabledEventButton(event);
+        if (!button) return;
+        releaseButtonFeedback(button);
+        button.classList.remove("dtx-button-acknowledged");
+        void button.offsetWidth;
+        button.classList.add("dtx-button-acknowledged");
+        const previousTimer = buttonFeedbackTimers.get(button);
+        if (previousTimer) window.clearTimeout(previousTimer);
+        buttonFeedbackTimers.set(button, window.setTimeout(() => {
+            button.classList.remove("dtx-button-acknowledged");
+            buttonFeedbackTimers.delete(button);
+        }, 180));
+    }, true);
+
+    const toast = document.createElement("div");
+    toast.className = "dtx-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    root.appendChild(toast);
+    let toastTimer = null;
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("dtx-toast-visible");
+        if (toastTimer) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+            toast.classList.remove("dtx-toast-visible");
+        }, 2200);
+    }
+
+    const container = document.createElement("div");
+    container.className = "dtx-container";
+    root.appendChild(container);
+
+    // ---------- Header (title + subtitle + theme toggle) ----------
+    const headerWrap = document.createElement("div");
+    headerWrap.className = "dtx-header";
+    container.appendChild(headerWrap);
+
+    const header = document.createElement("div");
+    header.className = "sl-header";
+    headerWrap.appendChild(header);
+
+    const toolIcon = document.createElement("span");
+    toolIcon.className = "dtx-tool-icon";
+    toolIcon.innerHTML = DAX_PERFORMANCE_SVG;
+    header.appendChild(toolIcon);
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "sl-titlewrap";
+    header.appendChild(titleWrap);
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "dtx-title-row";
+    titleWrap.appendChild(titleRow);
+
+    const title = document.createElement("div");
+    title.className = "sl-title";
+    title.textContent = "DAX Perf Optimizer";
+    titleRow.appendChild(title);
+
+    let connectingToModel = false;
+    const subtitle = document.createElement("div");
+    subtitle.className = "sl-subtitle";
+    titleWrap.appendChild(subtitle);
+
+    const changeModelBtn = document.createElement("button");
+    changeModelBtn.type = "button";
+    changeModelBtn.className = "dtx-change-btn";
+    changeModelBtn.innerHTML = SWAP_SVG;
+    changeModelBtn.title = "Change model / workspace";
+    changeModelBtn.setAttribute("aria-label", "Change model / workspace");
+    titleRow.appendChild(changeModelBtn);
+    changeModelBtn.addEventListener("click", () => {
+        connectingToModel = false;
+        pickerOpen = true;
+        // (Re)load the workspace list so the picker is populated even when a
+        // dataset was supplied directly to test().
+        model.set("error_message", "");
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
+        renderPicker();
+    });
+    function renderSubtitle() {
+        const ds = model.get("dataset_name") || "";
+        const ws = model.get("workspace_name") || "";
+        changeModelBtn.style.display =
+            model.get("dataset_chosen") === true ? "" : "none";
+        if (model.get("dataset_chosen") !== true) {
+            subtitle.textContent = connectingToModel
+                ? "Loading semantic model…"
+                : "No semantic model selected";
+            return;
+        }
+        if (!ds && !ws) { subtitle.textContent = ""; return; }
+        subtitle.innerHTML =
+            (ds ? `<b>${escapeHtml(ds)}</b>` : "") +
+            (ds && ws ? `<span class="sl-sep">·</span>` : "") +
+            (ws ? escapeHtml(ws) : "");
+    }
+
+    const themeBtn = document.createElement("button");
+    themeBtn.type = "button";
+    themeBtn.className = "sl-theme-btn";
+    function renderThemeBtn() {
+        const isDark = model.get("dark_mode") === true;
+        themeBtn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
+        const label = isDark ? "Switch to light mode" : "Switch to dark mode";
+        themeBtn.title = label;
+        themeBtn.setAttribute("aria-label", label);
+    }
+    themeBtn.addEventListener("click", () => {
+        model.set("dark_mode", !(model.get("dark_mode") === true));
+        model.save_changes();
+    });
+
+    // ---------- Feature summary ----------
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.className = "sl-theme-btn";
+    infoBtn.innerHTML = INFO_SVG;
+    infoBtn.title = "About this tool";
+    infoBtn.setAttribute("aria-label", "About this tool");
+    infoBtn.setAttribute("aria-haspopup", "dialog");
+
+    const infoOverlay = document.createElement("div");
+    infoOverlay.className = "dtx-info-overlay";
+    infoOverlay.innerHTML = `
+        <section class="dtx-info-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="dtx-info-title" tabindex="-1">
+            <div class="dtx-info-head">
+                <span class="dtx-info-logo">${DAX_PERFORMANCE_SVG}</span>
+                <h2 class="dtx-info-title" id="dtx-info-title">DAX Perf Optimizer</h2>
+                <button class="dtx-info-close" type="button" aria-label="Close">${CLOSE_SVG}</button>
+            </div>
+            <p class="dtx-info-intro">Explore, test, and optimize DAX workloads from one workspace.</p>
+            <ul class="dtx-info-features">
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${REPORT_FILE_SVG}</span><div class="dtx-info-feature-copy"><strong>Report scanning</strong>Scan report queries and bring them into the editor for analysis.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${ACTIVITY_SVG}</span><div class="dtx-info-feature-copy"><strong>Workspace monitoring</strong>Monitor semantic model activity and inspect captured queries.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${GIT_BRANCH_SVG}</span><div class="dtx-info-feature-copy"><strong>Object dependencies</strong>Explore semantic model dependencies as a tree view or node graph.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${BUILDER_SVG}</span><div class="dtx-info-feature-copy"><strong>Query Builder</strong>Build DAX queries visually from model objects, filters, and sorting.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${DOWNLOAD_SVG}</span><div class="dtx-info-feature-copy"><strong>Trace history</strong>Review prior traces and download the captured history.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${NLDAX_SVG}</span><div class="dtx-info-feature-copy"><strong>Natural-language DAX</strong>Generate a DAX query by describing what you need in natural language.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${USERS_SVG}</span><div class="dtx-info-feature-copy"><strong>Role and user impersonation</strong>Test queries in the context of a security role or user.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${VERTIPAQ_SVG}</span><div class="dtx-info-feature-copy"><strong>VertiPaq Analyzer</strong>Inspect model memory, cardinality, and storage-engine details.</div></li>
+            </ul>
+        </section>`;
+    root.appendChild(infoOverlay);
+    const infoDialog = infoOverlay.querySelector(".dtx-info-dialog");
+    const infoCloseBtn = infoOverlay.querySelector(".dtx-info-close");
+    function closeInfo() {
+        infoOverlay.classList.remove("dtx-open");
+        infoBtn.setAttribute("aria-expanded", "false");
+        infoBtn.focus();
+    }
+    function openInfo() {
+        infoOverlay.classList.add("dtx-open");
+        infoBtn.setAttribute("aria-expanded", "true");
+        infoDialog.focus();
+    }
+    infoBtn.setAttribute("aria-expanded", "false");
+    infoBtn.addEventListener("click", openInfo);
+    infoCloseBtn.addEventListener("click", closeInfo);
+    infoOverlay.addEventListener("click", event => {
+        if (event.target === infoOverlay) closeInfo();
+    });
+    infoOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") closeInfo();
+    });
+
+    // ---------- Full-screen toggle ----------
+    // Expands the whole tool to fill the screen. Uses the native Fullscreen
+    // API when available (and allowed by the host), otherwise falls back to a
+    // CSS overlay that fills the browser viewport — the latter works reliably
+    // inside notebook output iframes where the Fullscreen API is often
+    // blocked.
+    let cssFullscreen = false;
+    function isFullscreen() {
+        return cssFullscreen || document.fullscreenElement === root;
+    }
+    function renderFullscreenBtn() {
+        const on = isFullscreen();
+        fullscreenBtn.innerHTML = on ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
+        const label = on ? "Exit full screen" : "Full screen";
+        fullscreenBtn.title = label;
+        fullscreenBtn.setAttribute("aria-label", label);
+        root.classList.toggle("dtx-fullscreen", cssFullscreen);
+    }
+    function enterFullscreen() {
+        if (root.requestFullscreen) {
+            root.requestFullscreen().then(() => {
+                cssFullscreen = false;
+                renderFullscreenBtn();
+            }).catch(() => {
+                cssFullscreen = true;
+                renderFullscreenBtn();
+            });
+        } else {
+            cssFullscreen = true;
+            renderFullscreenBtn();
+        }
+    }
+    function exitFullscreen() {
+        if (document.fullscreenElement === root && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        }
+        cssFullscreen = false;
+        renderFullscreenBtn();
+    }
+    const fullscreenBtn = document.createElement("button");
+    fullscreenBtn.type = "button";
+    fullscreenBtn.className = "sl-theme-btn";
+    fullscreenBtn.addEventListener("click", () => {
+        if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
+    });
+    document.addEventListener("fullscreenchange", () => {
+        // Keep the button in sync when the user exits via the Esc key.
+        renderFullscreenBtn();
+    });
+
+    let modelViewVisible = true;
+    const modelViewShowBtn = document.createElement("button");
+    modelViewShowBtn.type = "button";
+    modelViewShowBtn.className = "dtx-builder-show-btn dtx-model-show-btn";
+    modelViewShowBtn.innerHTML = LIST_TREE_SVG;
+    modelViewShowBtn.addEventListener("click", () => {
+        modelViewVisible = !modelViewVisible;
+        renderModelViewChrome();
+    });
+
+    const builderShowBtn = document.createElement("button");
+    builderShowBtn.type = "button";
+    builderShowBtn.className = "dtx-builder-show-btn";
+    builderShowBtn.innerHTML = BUILDER_SVG;
+    builderShowBtn.title = "Show query builder";
+    builderShowBtn.setAttribute("aria-label", "Show query builder");
+    builderShowBtn.addEventListener("click", () => {
+        builderVisible = !builderVisible;
+        renderBuilderChrome();
+    });
+    let monitoringVisible = true;
+    const monitoringShowBtn = document.createElement("button");
+    monitoringShowBtn.type = "button";
+    monitoringShowBtn.className = "dtx-builder-show-btn";
+    monitoringShowBtn.innerHTML = ACTIVITY_SVG;
+    monitoringShowBtn.addEventListener("click", () => {
+        monitoringVisible = !monitoringVisible;
+        renderMonitoringChrome();
+    });
+    header.appendChild(modelViewShowBtn);
+    header.appendChild(builderShowBtn);
+    header.appendChild(monitoringShowBtn);
+    header.appendChild(infoBtn);
+    header.appendChild(themeBtn);
+    header.appendChild(fullscreenBtn);
+    renderFullscreenBtn();
+
+    // ---------- Body: sidebar + main ----------
+    const body = document.createElement("div");
+    body.className = "dtx-body";
+    container.appendChild(body);
+
+    const sidebar = document.createElement("div");
+    sidebar.className = "dtx-sidebar";
+    body.appendChild(sidebar);
+
+    const sidebarHeader = document.createElement("div");
+    sidebarHeader.className = "dtx-sidebar-header";
+    sidebar.appendChild(sidebarHeader);
+
+    const sidebarMark = document.createElement("span");
+    sidebarMark.className = "dtx-sidebar-mark";
+    sidebarMark.innerHTML = LIST_TREE_SVG;
+    sidebarMark.title = "Model View";
+    sidebarMark.setAttribute("aria-label", "Model View");
+    sidebarHeader.appendChild(sidebarMark);
+
+    const sidebarTitle = document.createElement("div");
+    sidebarTitle.className = "dtx-sidebar-title";
+    sidebarTitle.textContent = "Model View";
+    sidebarHeader.appendChild(sidebarTitle);
+
+    const refreshBtn = document.createElement("button");
+    refreshBtn.type = "button";
+    refreshBtn.className = "dtx-sidebar-refresh";
+    refreshBtn.innerHTML = REFRESH_SVG;
+    refreshBtn.title = "Refresh metadata (re-read tables, columns, measures, hierarchies). Does not refresh the model.";
+    refreshBtn.setAttribute("aria-label", "Refresh metadata");
+    refreshBtn.addEventListener("click", () => {
+        if (model.get("metadata_loading") === true) return;
+        model.set("refresh_metadata_trigger", (model.get("refresh_metadata_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    sidebarHeader.appendChild(refreshBtn);
+
+    const sidebarToggle = document.createElement("button");
+    sidebarToggle.type = "button";
+    sidebarToggle.className = "dtx-sidebar-toggle";
+    sidebarToggle.addEventListener("click", () => {
+        model.set("sidebar_collapsed", !(model.get("sidebar_collapsed") === true));
+        model.save_changes();
+    });
+    sidebarHeader.appendChild(sidebarToggle);
+
+    const sidebarSearch = document.createElement("div");
+    sidebarSearch.className = "dtx-sidebar-search";
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.placeholder = "Search tables, columns, measures…";
+    searchInput.setAttribute("aria-label", "Search the model");
+    searchInput.spellcheck = false;
+    sidebarSearch.appendChild(searchInput);
+    sidebar.appendChild(sidebarSearch);
+
+    let treeFilter = "";
+    let treeExpand = false;
+    searchInput.addEventListener("input", () => {
+        treeFilter = searchInput.value || "";
+        renderTree();
+    });
+
+    const sidebarBody = document.createElement("div");
+    sidebarBody.className = "dtx-sidebar-body";
+    sidebar.appendChild(sidebarBody);
+
+    // Drag handle that lets the user resize the model panel horizontally.
+    // Placed immediately after the sidebar so it sits on its right edge and is
+    // not clipped by the sidebar's own overflow:hidden.
+    const sidebarResizer = document.createElement("div");
+    sidebarResizer.className = "dtx-sidebar-resizer";
+    sidebarResizer.title = "Drag to resize the model panel";
+    sidebarResizer.setAttribute("aria-label", "Resize model panel");
+    body.appendChild(sidebarResizer);
+
+    // In-memory width of the model panel when expanded.
+    let sidebarWidth = 260;
+    const SIDEBAR_MIN_W = 180;
+
+    function applySidebarWidth() {
+        const collapsed = model.get("sidebar_collapsed") === true;
+        if (collapsed) {
+            // Let the collapsed CSS rule control the width.
+            sidebar.style.flexBasis = "";
+            sidebar.style.width = "";
+            sidebar.style.maxWidth = "";
+        } else {
+            sidebar.style.flexBasis = sidebarWidth + "px";
+            sidebar.style.width = sidebarWidth + "px";
+            sidebar.style.maxWidth = sidebarWidth + "px";
+        }
+    }
+
+    (function setupSidebarResize() {
+        let startX = 0;
+        let startW = 0;
+        function onMove(e) {
+            const maxW = Math.max(
+                SIDEBAR_MIN_W, Math.floor(body.clientWidth * 0.7));
+            let w = startW + (e.clientX - startX);
+            w = Math.max(SIDEBAR_MIN_W, Math.min(maxW, w));
+            sidebarWidth = w;
+            applySidebarWidth();
+        }
+        function onUp() {
+            sidebar.classList.remove("dtx-sidebar-resizing");
+            sidebarResizer.classList.remove("dtx-sidebar-resizing");
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+        }
+        sidebarResizer.addEventListener("mousedown", (e) => {
+            if (model.get("sidebar_collapsed") === true) return;
+            e.preventDefault();
+            startX = e.clientX;
+            startW = sidebar.getBoundingClientRect().width;
+            sidebar.classList.add("dtx-sidebar-resizing");
+            sidebarResizer.classList.add("dtx-sidebar-resizing");
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+        });
+        // Double-click the handle to reset to the default width.
+        sidebarResizer.addEventListener("dblclick", () => {
+            sidebarWidth = 260;
+            applySidebarWidth();
+        });
+    })();
+
+    function renderSidebarChrome() {
+        const collapsed = model.get("sidebar_collapsed") === true;
+        sidebar.classList.toggle("dtx-sidebar-collapsed", collapsed);
+        sidebarToggle.innerHTML = collapsed ? PANEL_EXPAND_SVG : PANEL_COLLAPSE_SVG;
+        const label = collapsed ? "Show model panel" : "Hide model panel";
+        sidebarToggle.title = label;
+        sidebarToggle.setAttribute("aria-label", label);
+        refreshBtn.classList.toggle("dtx-spinning", model.get("metadata_loading") === true);
+        applySidebarWidth();
+        renderModelViewChrome();
+    }
+
+    function renderModelViewChrome() {
+        const chosen = model.get("dataset_chosen") === true;
+        const available = chosen || connectingToModel;
+        const visible = available && modelViewVisible;
+        modelViewShowBtn.style.display = chosen ? "" : "none";
+        modelViewShowBtn.classList.toggle("dtx-active", modelViewVisible);
+        sidebar.style.display = visible ? "" : "none";
+        sidebarResizer.style.display = visible ? "" : "none";
+        const label = modelViewVisible ? "Hide model view" : "Show model view";
+        modelViewShowBtn.title = label;
+        modelViewShowBtn.setAttribute("aria-label", label);
+    }
+
+    // Shared drag payload for dropping model objects into the editor.
+    let dragPayload = null;
+    // Richer metadata for the dragged model object (used by the query
+    // builder). Null when the drag is not a single column/measure.
+    let dragFieldMeta = null;
+    // Set when reordering a chip inside a query-builder pane.
+    let builderReorder = null;
+
+    function daxTableRef(name) {
+        return "'" + String(name).replace(/'/g, "''") + "'";
+    }
+    function daxMeasureRef(name) {
+        return "[" + String(name).replace(/\]/g, "]]") + "]";
+    }
+    function daxColumnRef(tableName, objName) {
+        return daxTableRef(tableName)
+            + "[" + String(objName).replace(/\]/g, "]]") + "]";
+    }
+
+    // ---------- Lightweight right-click context menu ----------
+    let ctxMenuEl = null;
+    function hideContextMenu() {
+        if (ctxMenuEl) { ctxMenuEl.remove(); ctxMenuEl = null; }
+    }
+    function showContextMenu(x, y, items) {
+        hideContextMenu();
+        const menu = document.createElement("div");
+        menu.className = "dtx-context-menu";
+        for (const it of items) {
+            const mi = document.createElement("div");
+            mi.className = "dtx-context-menu-item";
+            mi.textContent = it.label;
+            mi.addEventListener("click", (e) => {
+                e.stopPropagation();
+                hideContextMenu();
+                try { it.action(); } catch (err) {}
+            });
+            menu.appendChild(mi);
+        }
+        menu.style.visibility = "hidden";
+        root.appendChild(menu);
+        // Reposition so the menu stays within the viewport.
+        const rect = menu.getBoundingClientRect();
+        let left = x, top = y;
+        if (left + rect.width > window.innerWidth) {
+            left = window.innerWidth - rect.width - 4;
+        }
+        if (top + rect.height > window.innerHeight) {
+            top = window.innerHeight - rect.height - 4;
+        }
+        menu.style.left = Math.max(0, left) + "px";
+        menu.style.top = Math.max(0, top) + "px";
+        menu.style.visibility = "visible";
+        ctxMenuEl = menu;
+    }
+    document.addEventListener("click", hideContextMenu);
+    window.addEventListener("blur", hideContextMenu);
+    window.addEventListener("scroll", hideContextMenu, true);
+
+    // ---------- Semantic model object dependencies ----------
+    const objectDepsOverlay = document.createElement("div");
+    objectDepsOverlay.className = "dtx-object-deps-overlay";
+    objectDepsOverlay.innerHTML = `
+        <div class="dtx-object-deps-dialog" role="dialog" aria-modal="true" aria-label="Dependencies">
+            <div class="dtx-object-deps-head">
+                <span class="dtx-object-deps-icon">${GIT_BRANCH_SVG}</span>
+                <span class="dtx-object-deps-title"></span>
+                <button type="button" class="dtx-object-deps-close" aria-label="Close">${CLOSE_SVG}</button>
+            </div>
+            <div class="dtx-object-deps-toolbar">
+                <div class="dtx-object-deps-seg dtx-object-deps-direction">
+                    <button type="button" data-direction="dependsOn">Depends on</button>
+                    <button type="button" data-direction="referencedBy">Referenced by</button>
+                </div>
+                <span class="dtx-object-deps-description"></span>
+                <div class="dtx-object-deps-seg dtx-object-deps-view-seg">
+                    <button type="button" data-view="tree">${LIST_TREE_SVG}<span>Tree</span></button>
+                    <button type="button" data-view="graph">${WORKFLOW_SVG}<span>Node graph</span></button>
+                </div>
+            </div>
+            <div class="dtx-object-deps-content"></div>
+        </div>`;
+    root.appendChild(objectDepsOverlay);
+    const objectDepsTitle = objectDepsOverlay.querySelector(".dtx-object-deps-title");
+    const objectDepsDescription = objectDepsOverlay.querySelector(".dtx-object-deps-description");
+    const objectDepsContent = objectDepsOverlay.querySelector(".dtx-object-deps-content");
+    const objectDepsClose = objectDepsOverlay.querySelector(".dtx-object-deps-close");
+    let objectDepsTarget = null;
+    let objectDepsDirection = "dependsOn";
+    let objectDepsView = "tree";
+    let objectDepsZoom = 1;
+    let objectDepsRequestTimer = null;
+    let objectDepsTimedOut = false;
+    const objectDepsCollapsed = new Set();
+    const objectDepsGraphPositions = new Map();
+
+    function objectDepCategory(value) {
+        const type = String(value || "").toUpperCase();
+        if (type.includes("MEASURE")) return "measure";
+        if (type.includes("HIERARCHY")) return "hierarchy";
+        if (type.includes("CALCULATION_ITEM") || type.includes("CALC_ITEM")) return "calculationItem";
+        if (type.includes("COLUMN")) return "column";
+        if (type.includes("TABLE") || type === "ROWS" || type === "PARTITION") return "table";
+        return "other";
+    }
+    function objectDepKindLabel(kind) {
+        return ({
+            measure: "Measure", column: "Column", hierarchy: "Hierarchy",
+            calculationItem: "Calculation item", table: "Table", other: "Object",
+        })[kind] || "Object";
+    }
+    function objectDepIcon(kind) {
+        return ({
+            measure: MEASURE_SVG, column: COLUMN_SVG, hierarchy: HIERARCHY_SVG,
+            calculationItem: CALC_ITEM_SVG, table: TABLE_SVG,
+        })[kind] || COLUMN_SVG;
+    }
+    function objectDepNodeClass(kind) {
+        return `dtx-object-deps-node-${kind === "calculationItem" ? "calculation-item" : kind}`;
+    }
+    function objectDepLabel(kind, tableName, objectName) {
+        if (kind === "table") return objectName;
+        if (kind === "measure") return daxMeasureRef(objectName);
+        return tableName ? daxColumnRef(tableName, objectName) : objectName;
+    }
+    function objectDepKey(kind, tableName, objectName) {
+        return `${kind}|${String(tableName || "").toLowerCase()}|${String(objectName || "").toLowerCase()}`;
+    }
+    function buildObjectDependencyTree() {
+        if (!objectDepsTarget) return null;
+        const edges = model.get("object_dependency_edges") || [];
+        const adjacency = new Map();
+        const add = (key, value) => {
+            const values = adjacency.get(key) || [];
+            values.push(value);
+            adjacency.set(key, values);
+        };
+        for (const edge of edges) {
+            const from = {
+                kind: objectDepCategory(edge.object_type),
+                table: String(edge.table || ""), object: String(edge.object || ""),
+            };
+            const to = {
+                kind: objectDepCategory(edge.referenced_object_type),
+                table: String(edge.referenced_table || ""),
+                object: String(edge.referenced_object || ""),
+            };
+            if (objectDepsDirection === "dependsOn") {
+                add(objectDepKey(from.kind, from.table, from.object), to);
+            } else {
+                add(objectDepKey(to.kind, to.table, to.object), from);
+            }
+        }
+        let sequence = 0;
+        const build = (kind, tableName, objectName, ancestors, depth) => {
+            const key = objectDepKey(kind, tableName, objectName);
+            const repeated = ancestors.has(key);
+            const node = {
+                id: `object-dep-${sequence++}`, key, kind,
+                table: tableName, object: objectName, repeated, children: [],
+            };
+            if (repeated || depth >= 30) return node;
+            const nextAncestors = new Set(ancestors);
+            nextAncestors.add(key);
+            const seen = new Set();
+            for (const child of adjacency.get(key) || []) {
+                const childKey = objectDepKey(child.kind, child.table, child.object);
+                if (!seen.has(childKey)) {
+                    seen.add(childKey);
+                    node.children.push(build(
+                        child.kind, child.table, child.object, nextAncestors, depth + 1));
+                }
+            }
+            if (objectDepsDirection === "dependsOn" && kind === "column" && tableName) {
+                const tableKey = objectDepKey("table", tableName, tableName);
+                if (!seen.has(tableKey) && !ancestors.has(tableKey)) {
+                    node.children.push(build(
+                        "table", tableName, tableName, nextAncestors, depth + 1));
+                }
+            }
+            return node;
+        };
+        const rootKind = objectDepsTarget.kind;
+        const rootTable = rootKind === "table"
+            ? objectDepsTarget.name : objectDepsTarget.table;
+        return build(
+            rootKind, rootTable || "", objectDepsTarget.name || rootTable || "",
+            new Set(), 0);
+    }
+    function closeObjectDependencies() {
+        if (objectDepsRequestTimer !== null) {
+            window.clearTimeout(objectDepsRequestTimer);
+            objectDepsRequestTimer = null;
+        }
+        objectDepsOverlay.classList.remove("dtx-open");
+        objectDepsTarget = null;
+    }
+    function openObjectDependencies(target) {
+        objectDepsTarget = Object.assign({}, target);
+        objectDepsDirection = "dependsOn";
+        objectDepsView = "tree";
+        objectDepsZoom = 1;
+        objectDepsCollapsed.clear();
+        objectDepsGraphPositions.clear();
+        objectDepsTimedOut = false;
+        objectDepsOverlay.classList.add("dtx-open");
+        const requestId = (model.get("object_dependency_trigger") || 0) + 1;
+        model.set("object_dependency_target", objectDepsTarget);
+        model.set("object_dependencies_loading", true);
+        model.set("object_dependencies_loaded", false);
+        model.set("object_dependency_error", "");
+        model.set("object_dependency_trigger", requestId);
+        model.save_changes();
+        if (objectDepsRequestTimer !== null) {
+            window.clearTimeout(objectDepsRequestTimer);
+        }
+        objectDepsRequestTimer = window.setTimeout(() => {
+            objectDepsRequestTimer = null;
+            if (objectDepsTarget
+                    && model.get("object_dependency_trigger") === requestId
+                    && model.get("object_dependencies_loaded") !== true) {
+                objectDepsTimedOut = true;
+                renderObjectDependencies();
+            }
+        }, 30000);
+        renderObjectDependencies();
+        objectDepsClose.focus();
+    }
+    function renderObjectDependencyTree(tree) {
+        const fragment = document.createDocumentFragment();
+        const renderNode = (node, depth) => {
+            const wrap = document.createElement("div");
+            const row = document.createElement("div");
+            row.className = "dtx-object-deps-row";
+            row.style.paddingLeft = `${8 + depth * 18}px`;
+            if (node.children.length) {
+                const toggle = document.createElement("button");
+                toggle.type = "button";
+                toggle.className = "dtx-object-deps-toggle";
+                const open = !objectDepsCollapsed.has(node.id);
+                toggle.innerHTML = CHEVRON_DOWN_SVG;
+                toggle.style.transform = open ? "" : "rotate(-90deg)";
+                toggle.setAttribute("aria-label", open ? "Collapse" : "Expand");
+                toggle.addEventListener("click", () => {
+                    if (open) objectDepsCollapsed.add(node.id);
+                    else objectDepsCollapsed.delete(node.id);
+                    renderObjectDependencies();
+                });
+                row.appendChild(toggle);
+            } else {
+                const spacer = document.createElement("span");
+                spacer.className = "dtx-object-deps-spacer";
+                row.appendChild(spacer);
+            }
+            const icon = document.createElement("span");
+            icon.className = "dtx-object-deps-icon";
+            icon.innerHTML = objectDepIcon(node.kind);
+            row.appendChild(icon);
+            const label = document.createElement("span");
+            label.className = "dtx-object-deps-label";
+            label.textContent = objectDepLabel(node.kind, node.table, node.object);
+            label.title = label.textContent;
+            row.appendChild(label);
+            const kind = document.createElement("span");
+            kind.className = "dtx-object-deps-kind";
+            kind.textContent = objectDepKindLabel(node.kind);
+            row.appendChild(kind);
+            if (node.repeated) {
+                const cycle = document.createElement("span");
+                cycle.className = "dtx-object-deps-cycle";
+                cycle.textContent = "↩";
+                cycle.title = "Already shown higher in this path";
+                row.appendChild(cycle);
+            }
+            wrap.appendChild(row);
+            if (node.children.length && !objectDepsCollapsed.has(node.id)) {
+                for (const child of node.children) wrap.appendChild(renderNode(child, depth + 1));
+            }
+            return wrap;
+        };
+        fragment.appendChild(renderNode(tree, 0));
+        objectDepsContent.replaceChildren(fragment);
+        if (!tree.children.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-object-deps-status";
+            empty.textContent = objectDepsDirection === "dependsOn"
+                ? "This object has no dependencies."
+                : "No objects depend on this object.";
+            objectDepsContent.appendChild(empty);
+        }
+    }
+    function renderObjectDependencyGraph(tree) {
+        const nodeMap = new Map();
+        const edgeMap = new Map();
+        const visit = (node, level) => {
+            const existing = nodeMap.get(node.key);
+            if (!existing || level < existing.level) {
+                nodeMap.set(node.key, Object.assign({}, node, {level}));
+            }
+            for (const child of node.children) {
+                edgeMap.set(`${node.key}\u0001${child.key}`, [node.key, child.key]);
+                if (!child.repeated) visit(child, level + 1);
+            }
+        };
+        visit(tree, 0);
+        const levels = new Map();
+        for (const node of nodeMap.values()) {
+            const list = levels.get(node.level) || [];
+            list.push(node);
+            levels.set(node.level, list);
+        }
+        const nodeWidth = 210, nodeHeight = 48, columnGap = 74, rowGap = 20, pad = 32;
+        let maxRows = 1, maxLevel = 0;
+        for (const [level, nodes] of levels) {
+            nodes.sort((a, b) => objectDepLabel(a.kind, a.table, a.object)
+                .localeCompare(objectDepLabel(b.kind, b.table, b.object)));
+            maxRows = Math.max(maxRows, nodes.length);
+            maxLevel = Math.max(maxLevel, level);
+        }
+        const stageWidth = Math.max(
+            920, pad * 2 + (maxLevel + 1) * nodeWidth + maxLevel * columnGap);
+        const stageHeight = Math.max(
+            520, pad * 2 + maxRows * nodeHeight + (maxRows - 1) * rowGap);
+        const positions = new Map();
+        for (const [level, nodes] of levels) {
+            const columnHeight = nodes.length * nodeHeight + (nodes.length - 1) * rowGap;
+            const top = pad + (stageHeight - pad * 2 - columnHeight) / 2;
+            nodes.forEach((node, index) => {
+                const automatic = {
+                    x: pad + level * (nodeWidth + columnGap),
+                    y: top + index * (nodeHeight + rowGap),
+                };
+                const saved = objectDepsGraphPositions.get(node.key);
+                positions.set(node.key, saved ? {
+                    x: Math.max(pad, Math.min(stageWidth - nodeWidth - pad, saved.x)),
+                    y: Math.max(pad, Math.min(stageHeight - nodeHeight - pad, saved.y)),
+                } : automatic);
+            });
+        }
+        objectDepsContent.innerHTML = "";
+        objectDepsContent.style.overflow = "hidden";
+        const viewport = document.createElement("div");
+        viewport.className = "dtx-object-deps-graph";
+        const space = document.createElement("div");
+        space.style.position = "relative";
+        space.style.width = `${stageWidth * objectDepsZoom}px`;
+        space.style.height = `${stageHeight * objectDepsZoom}px`;
+        const stage = document.createElement("div");
+        stage.className = "dtx-object-deps-stage";
+        stage.style.width = `${stageWidth}px`;
+        stage.style.height = `${stageHeight}px`;
+        stage.style.transform = `scale(${objectDepsZoom})`;
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", String(stageWidth));
+        svg.setAttribute("height", String(stageHeight));
+        svg.style.position = "absolute";
+        svg.style.inset = "0";
+        svg.style.overflow = "visible";
+        svg.style.pointerEvents = "none";
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        const markerId = `dtx-object-dep-arrow-${Math.random().toString(36).slice(2)}`;
+        marker.setAttribute("id", markerId);
+        marker.setAttribute("viewBox", "0 0 10 10");
+        marker.setAttribute("refX", "9");
+        marker.setAttribute("refY", "5");
+        marker.setAttribute("markerWidth", "7");
+        marker.setAttribute("markerHeight", "7");
+        marker.setAttribute("orient", "auto");
+        const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+        arrow.setAttribute("fill", "var(--ui-text-secondary)");
+        marker.appendChild(arrow);
+        defs.appendChild(marker);
+        svg.appendChild(defs);
+        const edgePaths = new Map();
+        for (const [edgeKey] of edgeMap) {
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", "var(--ui-text-secondary)");
+            path.setAttribute("stroke-opacity", "0.7");
+            path.setAttribute("stroke-width", "1.6");
+            path.setAttribute("marker-end", `url(#${markerId})`);
+            svg.appendChild(path);
+            edgePaths.set(edgeKey, path);
+        }
+        function updateObjectDependencyEdges() {
+            for (const [edgeKey, [fromKey, toKey]] of edgeMap) {
+                const from = positions.get(fromKey), to = positions.get(toKey);
+                const path = edgePaths.get(edgeKey);
+                if (!from || !to || !path) continue;
+                const fromRight = from.x + nodeWidth;
+                const toRight = to.x + nodeWidth;
+                const fromY = from.y + nodeHeight / 2;
+                const toY = to.y + nodeHeight / 2;
+                let startX, endX, control1X, control2X;
+                if (to.x >= fromRight + 12) {
+                    startX = fromRight;
+                    endX = to.x - 4;
+                    control1X = control2X = (startX + endX) / 2;
+                } else if (from.x >= toRight + 12) {
+                    startX = from.x;
+                    endX = toRight + 4;
+                    control1X = control2X = (startX + endX) / 2;
+                } else {
+                    startX = fromRight;
+                    endX = toRight + 4;
+                    control1X = control2X = Math.max(fromRight, toRight) + 56;
+                }
+                path.setAttribute("d", `M ${startX} ${fromY} C ${control1X} ${fromY}, ${control2X} ${toY}, ${endX} ${toY}`);
+            }
+        }
+        stage.appendChild(svg);
+        for (const node of nodeMap.values()) {
+            const pos = positions.get(node.key);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `dtx-object-deps-node ${objectDepNodeClass(node.kind)}`;
+            button.style.left = `${pos.x}px`;
+            button.style.top = `${pos.y}px`;
+            button.title = `${objectDepLabel(node.kind, node.table, node.object)} — drag to move, click to focus`;
+            button.innerHTML = `<span class="dtx-object-deps-icon">${objectDepIcon(node.kind)}</span>`
+                + `<span class="dtx-object-deps-node-text">`
+                + `<span class="dtx-object-deps-node-label">${escapeHtml(objectDepLabel(node.kind, node.table, node.object))}</span>`
+                + `<span class="dtx-object-deps-node-kind">${escapeHtml(objectDepKindLabel(node.kind))}</span></span>`;
+            let suppressClick = false;
+            button.addEventListener("pointerdown", event => {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const originX = pos.x;
+                const originY = pos.y;
+                let moved = false;
+                button.classList.add("dtx-dragging");
+                button.setPointerCapture(event.pointerId);
+                const onMove = moveEvent => {
+                    const deltaX = (moveEvent.clientX - startX) / objectDepsZoom;
+                    const deltaY = (moveEvent.clientY - startY) / objectDepsZoom;
+                    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) moved = true;
+                    pos.x = Math.max(
+                        pad, Math.min(stageWidth - nodeWidth - pad, originX + deltaX));
+                    pos.y = Math.max(
+                        pad, Math.min(stageHeight - nodeHeight - pad, originY + deltaY));
+                    button.style.left = `${pos.x}px`;
+                    button.style.top = `${pos.y}px`;
+                    objectDepsGraphPositions.set(node.key, {x: pos.x, y: pos.y});
+                    updateObjectDependencyEdges();
+                };
+                const onEnd = () => {
+                    suppressClick = moved;
+                    button.classList.remove("dtx-dragging");
+                    button.removeEventListener("pointermove", onMove);
+                    button.removeEventListener("pointerup", onEnd);
+                    button.removeEventListener("pointercancel", onEnd);
+                    if (moved) setTimeout(() => { suppressClick = false; }, 0);
+                };
+                button.addEventListener("pointermove", onMove);
+                button.addEventListener("pointerup", onEnd);
+                button.addEventListener("pointercancel", onEnd);
+            });
+            button.addEventListener("click", () => {
+                if (suppressClick) return;
+                objectDepsTarget = {
+                    kind: node.kind,
+                    table: node.kind === "table" ? "" : node.table,
+                    name: node.object,
+                    label: objectDepLabel(node.kind, node.table, node.object),
+                };
+                objectDepsCollapsed.clear();
+                objectDepsGraphPositions.clear();
+                renderObjectDependencies();
+            });
+            stage.appendChild(button);
+        }
+        updateObjectDependencyEdges();
+        space.appendChild(stage);
+        viewport.appendChild(space);
+        let pan = null;
+        viewport.addEventListener("pointerdown", event => {
+            if (event.target !== viewport && event.target !== space && event.target !== stage) return;
+            pan = {x: event.clientX, y: event.clientY,
+                left: viewport.scrollLeft, top: viewport.scrollTop};
+            viewport.classList.add("dtx-panning");
+            viewport.setPointerCapture(event.pointerId);
+        });
+        viewport.addEventListener("pointermove", event => {
+            if (!pan) return;
+            viewport.scrollLeft = pan.left - (event.clientX - pan.x);
+            viewport.scrollTop = pan.top - (event.clientY - pan.y);
+        });
+        const endPan = () => { pan = null; viewport.classList.remove("dtx-panning"); };
+        viewport.addEventListener("pointerup", endPan);
+        viewport.addEventListener("pointercancel", endPan);
+        objectDepsContent.appendChild(viewport);
+        const zoom = document.createElement("div");
+        zoom.className = "dtx-object-deps-zoom";
+        const zoomOut = document.createElement("button");
+        zoomOut.type = "button"; zoomOut.textContent = "−"; zoomOut.title = "Zoom out";
+        const zoomLabel = document.createElement("span");
+        zoomLabel.textContent = `${Math.round(objectDepsZoom * 100)}%`;
+        const zoomIn = document.createElement("button");
+        zoomIn.type = "button"; zoomIn.textContent = "+"; zoomIn.title = "Zoom in";
+        zoomOut.addEventListener("click", () => {
+            objectDepsZoom = Math.max(0.3, objectDepsZoom - 0.1);
+            renderObjectDependencies();
+        });
+        zoomIn.addEventListener("click", () => {
+            objectDepsZoom = Math.min(2.5, objectDepsZoom + 0.1);
+            renderObjectDependencies();
+        });
+        zoom.append(zoomOut, zoomLabel, zoomIn);
+        objectDepsContent.appendChild(zoom);
+        if (!tree.children.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-object-deps-status";
+            empty.style.position = "absolute";
+            empty.style.inset = "0";
+            empty.style.pointerEvents = "none";
+            empty.textContent = objectDepsDirection === "dependsOn"
+                ? "This object has no dependencies."
+                : "No objects depend on this object.";
+            objectDepsContent.appendChild(empty);
+        }
+    }
+    function renderObjectDependencies() {
+        if (!objectDepsTarget || !objectDepsOverlay.classList.contains("dtx-open")) return;
+        objectDepsTitle.textContent = `Dependencies — ${objectDepsTarget.label}`;
+        objectDepsDescription.textContent = objectDepsDirection === "dependsOn"
+            ? "Objects this object depends on"
+            : "Objects that depend on this object";
+        objectDepsOverlay.querySelectorAll("[data-direction]").forEach(button =>
+            button.classList.toggle("dtx-active", button.dataset.direction === objectDepsDirection));
+        objectDepsOverlay.querySelectorAll("[data-view]").forEach(button =>
+            button.classList.toggle("dtx-active", button.dataset.view === objectDepsView));
+        objectDepsContent.style.overflow = "auto";
+        const loading = model.get("object_dependencies_loading") === true;
+        const loaded = model.get("object_dependencies_loaded") === true;
+        const error = String(model.get("object_dependency_error") || "");
+        if ((loaded || error) && objectDepsRequestTimer !== null) {
+            window.clearTimeout(objectDepsRequestTimer);
+            objectDepsRequestTimer = null;
+        }
+        if (loaded || error) objectDepsTimedOut = false;
+        if (objectDepsTimedOut) {
+            objectDepsContent.innerHTML = '<div class="dtx-object-deps-status dtx-error">Dependency loading timed out. Close and reopen this view to retry.</div>';
+            return;
+        }
+        if (loading || (!loaded && !error)) {
+            objectDepsContent.innerHTML = '<div class="dtx-object-deps-status">Reading dependencies…</div>';
+            return;
+        }
+        if (error) {
+            objectDepsContent.innerHTML = `<div class="dtx-object-deps-status dtx-error">${escapeHtml(error)}</div>`;
+            return;
+        }
+        const tree = buildObjectDependencyTree();
+        if (!tree) return;
+        if (objectDepsView === "graph") renderObjectDependencyGraph(tree);
+        else renderObjectDependencyTree(tree);
+    }
+    objectDepsClose.addEventListener("click", closeObjectDependencies);
+    objectDepsOverlay.addEventListener("click", event => {
+        if (event.target === objectDepsOverlay) closeObjectDependencies();
+    });
+    objectDepsOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") closeObjectDependencies();
+    });
+    objectDepsOverlay.querySelectorAll("[data-direction]").forEach(button => {
+        button.addEventListener("click", () => {
+            objectDepsDirection = button.dataset.direction;
+            objectDepsCollapsed.clear();
+            objectDepsGraphPositions.clear();
+            renderObjectDependencies();
+        });
+    });
+    objectDepsOverlay.querySelectorAll("[data-view]").forEach(button => {
+        button.addEventListener("click", () => {
+            objectDepsView = button.dataset.view;
+            renderObjectDependencies();
+        });
+    });
+
+    function installObjectContextMenu(element, meta, extraItems) {
+        element.addEventListener("contextmenu", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const items = [...(extraItems || []), {
+                label: "View dependencies",
+                action: () => openObjectDependencies(meta),
+            }];
+            showContextMenu(event.clientX, event.clientY, items);
+        });
+    }
+
+    function makeDraggable(elem, dragText, meta) {
+        elem.setAttribute("draggable", "true");
+        elem.classList.add("dtx-draggable");
+        elem.addEventListener("dragstart", (e) => {
+            dragPayload = dragText;
+            dragFieldMeta = meta || null;
+            e.dataTransfer.setData("text/plain", dragText);
+            if (meta) {
+                e.dataTransfer.setData(
+                    "application/x-dtx-field", JSON.stringify(meta));
+            }
+            e.dataTransfer.effectAllowed = "copy";
+        });
+        elem.addEventListener("dragend", () => {
+            dragPayload = null;
+            dragFieldMeta = null;
+        });
+    }
+
+    function makeLeaf(
+        iconSvg, name, hidden, dataType, dragText, description, pad, meta, contextMeta
+    ) {
+        const leaf = document.createElement("div");
+        leaf.className = "dtx-tree-leaf";
+        leaf.style.paddingLeft = (pad == null ? 6 : pad) + "px";
+        const tip = description ? description : name;
+        const typeHtml = dataType
+            ? `<span class="dtx-tree-type" title="${escapeHtml(dataType)}">${escapeHtml(dataType)}</span>`
+            : "";
+        leaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`
+            + `<span class="dtx-tree-icon">${iconSvg}</span>`
+            + `<span class="dtx-tree-label${hidden ? " dtx-hidden" : ""}"`
+            + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
+            + typeHtml;
+        if (dragText) makeDraggable(leaf, dragText, meta);
+        const objectMeta = contextMeta || meta;
+        if (objectMeta) {
+            const extraItems = objectMeta.kind === "measure"
+                ? [{ label: "Define", action: () => defineMeasure(objectMeta) }]
+                : [];
+            installObjectContextMenu(leaf, objectMeta, extraItems);
+        }
+        return leaf;
+    }
+
+    // Group items by their (possibly nested) display folder. Folder paths are
+    // split on "\\"; items without a display folder live at the group root.
+    function buildFolderTree(items) {
+        const root = { folders: new Map(), items: [] };
+        for (const it of items) {
+            const df = String(it.display_folder || "").trim();
+            if (!df) { root.items.push(it); continue; }
+            const parts = df.split("\\").map(p => p.trim()).filter(p => p.length);
+            let node = root;
+            for (const part of parts) {
+                if (!node.folders.has(part)) {
+                    node.folders.set(part, { folders: new Map(), items: [] });
+                }
+                node = node.folders.get(part);
+            }
+            node.items.push(it);
+        }
+        return root;
+    }
+
+    function makeFolder(label, pad) {
+        const wrap = document.createElement("div");
+        wrap.className = "dtx-tree-folder";
+        const header = document.createElement("div");
+        header.className = "dtx-tree-folder-header";
+        header.style.paddingLeft = pad + "px";
+        header.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
+            + `<span class="dtx-tree-icon">${FOLDER_SVG}</span>`
+            + `<span class="dtx-tree-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+        const children = document.createElement("div");
+        children.className = "dtx-tree-subtree";
+        children.style.display = treeExpand ? "block" : "none";
+        header.classList.toggle("dtx-open", treeExpand);
+        header.addEventListener("click", () => {
+            const open = !header.classList.contains("dtx-open");
+            header.classList.toggle("dtx-open", open);
+            children.style.display = open ? "block" : "none";
+        });
+        wrap.appendChild(header);
+        wrap.appendChild(children);
+        return { wrap, children };
+    }
+
+    function renderFolderTree(parentEl, node, build, depth) {
+        const pad = 6 + depth * 14;
+        const folderNames = Array.from(node.folders.keys()).sort(
+            (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        for (const fname of folderNames) {
+            const folder = makeFolder(fname, pad);
+            parentEl.appendChild(folder.wrap);
+            renderFolderTree(folder.children, node.folders.get(fname), build, depth + 1);
+        }
+        for (const it of node.items) {
+            parentEl.appendChild(build(it, pad));
+        }
+    }
+
+    // Leaf builder for hierarchies: the hierarchy is draggable and (when it
+    // has levels) expands to show its levels. Levels are NOT draggable.
+    function makeHierarchyLeaf(tableName) {
+        return (it, pad) => {
+            const frag = document.createDocumentFragment();
+            const hasLevels = it.levels && it.levels.length;
+            const node = document.createElement("div");
+            node.className = "dtx-tree-leaf";
+            node.style.paddingLeft = pad + "px";
+            const tip = it.description ? it.description : it.name;
+            node.innerHTML = (hasLevels
+                    ? `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
+                    : `<span class="dtx-tree-caret-spacer"></span>`)
+                + `<span class="dtx-tree-icon">${HIERARCHY_SVG}</span>`
+                + `<span class="dtx-tree-label${it.hidden ? " dtx-hidden" : ""}"`
+                + ` title="${escapeHtml(tip)}">${escapeHtml(it.name)}</span>`;
+            makeDraggable(node, daxColumnRef(tableName, it.name));
+            installObjectContextMenu(node, {
+                kind: "hierarchy", table: tableName, name: it.name,
+                label: daxColumnRef(tableName, it.name),
+            });
+            frag.appendChild(node);
+            if (hasLevels) {
+                const lchildren = document.createElement("div");
+                lchildren.className = "dtx-tree-subtree";
+                lchildren.style.display = treeExpand ? "block" : "none";
+                node.classList.toggle("dtx-open", treeExpand);
+                for (const lvl of it.levels) {
+                    const lleaf = document.createElement("div");
+                    lleaf.className = "dtx-tree-leaf dtx-tree-level";
+                    lleaf.style.paddingLeft = (pad + 14) + "px";
+                    const ltip = lvl.description ? lvl.description : lvl.name;
+                    lleaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`
+                        + `<span class="dtx-tree-icon">${LEVEL_SVG}</span>`
+                        + `<span class="dtx-tree-label"`
+                        + ` title="${escapeHtml(ltip)}">${escapeHtml(lvl.name)}</span>`;
+                    lchildren.appendChild(lleaf);
+                }
+                node.addEventListener("click", () => {
+                    const open = !node.classList.contains("dtx-open");
+                    node.classList.toggle("dtx-open", open);
+                    lchildren.style.display = open ? "block" : "none";
+                });
+                frag.appendChild(lchildren);
+            }
+            return frag;
+        };
+    }
+
+    function renderTableObjects(parentEl, table) {
+        const objects = [
+            ...(table.measures || []).map(it => Object.assign({_kind: "measure"}, it)),
+            ...(table.columns || []).map(it => Object.assign({_kind: "column"}, it)),
+            ...(table.hierarchies || []).map(it => Object.assign({_kind: "hierarchy"}, it)),
+            ...(table.calculation_items || []).map(it => Object.assign({_kind: "calculation_item"}, it)),
+        ];
+        const hierarchyBuilder = makeHierarchyLeaf(table.name);
+        const build = (it, pad) => {
+            if (it._kind === "measure") {
+                return makeLeaf(
+                    MEASURE_SVG, it.name, !!it.hidden, it.data_type,
+                    daxMeasureRef(it.name), it.description, pad,
+                    {kind: "measure", table: table.name, name: it.name,
+                        data_type: it.data_type, expression: it.expression,
+                        ref: daxMeasureRef(it.name), label: daxMeasureRef(it.name)});
+            }
+            if (it._kind === "column") {
+                return makeLeaf(
+                    COLUMN_SVG, it.name, !!it.hidden, it.data_type,
+                    daxColumnRef(table.name, it.name), it.description, pad,
+                    {kind: "column", table: table.name, name: it.name,
+                        data_type: it.data_type,
+                        ref: daxColumnRef(table.name, it.name),
+                        label: daxColumnRef(table.name, it.name)});
+            }
+            if (it._kind === "hierarchy") return hierarchyBuilder(it, pad);
+            return makeLeaf(
+                CALC_ITEM_SVG, it.name, !!it.hidden, it.data_type,
+                daxColumnRef(table.name, it.name), it.description, pad, null,
+                {kind: "calculationItem", table: table.name, name: it.name,
+                    label: daxColumnRef(table.name, it.name)});
+        };
+        renderFolderTree(parentEl, buildFolderTree(objects), build, 0);
+    }
+
+    // Filter the model tree by a case-insensitive substring. A table is kept
+    // in full when its own name matches; otherwise only its matching children
+    // (columns, measures, hierarchies/levels, calculation items) are kept.
+    function matchStr(s, q) {
+        return String(s == null ? "" : s).toLowerCase().indexOf(q) !== -1;
+    }
+
+    function filterTree(tree, q) {
+        if (!q) return tree;
+        const out = [];
+        for (const tbl of tree) {
+            if (matchStr(tbl.name, q)) { out.push(tbl); continue; }
+            const cols = (tbl.columns || []).filter(it => matchStr(it.name, q));
+            const meas = (tbl.measures || []).filter(it => matchStr(it.name, q));
+            const hiers = (tbl.hierarchies || []).map(h => {
+                if (matchStr(h.name, q)) return h;
+                const lv = (h.levels || []).filter(l => matchStr(l.name, q));
+                return lv.length ? Object.assign({}, h, { levels: lv }) : null;
+            }).filter(h => h);
+            const cis = (tbl.calculation_items || []).filter(
+                it => matchStr(it.name, q));
+            if (cols.length || meas.length || hiers.length || cis.length) {
+                out.push(Object.assign({}, tbl, {
+                    columns: cols,
+                    measures: meas,
+                    hierarchies: hiers,
+                    calculation_items: cis,
+                }));
+            }
+        }
+        return out;
+    }
+
+    function renderTree() {
+        sidebarBody.innerHTML = "";
+        const rawTree = model.get("model_tree") || [];
+        const q = String(treeFilter || "").trim().toLowerCase();
+        treeExpand = q.length > 0;
+        const tree = filterTree(rawTree, q);
+        if (!rawTree.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-sidebar-empty";
+            empty.textContent = model.get("metadata_loading") === true
+                ? "Loading model metadata…"
+                : "No metadata available.";
+            sidebarBody.appendChild(empty);
+            return;
+        }
+        if (!tree.length) {
+            const empty = document.createElement("div");
+            empty.className = "dtx-sidebar-empty";
+            empty.textContent = 'No objects match "' + treeFilter + '".';
+            sidebarBody.appendChild(empty);
+            return;
+        }
+        for (const tbl of tree) {
+            const node = document.createElement("div");
+            node.className = "dtx-tree-node";
+            const tblIcon = tbl.calculation_group ? CALC_GROUP_SVG : TABLE_SVG;
+            const countParts = [
+                `${(tbl.columns || []).length}c`,
+                `${(tbl.measures || []).length}m`,
+            ];
+            if ((tbl.hierarchies || []).length) {
+                countParts.push(`${tbl.hierarchies.length}h`);
+            }
+            node.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
+                + `<span class="dtx-tree-icon">${tblIcon}</span>`
+                + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
+                + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`
+                + `<span class="dtx-tree-counts">${escapeHtml(countParts.join(" · "))}</span>`;
+            makeDraggable(node, daxTableRef(tbl.name));
+            installObjectContextMenu(node, {
+                kind: "table", table: "", name: tbl.name, label: tbl.name,
+            });
+            const children = document.createElement("div");
+            children.className = "dtx-tree-children";
+            renderTableObjects(children, tbl);
+            node.addEventListener("click", () => {
+                const open = !node.classList.contains("dtx-open");
+                node.classList.toggle("dtx-open", open);
+                children.style.display = open ? "block" : "none";
+            });
+            children.style.display = treeExpand ? "block" : "none";
+            node.classList.toggle("dtx-open", treeExpand);
+            sidebarBody.appendChild(node);
+            sidebarBody.appendChild(children);
+        }
+    }
+
+    const main = document.createElement("div");
+    main.className = "dtx-main";
+    body.appendChild(main);
+
+    // ---------- Query Builder pane (between sidebar and main) ----------
+    // Shown by default; can be hidden via the header "Query Builder" button.
+    let builderVisible = true;
+    let builderCollapsed = false;
+    let builderFields = [];
+    let builderFilters = [];
+    let builderOrderBy = [];
+    let clearedBuilderState = null;
+    let qbSeq = 0;
+
+    const QB_OPS = {
+        text: [["eq", "equals"], ["ne", "does not equal"],
+            ["contains", "contains"], ["startswith", "starts with"],
+            ["in", "in"], ["notin", "not in"],
+            ["blank", "is blank"], ["notblank", "is not blank"]],
+        numeric: [["eq", "="], ["ne", "\u2260"], ["gt", ">"], ["ge", "\u2265"],
+            ["lt", "<"], ["le", "\u2264"], ["between", "between"],
+            ["in", "in"], ["notin", "not in"],
+            ["blank", "is blank"], ["notblank", "is not blank"]],
+        datetime: [["eq", "on"], ["ne", "not on"], ["gt", "after"],
+            ["ge", "on or after"], ["lt", "before"], ["le", "on or before"],
+            ["between", "between"], ["in", "in"], ["notin", "not in"],
+            ["blank", "is blank"], ["notblank", "is not blank"]],
+        boolean: [["istrue", "is TRUE"], ["isfalse", "is FALSE"]],
+        measure: [["eq", "="], ["ne", "\u2260"], ["gt", ">"], ["ge", "\u2265"],
+            ["lt", "<"], ["le", "\u2264"], ["between", "between"],
+            ["in", "in"], ["notin", "not in"]],
+    };
+
+    function qbClassify(field) {
+        if (field.kind === "measure") return "measure";
+        const dt = String(field.data_type || "").toLowerCase();
+        if (dt === "int64" || dt === "double" || dt === "decimal"
+            || dt === "currency" || dt === "int" || dt === "integer") {
+            return "numeric";
+        }
+        if (dt === "datetime" || dt === "date" || dt === "time") {
+            return "datetime";
+        }
+        if (dt === "boolean" || dt === "bool") return "boolean";
+        return "text";
+    }
+
+    function qbIcon(kind) {
+        return kind === "measure" ? MEASURE_SVG : COLUMN_SVG;
+    }
+
+    function qbDisplayName(f) {
+        return (f.kind === "column" && f.table)
+            ? f.table + "[" + f.name + "]"
+            : "[" + f.name + "]";
+    }
+
+    const builderPane = document.createElement("div");
+    builderPane.className = "dtx-builder";
+    body.insertBefore(builderPane, main);
+
+    const builderHeader = document.createElement("div");
+    builderHeader.className = "dtx-builder-header";
+    const builderMark = document.createElement("span");
+    builderMark.className = "dtx-builder-mark";
+    builderMark.innerHTML = BUILDER_SVG;
+    builderMark.title = "Query Builder";
+    builderMark.setAttribute("aria-label", "Query Builder");
+    const builderTitle = document.createElement("div");
+    builderTitle.className = "dtx-builder-title";
+    builderTitle.textContent = "Query Builder";
+    const builderCollapseBtn = document.createElement("button");
+    builderCollapseBtn.type = "button";
+    builderCollapseBtn.className = "dtx-builder-toggle dtx-builder-collapse";
+    builderCollapseBtn.addEventListener("click", () => {
+        builderCollapsed = !builderCollapsed;
+        renderBuilderChrome();
+    });
+    const builderUndoBtn = document.createElement("button");
+    builderUndoBtn.type = "button";
+    builderUndoBtn.className = "dtx-builder-toggle dtx-builder-undo";
+    builderUndoBtn.innerHTML = UNDO_SVG;
+    builderUndoBtn.title = "Undo clear";
+    builderUndoBtn.setAttribute("aria-label", "Undo clear");
+    builderHeader.appendChild(builderMark);
+    builderHeader.appendChild(builderTitle);
+    builderHeader.appendChild(builderUndoBtn);
+    builderHeader.appendChild(builderCollapseBtn);
+    builderPane.appendChild(builderHeader);
+
+    const builderContent = document.createElement("div");
+    builderContent.className = "dtx-builder-content";
+    builderPane.appendChild(builderContent);
+
+    // Drag handle that lets the user resize the query builder pane
+    // horizontally (to the right). Placed immediately after the builder pane
+    // so it sits on its right edge and is not clipped by overflow:hidden.
+    const builderResizer = document.createElement("div");
+    builderResizer.className = "dtx-builder-resizer";
+    builderResizer.title = "Drag to resize the query builder";
+    builderResizer.setAttribute("aria-label", "Resize query builder");
+    body.insertBefore(builderResizer, main);
+
+    // In-memory width of the query builder pane when expanded.
+    let builderWidth = 260;
+    const BUILDER_MIN_W = 180;
+
+    function applyBuilderWidth() {
+        const inactive = builderCollapsed || !builderVisible
+            || model.get("dataset_chosen") !== true;
+        if (inactive) {
+            // Let the collapsed/hidden CSS rules control the width.
+            builderPane.style.flexBasis = "";
+            builderPane.style.width = "";
+            builderPane.style.maxWidth = "";
+        } else {
+            builderPane.style.flexBasis = builderWidth + "px";
+            builderPane.style.width = builderWidth + "px";
+            builderPane.style.maxWidth = builderWidth + "px";
+        }
+    }
+
+    (function setupBuilderResize() {
+        let startX = 0;
+        let startW = 0;
+        function onMove(e) {
+            const maxW = Math.max(
+                BUILDER_MIN_W, Math.floor(body.clientWidth * 0.7));
+            let w = startW + (e.clientX - startX);
+            w = Math.max(BUILDER_MIN_W, Math.min(maxW, w));
+            builderWidth = w;
+            applyBuilderWidth();
+        }
+        function onUp() {
+            builderPane.classList.remove("dtx-builder-resizing");
+            builderResizer.classList.remove("dtx-builder-resizing");
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+        }
+        builderResizer.addEventListener("mousedown", (e) => {
+            if (builderCollapsed || !builderVisible) return;
+            e.preventDefault();
+            startX = e.clientX;
+            startW = builderPane.getBoundingClientRect().width;
+            builderPane.classList.add("dtx-builder-resizing");
+            builderResizer.classList.add("dtx-builder-resizing");
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+        });
+        // Double-click the handle to reset to the default width.
+        builderResizer.addEventListener("dblclick", () => {
+            builderWidth = 260;
+            applyBuilderWidth();
+        });
+    })();
+
+    const fieldsSection = document.createElement("div");
+    fieldsSection.className = "dtx-builder-section";
+    const fieldsLabel = document.createElement("div");
+    fieldsLabel.className = "dtx-builder-section-label";
+    fieldsLabel.textContent = "Columns & Measures";
+    const fieldsZone = document.createElement("div");
+    fieldsZone.className = "dtx-builder-zone dtx-builder-fields";
+    fieldsSection.appendChild(fieldsLabel);
+    fieldsSection.appendChild(fieldsZone);
+    builderContent.appendChild(fieldsSection);
+
+    const filtersSection = document.createElement("div");
+    filtersSection.className = "dtx-builder-section";
+    const filtersLabel = document.createElement("div");
+    filtersLabel.className = "dtx-builder-section-label";
+    filtersLabel.textContent = "Filters";
+    const filtersZone = document.createElement("div");
+    filtersZone.className = "dtx-builder-zone dtx-builder-filters";
+    filtersSection.appendChild(filtersLabel);
+    filtersSection.appendChild(filtersZone);
+    builderContent.appendChild(filtersSection);
+
+    const orderBySection = document.createElement("div");
+    orderBySection.className = "dtx-builder-section";
+    const orderByLabel = document.createElement("div");
+    orderByLabel.className = "dtx-builder-section-label";
+    orderByLabel.textContent = "Order By";
+    const orderByZone = document.createElement("div");
+    orderByZone.className = "dtx-builder-zone dtx-builder-orderby";
+    orderBySection.appendChild(orderByLabel);
+    orderBySection.appendChild(orderByZone);
+    builderContent.appendChild(orderBySection);
+
+    const builderFooter = document.createElement("div");
+    builderFooter.className = "dtx-builder-footer";
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "dtx-builder-clear";
+    clearBtn.textContent = "Clear";
+    function clearBuilder() {
+        if (!builderFields.length && !builderFilters.length
+            && !builderOrderBy.length) return;
+        clearedBuilderState = {
+            fields: structuredClone(builderFields),
+            filters: structuredClone(builderFilters),
+            orderBy: structuredClone(builderOrderBy),
+        };
+        builderFields = [];
+        builderFilters = [];
+        builderOrderBy = [];
+        renderBuilderZones();
+        renderBuilderChrome();
+    }
+    function resetBuilderForModelChange() {
+        builderFields = [];
+        builderFilters = [];
+        builderOrderBy = [];
+        clearedBuilderState = null;
+        qbSeq = 0;
+        renderBuilderZones();
+        renderBuilderChrome();
+    }
+    function undoBuilderClear() {
+        if (!clearedBuilderState) return;
+        builderFields = clearedBuilderState.fields;
+        builderFilters = clearedBuilderState.filters;
+        builderOrderBy = clearedBuilderState.orderBy;
+        clearedBuilderState = null;
+        renderBuilderZones();
+        renderBuilderChrome();
+    }
+    builderUndoBtn.addEventListener("click", undoBuilderClear);
+    clearBtn.addEventListener("click", clearBuilder);
+    const buildBtn = document.createElement("button");
+    buildBtn.type = "button";
+    buildBtn.className = "dtx-build-btn";
+    buildBtn.innerHTML = BUILDER_SVG + "<span>Build</span>";
+    buildBtn.addEventListener("click", onBuildClick);
+    builderFooter.appendChild(clearBtn);
+    builderFooter.appendChild(buildBtn);
+    builderContent.appendChild(builderFooter);
+
+    function zoneIndexFromEvent(zone, e) {
+        const chips = Array.from(zone.querySelectorAll(".dtx-builder-chip"));
+        for (let i = 0; i < chips.length; i++) {
+            const r = chips[i].getBoundingClientRect();
+            if (e.clientY < r.top + r.height / 2) return i;
+        }
+        return chips.length;
+    }
+
+    function setupZone(zone, isFilter) {
+        zone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            const list = isFilter ? builderFilters : builderFields;
+            const isDupe = !builderReorder && dragFieldMeta
+                && list.some(x => x.kind === dragFieldMeta.kind
+                    && x.ref === dragFieldMeta.ref);
+            if (isDupe) {
+                e.dataTransfer.dropEffect = "none";
+                return;
+            }
+            e.dataTransfer.dropEffect = builderReorder ? "move" : "copy";
+            zone.classList.add("dtx-drop-over");
+        });
+        zone.addEventListener("dragleave", (e) => {
+            if (!zone.contains(e.relatedTarget)) {
+                zone.classList.remove("dtx-drop-over");
+            }
+        });
+        zone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            zone.classList.remove("dtx-drop-over");
+            const list = isFilter ? builderFilters : builderFields;
+            const zoneName = isFilter ? "filters" : "fields";
+            const idx = zoneIndexFromEvent(zone, e);
+            if (builderReorder) {
+                if (builderReorder.zone !== zoneName) return;
+                const from = list.findIndex(x => x.id === builderReorder.id);
+                if (from === -1) return;
+                const moved = list.splice(from, 1)[0];
+                let insert = idx;
+                if (from < idx) insert = idx - 1;
+                list.splice(insert, 0, moved);
+                renderBuilderZones();
+                return;
+            }
+            let meta = dragFieldMeta;
+            if (!meta) {
+                const raw = e.dataTransfer.getData("application/x-dtx-field");
+                if (raw) {
+                    try { meta = JSON.parse(raw); } catch (err) { meta = null; }
+                }
+            }
+            if (!meta || !meta.name) return;
+            const dupe = list.some(x =>
+                x.kind === meta.kind && x.ref === meta.ref);
+            if (dupe) return;
+            const item = {
+                id: "qb" + (++qbSeq),
+                kind: meta.kind,
+                table: meta.table || "",
+                name: meta.name,
+                data_type: meta.data_type || "",
+                ref: meta.ref,
+            };
+            if (isFilter) {
+                const tc = qbClassify(item);
+                item.typeClass = tc;
+                item.op = QB_OPS[tc][0][0];
+                item.value = "";
+                item.value2 = "";
+            }
+            list.splice(idx, 0, item);
+            renderBuilderZones();
+        });
+    }
+    setupZone(fieldsZone, false);
+    setupZone(filtersZone, true);
+
+    // The Order By zone only allows reordering its existing chips (its items
+    // are synced from the Columns & Measures pane, not dropped from outside).
+    function setupReorderOnlyZone(zone, getList, zoneName) {
+        zone.addEventListener("dragover", (e) => {
+            if (!builderReorder || builderReorder.zone !== zoneName) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            zone.classList.add("dtx-drop-over");
+        });
+        zone.addEventListener("dragleave", (e) => {
+            if (!zone.contains(e.relatedTarget)) {
+                zone.classList.remove("dtx-drop-over");
+            }
+        });
+        zone.addEventListener("drop", (e) => {
+            zone.classList.remove("dtx-drop-over");
+            if (!builderReorder || builderReorder.zone !== zoneName) return;
+            e.preventDefault();
+            const list = getList();
+            const idx = zoneIndexFromEvent(zone, e);
+            const from = list.findIndex(x => x.id === builderReorder.id);
+            if (from === -1) return;
+            const moved = list.splice(from, 1)[0];
+            let insert = idx;
+            if (from < idx) insert = idx - 1;
+            list.splice(insert, 0, moved);
+            renderBuilderZones();
+        });
+    }
+    setupReorderOnlyZone(orderByZone, () => builderOrderBy, "orderby");
+
+    function attachChipReorder(chip, f, zoneName) {
+        chip.setAttribute("draggable", "true");
+        chip.addEventListener("dragstart", (e) => {
+            builderReorder = {id: f.id, zone: zoneName};
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", "");
+            e.stopPropagation();
+            chip.classList.add("dtx-chip-dragging");
+        });
+        chip.addEventListener("dragend", () => {
+            builderReorder = null;
+            chip.classList.remove("dtx-chip-dragging");
+        });
+    }
+
+    function makeChipRemove(onClick) {
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "dtx-chip-remove";
+        rm.innerHTML = "&times;";
+        rm.title = "Remove";
+        rm.addEventListener("click", onClick);
+        return rm;
+    }
+
+    function makeFieldChip(f) {
+        const chip = document.createElement("div");
+        chip.className = "dtx-builder-chip";
+        const ic = document.createElement("span");
+        ic.className = "dtx-chip-icon";
+        ic.innerHTML = qbIcon(f.kind);
+        const label = document.createElement("span");
+        label.className = "dtx-chip-label";
+        label.textContent = qbDisplayName(f);
+        label.title = qbDisplayName(f);
+        chip.appendChild(ic);
+        chip.appendChild(label);
+        chip.appendChild(makeChipRemove(() => {
+            builderFields = builderFields.filter(x => x.id !== f.id);
+            renderBuilderZones();
+        }));
+        attachChipReorder(chip, f, "fields");
+        return chip;
+    }
+
+    function makeFilterChip(f) {
+        const chip = document.createElement("div");
+        chip.className = "dtx-builder-chip dtx-builder-chip-filter";
+        const head = document.createElement("div");
+        head.className = "dtx-filter-chip-head";
+        const ic = document.createElement("span");
+        ic.className = "dtx-chip-icon";
+        ic.innerHTML = qbIcon(f.kind);
+        const label = document.createElement("span");
+        label.className = "dtx-chip-label";
+        label.textContent = qbDisplayName(f);
+        label.title = qbDisplayName(f);
+        const opSel = document.createElement("select");
+        opSel.className = "dtx-chip-op";
+        const ops = QB_OPS[f.typeClass] || QB_OPS.text;
+        for (const pair of ops) {
+            const o = document.createElement("option");
+            o.value = pair[0];
+            o.textContent = pair[1];
+            if (pair[0] === f.op) o.selected = true;
+            opSel.appendChild(o);
+        }
+        const valWrap = document.createElement("span");
+        valWrap.className = "dtx-chip-values";
+        function renderVals() {
+            valWrap.innerHTML = "";
+            const op = f.op;
+            if (op === "blank" || op === "notblank"
+                || op === "istrue" || op === "isfalse") {
+                return;
+            }
+            const ph = f.typeClass === "datetime" ? "YYYY-MM-DD" : "value";
+            const v1 = document.createElement("input");
+            v1.type = "text";
+            v1.className = "dtx-chip-value";
+            v1.value = f.value || "";
+            v1.placeholder = (op === "in" || op === "notin")
+                ? "value1, value2, …" : ph;
+            v1.addEventListener("input", () => { f.value = v1.value; });
+            valWrap.appendChild(v1);
+            if (op === "between") {
+                const sep = document.createElement("span");
+                sep.className = "dtx-chip-sep";
+                sep.textContent = "and";
+                const v2 = document.createElement("input");
+                v2.type = "text";
+                v2.className = "dtx-chip-value";
+                v2.value = f.value2 || "";
+                v2.placeholder = ph;
+                v2.addEventListener("input", () => { f.value2 = v2.value; });
+                valWrap.appendChild(sep);
+                valWrap.appendChild(v2);
+            }
+        }
+        opSel.addEventListener("change", () => {
+            f.op = opSel.value;
+            renderVals();
+        });
+        renderVals();
+        head.appendChild(ic);
+        head.appendChild(label);
+        head.appendChild(makeChipRemove(() => {
+            builderFilters = builderFilters.filter(x => x.id !== f.id);
+            renderBuilderZones();
+        }));
+        chip.appendChild(head);
+        chip.appendChild(opSel);
+        chip.appendChild(valWrap);
+        attachChipReorder(chip, f, "filters");
+        return chip;
+    }
+
+    // Keep the Order By pane in sync with the Columns & Measures pane:
+    // drop entries whose field was removed, and append newly added fields
+    // (defaulting to off/ascending) while preserving the user's order and
+    // per-item toggle/direction state.
+    function syncOrderBy() {
+        builderOrderBy = builderOrderBy.filter(o =>
+            builderFields.some(f => f.kind === o.kind && f.ref === o.ref));
+        for (const f of builderFields) {
+            const exists = builderOrderBy.some(
+                o => o.kind === f.kind && o.ref === f.ref);
+            if (!exists) {
+                builderOrderBy.push({
+                    id: "ob" + (++qbSeq),
+                    kind: f.kind, table: f.table, name: f.name,
+                    data_type: f.data_type, ref: f.ref,
+                    enabled: false, dir: "asc",
+                });
+            }
+        }
+    }
+
+    function makeOrderByChip(f) {
+        const chip = document.createElement("div");
+        chip.className = "dtx-builder-chip dtx-builder-chip-order";
+        if (!f.enabled) chip.classList.add("dtx-chip-off");
+
+        const tog = document.createElement("button");
+        tog.type = "button";
+        tog.className = "dtx-order-toggle";
+        function renderTog() {
+            tog.classList.toggle("dtx-on", !!f.enabled);
+            chip.classList.toggle("dtx-chip-off", !f.enabled);
+            tog.title = f.enabled
+                ? "Included in ORDER BY (click to exclude)"
+                : "Excluded from ORDER BY (click to include)";
+            tog.setAttribute("aria-label", tog.title);
+        }
+        tog.addEventListener("click", () => {
+            f.enabled = !f.enabled;
+            renderTog();
+        });
+        renderTog();
+
+        const ic = document.createElement("span");
+        ic.className = "dtx-chip-icon";
+        ic.innerHTML = qbIcon(f.kind);
+        const label = document.createElement("span");
+        label.className = "dtx-chip-label";
+        label.textContent = qbDisplayName(f);
+        label.title = qbDisplayName(f);
+
+        const dir = document.createElement("button");
+        dir.type = "button";
+        dir.className = "dtx-order-dir";
+        function renderDir() {
+            const asc = f.dir !== "desc";
+            dir.innerHTML = (asc ? SORT_ASC_SVG : SORT_DESC_SVG)
+                + '<span>' + (asc ? "A-Z" : "Z-A") + '</span>';
+            dir.title = asc
+                ? "Ascending (A-Z) \u2014 click for descending"
+                : "Descending (Z-A) \u2014 click for ascending";
+            dir.setAttribute("aria-label", dir.title);
+        }
+        dir.addEventListener("click", () => {
+            f.dir = (f.dir === "desc") ? "asc" : "desc";
+            renderDir();
+        });
+        renderDir();
+
+        chip.appendChild(tog);
+        chip.appendChild(ic);
+        chip.appendChild(label);
+        chip.appendChild(dir);
+        attachChipReorder(chip, f, "orderby");
+        return chip;
+    }
+
+    function renderBuilderZones() {
+        fieldsZone.innerHTML = "";
+        if (!builderFields.length) {
+            const ph = document.createElement("div");
+            ph.className = "dtx-builder-placeholder";
+            ph.textContent = "Drag columns or measures here";
+            fieldsZone.appendChild(ph);
+        } else {
+            for (const f of builderFields) {
+                fieldsZone.appendChild(makeFieldChip(f));
+            }
+        }
+        filtersZone.innerHTML = "";
+        if (!builderFilters.length) {
+            const ph = document.createElement("div");
+            ph.className = "dtx-builder-placeholder";
+            ph.textContent = "Drag columns and measures here to filter";
+            filtersZone.appendChild(ph);
+        } else {
+            for (const f of builderFilters) {
+                filtersZone.appendChild(makeFilterChip(f));
+            }
+        }
+        syncOrderBy();
+        orderByZone.innerHTML = "";
+        if (!builderOrderBy.length) {
+            const ph = document.createElement("div");
+            ph.className = "dtx-builder-placeholder";
+            ph.textContent =
+                "Add columns or measures above to set the sort order";
+            orderByZone.appendChild(ph);
+        } else {
+            for (const f of builderOrderBy) {
+                orderByZone.appendChild(makeOrderByChip(f));
+            }
+        }
+    }
+
+    function onBuildClick() {
+        if (model.get("dataset_chosen") !== true) return;
+        const state = {
+            fields: builderFields.map(f => ({
+                kind: f.kind, table: f.table, name: f.name,
+                data_type: f.data_type, ref: f.ref,
+            })),
+            filters: builderFilters.map(f => ({
+                kind: f.kind, table: f.table, name: f.name,
+                data_type: f.data_type, ref: f.ref,
+                op: f.op, value: f.value, value2: f.value2,
+            })),
+            order_by: builderOrderBy.map(o => ({
+                kind: o.kind, table: o.table, name: o.name,
+                data_type: o.data_type, ref: o.ref,
+                enabled: !!o.enabled, dir: o.dir || "asc",
+            })),
+        };
+        model.set("query_builder_state", JSON.stringify(state));
+        model.set("error_message", "");
+        model.set("build_query_trigger",
+            (model.get("build_query_trigger") || 0) + 1);
+        model.save_changes();
+    }
+
+    function renderBuilderChrome() {
+        // The query builder is only meaningful once a semantic model is
+        // loaded; hide it (and its header toggle) entirely otherwise.
+        const chosen = model.get("dataset_chosen") === true;
+        builderShowBtn.style.display = chosen ? "" : "none";
+        builderPane.classList.toggle("dtx-builder-hidden", !chosen || !builderVisible);
+        builderPane.classList.toggle("dtx-builder-collapsed", builderCollapsed);
+        builderCollapseBtn.innerHTML = builderCollapsed
+            ? PANEL_EXPAND_SVG : PANEL_COLLAPSE_SVG;
+        const clabel = builderCollapsed
+            ? "Expand query builder" : "Collapse query builder";
+        builderCollapseBtn.title = clabel;
+        builderCollapseBtn.setAttribute("aria-label", clabel);
+        builderUndoBtn.style.display = clearedBuilderState ? "" : "none";
+        builderShowBtn.classList.toggle("dtx-active", builderVisible);
+        const label = builderVisible
+            ? "Hide query builder" : "Show query builder";
+        builderShowBtn.title = label;
+        builderShowBtn.setAttribute("aria-label", label);
+        applyBuilderWidth();
+    }
+
+    function renderBuildBtn() {
+        const chosen = model.get("dataset_chosen") === true;
+        buildBtn.disabled = !chosen;
+        buildBtn.title = chosen
+            ? "Build a DAX query from the selected fields"
+            : "Choose a semantic model first";
+    }
+
+    // ---------- Model picker (first screen when no dataset is chosen) ----------
+    let pickerOpen = model.get("dataset_chosen") !== true;
+    const pickerScreen = document.createElement("div");
+    pickerScreen.className = "dtx-picker";
+    const pickerPanel = document.createElement("div");
+    pickerPanel.className = "dtx-picker-panel";
+    const pickerTop = document.createElement("div");
+    pickerTop.className = "dtx-picker-top";
+    const pickerHead = document.createElement("div");
+    pickerHead.className = "dtx-picker-head";
+    const pickerTitle = document.createElement("h2");
+    pickerTitle.className = "dtx-picker-title";
+    pickerTitle.textContent = "Connect to a semantic model";
+    const pickerSubtitle = document.createElement("div");
+    pickerSubtitle.className = "dtx-picker-subtitle";
+    pickerSubtitle.textContent = "Select a workspace and semantic model to begin.";
+    pickerHead.appendChild(pickerTitle);
+    pickerHead.appendChild(pickerSubtitle);
+    pickerTop.appendChild(pickerHead);
+    const pickerReloadBtn = document.createElement("button");
+    pickerReloadBtn.type = "button";
+    pickerReloadBtn.className = "dtx-picker-reload";
+    pickerReloadBtn.innerHTML = REFRESH_SVG + "Reload";
+    pickerReloadBtn.title = "Reload workspaces and semantic models";
+    pickerTop.appendChild(pickerReloadBtn);
+    const pickerFields = document.createElement("div");
+    pickerFields.className = "dtx-picker-fields";
+
+    function createPickerField(label, placeholder, searchPlaceholder, emptyLabel, onChange) {
+        const field = document.createElement("div");
+        field.className = "dtx-picker-field";
+        const fieldLabel = document.createElement("label");
+        fieldLabel.className = "dtx-picker-label";
+        fieldLabel.textContent = label;
+        const picker = createSearchSelect({
+            placeholder,
+            searchPlaceholder,
+            ariaLabel: label,
+            emptyLabel,
+            onChange,
+        });
+        field.appendChild(fieldLabel);
+        field.appendChild(picker.el);
+        return { field, picker };
+    }
+
+    const wsPicker = createPickerField(
+        "Workspace", "Select a workspace…", "Filter workspaces…",
+        "Loading workspaces…", option => selectWorkspace(option.value));
+    const dsPicker = createPickerField(
+        "Semantic model", "Select a semantic model…", "Filter semantic models…",
+        "Select a workspace first…", option => selectDataset(option.value));
+    pickerFields.appendChild(wsPicker.field);
+    pickerFields.appendChild(dsPicker.field);
+    const pickerBtn = document.createElement("button");
+    pickerBtn.type = "button";
+    pickerBtn.className = "dtx-picker-btn";
+    pickerBtn.textContent = "Connect";
+    const pickerCancelBtn = document.createElement("button");
+    pickerCancelBtn.type = "button";
+    pickerCancelBtn.className = "dtx-picker-cancel";
+    pickerCancelBtn.textContent = "Cancel";
+    const pickerSpin = document.createElement("span");
+    pickerSpin.className = "dtx-picker-spin";
+    const pickerError = document.createElement("div");
+    pickerError.className = "dtx-error";
+    pickerError.style.display = "none";
+    const pickerActions = document.createElement("div");
+    pickerActions.className = "dtx-picker-actions";
+    pickerActions.appendChild(pickerCancelBtn);
+    pickerActions.appendChild(pickerBtn);
+    pickerActions.appendChild(pickerSpin);
+    pickerPanel.appendChild(pickerTop);
+    pickerPanel.appendChild(pickerFields);
+    pickerPanel.appendChild(pickerActions);
+    pickerPanel.appendChild(pickerError);
+    pickerScreen.appendChild(pickerPanel);
+    container.insertBefore(pickerScreen, body);
+
+    function renderPicker() {
+        const chosen = model.get("dataset_chosen") === true;
+        const show = pickerOpen || (!chosen && !connectingToModel);
+        pickerScreen.style.display = show ? "" : "none";
+        body.style.display = show ? "none" : "";
+        // Allow canceling only when a model is already in use.
+        pickerCancelBtn.style.display = chosen ? "" : "none";
+        const loading = model.get("picker_loading") === true;
+        const curWs = model.get("selected_workspace_id") || "";
+        const curDs = model.get("selected_dataset_id") || "";
+        const wss = model.get("available_workspaces") || [];
+        const dss = model.get("available_datasets") || [];
+        wsPicker.picker.setEmptyLabel(
+            loading && !wss.length ? "Loading workspaces…" : "No workspaces");
+        wsPicker.picker.setOptions(
+            wss.map(item => ({ value: item.id, label: item.name })), curWs);
+        dsPicker.picker.setEmptyLabel(!curWs
+            ? "Select a workspace first…"
+            : (loading ? "Loading semantic models…" : "No semantic models"));
+        dsPicker.picker.setOptions(
+            dss.map(item => ({ value: item.id, label: item.name })), curDs);
+        wsPicker.picker.setDisabled(loading);
+        dsPicker.picker.setDisabled(!curWs || loading || !dss.length);
+        pickerReloadBtn.disabled = loading;
+        pickerReloadBtn.classList.toggle("dtx-loading", loading);
+        // Disable Connect when the selection matches the model already
+        // in use (same workspace and dataset).
+        const sameAsActive = curWs === (model.get("active_workspace_id") || "")
+            && curDs === (model.get("active_dataset_id") || "");
+        pickerBtn.disabled = loading || !curDs || sameAsActive;
+        pickerBtn.title = sameAsActive
+            ? "This semantic model is already in use"
+            : "";
+        pickerSpin.textContent = loading
+            ? (curDs
+                ? "Loading model…"
+                : (curWs ? "Loading semantic models…" : "Loading workspaces…"))
+            : "";
+    }
+    function selectWorkspace(workspaceId) {
+        model.set("selected_workspace_id", workspaceId);
+        model.set("selected_dataset_id", "");
+        model.set("available_datasets", []);
+        model.set("select_workspace_trigger",
+            (model.get("select_workspace_trigger") || 0) + 1);
+        model.save_changes();
+        renderPicker();
+    }
+    function selectDataset(datasetId) {
+        model.set("selected_dataset_id", datasetId);
+        model.save_changes();
+        renderPicker();
+    }
+    pickerReloadBtn.addEventListener("click", () => {
+        if (model.get("picker_loading") === true) return;
+        model.set("error_message", "");
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    pickerBtn.addEventListener("click", () => {
+        if (!model.get("selected_dataset_id")) return;
+        connectingToModel = true;
+        modelViewVisible = true;
+        pickerOpen = false;
+        model.set("error_message", "");
+        model.set("metadata_loading", true);
+        model.set("select_dataset_trigger",
+            (model.get("select_dataset_trigger") || 0) + 1);
+        model.save_changes();
+        renderPicker();
+        renderSubtitle();
+        renderTree();
+        renderModelViewChrome();
+    });
+    pickerCancelBtn.addEventListener("click", () => {
+        pickerOpen = false;
+        renderPicker();
+    });
+
+    // ---------- Query options + editor ----------
+    const queryOptions = document.createElement("div");
+    queryOptions.className = "dtx-query-options";
+    main.appendChild(queryOptions);
+
+    const queryBlock = document.createElement("div");
+    queryBlock.className = "dtx-query-block";
+    main.appendChild(queryBlock);
+
+    // Result cards belong directly below the query pane and stay hidden until
+    // a query completes successfully.
+    const cardsEl = document.createElement("div");
+    cardsEl.className = "dtx-cards";
+    main.appendChild(cardsEl);
+
+    function renderCards() {
+        const executed = model.get("query_executed") === true;
+        cardsEl.classList.toggle("dtx-cards-hidden", !executed);
+        if (!executed) {
+            cardsEl.innerHTML = "";
+            return;
+        }
+        const total = model.get("total_duration") || 0;
+        const fe = model.get("fe_duration") || 0;
+        const se = model.get("se_duration") || 0;
+        const cpu = model.get("cpu_time") || 0;
+        const fmt = (n) => Number(n).toLocaleString();
+        const pct = (n) => total > 0 ? Math.round(n / total * 100) : 0;
+        const cards = [
+            { label: "Duration", icon: DAX_PERFORMANCE_SVG, value: fmt(total), sub: null },
+            { label: "FE Duration", icon: CPU_SVG, value: fmt(fe), sub: pct(fe) + "% of total" },
+            { label: "SE Duration", icon: DATABASE_SVG, value: fmt(se), sub: pct(se) + "% of total" },
+            { label: "CPU", icon: ZAP_SVG, value: fmt(cpu), sub: null },
+        ];
+        cardsEl.innerHTML = cards.map(c => (
+            `<div class="dtx-card">
+                <div class="dtx-card-label">${c.icon}<span>${escapeHtml(c.label)}</span></div>
+                <div class="dtx-card-value">${escapeHtml(c.value)}<span class="dtx-card-unit">ms</span></div>
+                ${c.sub ? `<div class="dtx-card-sub">${escapeHtml(c.sub)}</div>` : ""}
+            </div>`
+        )).join("");
+    }
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "dtx-query-toolbar";
+    queryBlock.appendChild(toolbar);
+
+    const runProgress = document.createElement("div");
+    runProgress.className = "dtx-run-progress";
+    runProgress.setAttribute("role", "progressbar");
+    runProgress.setAttribute("aria-label", "Running DAX query");
+    runProgress.setAttribute("aria-hidden", "true");
+    queryBlock.appendChild(runProgress);
+
+    const qTitleGroup = document.createElement("div");
+    qTitleGroup.className = "dtx-query-titlegroup";
+    toolbar.appendChild(qTitleGroup);
+
+    const qTitle = document.createElement("div");
+    qTitle.className = "dtx-query-title";
+    qTitle.textContent = "DAX Query";
+    qTitleGroup.appendChild(qTitle);
+
+    const fmtBtn = document.createElement("button");
+    fmtBtn.type = "button";
+    fmtBtn.className = "dtx-fmt-btn dtx-daxformat-btn";
+    fmtBtn.innerHTML = DAXFORMAT_SVG;
+    fmtBtn.title = "Format the DAX query using DAX Formatter by SQLBI";
+    fmtBtn.setAttribute("aria-label", "Format DAX with DAX Formatter");
+    qTitleGroup.appendChild(fmtBtn);
+    fmtBtn.addEventListener("click", () => {
+        if (fmtBtn.disabled) return;
+        model.set("dax_query", textarea.value);
+        model.set("error_message", "");
+        model.set("format_query_trigger",
+            (model.get("format_query_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    function renderFmtBtn() {
+        const loading = model.get("format_loading") === true;
+        const hasText = String(textarea.value || "").trim().length > 0;
+        fmtBtn.disabled = loading || !hasText;
+        fmtBtn.classList.toggle("dtx-fmt-loading", loading);
+    }
+
+    // ---------- Natural language -> DAX ----------
+    const nlBtn = document.createElement("button");
+    nlBtn.type = "button";
+    nlBtn.className = "dtx-fmt-btn dtx-nl-btn";
+    nlBtn.innerHTML = NLDAX_SVG;
+    nlBtn.title = "Generate a DAX query from natural language";
+    nlBtn.setAttribute("aria-label", "Generate DAX from natural language");
+    qTitleGroup.appendChild(nlBtn);
+
+    const nlOverlay = document.createElement("div");
+    nlOverlay.className = "dtx-nl-overlay";
+    nlOverlay.style.display = "none";
+    const nlModal = document.createElement("div");
+    nlModal.className = "dtx-nl-modal";
+    nlModal.innerHTML =
+        '<div class="dtx-nl-head">'
+        + '<div class="dtx-nl-title">Generate DAX from natural language</div>'
+        + '<button type="button" class="dtx-nl-close" aria-label="Close">'
+        + CLOSE_SVG + '</button>'
+        + '</div>'
+        + '<div class="dtx-nl-desc">Describe the query you want in plain '
+        + 'English. The semantic model\'s metadata is used to generate a DAX '
+        + 'query, which is placed into the DAX query pane.</div>'
+        + '<textarea class="dtx-nl-input" rows="4" '
+        + 'placeholder="e.g. Top 10 products by total sales amount"></textarea>'
+        + '<div class="dtx-nl-error" style="display:none;"></div>'
+        + '<div class="dtx-nl-actions">'
+        + '<button type="button" class="dtx-nl-cancel">Cancel</button>'
+        + '<button type="button" class="dtx-nl-submit">Submit</button>'
+        + '</div>';
+    nlOverlay.appendChild(nlModal);
+    root.appendChild(nlOverlay);
+
+    const nlInput = nlModal.querySelector(".dtx-nl-input");
+    const nlError = nlModal.querySelector(".dtx-nl-error");
+    const nlSubmit = nlModal.querySelector(".dtx-nl-submit");
+    const nlCancel = nlModal.querySelector(".dtx-nl-cancel");
+    const nlClose = nlModal.querySelector(".dtx-nl-close");
+
+    function renderNlBtn() {
+        nlBtn.disabled = model.get("dataset_chosen") !== true;
+    }
+
+    function renderNlModal() {
+        const loading = model.get("nl_to_dax_loading") === true;
+        nlSubmit.disabled = loading;
+        nlSubmit.textContent = loading ? "Generating\u2026" : "Submit";
+        nlInput.disabled = loading;
+    }
+
+    function openNlModal() {
+        if (model.get("dataset_chosen") !== true) return;
+        nlError.textContent = "";
+        nlError.style.display = "none";
+        nlOverlay.style.display = "flex";
+        renderNlModal();
+        setTimeout(() => { try { nlInput.focus(); } catch (e) {} }, 0);
+    }
+
+    function closeNlModal() {
+        nlOverlay.style.display = "none";
+    }
+
+    function submitNl() {
+        if (model.get("nl_to_dax_loading") === true) return;
+        const text = String(nlInput.value || "").trim();
+        if (!text) { try { nlInput.focus(); } catch (e) {} return; }
+        nlError.textContent = "";
+        nlError.style.display = "none";
+        model.set("nl_to_dax_error", "");
+        model.set("nl_to_dax_text", text);
+        model.set("nl_to_dax_loading", true);
+        model.set("nl_to_dax_trigger",
+            (model.get("nl_to_dax_trigger") || 0) + 1);
+        model.save_changes();
+        renderNlModal();
+    }
+
+    nlBtn.addEventListener("click", () => {
+        if (nlBtn.disabled) return;
+        openNlModal();
+    });
+    nlSubmit.addEventListener("click", submitNl);
+    nlCancel.addEventListener("click", closeNlModal);
+    nlClose.addEventListener("click", closeNlModal);
+    nlOverlay.addEventListener("click", (e) => {
+        if (e.target === nlOverlay
+            && model.get("nl_to_dax_loading") !== true) closeNlModal();
+    });
+    nlInput.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            submitNl();
+        } else if (e.key === "Escape"
+            && model.get("nl_to_dax_loading") !== true) {
+            e.preventDefault();
+            closeNlModal();
+        }
+    });
+
+    const undoBtn = document.createElement("button");
+    undoBtn.type = "button";
+    undoBtn.className = "dtx-hist-btn";
+    undoBtn.innerHTML = UNDO_SVG;
+    undoBtn.title = "Undo (Ctrl/Cmd+Z)";
+    undoBtn.setAttribute("aria-label", "Undo");
+    qTitleGroup.appendChild(undoBtn);
+
+    const redoBtn = document.createElement("button");
+    redoBtn.type = "button";
+    redoBtn.className = "dtx-hist-btn";
+    redoBtn.innerHTML = REDO_SVG;
+    redoBtn.title = "Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)";
+    redoBtn.setAttribute("aria-label", "Redo");
+    qTitleGroup.appendChild(redoBtn);
+
+    const cutBtn = document.createElement("button");
+    cutBtn.type = "button";
+    cutBtn.className = "dtx-hist-btn";
+    cutBtn.innerHTML = CUT_SVG;
+    cutBtn.title = "Cut selected DAX text (Ctrl/Cmd+X)";
+    cutBtn.setAttribute("aria-label", "Cut");
+    qTitleGroup.appendChild(cutBtn);
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "dtx-hist-btn";
+    copyBtn.innerHTML = COPY_SVG;
+    copyBtn.title = "Copy selected DAX text (Ctrl/Cmd+C)";
+    copyBtn.setAttribute("aria-label", "Copy");
+    qTitleGroup.appendChild(copyBtn);
+
+    const pasteBtn = document.createElement("button");
+    pasteBtn.type = "button";
+    pasteBtn.className = "dtx-hist-btn";
+    pasteBtn.innerHTML = PASTE_SVG;
+    pasteBtn.title = "Paste text at the cursor (Ctrl/Cmd+V)";
+    pasteBtn.setAttribute("aria-label", "Paste");
+    qTitleGroup.appendChild(pasteBtn);
+
+    const expandBtn = document.createElement("button");
+    expandBtn.type = "button";
+    expandBtn.className = "dtx-fmt-btn dtx-expand-btn";
+    expandBtn.innerHTML = EXPAND_SVG;
+    expandBtn.title = "Open the DAX editor in a large pop-out window";
+    expandBtn.setAttribute("aria-label", "Expand DAX editor to full screen");
+    qTitleGroup.appendChild(expandBtn);
+    expandBtn.addEventListener("click", () => openEditorPop());
+
+    // Cut/copy/paste operate on the DAX query textarea's current selection.
+    function writeClipboard(text) {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+        } catch (e) {}
+        // Fallback for notebook hosts where the Clipboard API is unavailable.
+        try {
+            const copyTarget = document.createElement("textarea");
+            copyTarget.value = text;
+            copyTarget.setAttribute("readonly", "");
+            copyTarget.style.position = "fixed";
+            copyTarget.style.opacity = "0";
+            document.body.appendChild(copyTarget);
+            copyTarget.select();
+            const copied = document.execCommand("copy");
+            copyTarget.remove();
+            return copied ? Promise.resolve() : Promise.reject(new Error("Copy failed"));
+        } catch (e) {
+            return Promise.reject(e);
+        }
+    }
+    function doCopy() {
+        const s = textarea.selectionStart || 0;
+        const e = textarea.selectionEnd || 0;
+        if (e <= s) return;
+        writeClipboard(textarea.value.slice(s, e));
+        textarea.focus();
+    }
+    function doCut() {
+        const s = textarea.selectionStart || 0;
+        const e = textarea.selectionEnd || 0;
+        if (e <= s) return;
+        const sel = textarea.value.slice(s, e);
+        writeClipboard(sel);
+        textarea.value = textarea.value.slice(0, s) + textarea.value.slice(e);
+        textarea.selectionStart = textarea.selectionEnd = s;
+        textarea.focus();
+        commitHistory(textarea.value, false);
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        renderFmtBtn();
+    }
+    function doPaste() {
+        const insert = (text) => {
+            if (text == null || text === "") { textarea.focus(); return; }
+            insertAtCursor(String(text));
+            renderFmtBtn();
+        };
+        try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(insert).catch(() => {
+                    textarea.focus();
+                });
+                return;
+            }
+        } catch (e) {}
+        // Fallback: rely on the textarea's native paste.
+        textarea.focus();
+        document.execCommand("paste");
+    }
+    cutBtn.addEventListener("click", () => doCut());
+    copyBtn.addEventListener("click", () => doCopy());
+    pasteBtn.addEventListener("click", () => doPaste());
+
+    undoBtn.addEventListener("click", () => doUndo());
+    redoBtn.addEventListener("click", () => doRedo());
+
+    // Cut/Copy require a non-empty selection in the DAX query textarea.
+    function renderClipBtns() {
+        let hasSelection = false;
+        try {
+            hasSelection = (textarea.selectionEnd || 0)
+                > (textarea.selectionStart || 0);
+        } catch (e) {}
+        cutBtn.disabled = !hasSelection;
+        copyBtn.disabled = !hasSelection;
+    }
+
+    function renderHistBtns() {
+        undoBtn.disabled = undoStack.length === 0;
+        redoBtn.disabled = redoStack.length === 0;
+        renderClipBtns();
+    }
+
+    const cacheLabel = document.createElement("label");
+    cacheLabel.className = "dtx-cache-label";
+    cacheLabel.title = "Clear the dataset cache before running (cold-cache run)";
+    const cacheCb = document.createElement("input");
+    cacheCb.type = "checkbox";
+    cacheCb.checked = model.get("clear_cache") === true;
+    cacheCb.addEventListener("change", () => {
+        model.set("clear_cache", cacheCb.checked);
+        model.save_changes();
+    });
+    cacheLabel.appendChild(cacheCb);
+    const cacheSwitch = document.createElement("span");
+    cacheSwitch.className = "dtx-cache-switch";
+    cacheSwitch.setAttribute("aria-hidden", "true");
+    cacheLabel.appendChild(cacheSwitch);
+    const cacheText = document.createElement("span");
+    cacheText.textContent = "Clear cache before run (cold-cache timings)";
+    cacheLabel.appendChild(cacheText);
+    function renderCacheBtn() {
+        cacheCb.checked = model.get("clear_cache") === true;
+    }
+
+    // Impersonation: none / user (effective_user_name) / role (role).
+    const impWrap = document.createElement("div");
+    impWrap.className = "dtx-imp-wrap";
+    const impLabel = document.createElement("span");
+    impLabel.className = "dtx-imp-label";
+    impLabel.textContent = "RUN AS";
+    const impSegment = document.createElement("div");
+    impSegment.className = "dtx-imp-segment";
+    impSegment.setAttribute("role", "group");
+    impSegment.setAttribute("aria-label", "Run query as");
+    const impButtons = {};
+    [
+        ["none", "No impersonation", SHIELD_CHECK_SVG],
+        ["role", "Role", USERS_SVG],
+        ["user", "User", USER_SVG],
+    ].forEach(([mode, label, icon]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "dtx-imp-mode";
+        button.innerHTML = icon + `<span>${label}</span>`;
+        button.title = mode === "none" ? "Run without impersonation" : `Run as ${label.toLowerCase()}`;
+        button.setAttribute("aria-pressed", "false");
+        impButtons[mode] = button;
+        impSegment.appendChild(button);
+    });
+    // Text input for user impersonation (effective_user_name).
+    const impInput = document.createElement("input");
+    impInput.type = "text";
+    impInput.className = "dtx-imp-input";
+    // Dropdown of model roles for role impersonation.
+    const impRoleSel = document.createElement("select");
+    impRoleSel.className = "dtx-imp-select dtx-imp-role-select";
+    impWrap.appendChild(impLabel);
+    impWrap.appendChild(impSegment);
+    impWrap.appendChild(impInput);
+    impWrap.appendChild(impRoleSel);
+    queryOptions.appendChild(impWrap);
+
+    function hasRoles() {
+        const roles = model.get("model_roles") || [];
+        return roles.length > 0;
+    }
+
+    function renderRoleOption() {
+        // Disable the "Role impersonation" choice when the model has no roles.
+        impButtons.role.disabled = !hasRoles();
+        impButtons.role.title = hasRoles()
+            ? "Run as a security role"
+            : "Role impersonation is unavailable because this model has no roles";
+    }
+
+    function renderRoleChoices() {
+        const roles = model.get("model_roles") || [];
+        const current = model.get("impersonation_value") || "";
+        impRoleSel.innerHTML = "";
+        roles.forEach(rn => {
+            const o = document.createElement("option");
+            o.value = rn;
+            o.textContent = rn;
+            impRoleSel.appendChild(o);
+        });
+        if (roles.length) {
+            impRoleSel.value = roles.includes(current) ? current : roles[0];
+        }
+    }
+
+    function renderImpersonation() {
+        renderRoleOption();
+        let mode = model.get("impersonation_mode") || "none";
+        // If role impersonation is selected but the model has no roles, notify
+        // the user and fall back to no impersonation.
+        if (mode === "role" && !hasRoles()) {
+            model.set("impersonation_mode", "none");
+            model.set("impersonation_value", "");
+            model.set("error_message",
+                "Role impersonation is not available: this model does not "
+                + "contain any roles.");
+            model.save_changes();
+            mode = "none";
+        }
+        Object.entries(impButtons).forEach(([buttonMode, button]) => {
+            const active = buttonMode === mode;
+            button.classList.toggle("dtx-active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        if (mode === "user") {
+            impInput.style.display = "";
+            impRoleSel.style.display = "none";
+            impInput.placeholder = "user@domain.com";
+            impInput.title = "User to impersonate (effective_user_name)";
+            const val = model.get("impersonation_value") || "";
+            if (impInput.value !== val) impInput.value = val;
+        } else if (mode === "role") {
+            impInput.style.display = "none";
+            impRoleSel.style.display = "";
+            impRoleSel.title = "Security role to impersonate (role)";
+            renderRoleChoices();
+            // Persist the resolved selection (e.g. defaulted to first role).
+            if (impRoleSel.value !== (model.get("impersonation_value") || "")) {
+                model.set("impersonation_value", impRoleSel.value);
+                model.save_changes();
+            }
+        } else {
+            impInput.style.display = "none";
+            impRoleSel.style.display = "none";
+        }
+        scheduleResponsiveQueryOptions();
+    }
+    Object.entries(impButtons).forEach(([mode, button]) => {
+        button.addEventListener("click", () => {
+            if (mode === "role" && !hasRoles()) return;
+            model.set("impersonation_mode", mode);
+            // Reset the value so a stale user string isn't reused as a role, etc.
+            model.set("impersonation_value", "");
+            model.save_changes();
+            renderImpersonation();
+        });
+    });
+    impInput.addEventListener("input", () => {
+        model.set("impersonation_value", impInput.value);
+        model.save_changes();
+    });
+    impRoleSel.addEventListener("change", () => {
+        model.set("impersonation_value", impRoleSel.value);
+        model.save_changes();
+    });
+
+    const reportCapture = document.createElement("div");
+    reportCapture.className = "dtx-report-capture";
+    const reportLabel = document.createElement("span");
+    reportLabel.className = "dtx-report-label";
+    reportLabel.textContent = "Reports";
+    const reportSelectBtn = document.createElement("button");
+    reportSelectBtn.type = "button";
+    reportSelectBtn.className = "dtx-report-select";
+    reportSelectBtn.setAttribute("aria-haspopup", "menu");
+    reportSelectBtn.setAttribute("aria-expanded", "false");
+    const reportSelectIcon = document.createElement("span");
+    reportSelectIcon.className = "dtx-report-select-icon";
+    reportSelectIcon.innerHTML = REPORT_FILE_SVG;
+    const reportSelectText = document.createElement("span");
+    reportSelectText.className = "dtx-report-select-text";
+    const reportSelectChevron = document.createElement("span");
+    reportSelectChevron.className = "dtx-report-select-chevron";
+    reportSelectChevron.innerHTML = CHEVRON_DOWN_SVG;
+    reportSelectBtn.appendChild(reportSelectIcon);
+    reportSelectBtn.appendChild(reportSelectText);
+    reportSelectBtn.appendChild(reportSelectChevron);
+    const reportMenu = document.createElement("div");
+    reportMenu.className = "dtx-report-menu";
+    reportMenu.style.display = "none";
+    const reportCaptureBtn = document.createElement("button");
+    reportCaptureBtn.type = "button";
+    reportCaptureBtn.className = "dtx-report-capture-btn";
+    reportCaptureBtn.innerHTML = CAMERA_SVG;
+    reportCaptureBtn.setAttribute("aria-label", "Capture report queries");
+    reportCaptureBtn.title = "Embed the selected report(s), cycle their pages and capture their DAX queries into Trace history";
+    const reportProgress = document.createElement("span");
+    reportProgress.className = "dtx-report-progress";
+    let selectedReportIds = new Set();
+    let reportMenuOpen = false;
+
+    function renderReportCapture() {
+        const reports = model.get("available_reports") || [];
+        const capturing = model.get("report_capture_loading") === true;
+        selectedReportIds = new Set(
+            [...selectedReportIds].filter(id => reports.some(report => report.id === id))
+        );
+        const count = selectedReportIds.size;
+        reportSelectText.textContent = count === 0
+            ? "Select report(s)…"
+            : count === 1 ? "1 report" : `${count} reports`;
+        reportSelectBtn.setAttribute("aria-expanded", reportMenuOpen ? "true" : "false");
+        reportSelectBtn.disabled = reports.length === 0 || capturing;
+        reportSelectBtn.title = reports.length
+            ? "Choose reports that use this semantic model"
+            : "No reports use this semantic model";
+        reportCaptureBtn.disabled = count === 0 || capturing;
+        reportProgress.textContent = model.get("report_capture_progress") || "";
+        reportMenu.innerHTML = "";
+        if (count > 0) {
+            const clearSelection = document.createElement("button");
+            clearSelection.type = "button";
+            clearSelection.className = "dtx-report-clear";
+            clearSelection.textContent = "Clear selection";
+            clearSelection.addEventListener("click", () => {
+                selectedReportIds.clear();
+                renderReportCapture();
+            });
+            reportMenu.appendChild(clearSelection);
+        }
+        reports.forEach(report => {
+            const option = document.createElement("label");
+            option.className = "dtx-report-option";
+            option.setAttribute("role", "menuitemcheckbox");
+            option.setAttribute("aria-checked", selectedReportIds.has(report.id) ? "true" : "false");
+            const checkbox = document.createElement("span");
+            checkbox.className = "dtx-report-check"
+                + (selectedReportIds.has(report.id) ? " dtx-checked" : "");
+            checkbox.innerHTML = CHECK_SVG;
+            const label = document.createElement("span");
+            label.className = "dtx-report-option-text";
+            label.textContent = report.name;
+            label.title = report.name;
+            option.appendChild(checkbox);
+            option.appendChild(label);
+            option.addEventListener("click", event => {
+                event.preventDefault();
+                if (selectedReportIds.has(report.id)) selectedReportIds.delete(report.id);
+                else selectedReportIds.add(report.id);
+                renderReportCapture();
+            });
+            reportMenu.appendChild(option);
+        });
+        reportMenu.style.display = reportMenuOpen && reports.length ? "" : "none";
+        renderRunBtn();
+        scheduleResponsiveQueryOptions();
+    }
+    reportSelectBtn.addEventListener("click", () => {
+        reportMenuOpen = !reportMenuOpen;
+        renderReportCapture();
+    });
+    function hideReportMenuOnOutsidePointer(event) {
+        if (!reportMenuOpen || reportCapture.contains(event.target)) return;
+        reportMenuOpen = false;
+        renderReportCapture();
+    }
+    document.addEventListener("pointerdown", hideReportMenuOnOutsidePointer);
+    reportCaptureBtn.addEventListener("click", () => {
+        if (!selectedReportIds.size || model.get("report_capture_loading") === true) return;
+        reportMenuOpen = false;
+        model.set("capture_report_ids", [...selectedReportIds]);
+        model.set("report_capture_loading", true);
+        model.set("report_capture_progress", "Starting trace…");
+        model.set("report_capture_start_trigger",
+            (model.get("report_capture_start_trigger") || 0) + 1);
+        model.save_changes();
+        renderReportCapture();
+    });
+    reportCapture.appendChild(reportLabel);
+    reportCapture.appendChild(reportSelectBtn);
+    reportCapture.appendChild(reportMenu);
+    reportCapture.appendChild(reportCaptureBtn);
+    reportCapture.appendChild(reportProgress);
+    queryOptions.appendChild(reportCapture);
+
+    let responsiveOptionsFrame = null;
+    function updateResponsiveQueryOptions() {
+        responsiveOptionsFrame = null;
+        queryOptions.classList.remove(
+            "dtx-hide-report-capture",
+            "dtx-hide-impersonation",
+            "dtx-no-optional-controls",
+        );
+        const availableWidth = queryOptions.clientWidth;
+        if (!availableWidth) return;
+        const optionsStyle = window.getComputedStyle(queryOptions);
+        const gap = parseFloat(optionsStyle.gap) || 0;
+        const impersonationWidth = Math.ceil(impWrap.scrollWidth);
+        const reportStyle = window.getComputedStyle(reportCapture);
+        const reportGap = parseFloat(reportStyle.gap) || 0;
+        const reportParts = [reportLabel, reportSelectBtn, reportCaptureBtn, reportProgress]
+            .filter(part => part.getClientRects().length && part.getBoundingClientRect().width > 0);
+        const reportWidth = Math.ceil(
+            reportParts.reduce(
+                (width, part) => width + part.getBoundingClientRect().width,
+                0,
+            ) + reportGap * Math.max(0, reportParts.length - 1),
+        );
+        const stacked = optionsStyle.flexDirection === "column";
+        const requiredWidth = stacked
+            ? Math.max(impersonationWidth, reportWidth)
+            : impersonationWidth + gap + reportWidth;
+        const capturing = model.get("report_capture_loading") === true;
+        let hideReport = false;
+        let hideImpersonation = false;
+        if (requiredWidth > availableWidth + 2) {
+            if (capturing) hideImpersonation = true;
+            else hideReport = true;
+        }
+        if (reportWidth > availableWidth + 2) hideReport = true;
+        if (impersonationWidth > availableWidth + 2) hideImpersonation = true;
+        const focusedControl = document.activeElement;
+        if (hideReport) {
+            queryOptions.classList.add("dtx-hide-report-capture");
+            reportMenuOpen = false;
+            reportMenu.style.display = "none";
+            reportSelectBtn.setAttribute("aria-expanded", "false");
+        }
+        if (hideImpersonation) {
+            queryOptions.classList.add("dtx-hide-impersonation");
+        }
+        if ((hideReport && reportCapture.contains(focusedControl))
+            || (hideImpersonation && impWrap.contains(focusedControl))) {
+            textarea.focus({ preventScroll: true });
+        }
+        queryOptions.classList.toggle(
+            "dtx-no-optional-controls",
+            queryOptions.classList.contains("dtx-hide-report-capture")
+                && queryOptions.classList.contains("dtx-hide-impersonation"),
+        );
+    }
+    function scheduleResponsiveQueryOptions() {
+        if (responsiveOptionsFrame !== null) return;
+        responsiveOptionsFrame = window.requestAnimationFrame(updateResponsiveQueryOptions);
+    }
+    const queryOptionsObserver = typeof ResizeObserver === "undefined"
+        ? null : new ResizeObserver(scheduleResponsiveQueryOptions);
+    queryOptionsObserver?.observe(queryOptions);
+    window.addEventListener("resize", scheduleResponsiveQueryOptions);
+    scheduleResponsiveQueryOptions();
+
+    const runBtn = document.createElement("button");
+    runBtn.type = "button";
+    runBtn.className = "dtx-btn";
+    function renderRunBtn() {
+        const running = model.get("is_running") === true;
+        const capturing = model.get("report_capture_loading") === true;
+        const chosen = model.get("dataset_chosen") === true;
+        runBtn.disabled = capturing || (!running && !chosen);
+        if (running) {
+            runBtn.classList.add("dtx-btn-stop");
+            runBtn.innerHTML = STOP_SVG;
+            runBtn.title = "Cancel running query";
+            runBtn.setAttribute("aria-label", "Cancel running query");
+        } else {
+            runBtn.classList.remove("dtx-btn-stop");
+            runBtn.innerHTML = PLAY_SVG;
+            runBtn.title = "Run DAX query (Ctrl/Cmd+Enter)";
+            runBtn.setAttribute("aria-label", "Run DAX query");
+        }
+        runProgress.classList.toggle("dtx-active", running);
+        runProgress.setAttribute("aria-hidden", running ? "false" : "true");
+    }
+    runBtn.addEventListener("click", () => {
+        if (model.get("is_running") === true) {
+            // Cancel
+            model.set("cancel_trigger", (model.get("cancel_trigger") || 0) + 1);
+            model.save_changes();
+            return;
+        }
+        // Run
+        model.set("dax_query", textarea.value);
+        model.set("error_message", "");
+        model.set("is_running", true);
+        model.set("run_trigger", (model.get("run_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    toolbar.appendChild(runBtn);
+
+    const clearModelCacheBtn = document.createElement("button");
+    clearModelCacheBtn.type = "button";
+    clearModelCacheBtn.className = "dtx-fmt-btn dtx-clear-model-cache-btn";
+    clearModelCacheBtn.innerHTML = ERASER_SVG;
+    clearModelCacheBtn.setAttribute("aria-label", "Clear model cache");
+    function renderClearModelCacheBtn() {
+        const chosen = model.get("dataset_chosen") === true;
+        const loading = model.get("cache_clear_loading") === true;
+        const capturing = model.get("report_capture_loading") === true;
+        clearModelCacheBtn.disabled = !chosen || loading || capturing;
+        clearModelCacheBtn.title = loading
+            ? "Clearing model cache…"
+            : "Clear model cache";
+    }
+    clearModelCacheBtn.addEventListener("click", () => {
+        if (model.get("dataset_chosen") !== true
+            || model.get("cache_clear_loading") === true) return;
+        model.set("error_message", "");
+        model.set("cache_clear_loading", true);
+        model.set("cache_clear_trigger",
+            (model.get("cache_clear_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    toolbar.appendChild(clearModelCacheBtn);
+
+    const reportCaptureFrame = document.createElement("iframe");
+    reportCaptureFrame.className = "dtx-report-host";
+    reportCaptureFrame.setAttribute("aria-hidden", "true");
+    reportCaptureFrame.setAttribute("tabindex", "-1");
+    reportCaptureFrame.title = "Report query capture";
+    root.appendChild(reportCaptureFrame);
+
+    let powerBiClientPromise = null;
+    function reportCaptureContext() {
+        const captureWindow = reportCaptureFrame.contentWindow;
+        const captureDocument = reportCaptureFrame.contentDocument;
+        if (!captureWindow || !captureDocument) return null;
+        let host = captureDocument.getElementById("report-capture-host");
+        if (!host) {
+            captureDocument.documentElement.style.width = "100%";
+            captureDocument.documentElement.style.height = "100%";
+            captureDocument.body.style.width = "100%";
+            captureDocument.body.style.height = "100%";
+            captureDocument.body.style.margin = "0";
+            host = captureDocument.createElement("div");
+            host.id = "report-capture-host";
+            host.style.width = "100%";
+            host.style.height = "100%";
+            captureDocument.body.appendChild(host);
+        }
+        return { captureWindow, captureDocument, host };
+    }
+    function resolvePowerBiClient(context) {
+        const client = context.captureWindow["powerbi-client"];
+        const models = client?.models;
+        if (!models) return null;
+        let powerbi = context.captureWindow.powerbi;
+        if (client?.service?.Service && client?.factories) {
+            powerbi = new client.service.Service(
+                client.factories.hpmFactory,
+                client.factories.wpmpFactory,
+                client.factories.routerFactory,
+            );
+        }
+        return powerbi?.embed && powerbi?.reset
+            ? { models, powerbi, host: context.host }
+            : null;
+    }
+    function ensurePowerBiClient() {
+        if (powerBiClientPromise) return powerBiClientPromise;
+        powerBiClientPromise = new Promise((resolve, reject) => {
+            const context = reportCaptureContext();
+            if (!context) {
+                reject(new Error("The isolated report capture frame is unavailable"));
+                return;
+            }
+            const loadedClient = resolvePowerBiClient(context);
+            if (loadedClient) {
+                resolve(loadedClient);
+                return;
+            }
+            const existing = context.captureDocument.querySelector(
+                'script[data-sll-powerbi-client="true"]'
+            );
+            if (existing) existing.remove();
+            const script = context.captureDocument.createElement("script");
+            script.dataset.sllPowerbiClient = "true";
+            script.src = "https://cdn.jsdelivr.net/npm/powerbi-client@2.23.1/dist/powerbi.min.js";
+            script.async = true;
+            script.onload = () => {
+                const client = resolvePowerBiClient(context);
+                if (client) {
+                    resolve(client);
+                } else {
+                    reject(new Error("The Power BI client did not initialize correctly"));
+                }
+            };
+            script.onerror = () => {
+                script.remove();
+                reject(new Error("Failed to load the Power BI client"));
+            };
+            context.captureDocument.head.appendChild(script);
+        }).catch(error => {
+            powerBiClientPromise = null;
+            throw error;
+        });
+        return powerBiClientPromise;
+    }
+
+    async function cycleReportPages(embedUrl, accessToken) {
+        const { models, powerbi, host } = await ensurePowerBiClient();
+        powerbi.reset(host);
+        const report = powerbi.embed(host, {
+            type: "report",
+            tokenType: models.TokenType.Embed,
+            accessToken,
+            embedUrl,
+            permissions: models.Permissions.Read,
+            viewMode: models.ViewMode.View,
+            settings: { panes: { filters: { visible: false }, pageNavigation: { visible: false } } },
+        });
+        await new Promise(resolve => {
+            let pages = [];
+            let index = 0;
+            let started = false;
+            let done = false;
+            let pageTimer = 0;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                window.clearTimeout(pageTimer);
+                window.clearTimeout(overallTimer);
+                resolve();
+            };
+            const overallTimer = window.setTimeout(finish, 120000);
+            const activateNext = () => {
+                if (done) return;
+                if (index >= pages.length) { finish(); return; }
+                const page = pages[index++];
+                window.clearTimeout(pageTimer);
+                pageTimer = window.setTimeout(activateNext, 30000);
+                Promise.resolve(page.setActive()).catch(activateNext);
+            };
+            report.on("loaded", () => {
+                report.getPages().then(value => {
+                    pages = value;
+                    started = true;
+                    activateNext();
+                }).catch(finish);
+            });
+            report.on("rendered", () => {
+                if (!started || done) return;
+                window.clearTimeout(pageTimer);
+                pageTimer = window.setTimeout(activateNext, 1800);
+            });
+            report.on("error", finish);
+        });
+        powerbi.reset(host);
+    }
+
+    function checkpointReportCapture(payload, report, index) {
+        const checkpointId = `${payload.nonce}-${index}-${Date.now()}`;
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = (error) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
+                model.off("change:report_capture_checkpoint_ack", onAck);
+                if (error) reject(error);
+                else resolve();
+            };
+            const onAck = () => {
+                if (model.get("report_capture_checkpoint_ack") === checkpointId) {
+                    finish();
+                }
+            };
+            const timer = window.setTimeout(
+                () => finish(new Error(`Timed out collecting queries for ${report.name}`)),
+                30000,
+            );
+            model.on("change:report_capture_checkpoint_ack", onAck);
+            model.set("report_capture_checkpoint", {
+                nonce: payload.nonce,
+                checkpoint_id: checkpointId,
+                report_id: report.id,
+                report_name: report.name,
+                workspace_name: report.workspace_name || "",
+            });
+            model.set("report_capture_checkpoint_trigger",
+                (model.get("report_capture_checkpoint_trigger") || 0) + 1);
+            model.save_changes();
+            onAck();
+        });
+    }
+
+    async function runReportCapture(payload) {
+        if (!payload || !payload.nonce || !payload.token) return;
+        let clientError = "";
+        try {
+            const reports = payload.reports || [];
+            for (let index = 0; index < reports.length; index++) {
+                const report = reports[index];
+                model.set("report_capture_progress",
+                    `Cycling pages — ${report.name} (${index + 1}/${reports.length})`);
+                model.save_changes();
+                await cycleReportPages(report.embed_url, payload.token);
+                model.set("report_capture_progress",
+                    `Collecting queries — ${report.name} (${index + 1}/${reports.length})`);
+                model.save_changes();
+                await checkpointReportCapture(payload, report, index);
+            }
+        } catch (error) {
+            clientError = error && error.message ? error.message : String(error);
+        } finally {
+            model.set("report_capture_client_error", clientError);
+            model.set("report_capture_progress", "Collecting captured queries…");
+            model.set("report_capture_finish_trigger",
+                (model.get("report_capture_finish_trigger") || 0) + 1);
+            model.save_changes();
+        }
+    }
+
+    // ---------- Analyze (DAX performance analysis) ----------
+    const analyzeBtn = document.createElement("button");
+    analyzeBtn.type = "button";
+    analyzeBtn.className = "dtx-fmt-btn dtx-analyze-btn";
+    analyzeBtn.innerHTML = ANALYZE_SVG;
+    analyzeBtn.title =
+        "Generate a DAX performance analysis (query, model metadata, " +
+        "dependencies, trace, query plan, Vertipaq Analyzer)";
+    analyzeBtn.setAttribute("aria-label", "Generate DAX performance analysis");
+    function renderAnalyzeBtn() {
+        const chosen = model.get("dataset_chosen") === true;
+        const loading = model.get("performance_loading") === true;
+        analyzeBtn.disabled = !chosen || loading;
+        analyzeBtn.classList.toggle("dtx-fmt-loading", loading);
+    }
+    analyzeBtn.addEventListener("click", () => {
+        if (analyzeBtn.disabled) return;
+        // Persist the current editor text so the analysis reflects it.
+        model.set("dax_query", textarea.value);
+        triggerPerformanceAnalysis(true);
+    });
+    toolbar.appendChild(analyzeBtn);
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "dtx-query";
+    textarea.spellcheck = false;
+    textarea.value = model.get("dax_query") || "";
+
+    // ---------- Undo / redo history (DAX query pane only) ----------
+    // A dedicated history stack for the editor text. A custom stack is used
+    // (instead of the textarea's native undo) so programmatic edits such as
+    // drag-and-drop, "Define" and "Format" are also undoable.
+    const undoStack = [];
+    const redoStack = [];
+    const HISTORY_LIMIT = 200;
+    let histPresent = { value: textarea.value, s: 0, e: 0 };
+    let lastTypingTs = 0;
+    let lastEditWasTyping = false;
+
+    // Record a change to the editor text in the history. ``coalesce`` merges
+    // rapid consecutive typing into a single undo entry.
+    function commitHistory(newValue, coalesce) {
+        if (newValue === histPresent.value) return;
+        const now = Date.now();
+        const canCoalesce = coalesce && lastEditWasTyping
+            && (now - lastTypingTs < 500) && undoStack.length > 0;
+        if (!canCoalesce) {
+            undoStack.push({
+                value: histPresent.value, s: histPresent.s, e: histPresent.e });
+            if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        }
+        histPresent = {
+            value: newValue,
+            s: textarea.selectionStart || 0,
+            e: textarea.selectionEnd || 0,
+        };
+        redoStack.length = 0;
+        lastTypingTs = now;
+        lastEditWasTyping = !!coalesce;
+        renderHistBtns();
+    }
+
+    function applyHistoryState(st) {
+        textarea.value = st.value;
+        try {
+            textarea.selectionStart = st.s;
+            textarea.selectionEnd = st.e;
+        } catch (e) {}
+        histPresent = { value: st.value, s: st.s, e: st.e };
+        lastEditWasTyping = false;
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        renderFmtBtn();
+        renderHistBtns();
+        autoGrowEditor();
+        textarea.focus();
+    }
+
+    function doUndo() {
+        if (!undoStack.length) return;
+        redoStack.push({
+            value: histPresent.value,
+            s: textarea.selectionStart || 0,
+            e: textarea.selectionEnd || 0,
+        });
+        applyHistoryState(undoStack.pop());
+    }
+
+    function doRedo() {
+        if (!redoStack.length) return;
+        undoStack.push({
+            value: histPresent.value,
+            s: textarea.selectionStart || 0,
+            e: textarea.selectionEnd || 0,
+        });
+        applyHistoryState(redoStack.pop());
+    }
+
+    const queryWrap = document.createElement("div");
+    queryWrap.className = "dtx-query-wrap";
+    const hl = document.createElement("pre");
+    hl.className = "dtx-query-hl";
+    hl.setAttribute("aria-hidden", "true");
+    queryWrap.appendChild(hl);
+    queryWrap.appendChild(textarea);
+    queryBlock.appendChild(queryWrap);
+    const queryCacheRow = document.createElement("div");
+    queryCacheRow.className = "dtx-query-cache-row";
+    queryCacheRow.appendChild(cacheLabel);
+    queryBlock.appendChild(queryCacheRow);
+
+    // ---------- Auto-grow ----------
+    // Grow the editor vertically to fit its content, up to EDITOR_MAX_ROWS
+    // rows, so generated queries (Query Builder / natural language) are fully
+    // visible without scrolling. Grow-only, so a manual resize is preserved.
+    const EDITOR_MAX_ROWS = 20;
+    function autoGrowEditor() {
+        // The pop-out editor manages its own full-height layout.
+        if (root.classList.contains("dtx-editor-pop")) return;
+        const lineH = 18;   // 12px font-size * 1.5 line-height
+        const chrome = 26;  // 12+12 padding + 2 border (border-box)
+        const maxH = lineH * EDITOR_MAX_ROWS + chrome;
+        const prevH = textarea.getBoundingClientRect().height;
+        textarea.style.height = "auto";
+        const needed = Math.min(textarea.scrollHeight + 2, maxH);
+        textarea.style.height = Math.max(needed, prevH) + "px";
+        hl.scrollTop = textarea.scrollTop;
+        hl.scrollLeft = textarea.scrollLeft;
+    }
+
+    // ---------- Pop-out (full-screen) editor ----------
+    const editorOverlay = document.createElement("div");
+    editorOverlay.className = "dtx-editor-overlay";
+    const editorModal = document.createElement("div");
+    editorModal.className = "dtx-editor-modal";
+    const editorHead = document.createElement("div");
+    editorHead.className = "dtx-editor-head";
+    const editorTitle = document.createElement("div");
+    editorTitle.className = "dtx-editor-title";
+    editorTitle.textContent = "DAX Query";
+    const editorClose = document.createElement("button");
+    editorClose.type = "button";
+    editorClose.className = "dtx-hist-btn";
+    editorClose.innerHTML = CLOSE_SVG;
+    editorClose.title = "Close the full-screen editor (Esc)";
+    editorClose.setAttribute("aria-label", "Close the full-screen editor");
+    editorHead.appendChild(editorTitle);
+    editorHead.appendChild(editorClose);
+    const editorBody = document.createElement("div");
+    editorBody.className = "dtx-editor-body";
+    editorModal.appendChild(editorHead);
+    editorModal.appendChild(editorBody);
+    editorOverlay.appendChild(editorModal);
+    root.appendChild(editorOverlay);
+
+    // A placeholder marking the editor's home so it can be returned exactly
+    // where it was when the pop-out closes. Relocating the same DOM nodes
+    // keeps all existing wiring (history, drag-drop, highlight) intact.
+    const editorHome = document.createComment("dtx-editor-home");
+    let editorPopped = false;
+
+    function openEditorPop() {
+        if (editorPopped) return;
+        editorPopped = true;
+        queryWrap.parentNode.insertBefore(editorHome, queryWrap);
+        editorBody.appendChild(queryWrap);
+        root.classList.add("dtx-editor-pop");
+        editorOverlay.classList.add("dtx-open");
+        // Hand height control to the full-height layout.
+        textarea.style.height = "";
+        renderHighlight();
+        setTimeout(() => { try { textarea.focus(); } catch (e) {} }, 0);
+    }
+
+    function closeEditorPop() {
+        if (!editorPopped) return;
+        editorPopped = false;
+        editorOverlay.classList.remove("dtx-open");
+        root.classList.remove("dtx-editor-pop");
+        if (editorHome.parentNode) {
+            editorHome.parentNode.insertBefore(queryWrap, editorHome);
+            editorHome.parentNode.removeChild(editorHome);
+        } else {
+            queryBlock.appendChild(queryWrap);
+        }
+        renderHighlight();
+        autoGrowEditor();
+        try { textarea.focus(); } catch (e) {}
+    }
+
+    editorClose.addEventListener("click", closeEditorPop);
+    editorOverlay.addEventListener("click", (e) => {
+        if (e.target === editorOverlay) closeEditorPop();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && editorPopped) {
+            e.preventDefault();
+            closeEditorPop();
+        }
+    });
+
+    function renderDaxTokens(tokens, text) {
+        let total = 0;
+        for (const token of tokens) total += (token.text || "").length;
+        if (!tokens.length || total !== text.length) return escapeHtml(text);
+        return tokens.map(token => {
+            const tokenText = escapeHtml(token.text);
+            return token.kind
+                ? `<span class="dtx-tk-${token.kind}">${tokenText}</span>`
+                : tokenText;
+        }).join("");
+    }
+
+    function renderHighlight() {
+        const tokens = model.get("dax_tokens") || [];
+        const text = textarea.value;
+        if (text.length === 0) {
+            // The textarea's own text is transparent, so render the
+            // placeholder helper text in the highlight overlay instead. It
+            // disappears as soon as the user types anything.
+            hl.innerHTML = '<span class="dtx-query-placeholder">'
+                + 'EVALUATE — type a DAX query here, drag model objects in '
+                + 'from the left, or use the Query Builder.'
+                + '</span>';
+            hl.scrollTop = textarea.scrollTop;
+            hl.scrollLeft = textarea.scrollLeft;
+            return;
+        }
+        // An out-of-sync token list (while the user is typing) falls back to
+        // escaped plain text until Python reclassifies the query.
+        hl.innerHTML = renderDaxTokens(tokens, text) + "\n";
+        hl.scrollTop = textarea.scrollTop;
+        hl.scrollLeft = textarea.scrollLeft;
+    }
+
+    textarea.addEventListener("input", () => {
+        commitHistory(textarea.value, true);
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        renderFmtBtn();
+    });
+    // Keep the Cut/Copy buttons in sync with the current text selection.
+    ["select", "keyup", "mouseup", "focus", "blur", "input"].forEach((evt) => {
+        textarea.addEventListener(evt, renderClipBtns);
+    });
+    document.addEventListener("selectionchange", () => {
+        if (document.activeElement === textarea) renderClipBtns();
+    });
+    textarea.addEventListener("scroll", () => {
+        hl.scrollTop = textarea.scrollTop;
+        hl.scrollLeft = textarea.scrollLeft;
+    });
+    // Ctrl/Cmd+Enter to run; Ctrl/Cmd+Z / Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y for
+    // undo/redo (handled by the editor's own history stack).
+    textarea.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            runBtn.click();
+            return;
+        }
+        if (e.ctrlKey || e.metaKey) {
+            const k = e.key.toLowerCase();
+            if (k === "z" && !e.shiftKey) {
+                e.preventDefault();
+                doUndo();
+                return;
+            }
+            if ((k === "z" && e.shiftKey) || k === "y") {
+                e.preventDefault();
+                doRedo();
+                return;
+            }
+        }
+    });
+
+    // Drag-and-drop model objects into the editor.
+    function insertAtCursor(text) {
+        const start = textarea.selectionStart != null
+            ? textarea.selectionStart : textarea.value.length;
+        const end = textarea.selectionEnd != null
+            ? textarea.selectionEnd : textarea.value.length;
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
+        textarea.value = before + text + after;
+        const caret = start + text.length;
+        textarea.selectionStart = textarea.selectionEnd = caret;
+        textarea.focus();
+        commitHistory(textarea.value, false);
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        autoGrowEditor();
+    }
+
+    // Prepend a `DEFINE MEASURE` block for the given measure above the
+    // existing query text. If a DEFINE block already exists, the new
+    // measure line is added under it instead of duplicating the keyword.
+    function defineMeasure(meta) {
+        const table = meta.table || "";
+        const name = meta.name || "";
+        const expr = String(meta.expression == null ? "" : meta.expression).trim();
+        const ref = (table ? daxTableRef(table) : "")
+            + "[" + String(name).replace(/\]/g, "]]") + "]";
+        const measureLine = "    MEASURE " + ref + " = " + expr;
+        const existing = textarea.value;
+        const lead = /^(\s*)DEFINE\b[^\n]*/i.exec(existing);
+        let newText;
+        if (lead) {
+            const idx = lead.index + lead[0].length;
+            newText = existing.slice(0, idx) + "\n" + measureLine
+                + existing.slice(idx);
+        } else {
+            newText = "DEFINE\n" + measureLine + "\n\n" + existing;
+        }
+        textarea.value = newText;
+        commitHistory(textarea.value, false);
+        model.set("dax_query", textarea.value);
+        model.save_changes();
+        renderHighlight();
+        autoGrowEditor();
+        textarea.focus();
+    }
+    textarea.addEventListener("dragover", (e) => {
+        if (dragPayload != null) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            textarea.classList.add("dtx-drop-target");
+        }
+    });
+    textarea.addEventListener("dragleave", () => {
+        textarea.classList.remove("dtx-drop-target");
+    });
+    textarea.addEventListener("drop", (e) => {
+        const text = (e.dataTransfer && e.dataTransfer.getData("text/plain"))
+            || dragPayload;
+        if (text) {
+            e.preventDefault();
+            textarea.classList.remove("dtx-drop-target");
+            // Position the caret where the drop happened, when supported.
+            if (document.caretRangeFromPoint) {
+                const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+                if (range && range.startContainer === textarea.firstChild) {
+                    textarea.selectionStart = textarea.selectionEnd =
+                        range.startOffset;
+                }
+            }
+            insertAtCursor(text);
+        }
+    });
+
+    // ---------- Error message ----------
+    const errorEl = document.createElement("div");
+    errorEl.className = "dtx-error";
+    errorEl.style.display = "none";
+    main.appendChild(errorEl);
+    function renderError() {
+        const msg = model.get("error_message") || "";
+        pickerError.textContent = msg;
+        pickerError.style.display = msg ? "" : "none";
+        if (msg) {
+            errorEl.textContent = msg;
+            errorEl.style.display = "";
+        } else {
+            errorEl.textContent = "";
+            errorEl.style.display = "none";
+        }
+    }
+
+    // ---------- View toggle (Trace details / Query result) ----------
+    const viewToolbar = document.createElement("div");
+    viewToolbar.className = "dtx-view-toolbar";
+    main.appendChild(viewToolbar);
+
+    const viewTitle = document.createElement("div");
+    viewTitle.className = "dtx-view-title";
+    viewTitle.textContent = "Results";
+    viewToolbar.appendChild(viewTitle);
+
+    const seg = document.createElement("div");
+    seg.className = "dtx-seg";
+    const segTrace = document.createElement("button");
+    segTrace.type = "button";
+    segTrace.className = "dtx-seg-btn";
+    segTrace.textContent = "Trace details";
+    const segResult = document.createElement("button");
+    segResult.type = "button";
+    segResult.className = "dtx-seg-btn";
+    segResult.textContent = "Query result";
+    const segChart = document.createElement("button");
+    segChart.type = "button";
+    segChart.className = "dtx-seg-btn";
+    segChart.textContent = "Chart";
+    const segHistory = document.createElement("button");
+    segHistory.type = "button";
+    segHistory.className = "dtx-seg-btn";
+    segHistory.textContent = "Trace history";
+    const segQueryPlan = document.createElement("button");
+    segQueryPlan.type = "button";
+    segQueryPlan.className = "dtx-seg-btn";
+    segQueryPlan.textContent = "DAX query plan";
+    const segDependencies = document.createElement("button");
+    segDependencies.type = "button";
+    segDependencies.className = "dtx-seg-btn";
+    segDependencies.textContent = "Query dependencies";
+    const segVertipaq = document.createElement("button");
+    segVertipaq.type = "button";
+    segVertipaq.className = "dtx-seg-btn";
+    segVertipaq.textContent = "Vertipaq analyzer";
+    const segPerf = document.createElement("button");
+    segPerf.type = "button";
+    segPerf.className = "dtx-seg-btn";
+    segPerf.textContent = "Performance analysis";
+    const segExecMetrics = document.createElement("button");
+    segExecMetrics.type = "button";
+    segExecMetrics.className = "dtx-seg-btn";
+    segExecMetrics.textContent = "Execution metrics";
+    seg.appendChild(segTrace);
+    seg.appendChild(segResult);
+    seg.appendChild(segQueryPlan);
+    seg.appendChild(segChart);
+    seg.appendChild(segDependencies);
+    seg.appendChild(segVertipaq);
+    seg.appendChild(segPerf);
+    seg.appendChild(segExecMetrics);
+    seg.appendChild(segHistory);
+    viewToolbar.appendChild(seg);
+
+    // ---------- DAX Query Plan toggle (Logical / Physical) ----------
+    const planSeg = document.createElement("div");
+    planSeg.className = "dtx-seg dtx-plan-seg";
+    planSeg.style.display = "none";
+    const planLogicalBtn = document.createElement("button");
+    planLogicalBtn.type = "button";
+    planLogicalBtn.className = "dtx-seg-btn";
+    planLogicalBtn.textContent = "Logical Query Plan";
+    const planPhysicalBtn = document.createElement("button");
+    planPhysicalBtn.type = "button";
+    planPhysicalBtn.className = "dtx-seg-btn";
+    planPhysicalBtn.textContent = "Physical Query Plan";
+    planSeg.appendChild(planLogicalBtn);
+    planSeg.appendChild(planPhysicalBtn);
+    // Show the Logical/Physical toggle to the left of the tab group.
+    viewToolbar.insertBefore(planSeg, seg);
+    planLogicalBtn.addEventListener("click", () => {
+        model.set("query_plan_type", "Logical");
+        model.save_changes();
+    });
+    planPhysicalBtn.addEventListener("click", () => {
+        model.set("query_plan_type", "Physical");
+        model.save_changes();
+    });
+
+    // ---------- Query Dependencies toggle (Tree / Columns) ----------
+    const depSeg = document.createElement("div");
+    depSeg.className = "dtx-seg dtx-dep-seg";
+    depSeg.style.display = "none";
+    const depTreeBtn = document.createElement("button");
+    depTreeBtn.type = "button";
+    depTreeBtn.className = "dtx-seg-btn";
+    depTreeBtn.textContent = "Tree";
+    const depColumnsBtn = document.createElement("button");
+    depColumnsBtn.type = "button";
+    depColumnsBtn.className = "dtx-seg-btn";
+    depColumnsBtn.textContent = "Columns";
+    depSeg.appendChild(depTreeBtn);
+    depSeg.appendChild(depColumnsBtn);
+    // Show the Tree/Columns toggle to the left of the tab group.
+    viewToolbar.insertBefore(depSeg, seg);
+    depTreeBtn.addEventListener("click", () => {
+        model.set("dependency_view", "tree");
+        model.save_changes();
+    });
+    depColumnsBtn.addEventListener("click", () => {
+        model.set("dependency_view", "columns");
+        model.save_changes();
+    });
+
+    // ---------- Vertipaq Analyzer section toggle ----------
+    // The Vertipaq Analyzer returns several dataframes (Model Summary,
+    // Tables, Partitions, Columns, Relationships, Hierarchies). This
+    // segmented control (built dynamically from the returned sections) lets
+    // the user switch between them. It is shown only on the Vertipaq tab.
+    const vpSeg = document.createElement("div");
+    vpSeg.className = "dtx-seg dtx-vp-seg";
+    vpSeg.style.display = "none";
+    main.appendChild(vpSeg);
+
+    function buildVertipaqSeg() {
+        const sections = model.get("vertipaq_sections") || [];
+        let active = model.get("vertipaq_section") || "";
+        if (!sections.some(s => s.name === active)) {
+            active = sections.length ? sections[0].name : "";
+        }
+        vpSeg.innerHTML = "";
+        sections.forEach(s => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "dtx-seg-btn";
+            b.textContent = s.name;
+            b.classList.toggle("dtx-seg-btn-on", s.name === active);
+            b.addEventListener("click", () => {
+                model.set("vertipaq_section", s.name);
+                model.save_changes();
+            });
+            vpSeg.appendChild(b);
+        });
+    }
+
+    const histDownloadBtn = document.createElement("button");
+    histDownloadBtn.type = "button";
+    histDownloadBtn.className = "dtx-hist-download";
+    histDownloadBtn.innerHTML = DOWNLOAD_SVG;
+    histDownloadBtn.title = "Download the trace history as an Excel file";
+    histDownloadBtn.setAttribute("aria-label", "Download trace history as Excel");
+    histDownloadBtn.style.display = "none";
+    viewToolbar.appendChild(histDownloadBtn);
+    histDownloadBtn.addEventListener("click", () => {
+        const hist = model.get("trace_history") || [];
+        if (!hist.length) return;
+        model.set("download_history_trigger", (model.get("download_history_trigger") || 0) + 1);
+        model.save_changes();
+    });
+
+    const histClearBtn = document.createElement("button");
+    histClearBtn.type = "button";
+    histClearBtn.className = "dtx-hist-download";
+    histClearBtn.innerHTML = TRASH_SVG;
+    histClearBtn.title = "Clear trace history";
+    histClearBtn.setAttribute("aria-label", "Clear trace history");
+    histClearBtn.style.display = "none";
+    viewToolbar.appendChild(histClearBtn);
+
+    const clearHistoryOverlay = document.createElement("div");
+    clearHistoryOverlay.className = "dtx-confirm-overlay";
+    clearHistoryOverlay.innerHTML = `
+        <div class="dtx-confirm-dialog" role="dialog" aria-modal="true" aria-label="Clear trace history">
+            <h2 class="dtx-confirm-title">Clear trace history?</h2>
+            <p class="dtx-confirm-message">This will permanently remove every query from this session's trace history.</p>
+            <div class="dtx-confirm-actions">
+                <button type="button" class="dtx-confirm-cancel">Cancel</button>
+                <button type="button" class="dtx-confirm-clear">Clear history</button>
+            </div>
+        </div>`;
+    root.appendChild(clearHistoryOverlay);
+    const clearHistoryCancel = clearHistoryOverlay.querySelector(".dtx-confirm-cancel");
+    const clearHistoryConfirm = clearHistoryOverlay.querySelector(".dtx-confirm-clear");
+
+    function closeClearHistoryDialog() {
+        clearHistoryOverlay.classList.remove("dtx-open");
+        histClearBtn.focus();
+    }
+    function openClearHistoryDialog() {
+        if (!(model.get("trace_history") || []).length) return;
+        clearHistoryOverlay.classList.add("dtx-open");
+        window.setTimeout(() => clearHistoryCancel.focus(), 0);
+    }
+    histClearBtn.addEventListener("click", openClearHistoryDialog);
+    clearHistoryCancel.addEventListener("click", closeClearHistoryDialog);
+    clearHistoryConfirm.addEventListener("click", () => {
+        model.set("trace_history", []);
+        model.save_changes();
+        clearHistoryOverlay.classList.remove("dtx-open");
+        segHistory.focus();
+        showToast("Trace history cleared");
+    });
+    clearHistoryOverlay.addEventListener("click", event => {
+        if (event.target === clearHistoryOverlay) closeClearHistoryDialog();
+    });
+    clearHistoryOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeClearHistoryDialog();
+        } else if (event.key === "Tab") {
+            if (!event.shiftKey && document.activeElement === clearHistoryConfirm) {
+                event.preventDefault();
+                clearHistoryCancel.focus();
+            } else if (event.shiftKey && document.activeElement === clearHistoryCancel) {
+                event.preventDefault();
+                clearHistoryConfirm.focus();
+            }
+        }
+    });
+
+    const resultDownloadBtn = document.createElement("button");
+    resultDownloadBtn.type = "button";
+    resultDownloadBtn.className = "dtx-hist-download";
+    resultDownloadBtn.innerHTML = DOWNLOAD_SVG;
+    resultDownloadBtn.title = "Download the query result as an Excel file";
+    resultDownloadBtn.setAttribute("aria-label", "Download query result as Excel");
+    resultDownloadBtn.style.display = "none";
+    viewToolbar.appendChild(resultDownloadBtn);
+    resultDownloadBtn.addEventListener("click", () => {
+        if ((model.get("result_total_rows") || 0) <= 0) return;
+        model.set("download_result_trigger", (model.get("download_result_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    // Tracks the DAX query text that the currently displayed dependency tree
+    // was computed for, so dependencies are only recomputed when it changes.
+    let lastDepQuery = null;
+    segTrace.addEventListener("click", () => {
+        model.set("view_mode", "trace");
+        model.save_changes();
+    });
+    segResult.addEventListener("click", () => {
+        model.set("view_mode", "result");
+        model.save_changes();
+    });
+    segChart.addEventListener("click", () => {
+        if (segChart.disabled) return;
+        model.set("view_mode", "chart");
+        model.save_changes();
+    });
+    segHistory.addEventListener("click", () => {
+        model.set("view_mode", "history");
+        model.save_changes();
+    });
+    segQueryPlan.addEventListener("click", () => {
+        model.set("view_mode", "queryplan");
+        model.save_changes();
+    });
+    segDependencies.addEventListener("click", () => {
+        model.set("view_mode", "dependencies");
+        // Only recompute dependencies when the DAX query text has changed
+        // since the last computation; otherwise reuse the existing tree.
+        const curQuery = model.get("dax_query") || "";
+        if (curQuery !== lastDepQuery) {
+            lastDepQuery = curQuery;
+            model.set("dependencies_trigger", (model.get("dependencies_trigger") || 0) + 1);
+        }
+        model.save_changes();
+    });
+
+    // Tracks the dataset id the displayed Vertipaq Analyzer results were
+    // computed for, so they are only recomputed when the active model changes.
+    let lastVertipaqDataset = null;
+    segVertipaq.addEventListener("click", () => {
+        model.set("view_mode", "vertipaq");
+        // Vertipaq stats are model-level: only (re)compute when the active
+        // model changes since the last run, otherwise reuse the results.
+        const curDs = model.get("active_dataset_id") || "";
+        if (curDs && curDs !== lastVertipaqDataset) {
+            lastVertipaqDataset = curDs;
+            model.set("vertipaq_trigger", (model.get("vertipaq_trigger") || 0) + 1);
+        }
+        model.save_changes();
+    });
+
+    // Trigger a fresh DAX performance analysis and switch to its tab. The
+    // analysis combines the DAX query, model metadata, query dependencies,
+    // trace details, the DAX query plan and (when meaningful) Vertipaq
+    // Analyzer statistics. When ``force`` is false the analysis is only run if
+    // no results exist yet (used when simply switching to the tab); the
+    // Analyze button passes ``force = true`` to always recompute.
+    function triggerPerformanceAnalysis(force) {
+        model.set("view_mode", "performance");
+        const hasResults =
+            Object.keys(model.get("performance_summary") || {}).length > 0;
+        if (model.get("dataset_chosen") === true &&
+            model.get("performance_loading") !== true &&
+            (force === true || !hasResults)) {
+            model.set("performance_loading", true);
+            model.set("performance_trigger",
+                (model.get("performance_trigger") || 0) + 1);
+        }
+        model.save_changes();
+    }
+    segPerf.addEventListener("click", () => triggerPerformanceAnalysis(false));
+    segExecMetrics.addEventListener("click", () => {
+        model.set("view_mode", "execmetrics");
+        model.save_changes();
+    });
+    // Maximum number of rows for which we render an interactive chart.
+    // Beyond this, the Chart option is disabled to keep the widget responsive.
+    const CHART_MAX_ROWS = 200;
+
+    function chartEligibility() {
+        const cols = model.get("result_columns") || [];
+        const rows = model.get("result_rows") || [];
+        const total = model.get("result_total_rows") || 0;
+        const truncated = model.get("result_truncated") === true;
+        if (!cols.length || !rows.length) {
+            return { ok: false, reason: "No query result available." };
+        }
+        if (truncated || total > CHART_MAX_ROWS) {
+            return {
+                ok: false,
+                reason: `Too many rows to chart (${total.toLocaleString()}; limit ${CHART_MAX_ROWS.toLocaleString()}).`,
+            };
+        }
+        const numericCols = cols.map((_, i) =>
+            rows.some(r => typeof r[i] === "number") &&
+            rows.every(r => r[i] === null || typeof r[i] === "number")
+        );
+        if (!numericCols.some(Boolean)) {
+            return { ok: false, reason: "No numeric column to chart." };
+        }
+        return { ok: true, numericCols };
+    }
+
+    function renderSeg() {
+        const mode = model.get("view_mode") || "trace";
+        segTrace.classList.toggle("dtx-seg-btn-on", mode === "trace");
+        segResult.classList.toggle("dtx-seg-btn-on", mode === "result");
+        segChart.classList.toggle("dtx-seg-btn-on", mode === "chart");
+        segHistory.classList.toggle("dtx-seg-btn-on", mode === "history");
+        segQueryPlan.classList.toggle("dtx-seg-btn-on", mode === "queryplan");
+        segDependencies.classList.toggle("dtx-seg-btn-on", mode === "dependencies");
+        segVertipaq.classList.toggle("dtx-seg-btn-on", mode === "vertipaq");
+        segPerf.classList.toggle("dtx-seg-btn-on", mode === "performance");
+        segExecMetrics.classList.toggle("dtx-seg-btn-on", mode === "execmetrics");
+        const elig = chartEligibility();
+        segChart.disabled = !elig.ok;
+        segChart.title = elig.ok ? "Show simple chart of the result" : elig.reason;
+        const hist = model.get("trace_history") || [];
+        histDownloadBtn.style.display = (mode === "history") ? "" : "none";
+        histDownloadBtn.disabled = !hist.length;
+        histClearBtn.style.display = (mode === "history") ? "" : "none";
+        histClearBtn.disabled = !hist.length;
+        resultDownloadBtn.style.display = (mode === "result") ? "" : "none";
+        resultDownloadBtn.disabled = (model.get("result_total_rows") || 0) <= 0;
+        // Logical/Physical toggle is only relevant on the DAX Query Plan tab.
+        const planType = model.get("query_plan_type") || "Logical";
+        planSeg.style.display = (mode === "queryplan") ? "" : "none";
+        planLogicalBtn.classList.toggle("dtx-seg-btn-on", planType === "Logical");
+        planPhysicalBtn.classList.toggle("dtx-seg-btn-on", planType === "Physical");
+        // Tree/Columns toggle is only relevant on the Query Dependencies tab.
+        const depView = model.get("dependency_view") || "tree";
+        depSeg.style.display = (mode === "dependencies") ? "" : "none";
+        depTreeBtn.classList.toggle("dtx-seg-btn-on", depView === "tree");
+        depColumnsBtn.classList.toggle("dtx-seg-btn-on", depView === "columns");
+        // Section toggle is only relevant on the Vertipaq Analyzer tab.
+        const vpVisible = (mode === "vertipaq");
+        vpSeg.style.display = vpVisible ? "" : "none";
+        if (vpVisible) buildVertipaqSeg();
+    }
+
+    const resultMeta = document.createElement("div");
+    resultMeta.className = "dtx-result-meta";
+    resultMeta.style.display = "none";
+    main.appendChild(resultMeta);
+
+    const tableWrap = document.createElement("div");
+    tableWrap.className = "dtx-table-wrap";
+    main.appendChild(tableWrap);
+
+    const outputColumnWidths = new Map();
+    function outputTableKey(table) {
+        const tableName = table.className || "output-table";
+        const headings = Array.from(table.querySelectorAll("thead tr:first-child th"))
+            .map(th => th.textContent.trim()).join("|");
+        return `${tableName}:${headings}`;
+    }
+    function installColumnResizers(table) {
+        sllsInstallColumnResizers(table, {
+            widths: outputColumnWidths,
+            key: outputTableKey,
+            minWidth: 56,
+            handleClass: "dtx-column-resizer",
+            resizableClass: "dtx-resizable",
+            resizingClass: "dtx-resizing",
+            onWidthsChanged: updateVertipaqFrozen,
+        });
+    }
+    function enhanceOutputTables() {
+        tableWrap.querySelectorAll("table").forEach(installColumnResizers);
+    }
+    const outputTableObserver = new MutationObserver(enhanceOutputTables);
+    outputTableObserver.observe(tableWrap, { childList: true, subtree: true });
+
+    // ---------- Workspace monitoring ----------
+    let monitoringOpen = false;
+    let monitoringFullscreen = false;
+    let monitoringSort = null;
+    let monitoringSearch = "";
+    let monitoringContentHeight = 260;
+    const monitoringPane = document.createElement("section");
+    monitoringPane.className = "dtx-monitoring";
+    const monitoringResizer = document.createElement("div");
+    monitoringResizer.className = "dtx-monitoring-resizer";
+    monitoringResizer.setAttribute("role", "separator");
+    monitoringResizer.setAttribute("aria-orientation", "horizontal");
+    monitoringResizer.setAttribute("aria-label", "Resize workspace monitoring panel");
+    monitoringPane.appendChild(monitoringResizer);
+    const monitoringHead = document.createElement("div");
+    monitoringHead.className = "dtx-monitoring-head";
+    monitoringPane.appendChild(monitoringHead);
+    const monitoringTitleBtn = document.createElement("button");
+    monitoringTitleBtn.type = "button";
+    monitoringTitleBtn.className = "dtx-monitoring-title-btn";
+    monitoringTitleBtn.innerHTML = `${CHEVRON_DOWN_SVG}`
+        + `<span class="dtx-monitoring-activity">${ACTIVITY_SVG}</span>`
+        + `<span>Workspace monitoring</span>`
+        + `<span class="dtx-monitoring-subtitle">· slowest recent queries</span>`;
+    monitoringHead.appendChild(monitoringTitleBtn);
+    const monitoringControls = document.createElement("div");
+    monitoringControls.className = "dtx-monitoring-controls";
+    monitoringHead.appendChild(monitoringControls);
+
+    const monitoringSearchInput = document.createElement("input");
+    monitoringSearchInput.type = "search";
+    monitoringSearchInput.className = "dtx-monitoring-search";
+    monitoringSearchInput.placeholder = "Search monitoring results";
+    monitoringSearchInput.setAttribute("aria-label", "Search workspace monitoring results");
+    monitoringControls.appendChild(monitoringSearchInput);
+
+    const monitoringActions = document.createElement("div");
+    monitoringActions.className = "dtx-monitoring-actions";
+    monitoringHead.appendChild(monitoringActions);
+
+    const rangeLabel = document.createElement("label");
+    rangeLabel.className = "dtx-monitoring-field";
+    rangeLabel.textContent = "Range";
+    const rangeSelect = document.createElement("select");
+    [
+        ["15m", "Last 15 min"], ["1h", "Last hour"], ["4h", "Last 4 hours"],
+        ["12h", "Last 12 hours"], ["1d", "Last 24 hours"],
+        ["3d", "Last 3 days"], ["7d", "Last 7 days"], ["30d", "Last 30 days"],
+    ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        if (value === "1d") option.selected = true;
+        rangeSelect.appendChild(option);
+    });
+    rangeLabel.appendChild(rangeSelect);
+    monitoringActions.appendChild(rangeLabel);
+
+    const topLabel = document.createElement("label");
+    topLabel.className = "dtx-monitoring-field";
+    topLabel.textContent = "Top";
+    const topInput = document.createElement("input");
+    topInput.type = "number";
+    topInput.min = "1";
+    topInput.max = "200";
+    topInput.value = "20";
+    topLabel.appendChild(topInput);
+    monitoringActions.appendChild(topLabel);
+
+    const monitoringReloadBtn = document.createElement("button");
+    monitoringReloadBtn.type = "button";
+    monitoringReloadBtn.className = "dtx-monitoring-action";
+    monitoringReloadBtn.innerHTML = REFRESH_SVG;
+    monitoringReloadBtn.title = "Reload workspace monitoring";
+    monitoringReloadBtn.setAttribute("aria-label", "Reload workspace monitoring");
+    monitoringActions.appendChild(monitoringReloadBtn);
+    const monitoringFullscreenBtn = document.createElement("button");
+    monitoringFullscreenBtn.type = "button";
+    monitoringFullscreenBtn.className = "dtx-monitoring-action";
+    monitoringActions.appendChild(monitoringFullscreenBtn);
+
+    const monitoringContent = document.createElement("div");
+    monitoringContent.className = "dtx-monitoring-content";
+    monitoringContent.id = `dtx-monitoring-content-${Math.random().toString(36).slice(2)}`;
+    monitoringTitleBtn.setAttribute("aria-controls", monitoringContent.id);
+    monitoringPane.appendChild(monitoringContent);
+    container.appendChild(monitoringPane);
+
+    function renderMonitoringChrome() {
+        const chosen = model.get("dataset_chosen") === true;
+        monitoringShowBtn.style.display = chosen ? "" : "none";
+        monitoringPane.classList.toggle("dtx-monitoring-hidden", !chosen || !monitoringVisible);
+        monitoringPane.classList.toggle("dtx-monitoring-fullscreen", monitoringFullscreen);
+        monitoringPane.classList.toggle("dtx-monitoring-collapsed", !monitoringOpen);
+        monitoringShowBtn.classList.toggle("dtx-active", monitoringVisible);
+        const showLabel = monitoringVisible
+            ? "Hide workspace monitoring" : "Show workspace monitoring";
+        monitoringShowBtn.title = showLabel;
+        monitoringShowBtn.setAttribute("aria-label", showLabel);
+        monitoringShowBtn.setAttribute("aria-pressed", String(monitoringVisible));
+        monitoringTitleBtn.setAttribute("aria-expanded", String(monitoringOpen));
+        monitoringControls.style.display = monitoringOpen ? "" : "none";
+        monitoringActions.style.display = monitoringOpen ? "" : "none";
+        monitoringContent.style.display = monitoringOpen ? "" : "none";
+        monitoringContent.style.height = monitoringFullscreen
+            ? "" : `${monitoringContentHeight}px`;
+        monitoringFullscreenBtn.innerHTML = monitoringFullscreen
+            ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
+        const fullscreenLabel = monitoringFullscreen ? "Exit full screen" : "Full screen";
+        monitoringFullscreenBtn.title = fullscreenLabel;
+        monitoringFullscreenBtn.setAttribute("aria-label", fullscreenLabel);
+    }
+
+    function renderMonitoringContent() {
+        const loading = model.get("workspace_monitoring_loading") === true;
+        const loaded = model.get("workspace_monitoring_loaded") === true;
+        const enabled = model.get("workspace_monitoring_enabled") !== false;
+        const error = String(model.get("workspace_monitoring_error") || "");
+        const columns = model.get("workspace_monitoring_columns") || [];
+        const rows = model.get("workspace_monitoring_rows") || [];
+        const monitoringTokens = model.get("workspace_monitoring_tokens") || [];
+        const hasQueryOutput = loaded && enabled && !loading && !error && rows.length > 0;
+        monitoringSearchInput.hidden = !hasQueryOutput;
+        monitoringReloadBtn.disabled = loading || model.get("dataset_chosen") !== true;
+        if (error) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty dtx-monitoring-error">`
+                + `${ACTIVITY_SVG}<strong>${escapeHtml(error)}</strong></div>`;
+            return;
+        }
+        if (loading) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>Reading workspace monitoring…</strong></div>`;
+            return;
+        }
+        if (!loaded) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>Press Reload to read the slowest recent queries.</strong>`
+                + `<span>Queries the workspace's monitoring database for QueryEnd events for this model.</span></div>`;
+            return;
+        }
+        if (!enabled) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>Workspace monitoring is not enabled</strong>`
+                + `<span>Enable workspace monitoring in the workspace settings to see query history.</span></div>`;
+            return;
+        }
+        if (!rows.length) {
+            monitoringContent.innerHTML = `<div class="dtx-monitoring-empty">`
+                + `${ACTIVITY_SVG}<strong>No queries found for this model and range.</strong></div>`;
+            return;
+        }
+        const isNumeric = column => /ms$/i.test(String(column));
+        const isTime = column => String(column).toLowerCase() === "timestamp";
+        const isQuery = column => String(column).toLowerCase() === "eventtext";
+        const headerLabel = column => ({
+            durationms: "Duration (MS)", cputimems: "CPU", eventtext: "Query",
+            visualid: "Visual ID", reportid: "Report ID",
+            executinguser: "Executing User",
+            reportname: "Report Name", reportworkspace: "Report Workspace",
+        }[String(column).toLowerCase()] || String(column));
+        const columnWidth = column => ({
+            reportid: 320, visualid: 320, executinguser: 260,
+            reportname: 240, reportworkspace: 240,
+        }[String(column).toLowerCase()]
+            || (isQuery(column) ? 480 : isTime(column) ? 180 : isNumeric(column) ? 120 : 200));
+        const displayValue = (column, value) => {
+            if (value == null || value === "") return "";
+            if (isTime(column)) {
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+            }
+            if (isNumeric(column)) {
+                const number = Number(value);
+                return Number.isFinite(number) ? Math.round(number).toLocaleString() : String(value);
+            }
+            return String(value);
+        };
+        const queryIndex = columns.findIndex(isQuery);
+        let viewRows = rows.map((row, index) => ({ row, index }));
+        const search = monitoringSearch.trim().toLowerCase();
+        if (search) {
+            viewRows = viewRows.filter(({ row }) => row.some((value, index) => {
+                const searchable = index === queryIndex
+                    ? cleanDaxQuery(value) : displayValue(columns[index], value);
+                return String(searchable).toLowerCase().includes(search);
+            }));
+        }
+        if (monitoringSort) {
+            const { index, direction } = monitoringSort;
+            const column = columns[index];
+            viewRows.sort((left, right) => {
+                const a = left.row[index] ?? "";
+                const b = right.row[index] ?? "";
+                let result;
+                if (isTime(column)) result = new Date(a).getTime() - new Date(b).getTime();
+                else if (isNumeric(column)) result = Number(a) - Number(b);
+                else result = String(a).localeCompare(String(b), undefined, { numeric: true });
+                if (Number.isNaN(result)) result = String(a).localeCompare(String(b));
+                return direction === "ascending" ? result : -result;
+            });
+        }
+        const head = columns.map((column, index) => {
+            const width = columnWidth(column);
+            const sort = monitoringSort?.index === index ? monitoringSort.direction : "none";
+            return `<th data-monitoring-sort="${index}" data-column-width="${width}" aria-sort="${sort}">${escapeHtml(headerLabel(column))}</th>`;
+        }).join("");
+        const bodyHtml = viewRows.map(({ row, index: rowIndex }) => `<tr>${columns.map((column, index) => {
+            const rawValue = row[index] == null ? "" : String(row[index]);
+            if (index === queryIndex) {
+                const query = cleanDaxQuery(rawValue);
+                const isDax = /^\s*(?:EVALUATE|DEFINE)\b/i.test(query);
+                const queryHtml = isDax
+                    ? renderDaxTokens(monitoringTokens[rowIndex] || [], query)
+                    : escapeHtml(query);
+                return `<td class="dtx-monitoring-query" data-monitoring-index="${rowIndex}" tabindex="0" role="button" title="Use this query"><pre>${queryHtml}</pre></td>`;
+            }
+            return `<td>${escapeHtml(displayValue(column, rawValue))}</td>`;
+        }).join("")}</tr>`).join("");
+        monitoringContent.innerHTML = `<table class="dtx-monitoring-table"><thead><tr>${head}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+        const useQuery = cell => {
+            const row = rows[Number(cell.dataset.monitoringIndex)] || [];
+            const query = queryIndex >= 0 ? cleanDaxQuery(row[queryIndex]) : "";
+            if (!query) return;
+            model.set("dax_query", query);
+            model.save_changes();
+            showToast("Monitoring query loaded into editor");
+        };
+        monitoringContent.querySelectorAll(".dtx-monitoring-query").forEach(cell => {
+            cell.addEventListener("click", () => useQuery(cell));
+            cell.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    useQuery(cell);
+                }
+            });
+        });
+        monitoringContent.querySelectorAll("th[data-monitoring-sort]").forEach(header => {
+            header.addEventListener("click", event => {
+                if (event.target.closest(".dtx-column-resizer")) return;
+                const index = Number(header.dataset.monitoringSort);
+                monitoringSort = monitoringSort?.index === index
+                    ? monitoringSort.direction === "ascending"
+                        ? { index, direction: "descending" } : null
+                    : { index, direction: "ascending" };
+                renderMonitoringContent();
+            });
+        });
+        installColumnResizers(monitoringContent.querySelector("table"));
+    }
+
+    monitoringSearchInput.addEventListener("input", () => {
+        monitoringSearch = monitoringSearchInput.value;
+        renderMonitoringContent();
+    });
+    monitoringResizer.addEventListener("pointerdown", event => {
+        if (monitoringFullscreen || !monitoringOpen) return;
+        event.preventDefault();
+        const startY = event.clientY;
+        const startHeight = monitoringContent.getBoundingClientRect().height;
+        monitoringResizer.classList.add("dtx-monitoring-resizing");
+        monitoringResizer.setPointerCapture(event.pointerId);
+        const onMove = moveEvent => {
+            const maxHeight = Math.max(260, window.innerHeight - 150);
+            monitoringContentHeight = Math.min(
+                maxHeight,
+                Math.max(190, startHeight + startY - moveEvent.clientY),
+            );
+            monitoringContent.style.height = `${monitoringContentHeight}px`;
+        };
+        const onEnd = () => {
+            monitoringResizer.classList.remove("dtx-monitoring-resizing");
+            monitoringResizer.removeEventListener("pointermove", onMove);
+            monitoringResizer.removeEventListener("pointerup", onEnd);
+            monitoringResizer.removeEventListener("pointercancel", onEnd);
+        };
+        monitoringResizer.addEventListener("pointermove", onMove);
+        monitoringResizer.addEventListener("pointerup", onEnd);
+        monitoringResizer.addEventListener("pointercancel", onEnd);
+    });
+
+    monitoringTitleBtn.addEventListener("click", () => {
+        monitoringOpen = !monitoringOpen;
+        if (!monitoringOpen) monitoringFullscreen = false;
+        renderMonitoringChrome();
+    });
+    monitoringReloadBtn.addEventListener("click", () => {
+        const top = Math.min(200, Math.max(1, Math.round(Number(topInput.value) || 20)));
+        topInput.value = String(top);
+        model.set("workspace_monitoring_request", { range: rangeSelect.value, top });
+        model.set("workspace_monitoring_trigger",
+            (model.get("workspace_monitoring_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    monitoringFullscreenBtn.addEventListener("click", () => {
+        monitoringFullscreen = !monitoringFullscreen;
+        renderMonitoringChrome();
+    });
+
+    const chartControls = document.createElement("div");
+    chartControls.className = "dtx-chart-controls";
+    chartControls.style.display = "none";
+    main.appendChild(chartControls);
+
+    const chartWrap = document.createElement("div");
+    chartWrap.className = "dtx-chart-wrap";
+    chartWrap.style.display = "none";
+    main.appendChild(chartWrap);
+
+    // Persisted per-render chart axis selections (not synced to Python).
+    const chartState = { xIdx: null, yIdx: null };
+
+    function renderTraceTable() {
+        const rows = model.get("trace_rows") || [];
+        const fmt = (n) => Number(n).toLocaleString();
+        let body;
+        if (!rows.length) {
+            body = `<tr><td colspan="7" class="dtx-empty">No trace events captured.</td></tr>`;
+        } else {
+            body = rows.map(r => (
+                `<tr>
+                    <td>${escapeHtml(r.event_class)}</td>
+                    <td>${escapeHtml(r.event_subclass)}</td>
+                    <td class="dtx-num">${escapeHtml(fmt(r.duration))} ms</td>
+                    <td class="dtx-num">${escapeHtml(fmt(r.cpu))} ms</td>
+                    <td class="dtx-num">${r.rows == null ? "" : escapeHtml(fmt(r.rows))}</td>
+                    <td class="dtx-num">${r.kb == null ? "" : escapeHtml(Number(r.kb).toLocaleString(undefined, { maximumFractionDigits: 2 }))}</td>
+                    <td class="dtx-trace-text"><pre>${renderTraceText(r.text, r.event_class)}</pre></td>
+                </tr>`
+            )).join("");
+        }
+        tableWrap.innerHTML = `
+            <table class="dtx-trace-table">
+                <thead><tr>
+                    <th>Event</th>
+                    <th>Subclass</th>
+                    <th style="text-align:right">Duration</th>
+                    <th style="text-align:right">CPU</th>
+                    <th style="text-align:right">Rows</th>
+                    <th style="text-align:right">KB</th>
+                    <th>Text</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+    }
+
+    function renderResultTable() {
+        const cols = model.get("result_columns") || [];
+        const rows = model.get("result_rows") || [];
+        const total = model.get("result_total_rows") || 0;
+        const truncated = model.get("result_truncated") === true;
+        if (!cols.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No query result available.</td></tr></tbody></table>`;
+            return;
+        }
+        const isNum = cols.map((_, i) => rows.every(r => r[i] === null || typeof r[i] === "number"));
+        const fmtCell = (v, i) => {
+            if (v === null || v === undefined) return "";
+            if (typeof v === "number") return escapeHtml(Number(v).toLocaleString(undefined, { maximumFractionDigits: 6 }));
+            return escapeHtml(String(v));
+        };
+        const head = cols.map((c, i) => `<th${isNum[i] ? ' style="text-align:right"' : ""}>${escapeHtml(c)}</th>`).join("");
+        const body = rows.length
+            ? rows.map(r => `<tr>${r.map((v, i) => `<td${isNum[i] ? ' class="dtx-num"' : ""}>${fmtCell(v, i)}</td>`).join("")}</tr>`).join("")
+            : `<tr><td colspan="${cols.length}" class="dtx-empty">Query returned no rows.</td></tr>`;
+        tableWrap.innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+        if (truncated) {
+            resultMeta.textContent = `Showing first ${rows.length.toLocaleString()} of ${total.toLocaleString()} rows.`;
+        } else {
+            resultMeta.textContent = `${total.toLocaleString()} row${total === 1 ? "" : "s"}.`;
+        }
+    }
+
+    const historySortState = { key: "", direction: "ascending" };
+    function historySortValue(entry, key) {
+        if (["duration", "fe_duration", "se_duration", "cpu"].includes(key)) {
+            return Number(entry[key] || 0);
+        }
+        if (key === "execution_metrics") return JSON.stringify(entry.execution_metrics || {});
+        if (key === "query") return String(entry.dax_query || "");
+        if (key === "report") return String(entry.report_name || "");
+        if (key === "workspace") {
+            return String(entry.report_workspace_name || entry.workspace_name || "");
+        }
+        return String(entry[key] || "");
+    }
+    function renderHistoryTable() {
+        const hist = model.get("trace_history") || [];
+        const fmt = (n) => Number(n).toLocaleString();
+        const renderMetrics = (metrics) => {
+            if (!metrics || typeof metrics !== "object") return "";
+            const lines = Object.entries(metrics).map(([key, value]) => {
+                const jsonValue = JSON.stringify(value);
+                const renderedValue = typeof value === "number" && Number.isFinite(value)
+                    ? `<span class="dtx-hist-metric-number">${escapeHtml(jsonValue)}</span>`
+                    : escapeHtml(jsonValue);
+                return `  ${escapeHtml(JSON.stringify(key))}: ${renderedValue}`;
+            });
+            return lines.length ? `{\n${lines.join(",\n")}\n}` : "";
+        };
+        const fmtRunTime = (value) => {
+            const run = String(value || "");
+            const time = run.includes(" ") ? run.split(" ").pop() : run;
+            const parts = time.split(":").map(Number);
+            if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return time;
+            const date = new Date(2000, 0, 1, parts[0], parts[1], parts[2]);
+            return date.toLocaleTimeString("en-US", {
+                hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+            });
+        };
+        if (!hist.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No queries have been executed in this session yet.</td></tr></tbody></table>`;
+            return;
+        }
+        const indexedHistory = hist.map((h, index) => ({ h, index }));
+        if (historySortState.key) {
+            indexedHistory.sort((left, right) => {
+                const a = historySortValue(left.h, historySortState.key);
+                const b = historySortValue(right.h, historySortState.key);
+                const result = typeof a === "number" && typeof b === "number"
+                    ? a - b
+                    : String(a).localeCompare(String(b), undefined, {
+                        numeric: true, sensitivity: "base",
+                    });
+                return historySortState.direction === "ascending" ? result : -result;
+            });
+        }
+        const body = indexedHistory.map(({ h, index }) => {
+            const q = cleanDaxQuery(h.dax_query);
+            const run = String(h.start_time || "");
+            const runTime = fmtRunTime(run);
+            const metrics = renderMetrics(h.execution_metrics);
+            const method = String(h.method || "Query");
+            const reportName = method === "Report" ? String(h.report_name || "") : "";
+            const reportWorkspace = method === "Report"
+                ? String(h.report_workspace_name || h.workspace_name || "") : "";
+            return `<tr>
+                <td title="${escapeHtml(run)}">${escapeHtml(runTime)}</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.duration))} ms</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.fe_duration))} ms</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.se_duration))} ms</td>
+                <td class="dtx-num">${escapeHtml(fmt(h.cpu))} ms</td>
+                <td>${escapeHtml(String(h.cache || ""))}</td>
+                <td class="dtx-hist-metrics">${metrics ? `<pre>${metrics}</pre>` : ""}</td>
+                <td>${escapeHtml(method)}</td>
+                <td class="dtx-hist-query" data-history-index="${index}" tabindex="0" role="button" aria-label="Copy query from trace history" title="Copy query to clipboard"><pre>${escapeHtml(q)}</pre></td>
+                <td>${escapeHtml(reportName)}</td>
+                <td>${escapeHtml(reportWorkspace)}</td>
+            </tr>`;
+        }).join("");
+        tableWrap.innerHTML = `
+            <table class="dtx-history-table">
+                <thead><tr>
+                    <th data-history-sort="start_time">Run</th>
+                    <th data-history-sort="duration" style="text-align:right">Total</th>
+                    <th data-history-sort="fe_duration" style="text-align:right">FE</th>
+                    <th data-history-sort="se_duration" style="text-align:right">SE</th>
+                    <th data-history-sort="cpu" style="text-align:right">CPU</th>
+                    <th data-history-sort="cache">Cache</th>
+                    <th data-history-sort="execution_metrics">Execution metrics</th>
+                    <th data-history-sort="method">Method</th>
+                    <th data-history-sort="query">Query</th>
+                    <th data-history-sort="report">Report</th>
+                    <th data-history-sort="workspace">Workspace</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+
+        tableWrap.querySelectorAll("th[data-history-sort]").forEach(header => {
+            const key = header.dataset.historySort;
+            if (key === historySortState.key) {
+                header.setAttribute("aria-sort", historySortState.direction);
+            } else {
+                header.setAttribute("aria-sort", "none");
+            }
+            header.addEventListener("click", event => {
+                if (event.target.closest(".dtx-column-resizer")) return;
+                historySortState.direction = historySortState.key === key
+                    && historySortState.direction === "ascending"
+                    ? "descending" : "ascending";
+                historySortState.key = key;
+                renderHistoryTable();
+            });
+        });
+
+        const copyHistoryQuery = (cell) => {
+            const index = Number(cell.dataset.historyIndex);
+            const entry = (model.get("trace_history") || [])[index];
+            const query = entry ? cleanDaxQuery(entry.dax_query) : "";
+            if (!query) return;
+            writeClipboard(query)
+                .then(() => showToast("Query copied to clipboard"))
+                .catch(() => showToast("Unable to copy query"));
+        };
+        tableWrap.querySelectorAll(".dtx-hist-query").forEach(cell => {
+            cell.addEventListener("click", () => copyHistoryQuery(cell));
+            cell.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    copyHistoryQuery(cell);
+                }
+            });
+        });
+    }
+
+    function renderQueryPlanTable() {
+        const rows = model.get("query_plan_rows") || [];
+        const planType = model.get("query_plan_type") || "Logical";
+        const matching = rows.filter(r => String(r.plan_type || "") === planType);
+        if (!rows.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No DAX query plan captured. Run a query to capture its query plan.</td></tr></tbody></table>`;
+            return;
+        }
+        if (!matching.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No ${escapeHtml(planType)} Query Plan was captured for the last query.</td></tr></tbody></table>`;
+            return;
+        }
+        // Render the whole plan as a single pane. A <pre> preserves the plan's
+        // own indentation, so there is no per-line row striping.
+        const planText = matching.map(r => String(r.text || "")).join("\n");
+        tableWrap.innerHTML = `
+            <table class="dtx-plan-table">
+                <thead><tr><th>${escapeHtml(planType)} Query Plan</th></tr></thead>
+                <tbody><tr><td class="dtx-plan-pane"><pre>${escapeHtml(planText)}</pre></td></tr></tbody>
+            </table>`;
+    }
+
+    function renderExecMetricsTable() {
+        const rows = model.get("execution_metrics") || [];
+        const fmt = (n) => Number(n).toLocaleString();
+        if (!rows.length) {
+            tableWrap.innerHTML = `<table><tbody><tr><td class="dtx-empty">No execution metrics captured. Run a query to capture its execution metrics.</td></tr></tbody></table>`;
+            return;
+        }
+        const body = rows.map(r => (
+            `<tr>
+                <td>${escapeHtml(String(r.label || r.key || ""))}</td>
+                <td class="dtx-num">${escapeHtml(fmt(r.value))}</td>
+            </tr>`
+        )).join("");
+        tableWrap.innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Metric</th>
+                    <th style="text-align:right">Value</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+    }
+
+    // Collapsed-state set for the query-dependencies tree (keyed by node path).
+    const depCollapsed = new Set();
+
+    function depIcon(kind) {
+        switch (kind) {
+            case "model": return TABLE_SVG;
+            case "group": return FOLDER_SVG;
+            case "table": return TABLE_SVG;
+            case "column": return COLUMN_SVG;
+            case "measure": return MEASURE_SVG;
+            case "hierarchy": return HIERARCHY_SVG;
+            case "calc_group": return CALC_GROUP_SVG;
+            case "relationship": return SWAP_SVG;
+            default: return COLUMN_SVG;
+        }
+    }
+
+    function renderDepNode(node, path, depth) {
+        const hasChildren = !!(node.children && node.children.length);
+        const collapsed = depCollapsed.has(path);
+        const caret = hasChildren
+            ? `<span class="dtx-dep-caret${collapsed ? "" : " dtx-open"}">${CARET_SVG}</span>`
+            : `<span class="dtx-dep-caret-spacer"></span>`;
+        const detail = node.detail
+            ? `<span class="dtx-dep-detail">${escapeHtml(String(node.detail))}</span>`
+            : "";
+        const pad = 8 + depth * 16;
+        let html = `<div class="dtx-dep-row${hasChildren ? " dtx-dep-haschildren" : ""}" `
+            + `data-path="${escapeHtml(path)}" data-haschildren="${hasChildren ? "1" : "0"}" `
+            + `style="padding-left:${pad}px">`
+            + caret
+            + `<span class="dtx-dep-icon">${depIcon(node.kind)}</span>`
+            + `<span class="dtx-dep-label">${escapeHtml(String(node.label || ""))}</span>`
+            + detail
+            + `</div>`;
+        if (hasChildren && !collapsed) {
+            html += node.children
+                .map((c, i) => renderDepNode(c, path + "/" + i, depth + 1))
+                .join("");
+        }
+        return html;
+    }
+
+    function renderDependencyColumns() {
+        const cols = model.get("dependency_columns") || [];
+        if (!cols.length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No columns referenced. Run this on a non-empty DAX query.</div></div>`;
+            return;
+        }
+        const body = cols.map(c => {
+            return `<tr>`
+                + `<td>${escapeHtml(String(c.table || ""))}</td>`
+                + `<td>${escapeHtml(String(c.column || ""))}</td>`
+                + `</tr>`;
+        }).join("");
+        tableWrap.innerHTML = `
+            <table class="dtx-dep-col-table dtx-dependency-columns-table">
+                <thead><tr>
+                    <th data-column-width="220">Table Name</th>
+                    <th data-column-width="280">Column Name</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+    }
+
+    function renderDependenciesTable() {
+        if (model.get("dependencies_loading") === true) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Computing query dependencies&hellip;</div></div>`;
+            return;
+        }
+        const view = model.get("dependency_view") || "tree";
+        if (view === "columns") {
+            renderDependencyColumns();
+            return;
+        }
+        const tree = model.get("dependency_tree") || [];
+        if (!tree.length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No dependencies found. Run this on a non-empty DAX query.</div></div>`;
+            return;
+        }
+        const html = tree.map((n, i) => renderDepNode(n, String(i), 0)).join("");
+        tableWrap.innerHTML = `<div class="dtx-dep-tree">${html}</div>`;
+        tableWrap.querySelectorAll(".dtx-dep-row[data-haschildren='1']").forEach(row => {
+            row.addEventListener("click", () => {
+                const p = row.getAttribute("data-path");
+                if (depCollapsed.has(p)) depCollapsed.delete(p);
+                else depCollapsed.add(p);
+                renderDependenciesTable();
+            });
+        });
+    }
+
+    const vertipaqSortBySection = new Map();
+    function updateVertipaqFrozen(table) {
+        if (!table?.classList.contains("dtx-vertipaq-table")) return;
+        const headers = Array.from(table.querySelectorAll("thead th"));
+        const rows = table.querySelectorAll("tbody tr");
+        let left = 0;
+        headers.forEach((header, index) => {
+            if (!header.classList.contains("dtx-vp-frozen")) return;
+            const offset = `${left}px`;
+            header.style.left = offset;
+            rows.forEach(row => {
+                if (row.cells[index]) row.cells[index].style.left = offset;
+            });
+            left += header.getBoundingClientRect().width;
+        });
+    }
+
+    function renderVertipaqTable() {
+        if (model.get("vertipaq_loading") === true) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
+            return;
+        }
+        const sections = model.get("vertipaq_sections") || [];
+        if (!sections.length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No Vertipaq Analyzer results available.</div></div>`;
+            return;
+        }
+        let section = sections.find(s => s.name === (model.get("vertipaq_section") || ""));
+        if (!section) section = sections[0];
+        const cols = section.columns || [];
+        const rows = section.rows || [];
+        const frozenNames = {
+            Tables: ["Table Name"],
+            Partitions: ["Table Name", "Partition Name"],
+            Columns: ["Table Name", "Column Name"],
+        }[section.name] || [];
+        const frozenIndexes = cols
+            .map((column, index) => frozenNames.includes(column) ? index : -1)
+            .filter(index => index >= 0);
+        const frozenEdge = frozenIndexes.length
+            ? frozenIndexes[frozenIndexes.length - 1] : -1;
+        const frozenClasses = index => frozenIndexes.includes(index)
+            ? ` dtx-vp-frozen${index === frozenEdge ? " dtx-vp-frozen-edge" : ""}`
+            : "";
+        const parseNumeric = value => {
+            if (typeof value === "number" && !Number.isFinite(value)) return null;
+            if (typeof value !== "number" && typeof value !== "string") return null;
+            const text = String(value).trim();
+            const match = /^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
+            if (!match || !(match[2] || match[3])) return null;
+            const exponent = Number(match[4] || 0);
+            if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 10000) return null;
+            let digits = `${match[2]}${match[3] || ""}`.replace(/^0+/, "");
+            if (!digits) return { sign: 0, digits: "0", scale: 0 };
+            let scale = exponent - (match[3] || "").length;
+            while (digits.endsWith("0")) {
+                digits = digits.slice(0, -1);
+                scale += 1;
+            }
+            return { sign: match[1] === "-" ? -1 : 1, digits, scale };
+        };
+        const compareNumeric = (left, right) => {
+            if (left.sign !== right.sign) return left.sign - right.sign;
+            if (left.sign === 0) return 0;
+            const leftMagnitude = left.digits.length + left.scale;
+            const rightMagnitude = right.digits.length + right.scale;
+            let result = leftMagnitude - rightMagnitude;
+            if (result === 0) {
+                const width = Math.max(left.digits.length, right.digits.length);
+                result = left.digits.padEnd(width, "0").localeCompare(
+                    right.digits.padEnd(width, "0")
+                );
+            }
+            return left.sign * result;
+        };
+        const formatNumeric = parsed => {
+            if (parsed.sign === 0) return "0";
+            const point = parsed.digits.length + parsed.scale;
+            const integer = point <= 0
+                ? "0"
+                : point >= parsed.digits.length
+                    ? parsed.digits + "0".repeat(point - parsed.digits.length)
+                    : parsed.digits.slice(0, point);
+            const fraction = point <= 0
+                ? "0".repeat(-point) + parsed.digits
+                : point < parsed.digits.length ? parsed.digits.slice(point) : "";
+            const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return `${parsed.sign < 0 ? "-" : ""}${grouped}${fraction ? `.${fraction}` : ""}`;
+        };
+        const isBlank = value => value === null || value === undefined
+            || (typeof value === "string" && value.trim() === "");
+        const numericColumns = cols.map((_, index) => {
+            const values = rows.map(row => row[index]).filter(value => !isBlank(value));
+            return values.length > 0 && values.every(value => parseNumeric(value) !== null);
+        });
+        const sortState = vertipaqSortBySection.get(section.name) || null;
+        const viewRows = rows.map((row, index) => ({ row, index }));
+        if (sortState && sortState.index < cols.length) {
+            viewRows.sort((left, right) => {
+                const a = left.row[sortState.index];
+                const b = right.row[sortState.index];
+                const aBlank = isBlank(a);
+                const bBlank = isBlank(b);
+                if (aBlank !== bBlank) return aBlank ? 1 : -1;
+                let result = numericColumns[sortState.index]
+                    ? compareNumeric(parseNumeric(a), parseNumeric(b))
+                    : String(a ?? "").localeCompare(String(b ?? ""), undefined, {
+                        numeric: true, sensitivity: "base",
+                    });
+                if (result === 0) return left.index - right.index;
+                return sortState.direction === "ascending" ? result : -result;
+            });
+        }
+        const head = cols.map((column, index) => {
+            const direction = sortState?.index === index ? sortState.direction : "none";
+            return `<th class="${frozenClasses(index).trim()}" scope="col" data-vertipaq-sort="${index}" tabindex="0" aria-sort="${direction}">${escapeHtml(String(column))}</th>`;
+        }).join("");
+        const displayValue = (value, index) => {
+            if (isBlank(value)) return "";
+            if (!numericColumns[index]) return String(value);
+            return formatNumeric(parseNumeric(value));
+        };
+        let body;
+        if (!rows.length) {
+            body = `<tr><td colspan="${Math.max(cols.length, 1)}" class="dtx-empty">No rows.</td></tr>`;
+        } else {
+            body = viewRows.map(({ row }) => `<tr>`
+                + row.map((value, index) => `<td class="${numericColumns[index] ? "dtx-num" : ""}${frozenClasses(index)}">${escapeHtml(displayValue(value, index))}</td>`).join("")
+                + `</tr>`).join("");
+        }
+        tableWrap.innerHTML = `
+            <table class="dtx-dep-col-table dtx-vertipaq-table">
+                <thead><tr>${head}</tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+        requestAnimationFrame(() => updateVertipaqFrozen(
+            tableWrap.querySelector(".dtx-vertipaq-table")
+        ));
+        const sortColumn = header => {
+            const index = Number(header.dataset.vertipaqSort);
+            const direction = sortState?.index === index && sortState.direction === "ascending"
+                ? "descending" : "ascending";
+            vertipaqSortBySection.set(section.name, { index, direction });
+            renderVertipaqTable();
+        };
+        tableWrap.querySelectorAll("th[data-vertipaq-sort]").forEach(header => {
+            header.addEventListener("click", () => sortColumn(header));
+            header.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    sortColumn(header);
+                }
+            });
+        });
+    }
+
+    function renderChart() {
+        const cols = model.get("result_columns") || [];
+        const rows = model.get("result_rows") || [];
+        const elig = chartEligibility();
+        chartControls.innerHTML = "";
+        chartWrap.innerHTML = "";
+        if (!elig.ok) {
+            const msg = document.createElement("div");
+            msg.className = "dtx-chart-empty";
+            msg.textContent = elig.reason;
+            chartWrap.appendChild(msg);
+            chartControls.style.display = "none";
+            return;
+        }
+        const numericCols = elig.numericCols;
+        const numericIdxs = numericCols.map((b, i) => b ? i : -1).filter(i => i >= 0);
+
+        // Modern, clean qualitative color palette for multi-series / stacked bars.
+        const PALETTE = [
+            "#4f8cff", "#34d399", "#fbbf24", "#f472b6", "#a78bfa",
+            "#22d3ee", "#fb7185", "#84cc16", "#f59e0b", "#38bdf8",
+        ];
+
+        // A "category" column is one whose values are strings (not numbers/bools).
+        const isCategoryCol = (i) =>
+            rows.some(r => typeof r[i] === "string") &&
+            rows.every(r => r[i] === null || typeof r[i] === "string");
+
+        // Single result row: numeric columns become the values to chart. If a
+        // string column exists, its value is used as the X-axis category label;
+        // multiple numeric columns are drawn as a stacked bar with a legend.
+        const singleRow = rows.length === 1 && numericIdxs.length >= 1;
+        const stackedMode = singleRow && numericIdxs.length >= 2;
+
+        let data;
+        let legendSegments = null;
+        if (singleRow) {
+            chartControls.style.display = "none";
+            const catIdx = cols.findIndex((_, i) => isCategoryCol(i));
+            const catLabel = catIdx >= 0 ? String(rows[0][catIdx] ?? "") : "";
+            if (stackedMode) {
+                const segments = numericIdxs.map((i, k) => ({
+                    name: cols[i],
+                    value: typeof rows[0][i] === "number" ? rows[0][i] : 0,
+                    color: PALETTE[k % PALETTE.length],
+                }));
+                legendSegments = segments;
+                data = [{ label: catLabel || "Total", segments }];
+            } else {
+                const i = numericIdxs[0];
+                data = [{
+                    label: catLabel || cols[i],
+                    value: typeof rows[0][i] === "number" ? rows[0][i] : 0,
+                }];
+            }
+        } else {
+            // Default y = first numeric col; x = first non-numeric col or row index.
+            if (chartState.yIdx == null || !numericIdxs.includes(chartState.yIdx)) {
+                chartState.yIdx = numericIdxs[0];
+            }
+            const nonNumIdxs = cols.map((_, i) => numericCols[i] ? -1 : i).filter(i => i >= 0);
+            if (chartState.xIdx == null || (chartState.xIdx !== -1 &&
+                (chartState.xIdx >= cols.length || chartState.xIdx === chartState.yIdx))) {
+                chartState.xIdx = nonNumIdxs.length ? nonNumIdxs[0] : -1;
+            }
+
+            // Axis selectors.
+            const xLabel = document.createElement("label");
+            xLabel.innerHTML = "<span>X</span>";
+            const xSel = document.createElement("select");
+            const idxOpt = document.createElement("option");
+            idxOpt.value = "-1";
+            idxOpt.textContent = "(row index)";
+            xSel.appendChild(idxOpt);
+            cols.forEach((c, i) => {
+                if (i === chartState.yIdx) return;
+                const o = document.createElement("option");
+                o.value = String(i);
+                o.textContent = c;
+                xSel.appendChild(o);
+            });
+            xSel.value = String(chartState.xIdx);
+            xSel.addEventListener("change", () => {
+                chartState.xIdx = parseInt(xSel.value, 10);
+                renderChart();
+            });
+            xLabel.appendChild(xSel);
+            chartControls.appendChild(xLabel);
+
+            const yLabel = document.createElement("label");
+            yLabel.innerHTML = "<span>Y</span>";
+            const ySel = document.createElement("select");
+            numericIdxs.forEach(i => {
+                const o = document.createElement("option");
+                o.value = String(i);
+                o.textContent = cols[i];
+                ySel.appendChild(o);
+            });
+            ySel.value = String(chartState.yIdx);
+            ySel.addEventListener("change", () => {
+                chartState.yIdx = parseInt(ySel.value, 10);
+                renderChart();
+            });
+            yLabel.appendChild(ySel);
+            chartControls.appendChild(yLabel);
+            chartControls.style.display = "";
+
+            // Build data.
+            const yIdx = chartState.yIdx;
+            const xIdx = chartState.xIdx;
+            data = rows.map((r, i) => ({
+                label: xIdx === -1 ? String(i + 1) : (r[xIdx] == null ? "" : String(r[xIdx])),
+                value: typeof r[yIdx] === "number" ? r[yIdx] : 0,
+            }));
+        }
+
+        // SVG bar chart.
+        const n = data.length;
+        const barWidth = data.length === 1 ? 64 : 28;
+        const barGap = 8;
+        const leftPad = 56;
+        const rightPad = 16;
+        const topPad = 12;
+        const bottomPad = 56;
+        const plotWidth = Math.max(n * (barWidth + barGap), 200);
+        const width = leftPad + plotWidth + rightPad;
+        const height = 280;
+        const plotHeight = height - topPad - bottomPad;
+        const totalOf = d => d.segments ? d.segments.reduce((s, sg) => s + sg.value, 0) : d.value;
+        const values = data.map(totalOf);
+        const dataMin = Math.min(0, ...values);
+        const dataMax = Math.max(0, ...values);
+
+        // Compute "nice" integer-only axis bounds and step.
+        function niceStep(raw) {
+            if (raw <= 0) return 1;
+            const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+            const norm = raw / mag;
+            let nice;
+            if (norm <= 1) nice = 1;
+            else if (norm <= 2) nice = 2;
+            else if (norm <= 5) nice = 5;
+            else nice = 10;
+            return Math.max(1, Math.round(nice * mag));
+        }
+        const ticks = 5;
+        const rawSpan = (dataMax - dataMin) || 1;
+        const step = niceStep(rawSpan / ticks);
+        const axisMin = Math.floor(dataMin / step) * step;
+        const axisMax = Math.ceil(dataMax / step) * step;
+        const span = (axisMax - axisMin) || 1;
+        const yScale = v => topPad + plotHeight - ((v - axisMin) / span) * plotHeight;
+        const fmtNum = v => Number(v).toLocaleString();
+        // Compact axis labels: abbreviate large magnitudes (e.g. 1B, 10M, 100K).
+        const fmtAxis = v => {
+            const n = Number(v);
+            const abs = Math.abs(n);
+            const sign = n < 0 ? "-" : "";
+            const compact = (val, suffix) => {
+                let s = val.toFixed(1);
+                if (s.endsWith(".0")) s = s.slice(0, -2);
+                return sign + s + suffix;
+            };
+            if (abs >= 1e12) return compact(abs / 1e12, "T");
+            if (abs >= 1e9) return compact(abs / 1e9, "B");
+            if (abs >= 1e6) return compact(abs / 1e6, "M");
+            if (abs >= 1e3) return compact(abs / 1e3, "K");
+            return n.toLocaleString();
+        };
+
+        let gridLines = "";
+        let yTicks = "";
+        for (let v = axisMin; v <= axisMax + 0.5; v += step) {
+            const iv = Math.round(v);
+            const y = yScale(iv);
+            gridLines += `<line x1="${leftPad}" x2="${leftPad + plotWidth}" y1="${y}" y2="${y}"/>`;
+            yTicks += `<text x="${leftPad - 6}" y="${y + 3}" text-anchor="end">${escapeHtml(fmtAxis(iv))}</text>`;
+        }
+        const baselineY = yScale(Math.max(axisMin, Math.min(0, axisMax)));
+
+        let bars = "";
+        let xLabels = "";
+        data.forEach((d, i) => {
+            const x = leftPad + i * (barWidth + barGap) + barGap / 2;
+            if (d.segments) {
+                let cum = 0;
+                d.segments.forEach((sg) => {
+                    const y0 = yScale(cum);
+                    const y1 = yScale(cum + sg.value);
+                    const top = Math.min(y0, y1);
+                    const h = Math.max(1, Math.abs(y1 - y0));
+                    const tip = `${sg.name}: ${fmtNum(sg.value)}`;
+                    bars += `<rect class="dtx-chart-bar" x="${x}" y="${top}" width="${barWidth}" height="${h}" rx="2" style="fill:${sg.color}"><title>${escapeHtml(tip)}</title></rect>`;
+                    cum += sg.value;
+                });
+            } else {
+                const y = d.value >= 0 ? yScale(d.value) : baselineY;
+                const h = Math.max(1, Math.abs(yScale(d.value) - baselineY));
+                const tip = `${d.label}: ${fmtNum(d.value)}`;
+                bars += `<rect class="dtx-chart-bar" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="2"><title>${escapeHtml(tip)}</title></rect>`;
+            }
+            const cx = x + barWidth / 2;
+            const labelTxt = d.label.length > 16 ? d.label.slice(0, 15) + "\u2026" : d.label;
+            const ly = height - bottomPad + 14;
+            xLabels += `<text x="${cx}" y="${ly}" text-anchor="end" transform="rotate(-35 ${cx} ${ly})">`
+                + `<title>${escapeHtml(d.label)}</title>${escapeHtml(labelTxt)}</text>`;
+        });
+
+        const svg = `<svg class="dtx-chart-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+            + `<g class="dtx-chart-grid">${gridLines}</g>`
+            + `<g class="dtx-chart-axis">`
+            + `<line x1="${leftPad}" x2="${leftPad}" y1="${topPad}" y2="${topPad + plotHeight}"/>`
+            + `<line x1="${leftPad}" x2="${leftPad + plotWidth}" y1="${baselineY}" y2="${baselineY}"/>`
+            + `${yTicks}${xLabels}`
+            + `</g>`
+            + `<g>${bars}</g>`
+            + `</svg>`;
+        let legendHtml = "";
+        if (legendSegments) {
+            legendHtml = `<div class="dtx-chart-legend">`
+                + legendSegments.map(sg =>
+                    `<span class="dtx-legend-item">`
+                    + `<span class="dtx-legend-swatch" style="background:${sg.color}"></span>`
+                    + `${escapeHtml(sg.name)}</span>`
+                ).join("")
+                + `</div>`;
+        }
+        chartWrap.innerHTML = svg + legendHtml;
+    }
+
+    function renderPerformance() {
+        if (model.get("performance_loading") === true) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Generating DAX performance analysis&hellip;</div></div>`;
+            return;
+        }
+        const findings = model.get("performance_findings") || [];
+        const summary = model.get("performance_summary") || {};
+        if (!summary || !Object.keys(summary).length) {
+            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No performance analysis yet. Click <strong>Analyze</strong> to generate one.</div></div>`;
+            return;
+        }
+        const sev = summary.severity_counts || {};
+        const fmtMs = v => (v == null ? "&mdash;" : Number(v).toLocaleString() + " ms");
+        const fmtPct = v => (v == null ? "" : Number(v).toFixed(1) + "%");
+        const chip = (label, val, cls) =>
+            `<span class="dtx-perf-chip ${cls || ""}">${escapeHtml(label)}: <strong>${val}</strong></span>`;
+
+        // Engine-balance bar (FE vs SE). fe_pct/se_pct are fractions (0-1).
+        const fePct = Number(summary.fe_pct || 0) * 100;
+        const sePct = Number(summary.se_pct || 0) * 100;
+        const balanceBar = `
+            <div class="dtx-perf-balance" title="Formula Engine vs Storage Engine">
+                <div class="dtx-perf-balance-fe" style="width:${Math.max(0, Math.min(100, fePct))}%"></div>
+                <div class="dtx-perf-balance-se" style="width:${Math.max(0, Math.min(100, sePct))}%"></div>
+            </div>
+            <div class="dtx-perf-balance-legend">
+                <span><i class="dtx-perf-sw-fe"></i> FE ${fmtPct(fePct)}</span>
+                <span><i class="dtx-perf-sw-se"></i> SE ${fmtPct(sePct)}</span>
+            </div>`;
+
+        const sevChips = [
+            sev.high ? chip("High", sev.high, "dtx-perf-chip-high") : "",
+            sev.medium ? chip("Medium", sev.medium, "dtx-perf-chip-medium") : "",
+            sev.low ? chip("Low", sev.low, "dtx-perf-chip-low") : "",
+            sev.info ? chip("Info", sev.info, "dtx-perf-chip-info") : "",
+        ].filter(Boolean).join("");
+
+        const header = `
+            <div class="dtx-perf-summary">
+                <div class="dtx-perf-summary-top">
+                    ${chip("Total", fmtMs(summary.total_duration_ms))}
+                    ${chip("FE", fmtMs(summary.fe_duration_ms))}
+                    ${chip("SE", fmtMs(summary.se_duration_ms))}
+                    ${chip("Findings", summary.total_findings != null ? summary.total_findings : 0)}
+                    ${sevChips}
+                </div>
+                ${balanceBar}
+            </div>`;
+
+        let cards;
+        if (!findings.length) {
+            cards = `<div class="dtx-empty">No optimization findings &mdash; this query looks healthy based on the available signals.</div>`;
+        } else {
+            cards = findings.map(f => {
+                const sevCls = "dtx-perf-card-" + escapeHtml(String(f.severity || "info"));
+                const refs = (f.references || []).map(r =>
+                    `<a href="${escapeHtml(String(r))}" target="_blank" rel="noopener">${escapeHtml(String(r))}</a>`
+                ).join("");
+                const refsHtml = refs
+                    ? `<div class="dtx-perf-refs">${refs}</div>` : "";
+                const rec = f.recommendation
+                    ? `<div class="dtx-perf-rec"><span class="dtx-perf-rec-label">Recommendation</span> ${escapeHtml(String(f.recommendation))}</div>`
+                    : "";
+                return `
+                    <div class="dtx-perf-card ${sevCls}">
+                        <div class="dtx-perf-card-head">
+                            <span class="dtx-perf-sev">${escapeHtml(String(f.severity || "info").toUpperCase())}</span>
+                            <span class="dtx-perf-title">${escapeHtml(String(f.title || f.id || ""))}</span>
+                            <span class="dtx-perf-cat">${escapeHtml(String(f.category || ""))}</span>
+                        </div>
+                        <div class="dtx-perf-msg">${escapeHtml(String(f.message || ""))}</div>
+                        ${rec}
+                        ${refsHtml}
+                    </div>`;
+            }).join("");
+        }
+        tableWrap.innerHTML = `<div class="dtx-perf">${header}<div class="dtx-perf-cards">${cards}</div></div>`;
+    }
+
+    function renderTable() {
+        const mode = model.get("view_mode") || "trace";
+        // Default visibility — chart/table swap below.
+        tableWrap.style.display = "";
+        chartWrap.style.display = "none";
+        chartControls.style.display = "none";
+        if (mode === "chart") {
+            tableWrap.style.display = "none";
+            chartWrap.style.display = "";
+            resultMeta.style.display = "none";
+            renderChart();
+        } else if (mode === "result") {
+            renderResultTable();
+            resultMeta.style.display = (model.get("result_columns") || []).length ? "" : "none";
+        } else if (mode === "history") {
+            renderHistoryTable();
+            resultMeta.style.display = "none";
+        } else if (mode === "queryplan") {
+            renderQueryPlanTable();
+            resultMeta.style.display = "none";
+        } else if (mode === "dependencies") {
+            renderDependenciesTable();
+            resultMeta.style.display = "none";
+        } else if (mode === "vertipaq") {
+            renderVertipaqTable();
+            resultMeta.style.display = "none";
+        } else if (mode === "performance") {
+            renderPerformance();
+            resultMeta.style.display = "none";
+        } else if (mode === "execmetrics") {
+            renderExecMetricsTable();
+            resultMeta.style.display = "none";
+        } else {
+            renderTraceTable();
+            resultMeta.style.display = "none";
+        }
+        renderSeg();
+    }
+
+    // ---------- Attribution ----------
+    const attribution = document.createElement("div");
+    attribution.className = "sl-attribution";
+    attribution.innerHTML = 'Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener">Semantic Link Labs</a>';
+    container.appendChild(attribution);
+
+    // ---------- Wiring ----------
+    model.on("change:dark_mode", applyTheme);
+    model.on("change:dataset_name", renderSubtitle);
+    model.on("change:workspace_name", renderSubtitle);
+    model.on("change:total_duration", renderCards);
+    model.on("change:fe_duration", renderCards);
+    model.on("change:se_duration", renderCards);
+    model.on("change:cpu_time", renderCards);
+    model.on("change:query_executed", renderCards);
+    model.on("change:trace_rows", renderTable);
+    model.on("change:result_columns", renderTable);
+    model.on("change:result_rows", renderTable);
+    model.on("change:result_total_rows", renderTable);
+    model.on("change:result_truncated", renderTable);
+    model.on("change:view_mode", renderTable);
+    model.on("change:trace_history", renderTable);
+    model.on("change:workspace_monitoring_loading", renderMonitoringContent);
+    model.on("change:workspace_monitoring_loaded", renderMonitoringContent);
+    model.on("change:workspace_monitoring_enabled", renderMonitoringContent);
+    model.on("change:workspace_monitoring_error", renderMonitoringContent);
+    model.on("change:workspace_monitoring_columns", renderMonitoringContent);
+    model.on("change:workspace_monitoring_rows", renderMonitoringContent);
+    model.on("change:workspace_monitoring_tokens", renderMonitoringContent);
+    model.on("change:dataset_name", renderMonitoringChrome);
+    model.on("change:workspace_name", renderMonitoringChrome);
+    model.on("change:query_plan_rows", renderTable);
+    model.on("change:query_plan_type", renderTable);
+    model.on("change:execution_metrics", renderTable);
+    model.on("change:dependency_tree", renderTable);
+    model.on("change:dependencies_loading", renderTable);
+    model.on("change:dependency_columns", renderTable);
+    model.on("change:dependency_view", renderTable);
+    model.on("change:object_dependencies_loading", renderObjectDependencies);
+    model.on("change:object_dependencies_loaded", renderObjectDependencies);
+    model.on("change:object_dependency_edges", renderObjectDependencies);
+    model.on("change:object_dependency_error", renderObjectDependencies);
+    model.on("change:vertipaq_sections", () => {
+        vertipaqSortBySection.clear();
+        renderTable();
+    });
+    model.on("change:vertipaq_section", renderTable);
+    model.on("change:vertipaq_loading", renderTable);
+    model.on("change:performance_findings", renderTable);
+    model.on("change:performance_summary", renderTable);
+    model.on("change:performance_loading", () => { renderAnalyzeBtn(); renderTable(); });
+    model.on("change:dataset_chosen", renderAnalyzeBtn);
+    model.on("change:history_excel_b64", () => {
+        const b64 = model.get("history_excel_b64") || "";
+        if (!b64) return;
+        try {
+            const bin = atob(b64);
+            const len = bin.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+            const blob = new Blob([bytes], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = model.get("history_excel_name") || "trace_history.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {}
+        // Clear so a subsequent identical download still fires a change.
+        model.set("history_excel_b64", "");
+        model.save_changes();
+    });
+    model.on("change:result_excel_b64", () => {
+        const b64 = model.get("result_excel_b64") || "";
+        if (!b64) return;
+        try {
+            const bin = atob(b64);
+            const len = bin.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+            const blob = new Blob([bytes], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = model.get("result_excel_name") || "query_result.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {}
+        // Clear so a subsequent identical download still fires a change.
+        model.set("result_excel_b64", "");
+        model.save_changes();
+    });
+    model.on("change:is_running", () => {
+        root.classList.toggle("dtx-running", model.get("is_running") === true);
+        renderRunBtn();
+    });
+    model.on("change:error_message", renderError);
+    model.on("change:dax_query", () => {
+        if (textarea.value !== model.get("dax_query")) {
+            const newVal = model.get("dax_query") || "";
+            textarea.value = newVal;
+            // External update (e.g. Format from Python) — record
+            // it as a discrete, undoable history entry.
+            commitHistory(newVal, false);
+        }
+        renderHighlight();
+        renderFmtBtn();
+        // Generated/programmatic query (Query Builder, natural language,
+        // Format) — grow the editor to fit it (up to 20 rows).
+        autoGrowEditor();
+    });
+    model.on("change:dax_tokens", renderHighlight);
+    model.on("change:format_loading", renderFmtBtn);
+    model.on("change:nl_to_dax_loading", () => {
+        renderNlModal();
+        const loading = model.get("nl_to_dax_loading") === true;
+        const err = String(model.get("nl_to_dax_error") || "").trim();
+        // Generation finished without an error -> close the modal.
+        if (!loading && !err && nlOverlay.style.display !== "none") {
+            nlInput.value = "";
+            closeNlModal();
+        }
+    });
+    model.on("change:nl_to_dax_error", () => {
+        const err = String(model.get("nl_to_dax_error") || "");
+        nlError.textContent = err;
+        nlError.style.display = err ? "" : "none";
+    });
+    model.on("change:dataset_chosen", renderNlBtn);
+    model.on("change:clear_cache", renderCacheBtn);
+    model.on("change:cache_clear_loading", renderClearModelCacheBtn);
+    model.on("change:impersonation_mode", renderImpersonation);
+    model.on("change:impersonation_value", renderImpersonation);
+    model.on("change:model_roles", renderImpersonation);
+    model.on("change:available_reports", renderReportCapture);
+    model.on("change:report_capture_loading", renderReportCapture);
+    model.on("change:report_capture_loading", renderClearModelCacheBtn);
+    model.on("change:report_capture_progress", renderReportCapture);
+    model.on("change:report_capture_payload", () => {
+        void runReportCapture(model.get("report_capture_payload") || {});
+    });
+    model.on("change:sidebar_collapsed", renderSidebarChrome);
+    model.on("change:metadata_loading", () => { renderSidebarChrome(); renderTree(); });
+    model.on("change:model_tree", renderTree);
+    model.on("change:dataset_chosen", () => {
+        if (model.get("dataset_chosen") === true) {
+            connectingToModel = false;
+            pickerOpen = false;
+        }
+        renderPicker(); renderRunBtn(); renderClearModelCacheBtn(); renderSubtitle();
+        renderBuildBtn(); renderBuilderChrome(); renderModelViewChrome();
+        renderMonitoringChrome(); renderMonitoringContent();
+    });
+    model.on("change:available_workspaces", renderPicker);
+    model.on("change:available_datasets", renderPicker);
+    model.on("change:selected_workspace_id", renderPicker);
+    model.on("change:selected_dataset_id", renderPicker);
+    model.on("change:active_workspace_id", renderPicker);
+    model.on("change:active_dataset_id", () => {
+        // A new model finished activating — close the picker. This covers
+        // switching between two already-chosen models, where dataset_chosen
+        // does not change and so would not otherwise close the picker.
+        // During the first connection active_dataset_id arrives before
+        // dataset_chosen. Keep the connecting guard set until dataset_chosen
+        // changes so renderPicker cannot briefly reopen the picker.
+        if (model.get("dataset_chosen") === true) connectingToModel = false;
+        pickerOpen = false;
+        resetBuilderForModelChange();
+        monitoringSort = null;
+        monitoringSearch = "";
+        monitoringSearchInput.value = "";
+        // Force a fresh dependency computation for the newly activated model.
+        lastDepQuery = null;
+        closeObjectDependencies();
+        renderPicker();
+    });
+    model.on("change:picker_loading", () => {
+        const loading = model.get("picker_loading") === true;
+        const selected = String(model.get("selected_dataset_id") || "");
+        const active = String(model.get("active_dataset_id") || "");
+        const activationError = String(model.get("error_message") || "").trim();
+        if (connectingToModel && !loading && selected !== active && activationError) {
+            connectingToModel = false;
+            pickerOpen = true;
+        }
+        renderPicker();
+        renderSubtitle();
+    });
+
+    applyTheme();
+    renderSubtitle();
+    renderCards();
+    renderRunBtn();
+    renderClearModelCacheBtn();
+    renderCacheBtn();
+    renderImpersonation();
+    renderReportCapture();
+    renderError();
+    renderTable();
+    renderAnalyzeBtn();
+    renderSidebarChrome();
+    renderPicker();
+    renderFmtBtn();
+    renderNlBtn();
+    renderHistBtns();
+    renderTree();
+    renderHighlight();
+    autoGrowEditor();
+    renderBuilderChrome();
+    renderMonitoringChrome();
+    renderMonitoringContent();
+    renderBuilderZones();
+    renderBuildBtn();
+
+    // Request the initial workspace list only after the front-end is fully
+    // rendered and its comm listeners are active. Starting the worker directly
+    // after display(widget) can race the comm handshake and strand the browser
+    // in its loading state.
+    if (model.get("dataset_chosen") !== true
+        && (model.get("available_workspaces") || []).length === 0
+        && model.get("picker_loading") !== true) {
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
+    }
+
+    // Notify Python to tear down the long-running trace when this view is
+    // disposed (cell re-run, widget removed, notebook closed).
+    return () => {
+        try {
+            document.removeEventListener("pointerdown", hideReportMenuOnOutsidePointer);
+            window.removeEventListener("resize", scheduleResponsiveQueryOptions);
+            queryOptionsObserver?.disconnect();
+            if (responsiveOptionsFrame !== null) {
+                window.cancelAnimationFrame(responsiveOptionsFrame);
+            }
+            outputTableObserver.disconnect();
+            reportCaptureFrame.remove();
+            model.set("close_trigger", (model.get("close_trigger") || 0) + 1);
+            model.save_changes();
+        } catch (e) {}
+    };
+}
+export default { render };
+"""
+    )
+    widget_js = (
+        widget_js.replace("__DTX_SUN__", sun_icon)
+        .replace("__DTX_MOON__", moon_icon)
+        .replace("__DTX_INFO__", info_icon)
+        .replace("__DTX_TABLE__", table_icon)
+        .replace("__DTX_CALC_GROUP__", calc_group_icon)
+        .replace("__DTX_CALC_ITEM__", calc_item_icon)
+        .replace("__DTX_COLUMN__", column_icon)
+        .replace("__DTX_MEASURE__", measure_icon)
+        .replace("__DTX_HIERARCHY__", hierarchy_icon)
+        .replace("__DTX_CARET__", caret_icon)
+        .replace("__DTX_FOLDER__", folder_icon)
+        .replace("__DTX_LEVEL__", level_icon)
+        .replace("__DTX_PLAY__", play_icon)
+        .replace("__DTX_STOP__", stop_icon)
+        .replace("__DTX_ERASER__", eraser_icon)
+        .replace("__DTX_REFRESH__", refresh_icon)
+        .replace("__DTX_SWAP__", swap_icon)
+        .replace("__DTX_SORT_ASC__", sort_asc_icon)
+        .replace("__DTX_SORT_DESC__", sort_desc_icon)
+        .replace("__DTX_PANEL_COLLAPSE__", panel_collapse_icon)
+        .replace("__DTX_PANEL_EXPAND__", panel_expand_icon)
+        .replace("__DTX_BUILDER__", builder_icon)
+        .replace("__DTX_LIST_TREE__", list_tree_icon)
+        .replace("__DTX_GIT_BRANCH__", git_branch_icon)
+        .replace("__DTX_WORKFLOW__", workflow_icon)
+        .replace("__DTX_SHIELD_CHECK__", shield_check_icon)
+        .replace("__DTX_USERS__", users_icon)
+        .replace("__DTX_USER__", user_icon)
+        .replace("__DTX_CLOSE__", close_icon)
+        .replace("__DTX_DAXFORMAT__", daxformat_icon)
+        .replace("__DTX_UNDO__", undo_icon)
+        .replace("__DTX_REDO__", redo_icon)
+        .replace("__DTX_DOWNLOAD__", download_icon)
+        .replace("__DTX_TRASH__", trash_icon)
+        .replace("__DTX_CAMERA__", camera_icon)
+        .replace("__DTX_REPORT_FILE__", report_file_icon)
+        .replace("__DTX_CHEVRON_DOWN__", chevron_down_icon)
+        .replace("__DTX_CHECK__", check_icon)
+        .replace("__DTX_CUT__", cut_icon)
+        .replace("__DTX_COPY__", copy_icon)
+        .replace("__DTX_PASTE__", paste_icon)
+        .replace("__DTX_ANALYZE__", analyze_icon)
+        .replace("__DTX_NLDAX__", nldax_icon)
+        .replace("__DTX_EXPAND__", expand_icon)
+        .replace("__DTX_FULLSCREEN__", fullscreen_icon)
+        .replace("__DTX_FULLSCREEN_EXIT__", fullscreen_exit_icon)
+        .replace("__DTX_DAX_PERFORMANCE__", dax_performance_icon)
+        .replace("__DTX_ACTIVITY__", activity_icon)
+        .replace("__DTX_CPU__", cpu_icon)
+        .replace("__DTX_DATABASE__", database_icon)
+        .replace("__DTX_VERTIPAQ__", vertipaq_icon)
+        .replace("__DTX_ZAP__", zap_icon)
+    )
+
+    class DaxTestWidget(anywidget.AnyWidget):
+        _esm = widget_js
+        _css = widget_css
+
+        dax_query = traitlets.Unicode("").tag(sync=True)
+        dax_tokens = traitlets.List([]).tag(sync=True)
+        dataset_name = traitlets.Unicode("").tag(sync=True)
+        workspace_name = traitlets.Unicode("").tag(sync=True)
+        dark_mode = traitlets.Bool(False).tag(sync=True)
+        clear_cache = traitlets.Bool(True).tag(sync=True)
+        cache_clear_trigger = traitlets.Int(0).tag(sync=True)
+        cache_clear_loading = traitlets.Bool(False).tag(sync=True)
+        total_duration = traitlets.Int(0).tag(sync=True)
+        fe_duration = traitlets.Int(0).tag(sync=True)
+        se_duration = traitlets.Int(0).tag(sync=True)
+        cpu_time = traitlets.Int(0).tag(sync=True)
+        query_executed = traitlets.Bool(False).tag(sync=True)
+        trace_rows = traitlets.List([]).tag(sync=True)
+        query_plan_rows = traitlets.List([]).tag(sync=True)
+        query_plan_type = traitlets.Unicode("Logical").tag(sync=True)
+        execution_metrics = traitlets.List([]).tag(sync=True)
+        result_columns = traitlets.List([]).tag(sync=True)
+        result_rows = traitlets.List([]).tag(sync=True)
+        result_total_rows = traitlets.Int(0).tag(sync=True)
+        result_truncated = traitlets.Bool(False).tag(sync=True)
+        view_mode = traitlets.Unicode("trace").tag(sync=True)
+        trace_history = traitlets.List([]).tag(sync=True)
+        download_history_trigger = traitlets.Int(0).tag(sync=True)
+        history_excel_b64 = traitlets.Unicode("").tag(sync=True)
+        history_excel_name = traitlets.Unicode("").tag(sync=True)
+        download_result_trigger = traitlets.Int(0).tag(sync=True)
+        result_excel_b64 = traitlets.Unicode("").tag(sync=True)
+        result_excel_name = traitlets.Unicode("").tag(sync=True)
+        is_running = traitlets.Bool(False).tag(sync=True)
+        error_message = traitlets.Unicode("").tag(sync=True)
+        run_trigger = traitlets.Int(0).tag(sync=True)
+        cancel_trigger = traitlets.Int(0).tag(sync=True)
+        dependency_tree = traitlets.List([]).tag(sync=True)
+        dependencies_loading = traitlets.Bool(False).tag(sync=True)
+        dependencies_trigger = traitlets.Int(0).tag(sync=True)
+        dependency_columns = traitlets.List([]).tag(sync=True)
+        dependency_view = traitlets.Unicode("tree").tag(sync=True)
+        object_dependency_target = traitlets.Dict({}).tag(sync=True)
+        object_dependency_trigger = traitlets.Int(0).tag(sync=True)
+        object_dependencies_loading = traitlets.Bool(False).tag(sync=True)
+        object_dependencies_loaded = traitlets.Bool(False).tag(sync=True)
+        object_dependency_edges = traitlets.List([]).tag(sync=True)
+        object_dependency_error = traitlets.Unicode("").tag(sync=True)
+        vertipaq_sections = traitlets.List([]).tag(sync=True)
+        vertipaq_section = traitlets.Unicode("").tag(sync=True)
+        vertipaq_loading = traitlets.Bool(False).tag(sync=True)
+        vertipaq_trigger = traitlets.Int(0).tag(sync=True)
+        performance_findings = traitlets.List([]).tag(sync=True)
+        performance_summary = traitlets.Dict({}).tag(sync=True)
+        performance_loading = traitlets.Bool(False).tag(sync=True)
+        performance_trigger = traitlets.Int(0).tag(sync=True)
+        model_tree = traitlets.List([]).tag(sync=True)
+        sidebar_collapsed = traitlets.Bool(False).tag(sync=True)
+        refresh_metadata_trigger = traitlets.Int(0).tag(sync=True)
+        metadata_loading = traitlets.Bool(False).tag(sync=True)
+        impersonation_mode = traitlets.Unicode("none").tag(sync=True)
+        impersonation_value = traitlets.Unicode("").tag(sync=True)
+        model_roles = traitlets.List([]).tag(sync=True)
+        available_reports = traitlets.List([]).tag(sync=True)
+        capture_report_ids = traitlets.List([]).tag(sync=True)
+        report_capture_start_trigger = traitlets.Int(0).tag(sync=True)
+        report_capture_finish_trigger = traitlets.Int(0).tag(sync=True)
+        report_capture_loading = traitlets.Bool(False).tag(sync=True)
+        report_capture_progress = traitlets.Unicode("").tag(sync=True)
+        report_capture_payload = traitlets.Dict({}).tag(sync=True)
+        report_capture_client_error = traitlets.Unicode("").tag(sync=True)
+        report_capture_checkpoint = traitlets.Dict({}).tag(sync=True)
+        report_capture_checkpoint_trigger = traitlets.Int(0).tag(sync=True)
+        report_capture_checkpoint_ack = traitlets.Unicode("").tag(sync=True)
+        dataset_chosen = traitlets.Bool(False).tag(sync=True)
+        available_workspaces = traitlets.List([]).tag(sync=True)
+        available_datasets = traitlets.List([]).tag(sync=True)
+        selected_workspace_id = traitlets.Unicode("").tag(sync=True)
+        selected_dataset_id = traitlets.Unicode("").tag(sync=True)
+        active_workspace_id = traitlets.Unicode("").tag(sync=True)
+        active_dataset_id = traitlets.Unicode("").tag(sync=True)
+        picker_loading = traitlets.Bool(False).tag(sync=True)
+        select_workspace_trigger = traitlets.Int(0).tag(sync=True)
+        select_dataset_trigger = traitlets.Int(0).tag(sync=True)
+        load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
+        format_query_trigger = traitlets.Int(0).tag(sync=True)
+        format_loading = traitlets.Bool(False).tag(sync=True)
+        nl_to_dax_text = traitlets.Unicode("").tag(sync=True)
+        nl_to_dax_trigger = traitlets.Int(0).tag(sync=True)
+        nl_to_dax_loading = traitlets.Bool(False).tag(sync=True)
+        nl_to_dax_error = traitlets.Unicode("").tag(sync=True)
+        query_builder_state = traitlets.Unicode("").tag(sync=True)
+        build_query_trigger = traitlets.Int(0).tag(sync=True)
+        workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)
+        workspace_monitoring_trigger = traitlets.Int(0).tag(sync=True)
+        workspace_monitoring_loading = traitlets.Bool(False).tag(sync=True)
+        workspace_monitoring_loaded = traitlets.Bool(False).tag(sync=True)
+        workspace_monitoring_enabled = traitlets.Bool(True).tag(sync=True)
+        workspace_monitoring_error = traitlets.Unicode("").tag(sync=True)
+        workspace_monitoring_columns = traitlets.List([]).tag(sync=True)
+        workspace_monitoring_rows = traitlets.List([]).tag(sync=True)
+        workspace_monitoring_tokens = traitlets.List([]).tag(sync=True)
+        close_trigger = traitlets.Int(0).tag(sync=True)
+
+    initial_result = _result_payload_from_df(result_df)
+
+    # Mutable model context so the front-end model picker can switch the
+    # active dataset/workspace at runtime (the run/metadata workers read the
+    # current ids from this dict rather than closing over fixed values).
+    model_ctx = {"dataset_id": dataset_id, "workspace_id": workspace_id}
+    dataset_chosen = dataset_id is not None
+
+    # Collect the model metadata tree synchronously before constructing the
+    # widget. Loading it in a background thread that sets traits right after
+    # display() races with the widget comm being opened: the finished-tree
+    # update can be sent before the front-end is listening, leaving the
+    # sidebar stuck on "Loading model metadata…". The tree collection is
+    # fast, so building it up-front (and shipping it as initial state) is
+    # both reliable and quick.
+    if dataset_chosen:
+        try:
+            initial_tree, initial_roles = _collect_model_metadata(
+                dataset_id, workspace_id
+            )
+        except Exception:
+            initial_tree = []
+            initial_roles = []
+        try:
+            initial_reports = _list_reports_for_capture(dataset_id, workspace_id)
+        except Exception:
+            initial_reports = []
+    else:
+        initial_tree = []
+        initial_roles = []
+        initial_reports = []
+
+    # Avoid blocking the initial picker screen on workspace enumeration. For a
+    # supplied dataset, retain the existing eager picker data so Change Model
+    # is immediately ready.
+    if dataset_chosen:
+        try:
+            initial_workspaces = _list_workspaces_for_picker()
+        except Exception:
+            initial_workspaces = []
+        try:
+            initial_datasets = _list_datasets_for_picker(workspace_id)
+        except Exception:
+            initial_datasets = []
+    else:
+        initial_workspaces = []
+        initial_datasets = []
+
+    widget = DaxTestWidget(
+        dax_query=formatted_initial or "",
+        dax_tokens=_classify_dax_spans(formatted_initial or ""),
+        dataset_name=dataset_name or "",
+        workspace_name=workspace_name or "",
+        dark_mode=bool(dark_mode),
+        clear_cache=bool(clear_cache),
+        total_duration=int(total_duration),
+        fe_duration=int(fe_duration),
+        se_duration=int(se_duration),
+        cpu_time=int(cpu_time),
+        query_executed=bool(dataset_chosen and dax_string and dax_string.strip()),
+        trace_rows=initial_rows,
+        query_plan_rows=initial_query_plan_rows,
+        query_plan_type="Logical",
+        execution_metrics=initial_execution_metrics,
+        result_columns=initial_result["columns"],
+        result_rows=initial_result["rows"],
+        result_total_rows=int(initial_result["total_rows"]),
+        result_truncated=bool(initial_result["truncated"]),
+        view_mode="trace",
+        is_running=False,
+        error_message="",
+        run_trigger=0,
+        cancel_trigger=0,
+        dependency_tree=[],
+        dependencies_loading=False,
+        dependencies_trigger=0,
+        dependency_columns=[],
+        dependency_view="tree",
+        object_dependency_target={},
+        object_dependency_trigger=0,
+        object_dependencies_loading=False,
+        object_dependencies_loaded=False,
+        object_dependency_edges=[],
+        object_dependency_error="",
+        vertipaq_sections=[],
+        vertipaq_section="",
+        vertipaq_loading=False,
+        vertipaq_trigger=0,
+        performance_findings=[],
+        performance_summary={},
+        performance_loading=False,
+        performance_trigger=0,
+        model_tree=initial_tree,
+        sidebar_collapsed=False,
+        refresh_metadata_trigger=0,
+        metadata_loading=False,
+        dataset_chosen=dataset_chosen,
+        available_workspaces=initial_workspaces,
+        available_datasets=initial_datasets,
+        selected_workspace_id=str(workspace_id) if workspace_id else "",
+        selected_dataset_id="",
+        active_workspace_id=str(workspace_id) if workspace_id else "",
+        active_dataset_id=str(dataset_id) if dataset_id else "",
+        picker_loading=False,
+        select_workspace_trigger=0,
+        select_dataset_trigger=0,
+        load_workspaces_trigger=0,
+        format_query_trigger=0,
+        format_loading=False,
+        nl_to_dax_text="",
+        nl_to_dax_trigger=0,
+        nl_to_dax_loading=False,
+        nl_to_dax_error="",
+        query_builder_state="",
+        build_query_trigger=0,
+        workspace_monitoring_request={},
+        workspace_monitoring_trigger=0,
+        workspace_monitoring_loading=False,
+        workspace_monitoring_loaded=False,
+        workspace_monitoring_enabled=True,
+        workspace_monitoring_error="",
+        workspace_monitoring_columns=[],
+        workspace_monitoring_rows=[],
+        workspace_monitoring_tokens=[],
+        impersonation_mode=(
+            "user" if effective_user_name else ("role" if role else "none")
+        ),
+        impersonation_value=(effective_user_name or role or ""),
+        model_roles=initial_roles,
+        available_reports=initial_reports,
+        capture_report_ids=[],
+        report_capture_start_trigger=0,
+        report_capture_finish_trigger=0,
+        report_capture_loading=False,
+        report_capture_progress="",
+        report_capture_payload={},
+        report_capture_client_error="",
+        report_capture_checkpoint={},
+        report_capture_checkpoint_trigger=0,
+        report_capture_checkpoint_ack="",
+    )
+
+    # Expose the most recent dataframes for programmatic access.
+    widget.last_df = df  # type: ignore[attr-defined]
+    widget.last_result_df = result_df  # type: ignore[attr-defined]
+    # Most recent Vertipaq Analyzer result (dict of dataframes), populated
+    # when the user opens the Vertipaq Analyzer tab. Stored for later use.
+    widget.last_vertipaq = {}  # type: ignore[attr-defined]
+
+    # State shared between the run/cancel observers.
+    import threading
+
+    run_state = {
+        "thread": None,
+        "current_run_id": 0,
+        "canceled_run_ids": set(),
+        # The DAX query that the currently-populated trace artifacts (trace
+        # rows, durations, query plan, execution metrics) belong to, and the
+        # query the cached dependency columns belong to. Used by the
+        # performance analysis to decide whether those details can be reused or
+        # must be (re)captured for the query currently in the query pane.
+        "traced_query": None,
+        "deps_query": None,
+    }
+    state_lock = threading.Lock()
+
+    # ---- Persistent (long-running) trace shared by all queries in the UI ----
+    # Instead of creating a fresh trace per query, the widget keeps a single
+    # trace running for the active model. It is started when the model
+    # metadata is loaded and torn down when the UI is closed. Each query reads
+    # the rows it produced live via ``trace.get_trace_logs()`` (tracked with a
+    # baseline row count) without stopping the trace.
+    trace_ctx: dict = {
+        "connection": None,
+        "trace": None,
+        "dataset_id": None,
+        "workspace_id": None,
+        "baseline": 0,
+        "started": False,
+        "warmed_up": False,
+    }
+    report_capture_state = {
+        "active": False,
+        "baseline": 0,
+        "nonce": "",
+        "entries": [],
+    }
+    trace_lock = threading.Lock()
+
+    def _teardown_trace_locked() -> None:
+        """Stop/drop the running trace and dispose its connection. Caller must
+        hold ``trace_lock``."""
+        tr = trace_ctx.get("trace")
+        conn = trace_ctx.get("connection")
+        if tr is not None:
+            try:
+                tr.drop()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.disconnect_and_dispose()
+            except Exception:
+                pass
+        trace_ctx["connection"] = None
+        trace_ctx["trace"] = None
+        trace_ctx["started"] = False
+        trace_ctx["baseline"] = 0
+        trace_ctx["dataset_id"] = None
+        trace_ctx["workspace_id"] = None
+        trace_ctx["warmed_up"] = False
+
+    def _ensure_trace(ds_id: Optional[str], ws_id: Optional[str]) -> None:
+        """Ensure a long-running trace is active for the given model. Starts a
+        new trace (rebinding from any previous model) when needed. Safe to call
+        repeatedly; a no-op when already running for the same model."""
+        if not ds_id:
+            return
+        with trace_lock:
+            if (
+                trace_ctx["started"]
+                and trace_ctx["dataset_id"] == ds_id
+                and trace_ctx["workspace_id"] == ws_id
+            ):
+                return
+            # Switching models (or first start): tear down any existing trace.
+            _teardown_trace_locked()
+            try:
+                conn = fabric.create_trace_connection(dataset=ds_id, workspace=ws_id)
+                trace = conn.create_trace(_TEST_EVENT_SCHEMA)
+                trace.start()
+                # Prime the trace: a freshly started trace does not begin
+                # capturing server-side events instantly, so the very first
+                # real query's events can be missed. Run the throwaway warm-up
+                # query now and wait until it actually shows up in the trace
+                # logs, which confirms the trace is live. The baseline is then
+                # advanced past these warm-up rows so the first real query is
+                # captured from a known-good state.
+                baseline = 0
+                warmed = False
+                try:
+                    fabric.evaluate_dax(
+                        dataset=ds_id,
+                        workspace=ws_id,
+                        dax_string="EVALUATE {1}",
+                    )
+                    _deadline = time.monotonic() + 5.0
+                    _qe_seen_at: Optional[float] = None
+                    _last_len = -1
+                    _stable_at: Optional[float] = None
+                    while time.monotonic() < _deadline:
+                        time.sleep(0.1)
+                        try:
+                            _logs = _get_trace_logs(trace)
+                        except Exception:
+                            continue
+                        if _logs is None or _logs.empty:
+                            continue
+                        _ec = (
+                            "Event Class"
+                            if "Event Class" in _logs.columns
+                            else "EventClass"
+                        )
+                        if _ec not in _logs.columns:
+                            continue
+                        if (
+                            _qe_seen_at is None
+                            and not _logs[_logs[_ec] == "QueryEnd"].empty
+                        ):
+                            _qe_seen_at = time.monotonic()
+                            warmed = True
+                        if _qe_seen_at is None:
+                            continue
+                        # The warm-up's QueryEnd has been seen. Let any of its
+                        # trailing rows (e.g. a late DAXQueryPlan) settle before
+                        # fixing the baseline, so the warm-up's plan is never
+                        # mis-attributed to the first real query.
+                        if len(_logs) != _last_len:
+                            _last_len = len(_logs)
+                            _stable_at = time.monotonic()
+                        baseline = len(_logs)
+                        if _stable_at is not None and (
+                            time.monotonic() - _stable_at >= 0.6
+                        ):
+                            break
+                        if time.monotonic() - _qe_seen_at >= 2.0:
+                            break
+                except Exception:
+                    pass
+                trace_ctx["connection"] = conn
+                trace_ctx["trace"] = trace
+                trace_ctx["dataset_id"] = ds_id
+                trace_ctx["workspace_id"] = ws_id
+                trace_ctx["baseline"] = baseline
+                trace_ctx["started"] = True
+                trace_ctx["warmed_up"] = warmed
+            except Exception:
+                # Tracing could not be started; queries fall back to a
+                # one-shot trace via ``_run_dax_trace``.
+                _teardown_trace_locked()
+
+    def _stop_persistent_trace(*_args) -> None:
+        """Tear down the long-running trace (called when the UI is closed)."""
+        with trace_lock:
+            _teardown_trace_locked()
+
+    def _start_report_capture() -> None:
+        try:
+            if widget.is_running:
+                raise RuntimeError("Wait for the current DAX query to finish first.")
+            report_ids = [str(value) for value in (widget.capture_report_ids or [])]
+            available = {
+                str(report.get("id")): report
+                for report in (widget.available_reports or [])
+            }
+            reports = [available[value] for value in report_ids if value in available]
+            reports = [report for report in reports if report.get("embed_url")]
+            if not reports:
+                raise ValueError("Select at least one embeddable report.")
+
+            ds_id = model_ctx["dataset_id"]
+            ws_id = model_ctx["workspace_id"]
+            _ensure_trace(ds_id, ws_id)
+            with trace_lock:
+                trace = trace_ctx["trace"] if trace_ctx["started"] else None
+                if trace is None:
+                    raise RuntimeError("Unable to start the semantic model trace.")
+                logs = _get_trace_logs(trace)
+                baseline = 0 if logs is None else len(logs)
+                trace_ctx["baseline"] = baseline
+
+            if widget.clear_cache:
+                from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+                _clear_cache_fn(dataset=ds_id, workspace=ws_id)
+
+            from sempy_labs.report._generate_embed_token import generate_embed_token
+
+            token = generate_embed_token(
+                dataset_ids=[ds_id],
+                report_ids=[report["id"] for report in reports],
+            )
+            if not token:
+                raise RuntimeError("Power BI did not return an embed token.")
+
+            nonce = str(time.time_ns())
+            report_payload = [
+                {**report, "workspace_name": str(widget.workspace_name or "")}
+                for report in reports
+            ]
+            report_capture_state.update(
+                {
+                    "active": True,
+                    "baseline": baseline,
+                    "nonce": nonce,
+                    "entries": [],
+                }
+            )
+            with state_lock:
+                run_state["current_run_id"] += 1
+            widget.report_capture_client_error = ""
+            widget.report_capture_checkpoint = {}
+            widget.report_capture_checkpoint_ack = ""
+            widget.report_capture_payload = {
+                "nonce": nonce,
+                "token": token,
+                "reports": report_payload,
+            }
+        except Exception as exc:  # noqa: BLE001
+            report_capture_state.update(
+                {"active": False, "baseline": 0, "nonce": "", "entries": []}
+            )
+            widget.report_capture_payload = {}
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+            widget.error_message = f"Failed to start report query capture: {exc}"
+
+    def _checkpoint_report_capture() -> None:
+        checkpoint = dict(widget.report_capture_checkpoint or {})
+        checkpoint_id = str(checkpoint.get("checkpoint_id") or "")
+        try:
+            if not report_capture_state["active"]:
+                return
+            if str(checkpoint.get("nonce") or "") != report_capture_state["nonce"]:
+                return
+            time.sleep(0.8)
+            baseline = int(report_capture_state["baseline"])
+            with trace_lock:
+                trace = trace_ctx["trace"] if trace_ctx["started"] else None
+                logs = _get_trace_logs(trace) if trace is not None else None
+                total_count = 0 if logs is None else len(logs)
+                if trace_ctx["trace"] is trace:
+                    trace_ctx["baseline"] = total_count
+            report_capture_state["baseline"] = total_count
+            if logs is None or total_count <= baseline:
+                new_logs = pd.DataFrame()
+            else:
+                new_logs = logs.iloc[baseline:].reset_index(drop=True)
+            captured = _captured_queries_from_df(new_logs)
+            stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            report_name = str(checkpoint.get("report_name") or "")
+            report_workspace_name = str(checkpoint.get("workspace_name") or "")
+            for index, item in enumerate(captured):
+                report_capture_state["entries"].append(
+                    {
+                        "run_id": f"report-{report_capture_state['nonce']}-{checkpoint_id}-{index}",
+                        "method": "Report",
+                        "report_name": report_name,
+                        "report_workspace_name": report_workspace_name,
+                        "dax_query": item["dax_query"],
+                        "start_time": stamp,
+                        "end_time": stamp,
+                        "rows": 0,
+                        "duration": item["duration"],
+                        "cpu": item["cpu"],
+                        "fe_duration": item["fe_duration"],
+                        "se_duration": item["se_duration"],
+                        "cache": "Cold" if widget.clear_cache else "Warm",
+                        "execution_metrics": {},
+                        "dataset_name": str(widget.dataset_name or ""),
+                        "workspace_name": str(widget.workspace_name or ""),
+                        "impersonation_type": "None",
+                        "impersonation": "None",
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            widget.report_capture_client_error = str(exc)
+        finally:
+            if checkpoint_id:
+                widget.report_capture_checkpoint_ack = checkpoint_id
+
+    def _finish_report_capture() -> None:
+        if not report_capture_state["active"]:
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+            return
+        try:
+            entries = list(report_capture_state["entries"])
+            if entries:
+                widget.trace_history = list(reversed(entries)) + list(
+                    widget.trace_history
+                )
+                widget.view_mode = "history"
+
+            client_error = (widget.report_capture_client_error or "").strip()
+            if client_error:
+                widget.error_message = f"Report capture ended early: {client_error}"
+            elif not entries:
+                widget.error_message = (
+                    "No DAX queries were captured. The selected reports may have "
+                    "no visible data visuals or may have returned cached results."
+                )
+            else:
+                widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to collect report queries: {exc}"
+        finally:
+            report_capture_state.update(
+                {"active": False, "baseline": 0, "nonce": "", "entries": []}
+            )
+            widget.report_capture_payload = {}
+            widget.report_capture_checkpoint = {}
+            widget.report_capture_loading = False
+            widget.report_capture_progress = ""
+
+    def _on_report_capture_start(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_start_report_capture, daemon=True).start()
+
+    def _on_report_capture_finish(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_finish_report_capture, daemon=True).start()
+
+    def _on_report_capture_checkpoint(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_checkpoint_report_capture, daemon=True).start()
+
+    def _update_history_execution_metrics(history_id, metric_rows: list) -> None:
+        metrics = _execution_metrics_dict(metric_rows)
+        if not metrics:
+            return
+        history = []
+        changed = False
+        for entry in widget.trace_history:
+            if entry.get("run_id") == history_id:
+                entry = dict(entry)
+                entry["execution_metrics"] = metrics
+                changed = True
+            history.append(entry)
+        if changed:
+            widget.trace_history = history
+
+    def _run_query_persistent(
+        query: str,
+        clear_cache_flag: bool,
+        effective_user: Optional[str],
+        role_name: Optional[str],
+    ) -> Tuple[pd.DataFrame, int, int, int, int, pd.DataFrame, Optional[int]]:
+        """Run a query against the long-running trace, capturing only the rows
+        it produced. Falls back to a one-shot trace if the persistent trace is
+        not available.
+
+        The final tuple element is the trace-log baseline (row count) at which
+        this query started, or ``None`` for the one-shot fallback. The caller
+        uses it to back-fill a late-arriving DAX query plan from the persistent
+        trace after the results have already been shown."""
+        from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+        ds_id = model_ctx["dataset_id"]
+        ws_id = model_ctx["workspace_id"]
+        _ensure_trace(ds_id, ws_id)
+        with trace_lock:
+            trace = trace_ctx["trace"] if trace_ctx["started"] else None
+            baseline = trace_ctx["baseline"]
+            run_warmup = not trace_ctx["warmed_up"]
+        if trace is None:
+            # Persistent tracing unavailable: one-shot fallback (no back-fill).
+            return _run_dax_trace(
+                dataset_id=ds_id,
+                workspace_id=ws_id,
+                dax_string=query,
+                clear_cache=clear_cache_flag,
+                effective_user_name=effective_user,
+                role=role_name,
+            ) + (None,)
+        if clear_cache_flag:
+            _clear_cache_fn(dataset=ds_id, workspace=ws_id)
+        result_df, new_logs, new_count = _execute_and_capture(
+            trace,
+            ds_id,
+            ws_id,
+            query,
+            effective_user,
+            role_name,
+            baseline,
+            run_warmup=run_warmup,
+            wait_for_optional_events=False,
+        )
+        with trace_lock:
+            # Only advance the baseline if the trace wasn't rebound meanwhile.
+            if trace_ctx["trace"] is trace:
+                trace_ctx["baseline"] = new_count
+                trace_ctx["warmed_up"] = True
+        df, total, fe, se, cpu = _compute_trace_stats(new_logs)
+        return df, total, fe, se, cpu, result_df, baseline
+
+    import atexit
+
+    atexit.register(_stop_persistent_trace)
+
+    def _backfill_query_plan(run_id: int, start_baseline: int, query: str = "") -> None:
+        """Watch the persistent trace after a query has returned and back-fill
+        the DAX query plan (and execution metrics) if they flush late.
+
+        A query's ``DAXQueryPlan`` and ``ExecutionMetrics`` events are delivered
+        to the trace buffer asynchronously and, on a busy capacity, can arrive a
+        few seconds after the query itself completed — i.e. after the inline
+        capture in ``_execute_and_capture`` has already returned the results.
+        This keeps polling the trace (slicing from this query's start baseline)
+        and sets ``query_plan_rows`` / ``execution_metrics`` the moment they
+        appear, so those tabs are populated reliably without ever delaying the
+        result grid.
+
+        The poll stops as soon as a newer run starts (or this run is canceled):
+        the trace rows between this query's start baseline and the next query's
+        events belong exclusively to this query, so stopping there prevents
+        attributing a later query's plan to this one."""
+        _deadline = time.monotonic() + 25.0
+        _need_plan = not (widget.query_plan_rows or [])
+        _need_metrics = not (widget.execution_metrics or [])
+        while time.monotonic() < _deadline:
+            time.sleep(0.3)
+            with state_lock:
+                superseded = run_state["current_run_id"] != run_id
+                canceled = run_id in run_state["canceled_run_ids"]
+            if superseded or canceled:
+                return
+            with trace_lock:
+                trace = trace_ctx["trace"] if trace_ctx["started"] else None
+            if trace is None:
+                return
+            try:
+                logs = _get_trace_logs(trace)
+            except Exception:
+                continue
+            if logs is None or logs.empty or len(logs) <= start_baseline:
+                continue
+            _new = logs.iloc[start_baseline:]
+            # Restrict to the request that ran the query pane's query so a late
+            # plan from an auxiliary query is never shown for the user's query.
+            _req_id = _resolve_query_request_id(_new, query)
+            if _req_id is not None:
+                _new = _filter_logs_to_request_id(_new, _req_id)
+            if _need_plan:
+                plan_rows = _query_plan_rows_from_df(_new)
+                if plan_rows:
+                    widget.query_plan_rows = plan_rows
+                    _need_plan = False
+            if _need_metrics:
+                metric_rows = _execution_metrics_from_df(_new)
+                if metric_rows:
+                    widget.execution_metrics = metric_rows
+                    _update_history_execution_metrics(run_id, metric_rows)
+                    _need_metrics = False
+            if not _need_plan and not _need_metrics:
+                return
+
+    def _worker(
+        query: str,
+        clear_cache_flag: bool,
+        run_id: int,
+        effective_user: Optional[str],
+        role_name: Optional[str],
+    ) -> None:
+        _start_dt = datetime.now(timezone.utc)
+        try:
+            (
+                new_df,
+                new_total,
+                new_fe,
+                new_se,
+                new_cpu,
+                new_result,
+                start_baseline,
+            ) = _run_query_persistent(
+                query=query,
+                clear_cache_flag=clear_cache_flag,
+                effective_user=effective_user,
+                role_name=role_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            with state_lock:
+                canceled = run_id in run_state["canceled_run_ids"]
+            if canceled:
+                return
+            widget.error_message = f"{type(exc).__name__}: {exc}"
+            widget.is_running = False
+            return
+
+        with state_lock:
+            canceled = run_id in run_state["canceled_run_ids"]
+        if canceled:
+            # User canceled — discard results. The underlying engine may
+            # still have completed the query in the background.
+            return
+
+        widget.last_df = new_df  # type: ignore[attr-defined]
+        widget.last_result_df = new_result  # type: ignore[attr-defined]
+        widget.total_duration = int(new_total)
+        widget.fe_duration = int(new_fe)
+        widget.se_duration = int(new_se)
+        widget.cpu_time = int(new_cpu)
+        widget.query_executed = True
+        widget.trace_rows = _trace_rows_from_df(new_df)
+        widget.query_plan_rows = _query_plan_rows_from_df(new_df)
+        metric_rows = _execution_metrics_from_df(new_df)
+        widget.execution_metrics = metric_rows
+        with state_lock:
+            run_state["traced_query"] = query
+        payload = _result_payload_from_df(new_result)
+        widget.result_columns = payload["columns"]
+        widget.result_rows = payload["rows"]
+        widget.result_total_rows = int(payload["total_rows"])
+        widget.result_truncated = bool(payload["truncated"])
+        widget.error_message = ""
+        widget.is_running = False
+
+        # Append to the session trace history (newest first).
+        _end_dt = datetime.now(timezone.utc)
+        try:
+            # Row count is the true number of rows in the query's result
+            # dataframe (not the truncated display payload).
+            try:
+                _row_count = int(len(new_result)) if new_result is not None else 0
+            except Exception:
+                _row_count = int(payload["total_rows"])
+            if role_name:
+                _imp_type = "Role"
+                _imp_value = str(role_name)
+            elif effective_user:
+                _imp_type = "User"
+                _imp_value = str(effective_user)
+            else:
+                _imp_type = "None"
+                _imp_value = "None"
+            _entry = {
+                "run_id": run_id,
+                "method": "Query",
+                "report_name": "",
+                "report_workspace_name": "",
+                "dax_query": query,
+                "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "rows": _row_count,
+                "duration": int(new_total),
+                "cpu": int(new_cpu),
+                "fe_duration": int(new_fe),
+                "se_duration": int(new_se),
+                "cache": "Cold" if clear_cache_flag else "Warm",
+                "execution_metrics": _execution_metrics_dict(metric_rows),
+                "dataset_name": str(widget.dataset_name or ""),
+                "workspace_name": str(widget.workspace_name or ""),
+                "impersonation_type": _imp_type,
+                "impersonation": _imp_value,
+            }
+            widget.trace_history = [_entry] + list(widget.trace_history)
+        except Exception:
+            pass
+
+        # If the DAX query plan or execution metrics were not captured inline
+        # (they can flush into the trace a few seconds after the query
+        # completes), keep watching the persistent trace and back-fill the
+        # Query Plan / Execution Metrics tabs once they arrive.
+        _missing_plan = not (widget.query_plan_rows or [])
+        _missing_metrics = not (widget.execution_metrics or [])
+        if start_baseline is not None and (_missing_plan or _missing_metrics):
+            try:
+                _backfill_query_plan(run_id, int(start_baseline), query)
+            except Exception:
+                pass
+
+    def _on_run(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.error_message = "Wait for report query capture to finish first."
+            widget.is_running = False
+            return
+        if model_ctx["dataset_id"] is None:
+            widget.error_message = (
+                "No semantic model selected. Choose a workspace and a "
+                "semantic model first."
+            )
+            widget.is_running = False
+            return
+        query = widget.dax_query or ""
+        if not query.strip():
+            widget.error_message = "DAX query is empty."
+            widget.is_running = False
+            return
+        mode = widget.impersonation_mode or "none"
+        imp_value = (widget.impersonation_value or "").strip()
+        effective_user = imp_value if mode == "user" else None
+        role_name = imp_value if mode == "role" else None
+        if mode in ("user", "role") and not imp_value:
+            label = "user" if mode == "user" else "role"
+            widget.error_message = (
+                f"Impersonation is set to '{label}' but no {label} value "
+                "was provided."
+            )
+            widget.is_running = False
+            return
+        with state_lock:
+            run_state["current_run_id"] += 1
+            run_id = run_state["current_run_id"]
+        thread = threading.Thread(
+            target=_worker,
+            args=(query, bool(widget.clear_cache), run_id, effective_user, role_name),
+            daemon=True,
+        )
+        with state_lock:
+            run_state["thread"] = thread
+        thread.start()
+
+    def _on_cancel(change):
+        if change["new"] == change["old"]:
+            return
+        with state_lock:
+            run_id = run_state["current_run_id"]
+            run_state["canceled_run_ids"].add(run_id)
+        widget.is_running = False
+        widget.error_message = (
+            "Query canceled. Note: the DAX engine may still finish the "
+            "query in the background; results have been discarded."
+        )
+
+    def _clear_model_cache() -> None:
+        try:
+            dataset_id = model_ctx["dataset_id"]
+            if dataset_id is None:
+                raise ValueError("No semantic model selected.")
+            from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
+
+            _clear_cache_fn(
+                dataset=dataset_id,
+                workspace=model_ctx["workspace_id"],
+            )
+            widget.error_message = ""
+        except Exception as exc:
+            widget.error_message = f"Failed to clear the model cache: {exc}"
+        finally:
+            widget.cache_clear_loading = False
+
+    def _on_clear_model_cache(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.cache_clear_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
+        threading.Thread(target=_clear_model_cache, daemon=True).start()
+
+    def _compute_dependencies() -> None:
+        """Compute the model objects (tables, columns, measures,
+        relationships) referenced by the current DAX query via
+        ``INFO.CALCDEPENDENCY`` and push the resulting hierarchical tree to the
+        front-end. The trace data for this helper query is not captured."""
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.dependency_tree = []
+                widget.dependency_columns = []
+                return
+            dax_query = widget.dax_query or ""
+            if not dax_query.strip():
+                widget.dependency_tree = []
+                widget.dependency_columns = []
+                return
+            # Escape double quotes for embedding as a DAX string literal.
+            escaped_dax = dax_query.replace('"', '""')
+            query = (
+                "EVALUATE\n"
+                "SELECTCOLUMNS(\n"
+                "    INFO.CALCDEPENDENCY(\n"
+                '        "Query",\n'
+                f'        "{escaped_dax}"\n'
+                "    ),\n"
+                '    "Referenced Object Type", [REFERENCED_OBJECT_TYPE],\n'
+                '    "Referenced Table", [REFERENCED_TABLE],\n'
+                '    "Referenced Object", [REFERENCED_OBJECT]\n'
+                ")"
+            )
+            dep_df = fabric.evaluate_dax(
+                dataset=model_ctx["dataset_id"],
+                dax_string=query,
+                workspace=model_ctx["workspace_id"],
+            )
+            rows = []
+            for _, r in dep_df.iterrows():
+                rows.append(
+                    {
+                        "object_type": str(r.get("[Referenced Object Type]", "") or ""),
+                        "table": str(r.get("[Referenced Table]", "") or ""),
+                        "object": str(r.get("[Referenced Object]", "") or ""),
+                    }
+                )
+            # Enrich relationships with the columns they join (read via TOM)
+            # only when the query actually depends on a relationship. Also read
+            # the model's RowNumber columns (also via TOM) so they can be
+            # excluded from the output whenever the query references columns.
+            rel_lookup: dict = {}
+            rel_columns: dict = {}
+            rownumber_cols: set = set()
+            needs_rel = any(
+                "RELATIONSHIP" in (row["object_type"] or "").upper() for row in rows
+            )
+            needs_cols = any(
+                "COLUMN" in (row["object_type"] or "").upper() for row in rows
+            )
+            if needs_rel or needs_cols:
+                try:
+                    from sempy_labs.tom import connect_semantic_model
+
+                    with connect_semantic_model(
+                        dataset=model_ctx["dataset_id"],
+                        workspace=model_ctx["workspace_id"],
+                        readonly=True,
+                    ) as tom:
+                        if needs_rel:
+                            rel_lookup = _build_relationship_lookup(tom)
+                            rel_columns = _build_relationship_columns(tom)
+                        rownumber_cols = _build_rownumber_columns(tom)
+                except Exception:
+                    rel_lookup = {}
+                    rel_columns = {}
+                    rownumber_cols = set()
+            widget.dependency_tree = _build_dependency_tree(
+                rows, rel_lookup, widget.dataset_name or "Model", rownumber_cols
+            )
+            widget.dependency_columns = _build_dependency_columns(
+                rows, rel_columns, rownumber_cols
+            )
+            with state_lock:
+                run_state["deps_query"] = dax_query
+            widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.dependency_tree = []
+            widget.dependency_columns = []
+            widget.error_message = f"Failed to compute query dependencies: {exc}"
+        finally:
+            widget.dependencies_loading = False
+
+    def _on_dependencies(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.dependencies_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
+        if widget.dependencies_loading:
+            return
+        widget.dependencies_loading = True
+        threading.Thread(target=_compute_dependencies, daemon=True).start()
+
+    def _compute_object_dependencies(request_id: int) -> None:
+        dataset_snapshot = model_ctx["dataset_id"]
+        workspace_snapshot = model_ctx["workspace_id"]
+
+        def _is_current_request() -> bool:
+            return (
+                str(model_ctx["dataset_id"]) == str(dataset_snapshot)
+                and str(model_ctx["workspace_id"]) == str(workspace_snapshot)
+                and widget.object_dependency_trigger == request_id
+            )
+
+        try:
+            if _is_current_request():
+                widget.object_dependencies_loading = True
+                widget.object_dependencies_loaded = False
+                widget.object_dependency_error = ""
+            if dataset_snapshot is None:
+                if _is_current_request():
+                    widget.object_dependency_edges = []
+                    widget.object_dependencies_loaded = True
+                return
+            dependency_df = fabric.evaluate_dax(
+                dataset=dataset_snapshot,
+                workspace=workspace_snapshot,
+                dax_string="""
+                SELECT
+                    [OBJECT_TYPE] AS [Object Type],
+                    [TABLE] AS [Table],
+                    [OBJECT] AS [Object],
+                    [REFERENCED_OBJECT_TYPE] AS [Referenced Object Type],
+                    [REFERENCED_TABLE] AS [Referenced Table],
+                    [REFERENCED_OBJECT] AS [Referenced Object]
+                FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY
+                """,
+            )
+
+            def _value(row, name: str) -> str:
+                value = row.get(f"[{name}]", row.get(name, ""))
+                return "" if value is None or pd.isna(value) else str(value)
+
+            edges = [
+                {
+                    "object_type": _value(row, "Object Type"),
+                    "table": _value(row, "Table"),
+                    "object": _value(row, "Object"),
+                    "referenced_object_type": _value(
+                        row, "Referenced Object Type"
+                    ),
+                    "referenced_table": _value(row, "Referenced Table"),
+                    "referenced_object": _value(row, "Referenced Object"),
+                }
+                for _, row in dependency_df.iterrows()
+            ]
+            if _is_current_request():
+                widget.object_dependency_edges = edges
+                widget.object_dependencies_loaded = True
+                widget.object_dependency_error = ""
+        except Exception as exc:  # noqa: BLE001
+            if _is_current_request():
+                widget.object_dependency_edges = []
+                widget.object_dependencies_loaded = False
+                widget.object_dependency_error = (
+                    f"Failed to read object dependencies: {exc}"
+                )
+        finally:
+            if _is_current_request():
+                widget.object_dependencies_loading = False
+
+    def _on_object_dependencies(change):
+        if change["new"] == change["old"]:
+            return
+        request_id = int(change["new"])
+        threading.Thread(
+            target=_compute_object_dependencies,
+            args=(request_id,),
+            daemon=True,
+        ).start()
+
+    def _compute_vertipaq() -> None:
+        """Run the Vertipaq Analyzer against the active semantic model and push
+        its result tables (Model Summary, Tables, Partitions, Columns,
+        Relationships, Hierarchies) to the front-end. The full result dict is
+        also stored on ``widget.last_vertipaq`` for later programmatic use."""
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.vertipaq_sections = []
+                return
+            from sempy_labs.semantic_model._vertipaq_analyzer import (
+                vertipaq_analyzer,
+            )
+            from IPython.utils.capture import capture_output
+
+            # vertipaq_analyzer renders its own HTML visualization via
+            # display(); capture (and discard) it so it does not appear as a
+            # separate output below this widget. The returned dataframes are
+            # rendered inside the Vertipaq Analyzer tab instead.
+            with capture_output():
+                result = vertipaq_analyzer(
+                    dataset=model_ctx["dataset_id"],
+                    workspace=model_ctx["workspace_id"],
+                )
+            # Store the raw result for later programmatic access.
+            widget.last_vertipaq = result  # type: ignore[attr-defined]
+            sections = []
+            for name, sdf in (result or {}).items():
+                embedded_df = _prepare_embedded_vertipaq_dataframe(str(name), sdf)
+                payload = _result_payload_from_df(embedded_df)
+                sections.append(
+                    {
+                        "name": str(name),
+                        "columns": payload["columns"],
+                        "rows": payload["rows"],
+                    }
+                )
+            widget.vertipaq_sections = sections
+            if sections and not (widget.vertipaq_section or "").strip():
+                widget.vertipaq_section = sections[0]["name"]
+            widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.vertipaq_sections = []
+            widget.error_message = f"Failed to run Vertipaq Analyzer: {exc}"
+        finally:
+            widget.vertipaq_loading = False
+
+    def _on_vertipaq(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.vertipaq_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
+        if widget.vertipaq_loading:
+            return
+        widget.vertipaq_loading = True
+        threading.Thread(target=_compute_vertipaq, daemon=True).start()
+
+    def _ensure_trace_captured(query: str) -> None:
+        """Ensure the trace artifacts for ``query`` are populated before a
+        performance analysis runs.
+
+        If the trace rows, durations, DAX query plan and execution metrics were
+        already captured for the same query currently in the query pane, they
+        are reused as-is. Otherwise the query is executed once against the
+        persistent trace (synchronously), the trace traitlets are populated, and
+        the method waits briefly for the DAX query plan and execution metrics to
+        flush into the trace (they can arrive a few seconds after the query
+        completes)."""
+
+        if not (query or "").strip():
+            return
+        with state_lock:
+            already_traced = run_state.get("traced_query") == query
+        if already_traced and (widget.trace_rows or []):
+            return
+
+        # Derive impersonation from the current UI state (mirrors _on_run).
+        mode = widget.impersonation_mode or "none"
+        imp_value = (widget.impersonation_value or "").strip()
+        effective_user = imp_value if mode == "user" else None
+        role_name = imp_value if mode == "role" else None
+
+        _start_dt = datetime.now(timezone.utc)
+        (
+            new_df,
+            new_total,
+            new_fe,
+            new_se,
+            new_cpu,
+            new_result,
+            start_baseline,
+        ) = _run_query_persistent(
+            query=query,
+            clear_cache_flag=bool(widget.clear_cache),
+            effective_user=effective_user,
+            role_name=role_name,
+        )
+
+        widget.last_df = new_df  # type: ignore[attr-defined]
+        widget.last_result_df = new_result  # type: ignore[attr-defined]
+        widget.total_duration = int(new_total)
+        widget.fe_duration = int(new_fe)
+        widget.se_duration = int(new_se)
+        widget.cpu_time = int(new_cpu)
+        widget.trace_rows = _trace_rows_from_df(new_df)
+        widget.query_plan_rows = _query_plan_rows_from_df(new_df)
+        metric_rows = _execution_metrics_from_df(new_df)
+        widget.execution_metrics = metric_rows
+        payload = _result_payload_from_df(new_result)
+        widget.result_columns = payload["columns"]
+        widget.result_rows = payload["rows"]
+        widget.result_total_rows = int(payload["total_rows"])
+        widget.result_truncated = bool(payload["truncated"])
+        with state_lock:
+            run_state["traced_query"] = query
+
+        # Append a row to the session trace history (newest first), exactly as a
+        # normal query run does.
+        _end_dt = datetime.now(timezone.utc)
+        _history_id = f"analysis-{time.time_ns()}"
+        try:
+            try:
+                _row_count = int(len(new_result)) if new_result is not None else 0
+            except Exception:
+                _row_count = int(payload["total_rows"])
+            if role_name:
+                _imp_type = "Role"
+                _imp_value = str(role_name)
+            elif effective_user:
+                _imp_type = "User"
+                _imp_value = str(effective_user)
+            else:
+                _imp_type = "None"
+                _imp_value = "None"
+            _entry = {
+                "run_id": _history_id,
+                "method": "Query",
+                "report_name": "",
+                "report_workspace_name": "",
+                "dax_query": query,
+                "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "rows": _row_count,
+                "duration": int(new_total),
+                "cpu": int(new_cpu),
+                "fe_duration": int(new_fe),
+                "se_duration": int(new_se),
+                "cache": "Cold" if bool(widget.clear_cache) else "Warm",
+                "execution_metrics": _execution_metrics_dict(metric_rows),
+                "dataset_name": str(widget.dataset_name or ""),
+                "workspace_name": str(widget.workspace_name or ""),
+                "impersonation_type": _imp_type,
+                "impersonation": _imp_value,
+            }
+            widget.trace_history = [_entry] + list(widget.trace_history)
+        except Exception:
+            pass
+
+        # Wait (briefly, synchronously) for a late-arriving DAX query plan and
+        # execution metrics so the analysis has the complete picture.
+        _need_plan = not (widget.query_plan_rows or [])
+        _need_metrics = not (widget.execution_metrics or [])
+        if start_baseline is not None and (_need_plan or _need_metrics):
+            _deadline = time.monotonic() + 25.0
+            while time.monotonic() < _deadline and (_need_plan or _need_metrics):
+                time.sleep(0.3)
+                with trace_lock:
+                    trace = trace_ctx["trace"] if trace_ctx["started"] else None
+                if trace is None:
+                    break
+                try:
+                    logs = _get_trace_logs(trace)
+                except Exception:
+                    continue
+                if logs is None or logs.empty or len(logs) <= int(start_baseline):
+                    continue
+                _new = logs.iloc[int(start_baseline):]
+                _req_id = _resolve_query_request_id(_new, query)
+                if _req_id is not None:
+                    _new = _filter_logs_to_request_id(_new, _req_id)
+                if _need_plan:
+                    plan_rows = _query_plan_rows_from_df(_new)
+                    if plan_rows:
+                        widget.query_plan_rows = plan_rows
+                        _need_plan = False
+                if _need_metrics:
+                    metric_rows = _execution_metrics_from_df(_new)
+                    if metric_rows:
+                        widget.execution_metrics = metric_rows
+                        _update_history_execution_metrics(_history_id, metric_rows)
+                        _need_metrics = False
+
+    def _compute_performance() -> None:
+        """Generate a DAX performance analysis for the current query and push
+        the resulting findings (and a summary) to the front-end.
+
+        The analysis combines the DAX query, the semantic model metadata
+        (``model_tree``), the query dependencies, the captured trace details,
+        the DAX query plan and -- when the Data column cardinalities are not
+        all trivial -- Vertipaq Analyzer statistics. The trace (and its query
+        plan / execution metrics), query dependencies and Vertipaq stats are
+        captured on demand when they have not already been produced for the
+        query currently in the query pane, and reused otherwise."""
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.performance_findings = []
+                widget.performance_summary = {}
+                return
+            from sempy_labs.semantic_model._dax_optimization import (
+                analyze_dax_performance,
+            )
+
+            query = widget.dax_query or ""
+
+            # Ensure the trace (rows, durations, DAX query plan and execution
+            # metrics) is captured for the current query. Reuses what was
+            # already captured for this query in the query pane, otherwise runs
+            # the query against the trace now.
+            try:
+                _ensure_trace_captured(query)
+            except Exception:  # noqa: BLE001
+                pass
+
+            # Reuse query dependencies when they were already computed for this
+            # exact query in the query pane; only (re)compute them when they are
+            # missing or were captured for a different query.
+            with state_lock:
+                deps_fresh = run_state.get("deps_query") == query
+            dep_cols = list(widget.dependency_columns or [])
+            if not deps_fresh and query.strip():
+                try:
+                    _compute_dependencies()
+                    dep_cols = list(widget.dependency_columns or [])
+                except Exception:  # noqa: BLE001
+                    dep_cols = []
+
+            # Reuse Vertipaq Analyzer results if the tab has been opened,
+            # otherwise compute them now (capturing the analyzer's own HTML).
+            # Vertipaq stats describe the model, not the query, so they are
+            # always safe to reuse once computed.
+            vertipaq = getattr(widget, "last_vertipaq", None) or {}
+            if not vertipaq:
+                try:
+                    from sempy_labs.semantic_model._vertipaq_analyzer import (
+                        vertipaq_analyzer,
+                    )
+                    from IPython.utils.capture import capture_output
+
+                    with capture_output():
+                        vertipaq = vertipaq_analyzer(
+                            dataset=model_ctx["dataset_id"],
+                            workspace=model_ctx["workspace_id"],
+                        )
+                    widget.last_vertipaq = vertipaq  # type: ignore[attr-defined]
+                except Exception:  # noqa: BLE001
+                    vertipaq = {}
+
+            result = analyze_dax_performance(
+                dax_query=widget.dax_query or "",
+                trace_rows=list(widget.trace_rows or []),
+                total_duration_ms=int(widget.total_duration or 0),
+                fe_duration_ms=int(widget.fe_duration or 0),
+                se_duration_ms=int(widget.se_duration or 0),
+                cpu_time_ms=int(widget.cpu_time or 0),
+                query_plan_rows=list(widget.query_plan_rows or []),
+                dependency_columns=dep_cols,
+                model_tree=list(widget.model_tree or []),
+                vertipaq=vertipaq,
+                cold_cache=bool(widget.clear_cache),
+            )
+            widget.performance_findings = result["findings"]
+            widget.performance_summary = result["summary"]
+            widget.error_message = ""
+        except Exception as exc:  # noqa: BLE001
+            widget.performance_findings = []
+            widget.performance_summary = {}
+            widget.error_message = f"Failed to generate performance analysis: {exc}"
+        finally:
+            widget.performance_loading = False
+
+    def _on_performance(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.report_capture_loading:
+            widget.performance_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
+        threading.Thread(target=_compute_performance, daemon=True).start()
+
+    def _load_workspace_monitoring() -> None:
+        allowed_ranges = {"15m", "1h", "4h", "12h", "1d", "3d", "7d", "30d"}
+        request = dict(widget.workspace_monitoring_request or {})
+        time_range = str(request.get("range") or "1d")
+        if time_range not in allowed_ranges:
+            time_range = "1d"
+        try:
+            top_n = min(200, max(1, int(request.get("top") or 20)))
+        except (TypeError, ValueError):
+            top_n = 20
+        dataset = str(widget.dataset_name or "")
+        workspace = model_ctx["workspace_id"]
+        safe_dataset = dataset.replace("\\", "\\\\").replace('"', '\\"')
+        query = (
+            "SemanticModelLogs\n"
+            '| where OperationName == "QueryEnd" and '
+            '(EventText startswith "EVALUATE" or EventText startswith "DEFINE")\n'
+            f'| where ItemName == "{safe_dataset}"\n'
+            f"| where Timestamp >= ago({time_range})\n"
+            "| extend ctx = parse_json(dynamic_to_json(ApplicationContext))\n"
+            "| extend ReportId = tostring(ctx.Sources[0].ReportId)\n"
+            "| extend VisualId = tostring(ctx.Sources[0].VisualId)\n"
+            "| project Timestamp, DurationMs, CpuTimeMs, ExecutingUser, "
+            "ReportId, VisualId, EventText\n"
+            f"| top {top_n} by DurationMs desc"
+        )
+        widget.workspace_monitoring_loading = True
+        widget.workspace_monitoring_error = ""
+        try:
+            if not dataset or not workspace:
+                raise ValueError("Choose a semantic model first.")
+            from sempy_labs import query_workspace_monitoring
+
+            monitoring_df = query_workspace_monitoring(
+                query=query,
+                workspace=workspace,
+            )
+            if (
+                dataset != str(widget.dataset_name or "")
+                or workspace != model_ctx["workspace_id"]
+            ):
+                return
+            if "ReportId" in monitoring_df.columns:
+                report_lookup = {
+                    str(report.get("id") or "").lower(): str(
+                        report.get("name") or ""
+                    )
+                    for report in (widget.available_reports or [])
+                }
+                monitoring_df = monitoring_df.copy()
+                monitoring_df["ReportName"] = monitoring_df["ReportId"].map(
+                    lambda value: report_lookup.get(str(value or "").lower(), "")
+                )
+                monitoring_df["ReportWorkspace"] = monitoring_df[
+                    "ReportName"
+                ].map(lambda value: str(widget.workspace_name or "") if value else "")
+            payload = _result_payload_from_df(monitoring_df, max_rows=top_n)
+            query_index = next(
+                (
+                    index
+                    for index, column in enumerate(payload["columns"])
+                    if column.lower() == "eventtext"
+                ),
+                -1,
+            )
+            monitoring_tokens = [
+                _monitoring_dax_spans(str(row[query_index] or ""))
+                if query_index >= 0
+                else []
+                for row in payload["rows"]
+            ]
+            widget.workspace_monitoring_columns = payload["columns"]
+            widget.workspace_monitoring_tokens = monitoring_tokens
+            widget.workspace_monitoring_rows = payload["rows"]
+            widget.workspace_monitoring_enabled = True
+            widget.workspace_monitoring_loaded = True
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc)
+            if "Monitoring KQL database" in message:
+                widget.workspace_monitoring_columns = []
+                widget.workspace_monitoring_tokens = []
+                widget.workspace_monitoring_rows = []
+                widget.workspace_monitoring_enabled = False
+                widget.workspace_monitoring_loaded = True
+            else:
+                widget.workspace_monitoring_error = (
+                    f"Failed to read workspace monitoring: {message}"
+                )
+        finally:
+            widget.workspace_monitoring_loading = False
+
+    def _on_workspace_monitoring(change):
+        if change["new"] == change["old"] or widget.workspace_monitoring_loading:
+            return
+        threading.Thread(target=_load_workspace_monitoring, daemon=True).start()
+
+    widget.observe(_on_run, names="run_trigger")
+    widget.observe(_on_cancel, names="cancel_trigger")
+    widget.observe(_on_clear_model_cache, names="cache_clear_trigger")
+    widget.observe(_on_dependencies, names="dependencies_trigger")
+    widget.observe(_on_object_dependencies, names="object_dependency_trigger")
+    widget.observe(_on_vertipaq, names="vertipaq_trigger")
+    widget.observe(_on_performance, names="performance_trigger")
+    widget.observe(_on_workspace_monitoring, names="workspace_monitoring_trigger")
+    widget.observe(_on_report_capture_start, names="report_capture_start_trigger")
+    widget.observe(
+        _on_report_capture_checkpoint, names="report_capture_checkpoint_trigger"
+    )
+    widget.observe(_on_report_capture_finish, names="report_capture_finish_trigger")
+
+    def _build_history_excel() -> None:
+        import base64
+        import io
+
+        history = list(widget.trace_history)
+        columns = [
+            "Run",
+            "Total",
+            "FE",
+            "SE",
+            "CPU",
+            "Cache",
+            "Execution metrics",
+            "Method",
+            "Query",
+            "Report",
+            "Workspace",
+        ]
+        rows = [
+            {
+                "Run": entry.get("start_time", ""),
+                "Total": entry.get("duration", ""),
+                "FE": entry.get("fe_duration", ""),
+                "SE": entry.get("se_duration", ""),
+                "CPU": entry.get("cpu", ""),
+                "Cache": entry.get("cache", ""),
+                "Execution metrics": json.dumps(
+                    entry.get("execution_metrics") or {}, indent=2
+                ),
+                "Method": entry.get("method", "Query"),
+                "Query": entry.get("dax_query", ""),
+                "Report": entry.get("report_name", ""),
+                "Workspace": entry.get("report_workspace_name", ""),
+            }
+            for entry in history
+        ]
+        df_hist = pd.DataFrame(rows, columns=columns)
+        buf = io.BytesIO()
+        # Use whichever Excel engine is available (openpyxl is standard in
+        # Fabric notebooks; xlsxwriter is an accepted fallback).
+        engine = None
+        for _eng in ("openpyxl", "xlsxwriter"):
+            try:
+                __import__(_eng)
+                engine = _eng
+                break
+            except Exception:
+                continue
+        if engine is None:
+            widget.error_message = (
+                "Could not export to Excel: no Excel engine is installed. "
+                "Install 'openpyxl' (pip install openpyxl) and try again."
+            )
+            return
+        try:
+            with pd.ExcelWriter(buf, engine=engine) as writer:
+                df_hist.to_excel(writer, index=False, sheet_name="Trace History")
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to build the Excel file: {exc}"
+            return
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        # Reset first so the front-end always observes a change event.
+        widget.history_excel_name = f"trace_history_{stamp}.xlsx"
+        widget.history_excel_b64 = ""
+        widget.history_excel_b64 = b64
+
+    def _on_download_history(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_build_history_excel, daemon=True).start()
+
+    widget.observe(_on_download_history, names="download_history_trigger")
+
+    def _build_result_excel() -> None:
+        import base64
+        import io
+
+        df_result = getattr(widget, "last_result_df", None)
+        if df_result is None or len(df_result) == 0:
+            widget.error_message = "There is no query result to download."
+            return
+        buf = io.BytesIO()
+        # Use whichever Excel engine is available (openpyxl is standard in
+        # Fabric notebooks; xlsxwriter is an accepted fallback).
+        engine = None
+        for _eng in ("openpyxl", "xlsxwriter"):
+            try:
+                __import__(_eng)
+                engine = _eng
+                break
+            except Exception:
+                continue
+        if engine is None:
+            widget.error_message = (
+                "Could not export to Excel: no Excel engine is installed. "
+                "Install 'openpyxl' (pip install openpyxl) and try again."
+            )
+            return
+        try:
+            with pd.ExcelWriter(buf, engine=engine) as writer:
+                df_result.to_excel(writer, index=False, sheet_name="Query Result")
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to build the Excel file: {exc}"
+            return
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        # Reset first so the front-end always observes a change event.
+        widget.result_excel_name = f"query_result_{stamp}.xlsx"
+        widget.result_excel_b64 = ""
+        widget.result_excel_b64 = b64
+
+    def _on_download_result(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_build_result_excel, daemon=True).start()
+
+    widget.observe(_on_download_result, names="download_result_trigger")
+
+    def _on_query_change(change):
+        # Re-classify on every edit so the syntax-highlight overlay stays
+        # in sync. The DAX tokenizer is cheap relative to comm latency.
+        try:
+            widget.dax_tokens = _classify_dax_spans(change["new"] or "")
+        except Exception:
+            pass
+
+    widget.observe(_on_query_change, names="dax_query")
+
+    def _load_metadata() -> None:
+        if model_ctx["dataset_id"] is None:
+            widget.metadata_loading = False
+            return
+        try:
+            tree, roles = _collect_model_metadata(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.metadata_loading = False
+            widget.error_message = f"Failed to load model metadata: {exc}"
+            return
+        widget.model_tree = tree
+        widget.model_roles = roles
+        try:
+            widget.available_reports = _list_reports_for_capture(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+        except Exception:
+            widget.available_reports = []
+        widget.metadata_loading = False
+        # Start (or keep) the long-running trace for this model now that its
+        # metadata has loaded.
+        _ensure_trace(model_ctx["dataset_id"], model_ctx["workspace_id"])
+
+    def _on_refresh_metadata(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.metadata_loading:
+            return
+        widget.metadata_loading = True
+        threading.Thread(target=_load_metadata, daemon=True).start()
+
+    widget.observe(_on_refresh_metadata, names="refresh_metadata_trigger")
+
+    def _load_datasets_for_selected_workspace() -> None:
+        ws_id = (widget.selected_workspace_id or "").strip()
+        if not ws_id:
+            widget.available_datasets = []
+            widget.picker_loading = False
+            return
+        try:
+            datasets = _list_datasets_for_picker(ws_id)
+        except Exception as exc:  # noqa: BLE001
+            widget.available_datasets = []
+            widget.picker_loading = False
+            widget.error_message = f"Failed to list semantic models: {exc}"
+            return
+        widget.available_datasets = datasets
+        widget.picker_loading = False
+
+    def _on_select_workspace(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        widget.picker_loading = True
+        threading.Thread(
+            target=_load_datasets_for_selected_workspace, daemon=True
+        ).start()
+
+    widget.observe(_on_select_workspace, names="select_workspace_trigger")
+
+    def _activate_selected_dataset() -> None:
+        if widget.report_capture_loading:
+            widget.metadata_loading = False
+            widget.picker_loading = False
+            widget.error_message = "Wait for report query capture to finish first."
+            return
+        ws_id = (widget.selected_workspace_id or "").strip()
+        ds_id = (widget.selected_dataset_id or "").strip()
+        if not ws_id or not ds_id:
+            widget.metadata_loading = False
+            widget.picker_loading = False
+            return
+        try:
+            from sempy_labs._helper_functions import (
+                resolve_workspace_name_and_id as _rwni,
+            )
+
+            ws_name, ws_id_resolved = _rwni(ws_id)
+            ds_name, ds_id_resolved = resolve_item_name_and_id(
+                item=ds_id, type="SemanticModel", workspace=ws_id_resolved
+            )
+            model_ctx["workspace_id"] = ws_id_resolved
+            model_ctx["dataset_id"] = ds_id_resolved
+            tree, roles = _collect_model_metadata(ds_id_resolved, ws_id_resolved)
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to load semantic model: {exc}"
+            widget.metadata_loading = False
+            widget.picker_loading = False
+            return
+        widget.dataset_name = str(ds_name) if ds_name else str(ds_id)
+        widget.workspace_name = str(ws_name) if ws_name else ""
+        widget.active_workspace_id = str(ws_id_resolved)
+        widget.active_dataset_id = str(ds_id_resolved)
+        widget.model_tree = tree
+        widget.model_roles = roles
+        try:
+            widget.available_reports = _list_reports_for_capture(
+                ds_id_resolved, ws_id_resolved
+            )
+        except Exception:
+            widget.available_reports = []
+        widget.metadata_loading = False
+        # Clear Vertipaq Analyzer results from any previously selected model so
+        # stale stats aren't shown; they are recomputed on the next tab open.
+        widget.vertipaq_sections = []
+        widget.vertipaq_section = ""
+        widget.last_vertipaq = {}  # type: ignore[attr-defined]
+        # Clear any performance analysis produced for the previous model.
+        widget.performance_findings = []
+        widget.performance_summary = {}
+        widget.object_dependency_target = {}
+        widget.object_dependencies_loading = False
+        widget.object_dependencies_loaded = False
+        widget.object_dependency_edges = []
+        widget.object_dependency_error = ""
+        widget.workspace_monitoring_loading = False
+        widget.workspace_monitoring_loaded = False
+        widget.workspace_monitoring_enabled = True
+        widget.workspace_monitoring_error = ""
+        widget.workspace_monitoring_columns = []
+        widget.workspace_monitoring_rows = []
+        widget.workspace_monitoring_tokens = []
+        widget.query_executed = False
+        # Reset impersonation so a stale role/user from a prior model isn't
+        # reused against a model that may not define it.
+        widget.impersonation_mode = "none"
+        widget.impersonation_value = ""
+        widget.dataset_chosen = True
+        widget.error_message = ""
+        widget.picker_loading = False
+        # Rebind the long-running trace to the newly selected model.
+        _ensure_trace(ds_id_resolved, ws_id_resolved)
+
+    def _on_select_dataset(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        widget.picker_loading = True
+        threading.Thread(target=_activate_selected_dataset, daemon=True).start()
+
+    widget.observe(_on_select_dataset, names="select_dataset_trigger")
+
+    def _load_workspaces() -> None:
+        try:
+            workspaces = _list_workspaces_for_picker()
+        except Exception as exc:  # noqa: BLE001
+            widget.picker_loading = False
+            widget.error_message = f"Failed to list workspaces: {exc}"
+            return
+        widget.available_workspaces = workspaces
+        # Refresh the dataset list for the currently selected workspace too.
+        ws_id = (widget.selected_workspace_id or "").strip()
+        if ws_id:
+            try:
+                widget.available_datasets = _list_datasets_for_picker(ws_id)
+            except Exception:
+                pass
+        widget.picker_loading = False
+
+    def _on_load_workspaces(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.picker_loading:
+            return
+        widget.picker_loading = True
+        threading.Thread(target=_load_workspaces, daemon=True).start()
+
+    widget.observe(_on_load_workspaces, names="load_workspaces_trigger")
+
+    def _format_query() -> None:
+        dax = widget.dax_query or ""
+        if not dax.strip():
+            widget.format_loading = False
+            return
+        try:
+            formatted = _format_dax(dax)
+            dax_out = formatted[0] if formatted else dax
+        except Exception as exc:  # noqa: BLE001
+            widget.format_loading = False
+            widget.error_message = f"Failed to format the DAX query: {exc}"
+            return
+        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
+        widget.dax_query = dax_out
+        widget.dax_tokens = _classify_dax_spans(dax_out)
+        widget.error_message = ""
+        widget.format_loading = False
+
+    def _on_format_query(change):
+        if change["new"] == change["old"]:
+            return
+        if widget.format_loading:
+            return
+        widget.format_loading = True
+        threading.Thread(target=_format_query, daemon=True).start()
+
+    widget.observe(_on_format_query, names="format_query_trigger")
+
+    def _nl_to_dax_run() -> None:
+        try:
+            if model_ctx["dataset_id"] is None:
+                widget.nl_to_dax_error = (
+                    "No semantic model selected. Choose a workspace and a "
+                    "semantic model first."
+                )
+                return
+            question = (widget.nl_to_dax_text or "").strip()
+            if not question:
+                widget.nl_to_dax_error = "Enter a question first."
+                return
+            import asyncio
+            from sempy_labs.semantic_model._nl_to_dax import nl_to_dax
+
+            result = asyncio.run(
+                nl_to_dax(
+                    dataset=model_ctx["dataset_id"],
+                    question=question,
+                    workspace=model_ctx["workspace_id"],
+                )
+            )
+            if isinstance(result, str) and result.strip():
+                dax_out = result.replace("\r\n", "\n").replace("\r", "\n")
+                widget.dax_query = dax_out
+                widget.dax_tokens = _classify_dax_spans(dax_out)
+                widget.error_message = ""
+                widget.nl_to_dax_error = ""
+            elif isinstance(result, dict):
+                err = result.get("error")
+                if isinstance(err, dict):
+                    msg = err.get("message") or str(err)
+                else:
+                    msg = (
+                        err
+                        or result.get("message")
+                        or "Failed to generate a DAX query from the question."
+                    )
+                widget.nl_to_dax_error = str(msg)
+            else:
+                widget.nl_to_dax_error = (
+                    "Could not generate a DAX query from the question. "
+                    "Try rephrasing it."
+                )
+        except Exception as exc:  # noqa: BLE001
+            widget.nl_to_dax_error = f"Failed to generate the DAX query: {exc}"
+        finally:
+            widget.nl_to_dax_loading = False
+
+    def _on_nl_to_dax(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_nl_to_dax_run, daemon=True).start()
+
+    widget.observe(_on_nl_to_dax, names="nl_to_dax_trigger")
+
+    def _build_query() -> None:
+        if model_ctx["dataset_id"] is None:
+            widget.error_message = (
+                "No semantic model selected. Choose a workspace and a "
+                "semantic model first."
+            )
+            return
+        import json as _json
+
+        try:
+            state = _json.loads(widget.query_builder_state or "{}")
+        except Exception:
+            widget.error_message = "Could not read the query builder state."
+            return
+        fields = state.get("fields") or []
+        if not fields:
+            widget.error_message = (
+                "Add at least one column or measure to the query builder "
+                "before building a query."
+            )
+            return
+        try:
+            dax = _build_summarize_dax(
+                state, model_ctx["dataset_id"], model_ctx["workspace_id"]
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to build a DAX query: {exc}"
+            return
+        if not dax:
+            widget.error_message = (
+                "Could not build a DAX query from the current selection."
+            )
+            return
+        try:
+            formatted = _format_dax(dax)
+            dax_out = formatted[0] if formatted else dax
+        except Exception:
+            dax_out = dax
+        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
+        widget.dax_query = dax_out
+        widget.dax_tokens = _classify_dax_spans(dax_out)
+        widget.error_message = ""
+
+    def _on_build_query(change):
+        if change["new"] == change["old"]:
+            return
+        threading.Thread(target=_build_query, daemon=True).start()
+
+    widget.observe(_on_build_query, names="build_query_trigger")
+
+    def _on_close_trigger(change):
+        if change["new"] == change["old"]:
+            return
+        _stop_persistent_trace()
+
+    widget.observe(_on_close_trigger, names="close_trigger")
+
+    # Start the long-running trace for the initially selected model (if any)
+    # so it is ready by the time the first query runs.
+    if model_ctx["dataset_id"] is not None:
+        threading.Thread(
+            target=lambda: _ensure_trace(
+                model_ctx["dataset_id"], model_ctx["workspace_id"]
+            ),
+            daemon=True,
+        ).start()
+
+    display(widget)
+
+    # Backstop for trace teardown if the comm is closed without the JS
+    # cleanup hook firing (e.g. kernel/cell disposal).
+    try:
+        widget.comm.on_close(lambda *_a: _stop_persistent_trace())
+    except Exception:
+        pass
