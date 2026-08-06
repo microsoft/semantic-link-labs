@@ -3413,6 +3413,115 @@ def _visualize_dax_test(
     font-weight: 500;
     cursor: pointer;
 }}
+.dtx .dtx-info-overlay {{
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.45);
+}}
+.dtx .dtx-info-overlay.dtx-open {{ display: flex; }}
+.dtx .dtx-info-dialog {{
+    width: min(100%, 680px);
+    max-height: min(82vh, 720px);
+    overflow: auto;
+    padding: 20px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg-solid);
+    box-shadow: var(--ui-shadow-lg);
+}}
+.dtx .dtx-info-head {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}}
+.dtx .dtx-info-logo {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-info-logo svg {{ width: 28px; height: 28px; }}
+.dtx .dtx-info-title {{
+    margin: 0;
+    color: var(--ui-text);
+    font-size: 17px;
+    font-weight: 650;
+}}
+.dtx .dtx-info-close {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    cursor: pointer;
+}}
+.dtx .dtx-info-close:hover {{
+    background: var(--ui-bg-hover);
+    color: var(--ui-text);
+}}
+.dtx .dtx-info-close svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-info-intro {{
+    margin: 0 0 16px;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}}
+.dtx .dtx-info-features {{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}}
+.dtx .dtx-info-feature {{
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+}}
+.dtx .dtx-info-feature-icon {{
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-info-feature-icon svg {{ width: 18px; height: 18px; }}
+.dtx .dtx-info-feature-copy {{ min-width: 0; }}
+.dtx .dtx-info-feature strong {{
+    display: block;
+    margin-bottom: 2px;
+    color: var(--ui-text);
+    font-size: 13px;
+    font-weight: 600;
+}}
+@media (max-width: 640px) {{
+    .dtx .dtx-info-features {{ grid-template-columns: 1fr; }}
+}}
 .dtx .dtx-object-deps-overlay {{
     position: absolute;
     inset: 0;
@@ -4814,6 +4923,7 @@ def _visualize_dax_test(
 
     sun_icon = _UI_ICONS["sun"].replace("`", "\\`")
     moon_icon = _UI_ICONS["moon"].replace("`", "\\`")
+    info_icon = _UI_ICONS["info"].replace("`", "\\`")
     table_icon = _UI_ICONS["table"].replace("`", "\\`")
     calc_group_icon = _UI_ICONS["calculation_group"].replace("`", "\\`")
     calc_item_icon = _UI_ICONS["calculation_item"].replace("`", "\\`")
@@ -4865,6 +4975,7 @@ def _visualize_dax_test(
     )
     cpu_icon = _UI_ICONS["cpu"].replace("`", "\\`")
     database_icon = _UI_ICONS["database"].replace("`", "\\`")
+    vertipaq_icon = _UI_ICONS["vertipaq"].replace("`", "\\`")
     zap_icon = _UI_ICONS["zap"].replace("`", "\\`")
     # The DAX Formatter logo mark (the orange "formatted lines" glyph from
     # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
@@ -5089,6 +5200,7 @@ function cleanDaxQuery(value) {
 function render({ model, el }) {
     const SUN_SVG = `__DTX_SUN__`;
     const MOON_SVG = `__DTX_MOON__`;
+    const INFO_SVG = `__DTX_INFO__`;
     const PLAY_SVG = `__DTX_PLAY__`;
     const STOP_SVG = `__DTX_STOP__`;
     const ERASER_SVG = `__DTX_ERASER__`;
@@ -5136,6 +5248,7 @@ function render({ model, el }) {
     const ACTIVITY_SVG = `__DTX_ACTIVITY__`;
     const CPU_SVG = `__DTX_CPU__`;
     const DATABASE_SVG = `__DTX_DATABASE__`;
+    const VERTIPAQ_SVG = `__DTX_VERTIPAQ__`;
     const ZAP_SVG = `__DTX_ZAP__`;
 
     const root = document.createElement("div");
@@ -5308,6 +5421,60 @@ function render({ model, el }) {
         model.save_changes();
     });
 
+    // ---------- Feature summary ----------
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.className = "sl-theme-btn";
+    infoBtn.innerHTML = INFO_SVG;
+    infoBtn.title = "About this tool";
+    infoBtn.setAttribute("aria-label", "About this tool");
+    infoBtn.setAttribute("aria-haspopup", "dialog");
+
+    const infoOverlay = document.createElement("div");
+    infoOverlay.className = "dtx-info-overlay";
+    infoOverlay.innerHTML = `
+        <section class="dtx-info-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="dtx-info-title" tabindex="-1">
+            <div class="dtx-info-head">
+                <span class="dtx-info-logo">${DAX_PERFORMANCE_SVG}</span>
+                <h2 class="dtx-info-title" id="dtx-info-title">DAX Perf Optimizer</h2>
+                <button class="dtx-info-close" type="button" aria-label="Close">${CLOSE_SVG}</button>
+            </div>
+            <p class="dtx-info-intro">Explore, test, and optimize DAX workloads from one workspace.</p>
+            <ul class="dtx-info-features">
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${REPORT_FILE_SVG}</span><div class="dtx-info-feature-copy"><strong>Report scanning</strong>Scan report queries and bring them into the editor for analysis.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${ACTIVITY_SVG}</span><div class="dtx-info-feature-copy"><strong>Workspace monitoring</strong>Monitor semantic model activity and inspect captured queries.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${GIT_BRANCH_SVG}</span><div class="dtx-info-feature-copy"><strong>Object dependencies</strong>Explore semantic model dependencies as a tree view or node graph.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${BUILDER_SVG}</span><div class="dtx-info-feature-copy"><strong>Query Builder</strong>Build DAX queries visually from model objects, filters, and sorting.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${DOWNLOAD_SVG}</span><div class="dtx-info-feature-copy"><strong>Trace history</strong>Review prior traces and download the captured history.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${NLDAX_SVG}</span><div class="dtx-info-feature-copy"><strong>Natural-language DAX</strong>Generate a DAX query by describing what you need in natural language.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${USERS_SVG}</span><div class="dtx-info-feature-copy"><strong>Role and user impersonation</strong>Test queries in the context of a security role or user.</div></li>
+                <li class="dtx-info-feature"><span class="dtx-info-feature-icon">${VERTIPAQ_SVG}</span><div class="dtx-info-feature-copy"><strong>VertiPaq Analyzer</strong>Inspect model memory, cardinality, and storage-engine details.</div></li>
+            </ul>
+        </section>`;
+    root.appendChild(infoOverlay);
+    const infoDialog = infoOverlay.querySelector(".dtx-info-dialog");
+    const infoCloseBtn = infoOverlay.querySelector(".dtx-info-close");
+    function closeInfo() {
+        infoOverlay.classList.remove("dtx-open");
+        infoBtn.setAttribute("aria-expanded", "false");
+        infoBtn.focus();
+    }
+    function openInfo() {
+        infoOverlay.classList.add("dtx-open");
+        infoBtn.setAttribute("aria-expanded", "true");
+        infoDialog.focus();
+    }
+    infoBtn.setAttribute("aria-expanded", "false");
+    infoBtn.addEventListener("click", openInfo);
+    infoCloseBtn.addEventListener("click", closeInfo);
+    infoOverlay.addEventListener("click", event => {
+        if (event.target === infoOverlay) closeInfo();
+    });
+    infoOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") closeInfo();
+    });
+
     // ---------- Full-screen toggle ----------
     // Expands the whole tool to fill the screen. Uses the native Fullscreen
     // API when available (and allowed by the host), otherwise falls back to a
@@ -5390,6 +5557,7 @@ function render({ model, el }) {
     header.appendChild(modelViewShowBtn);
     header.appendChild(builderShowBtn);
     header.appendChild(monitoringShowBtn);
+    header.appendChild(infoBtn);
     header.appendChild(themeBtn);
     header.appendChild(fullscreenBtn);
     renderFullscreenBtn();
@@ -10303,6 +10471,7 @@ export default { render };
     widget_js = (
         widget_js.replace("__DTX_SUN__", sun_icon)
         .replace("__DTX_MOON__", moon_icon)
+        .replace("__DTX_INFO__", info_icon)
         .replace("__DTX_TABLE__", table_icon)
         .replace("__DTX_CALC_GROUP__", calc_group_icon)
         .replace("__DTX_CALC_ITEM__", calc_item_icon)
@@ -10350,6 +10519,7 @@ export default { render };
         .replace("__DTX_ACTIVITY__", activity_icon)
         .replace("__DTX_CPU__", cpu_icon)
         .replace("__DTX_DATABASE__", database_icon)
+        .replace("__DTX_VERTIPAQ__", vertipaq_icon)
         .replace("__DTX_ZAP__", zap_icon)
     )
 

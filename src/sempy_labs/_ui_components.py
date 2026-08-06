@@ -103,6 +103,13 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>'
     ),
+    "info": (
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/><path d="M8 7.25v4"/>'
+        '<path d="M8 4.5h.01"/></svg>'
+    ),
     "search": (
         '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">'
         '<path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 '
@@ -141,6 +148,16 @@ ICONS: dict[str, str] = {
         '<path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>'
         '<path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>'
         '</svg>'
+    ),
+    "vertipaq": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<ellipse cx="8" cy="3.3" rx="5.3" ry="1.7"/>'
+        '<path d="M2.7 3.3v9.4c0 .94 2.37 1.7 5.3 1.7s5.3-.76 5.3-1.7V3.3"/>'
+        '<circle cx="7" cy="7.4" r="3.1"/>'
+        '<path d="M5.4 6.5a2.1 2.1 0 0 0-.2 2.3"/>'
+        '<path d="M9.3 9.7 12.6 13"/></svg>'
     ),
     "zap": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
