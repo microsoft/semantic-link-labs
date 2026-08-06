@@ -2055,6 +2055,13 @@ def _visualize_dax_test(
     padding: 22px 24px 18px 24px;
     background: var(--ui-bg);
 }}
+.dtx .dtx-header-view-actions {{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    margin-left: auto;
+}}
 .dtx .dtx-tool-icon {{
     display: inline-flex;
     align-items: center;
@@ -2765,53 +2772,55 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-picker {{
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: stretch;
     min-height: 430px;
-    padding: 32px;
+    padding: 0 24px 24px;
     background: var(--ui-bg);
     overflow: auto;
 }}
 .dtx .dtx-picker-panel {{
     width: 100%;
-    max-width: 900px;
     box-sizing: border-box;
-    padding: 24px 28px;
+    padding: 16px;
     border: 1px solid var(--ui-border);
-    border-radius: 8px;
+    border-radius: 14px;
     background: var(--ui-surface);
-    box-shadow: var(--ui-shadow-md);
 }}
 .dtx .dtx-picker-top {{
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }}
 .dtx .dtx-picker-head {{ min-width: 0; }}
 .dtx .dtx-picker-reload {{
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
     flex: 0 0 auto;
-    padding: 6px 10px;
-    border: 1px solid var(--ui-border);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--ui-text-secondary);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 50%;
+    background: var(--ui-surface);
+    color: var(--ui-text);
     font: inherit;
-    font-size: 12px;
     cursor: pointer;
 }}
-.dtx .dtx-picker-reload:hover {{ border-color: var(--ui-accent); color: var(--ui-accent); }}
+.dtx .dtx-picker-reload:hover {{
+    border-color: var(--ui-text-tertiary);
+    background: var(--ui-surface-2);
+}}
 .dtx .dtx-picker-reload:disabled {{ opacity: 0.5; cursor: not-allowed; }}
 .dtx .dtx-picker-reload svg {{ width: 14px; height: 14px; }}
 .dtx .dtx-picker-reload.dtx-loading svg {{ animation: dtx-spin 0.8s linear infinite; }}
 @keyframes dtx-spin {{ to {{ transform: rotate(360deg); }} }}
 .dtx .dtx-picker-title {{
     margin: 0;
-    font-size: 17px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--ui-text);
 }}
@@ -2822,36 +2831,38 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-picker-fields {{
     display: flex;
-    gap: 20px;
+    align-items: flex-end;
+    gap: 10px;
     flex-wrap: wrap;
 }}
 .dtx .dtx-picker-field {{
     display: flex;
-    flex: 1 1 260px;
+    flex: 1 1 240px;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
 }}
 .dtx .dtx-picker-label {{
     display: block;
-    font-size: 12px;
-    color: var(--ui-text-secondary);
-    padding-left: 8px;
+    padding-left: 4px;
+    color: var(--ui-text-tertiary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
 }}
 .dtx .dtx-picker-field .slls-ss-btn {{
-    min-height: 40px;
-    border-radius: 10px;
-    padding: 10px 12px;
+    border-radius: 999px;
+    padding: 7px 12px 7px 15px;
     background: var(--ui-surface);
-    font-size: 14px;
+    font-size: 13.5px;
 }}
 .dtx .dtx-picker-field .slls-ss-panel {{ z-index: 30; }}
 .dtx .dtx-picker-actions {{
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     gap: 10px;
-    margin-top: 24px;
+    flex: 0 0 auto;
 }}
 .dtx .dtx-picker-spin {{ font-size: 12px; color: var(--ui-text-tertiary); }}
 .dtx .dtx-picker-btn {{
@@ -2860,21 +2871,34 @@ def _visualize_dax_test(
     border: 1px solid var(--ui-accent);
     background: var(--ui-accent);
     color: var(--ui-on-accent);
-    padding: 6px 14px;
-    border-radius: 6px;
+    padding: 7px 16px;
+    border-radius: 999px;
     font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13.5px;
+    font-weight: 500;
     cursor: pointer;
     transition: background 120ms ease, opacity 120ms ease;
 }}
 .dtx .dtx-picker-btn:hover {{ background: var(--ui-accent-hover); }}
 .dtx .dtx-picker-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx .dtx-picker-actions .dtx-picker-cancel {{
+    padding: 7px 16px;
+    border-color: var(--ui-border-strong);
+    border-radius: 999px;
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    font-size: 13.5px;
+    font-weight: 500;
+}}
+.dtx .dtx-picker-actions .dtx-picker-cancel:hover {{
+    border-color: var(--ui-text-tertiary);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+}}
 @media (max-width: 640px) {{
-    .dtx .dtx-picker {{ min-height: 360px; padding: 20px 16px; }}
-    .dtx .dtx-picker-panel {{ padding: 20px; }}
-    .dtx .dtx-picker-top {{ align-items: stretch; flex-direction: column; }}
-    .dtx .dtx-picker-reload {{ align-self: flex-start; }}
+    .dtx .dtx-picker {{ min-height: 360px; padding: 0 16px 16px; }}
+    .dtx .dtx-picker-fields {{ align-items: stretch; flex-direction: column; }}
+    .dtx .dtx-picker-actions {{ justify-content: flex-end; }}
 }}
 .dtx .dtx-icon-btn {{
     appearance: none;
@@ -5626,9 +5650,12 @@ function render({ model, el }) {
     header.appendChild(modelViewShowBtn);
     header.appendChild(builderShowBtn);
     header.appendChild(monitoringShowBtn);
-    header.appendChild(infoBtn);
-    header.appendChild(themeBtn);
-    header.appendChild(fullscreenBtn);
+    const headerViewActions = document.createElement("div");
+    headerViewActions.className = "dtx-header-view-actions";
+    headerViewActions.appendChild(infoBtn);
+    headerViewActions.appendChild(fullscreenBtn);
+    headerViewActions.appendChild(themeBtn);
+    header.appendChild(headerViewActions);
     renderFullscreenBtn();
 
     // ---------- Body: sidebar + main ----------
@@ -7314,8 +7341,9 @@ function render({ model, el }) {
     const pickerReloadBtn = document.createElement("button");
     pickerReloadBtn.type = "button";
     pickerReloadBtn.className = "dtx-picker-reload";
-    pickerReloadBtn.innerHTML = REFRESH_SVG + "Reload";
+    pickerReloadBtn.innerHTML = REFRESH_SVG;
     pickerReloadBtn.title = "Reload workspaces and semantic models";
+    pickerReloadBtn.setAttribute("aria-label", pickerReloadBtn.title);
     pickerTop.appendChild(pickerReloadBtn);
     const pickerFields = document.createElement("div");
     pickerFields.className = "dtx-picker-fields";
@@ -7364,9 +7392,9 @@ function render({ model, el }) {
     pickerActions.appendChild(pickerCancelBtn);
     pickerActions.appendChild(pickerBtn);
     pickerActions.appendChild(pickerSpin);
+    pickerFields.appendChild(pickerActions);
     pickerPanel.appendChild(pickerTop);
     pickerPanel.appendChild(pickerFields);
-    pickerPanel.appendChild(pickerActions);
     pickerPanel.appendChild(pickerError);
     pickerScreen.appendChild(pickerPanel);
     container.insertBefore(pickerScreen, body);

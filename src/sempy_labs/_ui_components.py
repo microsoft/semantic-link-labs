@@ -400,6 +400,7 @@ ICONS: dict[str, str] = {
         '<path d="M15 3 v4 a2 2 0 0 0 2 2 h4"/>'
         '<path d="M9 21 v-4 a2 2 0 0 0 -2 -2 H3"/>'
         '<path d="M15 21 v-4 a2 2 0 0 1 2 -2 h4"/></svg>'
+    ),
     "back": (
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '

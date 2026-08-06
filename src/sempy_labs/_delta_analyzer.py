@@ -760,7 +760,7 @@ def _build_delta_analyzer_html(
         container_selector=f".da-{uid}-container",
         bg_var="var(--da-bg)",
     )
-    )
+
     ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
     attribution_html = _ui_render_attribution_html()
 

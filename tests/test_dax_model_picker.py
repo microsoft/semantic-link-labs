@@ -26,7 +26,8 @@ def test_no_dataset_uses_searchable_theme_aware_pickers():
 
     assert 'pickerTitle.textContent = "Connect to a semantic model"' in source
     assert 'pickerTop.className = "dtx-picker-top"' in source
-    assert 'pickerReloadBtn.innerHTML = REFRESH_SVG + "Reload"' in source
+    assert 'pickerReloadBtn.innerHTML = REFRESH_SVG' in source
+    assert 'pickerReloadBtn.setAttribute("aria-label", pickerReloadBtn.title)' in source
     assert '"SEARCH_SELECT_CSS", _FALLBACK_SEARCH_SELECT_CSS' in source
     assert '"SEARCH_SELECT_JS", _FALLBACK_SEARCH_SELECT_JS' in source
     assert "function createSearchSelect(config)" in source
@@ -36,6 +37,34 @@ def test_no_dataset_uses_searchable_theme_aware_pickers():
     assert 'dsPicker.picker.setOptions(' in source
     assert 'document.createElement("select")' not in picker_source
     assert 'body.style.display = show ? "none" : ""' in source
+    assert "pickerFields.appendChild(pickerActions)" in picker_source
+    assert "border-radius: 999px;" in source[
+        source.index(".dtx .dtx-picker-field .slls-ss-btn") : source.index(
+            ".dtx .dtx-picker-field .slls-ss-panel"
+        )
+    ]
+
+
+def test_header_view_actions_are_right_aligned_with_theme_last():
+    source = _source()
+    actions_start = source.index('headerViewActions.className = "dtx-header-view-actions"')
+    actions_end = source.index("renderFullscreenBtn();", actions_start)
+    actions = source[actions_start:actions_end]
+
+    assert ".dtx .dtx-header-view-actions {{" in source
+    action_css = source[
+        source.index(".dtx .dtx-header-view-actions {{") : source.index(
+            ".dtx .dtx-tool-icon {{"
+        )
+    ]
+    assert "margin-left: auto;" in action_css
+    assert actions.index("appendChild(infoBtn)") < actions.index(
+        "appendChild(fullscreenBtn)"
+    )
+    assert actions.index("appendChild(fullscreenBtn)") < actions.index(
+        "appendChild(themeBtn)"
+    )
+    assert "header.appendChild(headerViewActions)" in actions
 
 
 def test_dax_performance_uses_the_shared_speedometer_icon():
