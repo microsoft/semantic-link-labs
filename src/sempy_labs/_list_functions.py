@@ -736,7 +736,7 @@ def update_item(
 
     itemType = icons.itemTypes[item_type]
 
-    dfI = fabric.list_items(workspace=workspace_id, type=item_type)
+    dfI = fabric.list_items(workspace=workspace_id, item_type=item_type)
     dfI_filt = dfI[(dfI["Display Name"] == current_name)]
 
     if len(dfI_filt) == 0:

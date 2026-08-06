@@ -5,10 +5,13 @@ import os
 import uuid
 import shutil
 import datetime
+import threading
+from html import escape as html_escape
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
     resolve_workspace_capacity,
+    _base_api,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
@@ -28,13 +31,416 @@ from sempy_labs._ui_components import (
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_header_css as _ui_scoped_header_css,
     scoped_attribution_css as _ui_scoped_attribution_css,
+    scoped_button_press_css as _ui_scoped_button_press_css,
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
-    fullscreen_css as _ui_fullscreen_css,
     fullscreen_toggle_script as _ui_fullscreen_toggle_script,
-    display_html_widget as _ui_display_html_widget,
 )
+
+# anywidget ESM for the interactive Vertipaq Analyzer (used only when the model
+# has Direct-Lake-over-Lakehouse tables so the "Delta Analyzer" button can run
+# Spark on demand and merge the results). It injects the pre-built static HTML +
+# JS and wires the Delta Analyzer button/dialog to the Python backend.
+_VPX_WIDGET_JS = r"""
+function render({ model, el }) {
+    // Refreshed on every draw: switching models re-renders the widget with a
+    // freshly scoped uid.
+    let uid = model.get("uid");
+    let deltaRunning = false;
+    let statusTimer = null;
+    // Workspace / semantic model picker selections (kept across re-renders).
+    let pickWs = "";
+    let pickDs = "";
+    let renderPickerOptions = function () {};
+
+    function esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function dispatch(action, extra) {
+        model.set("pending_action", Object.assign({ action: action }, extra || {}));
+        model.set("run", (model.get("run") || 0) + 1);
+        model.save_changes();
+    }
+
+    function rootEl() {
+        const c = el.querySelector(".vpx-container");
+        return c ? c.parentElement : null;
+    }
+
+    function draw() {
+        // Re-rendering (e.g. switching semantic models) replaces the whole
+        // markup, so remember the view state and re-apply it afterwards.
+        const prev = rootEl();
+        const wasFs = !!(prev && prev.classList.contains("vpx-fs"));
+        const wasDark = !!(prev && prev.classList.contains("vpx-dark"));
+        uid = model.get("uid");
+        el.innerHTML = model.get("html_content") || "";
+        // innerHTML-injected <script> tags never execute, so run the collected
+        // widget JS (tab switching, sorting, filtering, resizing, theme +
+        // fullscreen toggles) via a dynamically created <script> element.
+        const s = document.createElement("script");
+        s.textContent = model.get("script_content") || "";
+        el.appendChild(s);
+        const root = rootEl();
+        // Only on a re-render (prev exists): on the first draw the markup
+        // already carries the requested theme.
+        if (root && prev) {
+            // Click the wired buttons so the toggles keep their placeholder /
+            // icon bookkeeping in sync.
+            const themeBtn = el.querySelector("#vpx-theme-" + uid);
+            if (themeBtn && wasDark !== root.classList.contains("vpx-dark")) {
+                themeBtn.click();
+            }
+            const fsBtn = el.querySelector("#vpx-fs-" + uid);
+            if (wasFs && fsBtn) fsBtn.click();
+        }
+        wireDelta();
+        wirePicker();
+        mergeDelta();
+        showStatus();
+    }
+
+    // Delta Analyzer merge column definitions (values arrive pre-formatted from
+    // Python).
+    const TABLE_DELTA_COLS = [
+        { k: "deltaTotalSize", l: "Delta Total Size", num: true },
+        { k: "deltaRowCount", l: "Delta Row Count", num: true },
+        { k: "deltaRowGroups", l: "Row Groups", num: true },
+        { k: "deltaParquetFiles", l: "Parquet Files", num: true },
+        { k: "deltaVorder", l: "V-Order", num: false },
+        { k: "deltaZOrder", l: "Z-Order", num: false },
+        { k: "deltaClustering", l: "Liquid Clustering", num: false },
+        { k: "deltaDeletionVectors", l: "Deletion Vectors", num: false },
+        { k: "deltaAutoCompact", l: "Auto-compaction", num: false },
+    ];
+    const COLUMN_DELTA_COLS = [
+        { k: "cardinality", l: "Delta Cardinality", num: true },
+        { k: "compressedSize", l: "Compressed Size", num: true },
+        { k: "uncompressedSize", l: "Uncompressed Size", num: true },
+    ];
+
+    function sortFn() { return window["vpxSort_" + uid]; }
+    function tableByTab(tab) {
+        return el.querySelector('table[data-vpx-tab="' + tab + '"]');
+    }
+
+    function mergeInto(table, colDefs, keyFn, dataMap) {
+        if (!table) return;
+        table.querySelectorAll(".vpx-delta-col").forEach(function (e) { e.remove(); });
+        if (!dataMap || Object.keys(dataMap).length === 0) return;
+        const icon = model.get("delta_icon") || "";
+        const headRow = table.querySelector("thead tr");
+        if (headRow) {
+            colDefs.forEach(function (cd) {
+                const th = document.createElement("th");
+                th.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
+                th.innerHTML = icon + cd.l + ' <span class="vpx-sort-arrow">&#x25B2;</span>';
+                const fn = sortFn();
+                if (fn) th.addEventListener("click", function () { fn(th); });
+                headRow.appendChild(th);
+            });
+        }
+        table.querySelectorAll("tbody tr").forEach(function (tr) {
+            const stat = dataMap[keyFn(tr)] || {};
+            colDefs.forEach(function (cd) {
+                const td = document.createElement("td");
+                td.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
+                td.textContent = stat[cd.k] != null ? stat[cd.k] : "";
+                // Byte-formatted values ("9 KB", "1.2 MB") carry the raw number
+                // so sorting compares magnitudes instead of the leading digits.
+                const raw = stat[cd.k + "Raw"];
+                if (raw != null) td.setAttribute("data-vpx-sort", raw);
+                tr.appendChild(td);
+            });
+        });
+    }
+
+    function mergeDelta() {
+        const results = model.get("delta_results") || {};
+        const tbls = results.tables || {};
+        const cols = results.columns || {};
+        const loaded = Object.keys(tbls).length > 0;
+        mergeInto(tableByTab("Tables"), TABLE_DELTA_COLS, function (tr) {
+            const c = tr.children[0];
+            return c ? c.textContent.trim() : "";
+        }, tbls);
+        mergeInto(tableByTab("Columns"), COLUMN_DELTA_COLS, function (tr) {
+            const a = tr.children[0], b = tr.children[1];
+            return (a ? a.textContent.trim() : "") + "\u0000" + (b ? b.textContent.trim() : "");
+        }, cols);
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.classList.toggle("vpx-delta-loaded", loaded);
+        });
+    }
+
+    function setRunning(on) {
+        deltaRunning = on;
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.classList.toggle("vpx-delta-running", on);
+            // While running the button acts as a cancel button, so it stays
+            // enabled.
+            btn.disabled = false;
+            btn.title = on
+                ? "Cancel the Delta Analyzer run (stops after the table " +
+                  "currently being analyzed)"
+                : (btn.getAttribute("data-title") || "");
+        });
+        if (!on) setProgress(null);
+    }
+
+    function setProgress(p) {
+        const txt = p && p.total ? p.done + "/" + p.total : "";
+        el.querySelectorAll(".vpx-delta-progress").forEach(function (sp) {
+            sp.textContent = txt;
+        });
+    }
+
+    function showStatus() {
+        const s = model.get("status") || {};
+        const st = el.querySelector(".vpx-delta-status");
+        if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+        if (st) {
+            if (s.message) {
+                st.textContent = s.message;
+                st.className = "vpx-delta-status vpx-delta-status-" + (s.kind || "info");
+                st.style.display = "block";
+                if (s.auto_hide) {
+                    // Transient message (e.g. "complete") - fade it out after a
+                    // few seconds so it does not linger above the results.
+                    statusTimer = setTimeout(function () {
+                        st.style.display = "none";
+                        statusTimer = null;
+                    }, 6000);
+                }
+            } else {
+                st.style.display = "none";
+            }
+        }
+        // Status updates without a progress payload (e.g. "cancelling") keep
+        // the last reported counter.
+        if (s.progress) setProgress(s.progress);
+        if (s.done) setRunning(false);
+    }
+
+    function wireDelta() {
+        const dialog = el.querySelector(".vpx-delta-dialog:not(.vpx-picker-dialog)");
+        function openDialog() { if (dialog) dialog.style.display = "flex"; }
+        function closeDialog() { if (dialog) dialog.style.display = "none"; }
+
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                if (deltaRunning) {
+                    // Ask Python to stop after the current table.
+                    el.querySelectorAll(".vpx-delta-btn").forEach(function (b) {
+                        b.disabled = true;
+                    });
+                    model.set("cancel", (model.get("cancel") || 0) + 1);
+                    model.save_changes();
+                    return;
+                }
+                openDialog();
+            });
+        });
+        if (!dialog) return;
+        dialog.addEventListener("click", function (e) {
+            if (e.target === dialog) closeDialog();
+        });
+        dialog.querySelectorAll(".vpx-delta-close, .vpx-delta-cancel").forEach(function (b) {
+            b.addEventListener("click", closeDialog);
+        });
+        const selectAll = dialog.querySelector(".vpx-delta-selectall");
+        const clearAll = dialog.querySelector(".vpx-delta-clear");
+        if (selectAll) selectAll.addEventListener("click", function () {
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) { cb.checked = true; });
+        });
+        if (clearAll) clearAll.addEventListener("click", function () {
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) { cb.checked = false; });
+        });
+        const runBtn = dialog.querySelector(".vpx-delta-run");
+        if (runBtn) runBtn.addEventListener("click", function () {
+            // Send the full delta-table descriptors (table name, lakehouse,
+            // workspace, entity, schema) so the Python side keeps every
+            // property of each selected table.
+            const byName = {};
+            (model.get("delta_tables") || []).forEach(function (t) {
+                if (t && t.tableName) byName[t.tableName] = t;
+            });
+            const selected = [];
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) {
+                if (!cb.checked) return;
+                const name = cb.getAttribute("data-table");
+                selected.push(byName[name] || { tableName: name });
+            });
+            if (selected.length === 0) return;
+            const skip = dialog.querySelector(".vpx-delta-skipcard");
+            closeDialog();
+            setRunning(true);
+            dispatch("delta", {
+                tables: selected,
+                skip_cardinality: skip ? !!skip.checked : true,
+            });
+        });
+    }
+
+    // ---------- Workspace / semantic model picker ----------
+    function wirePicker() {
+        renderPickerOptions = function () {};
+        const dialog = el.querySelector(".vpx-picker-dialog");
+        if (!dialog) return;
+        const btn = el.querySelector(".vpx-picker-btn");
+        const wsSel = dialog.querySelector(".vpx-picker-ws");
+        const dsSel = dialog.querySelector(".vpx-picker-ds");
+        const connectBtn = dialog.querySelector(".vpx-picker-connect");
+        const reloadBtn = dialog.querySelector(".vpx-picker-reload");
+        let reloading = false;
+        function closeDialog() { dialog.style.display = "none"; }
+
+        function options(items, selected, placeholder) {
+            return '<option value="">' + placeholder + "</option>" +
+                items.map(function (i) {
+                    return '<option value="' + esc(i.id) + '"' +
+                        (i.id === selected ? " selected" : "") + ">" +
+                        esc(i.name) + "</option>";
+                }).join("");
+        }
+
+        // Models already analyzed in this session: selecting one restores its
+        // cached stats instantly instead of re-running the analysis.
+        function renderRecent() {
+            const wrap = dialog.querySelector(".vpx-picker-recent");
+            if (!wrap) return;
+            const items = model.get("recent_models") || [];
+            if (items.length < 2) {
+                wrap.style.display = "none";
+                wrap.innerHTML = "";
+                return;
+            }
+            wrap.style.display = "block";
+            wrap.innerHTML =
+                '<div class="vpx-picker-recent-head">Already analyzed</div>' +
+                '<div class="vpx-picker-recent-list">' +
+                items.map(function (m) {
+                    return '<button type="button" class="vpx-picker-recentitem' +
+                        (m.current ? " vpx-current" : "") + '" data-key="' +
+                        esc(m.key) + '"' + (m.current ? " disabled" : "") + ">" +
+                        esc(m.dataset) +
+                        '<span class="vpx-picker-recentsub">' + esc(m.workspace) +
+                        "</span></button>";
+                }).join("") +
+                "</div>";
+            wrap.querySelectorAll(".vpx-picker-recentitem").forEach(function (b) {
+                b.addEventListener("click", function () {
+                    closeDialog();
+                    dispatch("restore", { key: b.getAttribute("data-key") });
+                });
+            });
+        }
+
+        function renderOptions() {
+            const workspaces = model.get("workspaces") || [];
+            const datasets = (model.get("datasets") || {})[pickWs];
+            wsSel.innerHTML = workspaces.length
+                ? options(workspaces, pickWs, "Select a workspace\u2026")
+                : '<option value="">Loading\u2026</option>';
+            if (!pickWs) {
+                dsSel.innerHTML = '<option value="">Select a workspace first\u2026</option>';
+            } else if (!datasets) {
+                dsSel.innerHTML = '<option value="">Loading\u2026</option>';
+            } else if (!datasets.length) {
+                dsSel.innerHTML = '<option value="">No semantic models</option>';
+            } else {
+                dsSel.innerHTML = options(datasets, pickDs, "Select a semantic model\u2026");
+            }
+            dsSel.disabled = !pickWs || !datasets;
+            connectBtn.disabled = !pickDs;
+            if (reloadBtn) {
+                // Re-enabled once the refreshed workspace list comes back.
+                if (workspaces.length) reloading = false;
+                reloadBtn.disabled = reloading;
+            }
+            renderRecent();
+        }
+        renderPickerOptions = renderOptions;
+
+        function ensureDatasets() {
+            if (pickWs && !(model.get("datasets") || {})[pickWs]) {
+                dispatch("list_datasets", { workspace_id: pickWs });
+            }
+        }
+
+        if (reloadBtn) reloadBtn.addEventListener("click", function () {
+            // Force a fresh fetch of the workspace list and of the semantic
+            // models in the selected workspace.
+            reloading = true;
+            reloadBtn.disabled = true;
+            dispatch("list_workspaces", {});
+            if (pickWs) dispatch("list_datasets", { workspace_id: pickWs });
+        });
+
+        wsSel.addEventListener("change", function () {
+            pickWs = wsSel.value;
+            pickDs = "";
+            ensureDatasets();
+            renderOptions();
+        });
+        dsSel.addEventListener("change", function () {
+            pickDs = dsSel.value;
+            renderOptions();
+        });
+        dialog.addEventListener("click", function (e) {
+            if (e.target === dialog) closeDialog();
+        });
+        dialog.querySelectorAll(".vpx-picker-close, .vpx-picker-cancel").forEach(function (b) {
+            b.addEventListener("click", closeDialog);
+        });
+        connectBtn.addEventListener("click", function () {
+            if (!pickDs) return;
+            connectBtn.disabled = true;
+            // Close right away - the analysis runs in Python and replaces the
+            // whole widget when it finishes.
+            closeDialog();
+            const wsName = wsSel.selectedIndex >= 0
+                ? wsSel.options[wsSel.selectedIndex].text : "";
+            const dsName = dsSel.selectedIndex >= 0
+                ? dsSel.options[dsSel.selectedIndex].text : "";
+            const st = el.querySelector(".vpx-delta-status");
+            if (st) {
+                st.textContent = "Running Vertipaq Analyzer on '" + dsName +
+                    "' within the '" + wsName + "' workspace\u2026";
+                st.className = "vpx-delta-status vpx-delta-status-info";
+                st.style.display = "block";
+            }
+            dispatch("connect", {
+                workspace_id: pickWs,
+                dataset_id: pickDs,
+                workspace_name: wsName,
+                dataset_name: dsName,
+            });
+        });
+        if (btn) btn.addEventListener("click", function () {
+            if (!pickWs) pickWs = model.get("workspace_id") || "";
+            dialog.style.display = "flex";
+            if (!(model.get("workspaces") || []).length) dispatch("list_workspaces", {});
+            ensureDatasets();
+            renderOptions();
+        });
+    }
+
+    model.on("change:delta_results", mergeDelta);
+    model.on("change:status", showStatus);
+    model.on("change:workspaces", function () { renderPickerOptions(); });
+    model.on("change:datasets", function () { renderPickerOptions(); });
+    model.on("change:recent_models", function () { renderPickerOptions(); });
+    model.on("change:html_content", draw);
+
+    draw();
+}
+export default { render };
+"""
 
 
 def get_run_id(lakehouse, schema, workspace, save_table_name):
@@ -121,9 +527,9 @@ def format_bytes(size, decimals=2):
     :return: Formatted string
     """
     if size == 0:
-        return "0 Bytes"
+        return "0 B"
 
-    units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
+    units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]
     i = 0
 
     while size >= 1024 and i < len(units) - 1:
@@ -135,7 +541,7 @@ def format_bytes(size, decimals=2):
 
 def cast_to_type(value, type_):
     type_mapping = {
-        "int": int,
+        "int": lambda v: int(float(v)),
         "decimal": float,
         "bool": lambda v: str(v).strip().lower()
         == "true",  # convert "True"/"False" strings,
@@ -159,6 +565,160 @@ def cast_to_type(value, type_):
     return type_mapping[type_](value)
 
 
+def _get_delta_table_metadata(entity, lakehouse, workspace, schema):
+    """Best-effort collection of the delta-table properties that the Delta
+    Analyzer function does not return: liquid-clustering columns, the latest
+    OPTIMIZE Z-Order columns, deletion vectors, and auto-compaction.
+
+    Returns a tuple ``(zorder_cols, clustering_cols, deletion_vectors,
+    auto_compact)``. Any piece that cannot be resolved is returned as its empty
+    default so the caller can still surface the rest of the stats.
+    """
+    zorder: list = []
+    clustering: list = []
+    deletion_vectors = False
+    auto_compact = False
+
+    try:
+        from sempy_labs._helper_functions import (
+            create_abfss_path,
+            resolve_workspace_id,
+            resolve_lakehouse_id,
+            _get_delta_table,
+            _read_delta_table_history,
+        )
+
+        workspace_id = resolve_workspace_id(workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        path = create_abfss_path(lakehouse_id, workspace_id, entity, schema=schema)
+
+        try:
+            detail = _get_delta_table(path).detail().collect()[0].asDict()
+            clustering = list(detail.get("clusteringColumns") or [])
+            props = detail.get("properties") or {}
+            deletion_vectors = (
+                str(props.get("delta.enableDeletionVectors", "")).lower() == "true"
+            )
+            auto_compact = (
+                str(props.get("delta.autoOptimize.autoCompact", "")).lower() == "true"
+            )
+        except Exception:
+            pass
+
+        try:
+            import json
+
+            hist = _read_delta_table_history(path)
+            for _, h in hist.iterrows():
+                if str(h.get("operation")) != "OPTIMIZE":
+                    continue
+                params = h.get("operationParameters") or {}
+                z = params.get("zOrderBy")
+                if z and str(z) not in ("[]", ""):
+                    try:
+                        parsed = json.loads(z) if isinstance(z, str) else list(z)
+                        zorder = [c for c in parsed if c]
+                    except Exception:
+                        zorder = [str(z)]
+                    break
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    return zorder, clustering, deletion_vectors, auto_compact
+
+
+def _compute_table_delta_stats(info, skip_cardinality=True):
+    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
+    table and return the pre-formatted stats to merge into the Vertipaq
+    Analyzer widget.
+
+    Returns a tuple ``(table_stats, column_stats_by_source_column)`` where
+    ``table_stats`` is a dict of formatted table-level values and
+    ``column_stats_by_source_column`` maps each source (delta) column name to a
+    dict of formatted per-column values.
+    """
+    from sempy_labs._delta_analyzer import delta_analyzer
+
+    lakehouse = info.get("lakehouse")
+    workspace = info.get("workspace")
+    # The entity/schema come from the Direct Lake partition's EntityName and
+    # SchemaName properties; the schema is reconciled with the lakehouse so the
+    # delta path resolves for both schema-enabled and non-schema lakehouses.
+    entity = info.get("entity")
+    schema = info.get("schema") or None
+
+    result = delta_analyzer(
+        table_name=entity,
+        lakehouse=lakehouse,
+        workspace=workspace,
+        schema=schema,
+        column_stats=True,
+        skip_cardinality=skip_cardinality,
+        approx_distinct_count=True,
+        visualize=False,
+        export=False,
+        _show_progress=False,
+    )
+
+    summary = result["Summary"].iloc[0]
+
+    def _to_int(v):
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 0
+
+    total_size = _to_int(summary.get("Total Size", 0))
+    row_count = _to_int(summary.get("Row Count", 0))
+    row_groups = _to_int(summary.get("Row Groups", 0))
+    parquet_files = _to_int(summary.get("Parquet Files", 0))
+    vorder = bool(summary.get("VOrder Enabled", False))
+
+    zorder, clustering, deletion_vectors, auto_compact = _get_delta_table_metadata(
+        entity, lakehouse, workspace, schema
+    )
+
+    table_stats = {
+        "deltaTotalSize": format_bytes(total_size),
+        # Raw byte counts travel alongside the human-readable values so the
+        # frontend can sort these columns numerically ("9 KB" vs "1.2 MB").
+        "deltaTotalSizeRaw": total_size,
+        "deltaRowCount": f"{row_count:,}",
+        "deltaRowGroups": f"{row_groups:,}",
+        "deltaParquetFiles": f"{parquet_files:,}",
+        "deltaVorder": "Yes" if vorder else "No",
+        "deltaZOrder": ", ".join(zorder) if zorder else "No",
+        "deltaClustering": ", ".join(clustering) if clustering else "No",
+        "deltaDeletionVectors": "Yes" if deletion_vectors else "No",
+        "deltaAutoCompact": "Yes" if auto_compact else "No",
+    }
+
+    column_stats: dict = {}
+    cols_df = result.get("Columns")
+    if cols_df is not None and not cols_df.empty:
+        has_card = "Cardinality" in cols_df.columns and not skip_cardinality
+        for _, cr in cols_df.iterrows():
+            name = cr.get("Column Name")
+            if name is None:
+                continue
+            entry = {
+                "compressedSize": format_bytes(_to_int(cr.get("Compressed Size", 0))),
+                "compressedSizeRaw": _to_int(cr.get("Compressed Size", 0)),
+                "uncompressedSize": format_bytes(
+                    _to_int(cr.get("Uncompressed Size", 0))
+                ),
+                "uncompressedSizeRaw": _to_int(cr.get("Uncompressed Size", 0)),
+                "cardinality": (
+                    f"{_to_int(cr.get('Cardinality', 0)):,}" if has_card else ""
+                ),
+            }
+            column_stats[name] = entry
+
+    return table_stats, column_stats
+
+
 @log
 def vertipaq_analyzer(
     dataset: str | UUID,
@@ -169,11 +729,14 @@ def vertipaq_analyzer(
     export_workspace: Optional[str | UUID] = None,
     export_schema: Optional[str] = None,
     dark_mode: bool = False,
+    _widget=None,
 ) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
 
     `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ is an open-sourced tool built by SQLBI. It provides a detailed analysis of the VertiPaq engine, which is the in-memory engine used by Power BI and Analysis Services Tabular models.
+
+    If the semantic model has any tables in Direct Lake mode which source from a lakehouse, the visualization includes a "Delta Analyzer" button. Clicking it lets you pick which Direct-Lake-over-Lakehouse source tables to analyze on Spark and then merges the resulting `Delta Analyzer <https://github.com/microsoft/Analysis-Services/tree/master/DeltaAnalyzer>`_ statistics (e.g. delta table size, row groups, parquet files, V-Order, Z-Order, liquid clustering, deletion vectors, auto-compaction, and per-column compressed/uncompressed sizes and cardinality) into the Tables and Columns tabs. This interactive feature requires the ``anywidget`` package; if it is not installed the statistics still render without the button.
 
     Parameters
     ----------
@@ -1031,6 +1594,44 @@ def vertipaq_analyzer(
             for items in config.values()
             if items.get("sortby")
         }
+
+        # Direct-Lake-over-Lakehouse source tables that the Delta Analyzer can
+        # run on (needs the source lakehouse + workspace + entity). Only these
+        # tables enable the "Delta Analyzer" button in the widget.
+        delta_tables = []
+        _seen_dl = set()
+        for _p in partitions:
+            if (
+                _p.get("Mode") == "DirectLake"
+                and _p.get("Source Type") == "Lakehouse"
+                and _p.get("Source Name")
+                and _p.get("Source Table Name")
+                and _p.get("Table Name") not in _seen_dl
+            ):
+                _seen_dl.add(_p.get("Table Name"))
+                _schema = _p.get("Source Schema Name")
+                _entity = _p.get("Source Table Name")
+                delta_tables.append(
+                    {
+                        "tableName": _p.get("Table Name"),
+                        "lakehouse": _p.get("Source Name"),
+                        "workspace": _p.get("Source Workspace"),
+                        "entity": _entity,
+                        "schema": _schema,
+                        "deltaTableName": (
+                            f"{_schema}.{_entity}" if _schema else _entity
+                        ),
+                    }
+                )
+
+        # Map each model column to its source (delta) column name so the Delta
+        # Analyzer per-column stats can be matched back to the model columns.
+        column_source_map: dict = {}
+        for _c in columns:
+            column_source_map.setdefault(_c["Table Name"], {})[_c["Column Name"]] = (
+                _c.get("Source Column") or _c["Column Name"]
+            )
+
         visualize_vertipaq(
             dfs,
             dataset_name,
@@ -1038,6 +1639,12 @@ def vertipaq_analyzer(
             default_sort=default_sort,
             workspace_name=workspace_name,
             dark_mode=dark_mode,
+            delta_tables=delta_tables,
+            column_source_map=column_source_map,
+            dataset_id=dataset_id,
+            workspace_id=workspace_id,
+            read_stats_from_data=read_stats_from_data,
+            widget=_widget,
         )
 
         return final_dict
@@ -1149,6 +1756,70 @@ def vertipaq_analyzer(
             )
 
 
+def _vpx_model_key(workspace_id, dataset_id) -> str:
+    """Cache key identifying an analyzed semantic model."""
+    return f"{str(workspace_id).lower()}|{str(dataset_id).lower()}"
+
+
+def _vpx_snapshot_model(widget):
+    """Cache the state of the model currently rendered in the widget (HTML/JS
+    plus any merged Delta Analyzer results) so it can be shown again later
+    without re-running the analysis."""
+    key = getattr(widget, "_model_key", "")
+    if not key or getattr(widget, "_cache", None) is None:
+        return
+    widget._cache[key] = {
+        "uid": widget.uid,
+        "html": widget.html_content,
+        "js": widget.script_content,
+        "workspace_id": widget.workspace_id,
+        "delta_tables": list(widget.delta_tables or []),
+        "delta_results": dict(widget.delta_results or {}),
+        "delta_info": dict(getattr(widget, "_delta_info", {}) or {}),
+        "col_src": dict(getattr(widget, "_col_src", {}) or {}),
+        "meta": dict(getattr(widget, "_model_meta", {}) or {}),
+    }
+
+
+def _vpx_sync_recent(widget):
+    """Publish the analyzed models so the picker can offer them for instant
+    switching."""
+    widget.recent_models = [
+        {
+            "key": k,
+            "dataset": (e.get("meta") or {}).get("dataset", ""),
+            "workspace": (e.get("meta") or {}).get("workspace", ""),
+            "current": k == getattr(widget, "_model_key", ""),
+        }
+        for k, e in (getattr(widget, "_cache", None) or {}).items()
+    ]
+
+
+def _vpx_restore_model(widget, key) -> bool:
+    """Re-render a previously analyzed model from the cache. Returns False when
+    that model has not been analyzed in this session."""
+    if key not in (getattr(widget, "_cache", None) or {}):
+        return False
+    # Capture the latest state (e.g. Delta Analyzer results added since the
+    # model was rendered) before switching away from it.
+    _vpx_snapshot_model(widget)
+    entry = widget._cache[key]
+    widget._model_key = key
+    widget._model_meta = dict(entry.get("meta") or {})
+    widget._delta_info = dict(entry.get("delta_info") or {})
+    widget._col_src = dict(entry.get("col_src") or {})
+    widget.workspace_id = entry.get("workspace_id", "")
+    widget.delta_tables = entry.get("delta_tables", [])
+    widget.delta_results = entry.get("delta_results", {})
+    widget.status = {}
+    widget.uid = entry.get("uid", "")
+    widget.script_content = entry.get("js", "")
+    # Set last: the frontend redraws on this trait.
+    widget.html_content = entry.get("html", "")
+    _vpx_sync_recent(widget)
+    return True
+
+
 def visualize_vertipaq(
     dataframes,
     dataset_name,
@@ -1156,7 +1827,19 @@ def visualize_vertipaq(
     default_sort=None,
     workspace_name=None,
     dark_mode=False,
+    delta_tables=None,
+    column_source_map=None,
+    dataset_id=None,
+    workspace_id=None,
+    read_stats_from_data=False,
+    widget=None,
 ):
+    """Render the Vertipaq Analyzer visualization.
+
+    ``widget`` is an already-displayed Vertipaq widget to re-render in place
+    (used by the workspace / semantic model picker when switching models)
+    instead of creating and displaying a new one.
+    """
 
     # Build tooltip lookup from vertipaq_map
     tooltip_lookup = {}
@@ -1191,8 +1874,12 @@ def visualize_vertipaq(
     uid = uuid.uuid4().hex[:8]
     root_selector = f".vpx-{uid}"
     theme_btn_id = f"vpx-theme-{uid}"
-    fullscreen_btn_id = f"vpx-fullscreen-{uid}"
-    fullscreen_class = "vpx-fullscreen"
+    fullscreen_btn_id = f"vpx-fs-{uid}"
+    picker_btn_id = f"vpx-picker-{uid}"
+    # The workspace / semantic model picker re-runs the analysis in Python, so
+    # it is only available on the interactive (anywidget) render, which in turn
+    # needs to know which model is currently shown.
+    can_pick = bool(dataset_id) and bool(workspace_id)
     # Scope the shared header CSS under the root selector so its rules win
     # against notebook host styles (e.g. Jupyter's ``.jp-RenderedHTMLCommon
     # button`` rules that would otherwise override the theme toggle
@@ -1201,12 +1888,7 @@ def visualize_vertipaq(
     # are NOT subject to f-string escaping and don't need doubling.
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
-    ui_fullscreen_css = _ui_fullscreen_css(
-        root_selector,
-        fullscreen_class,
-        container_selector=".vpx-container",
-        bg_var="var(--vpx-bg)",
-    )
+    ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
 
     # ── CSS ──────────────────────────────────────────────────────────────
     # Light theme is the default; the ``.vpx-dark`` modifier on the root
@@ -1245,6 +1927,39 @@ def visualize_vertipaq(
     }}
     .vpx-{uid}.vpx-dark {{
         {_UI_DARK_VARS}
+    }}
+    /* ── Fullscreen overlay ── */
+    .vpx-{uid}.vpx-fs {{
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    /* Native fullscreen (when the host grants it) — fill the screen and drop
+       the framing chrome. */
+    .vpx-{uid}:fullscreen,
+    .vpx-{uid}:-webkit-full-screen {{
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    .vpx-{uid}.vpx-fs .vpx-container {{
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 100%;
+    }}
+    .vpx-{uid}.vpx-fs .vpx-table-wrap {{
+        max-height: calc(100vh - 260px);
     }}
     .vpx-{uid} *, .vpx-{uid} *::before, .vpx-{uid} *::after {{
         box-sizing: border-box;
@@ -1331,6 +2046,15 @@ def visualize_vertipaq(
         width: 14px;
         height: 14px;
         flex-shrink: 0;
+    }}
+    .vpx-{uid} .vpx-tab-btn .vpx-tab-count {{
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--vpx-text-tertiary);
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-tab-btn.vpx-active .vpx-tab-count {{
+        color: var(--vpx-text-secondary);
     }}
     .vpx-{uid} .vpx-tab-btn::after {{
         content: '';
@@ -1470,7 +2194,7 @@ def visualize_vertipaq(
     .vpx-{uid} thead {{
         position: sticky;
         top: 0;
-        z-index: 2;
+        z-index: 3;
     }}
     .vpx-{uid} thead th {{
         padding: 10px 20px 10px 16px;
@@ -1492,7 +2216,11 @@ def visualize_vertipaq(
     }}
     .vpx-{uid} thead th:hover {{
         color: var(--vpx-text);
-        background: var(--ui-accent-soft);
+        /* The header is sticky, so its background must stay opaque - a
+           translucent accent tint would let the scrolled rows underneath show
+           through it. Layer the tint on top of the opaque header color. */
+        background-color: var(--vpx-bg-secondary);
+        background-image: linear-gradient(var(--ui-accent-soft), var(--ui-accent-soft));
     }}
     .vpx-{uid} thead th .vpx-sort-arrow {{
         display: none;
@@ -1576,6 +2304,39 @@ def visualize_vertipaq(
         opacity: 0.5;
     }}
 
+    /* ── Frozen (sticky) leading columns ── */
+    /* Frozen cells must be fully opaque so the columns scrolled underneath
+       them are hidden. The generic row/zebra rule and the translucent hover
+       background would otherwise let the scrolled cells show through, so set
+       solid background-colors here for every row state with a selector that
+       out-specifies the row rules. */
+    .vpx-{uid} th.vpx-freeze,
+    .vpx-{uid} td.vpx-freeze {{
+        position: sticky;
+        left: 0;
+        background-color: var(--vpx-bg);
+    }}
+    .vpx-{uid} tbody tr:nth-child(even) td.vpx-freeze {{
+        background-color: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} tbody tr:hover td.vpx-freeze {{
+        background-color: var(--vpx-bg-secondary);
+    }}
+    /* Above the scrolled body cells (a data-bar cell's .vpx-bar-value uses
+       z-index 1) but below the sticky header (z-index 3) so the top-left
+       corner still stacks correctly. */
+    .vpx-{uid} tbody td.vpx-freeze {{
+        z-index: 2;
+    }}
+    .vpx-{uid} thead th.vpx-freeze {{
+        background-color: var(--vpx-bg-secondary);
+        z-index: 5;
+    }}
+    .vpx-{uid} th.vpx-freeze-edge,
+    .vpx-{uid} td.vpx-freeze-edge {{
+        box-shadow: inset -1px 0 0 var(--vpx-border-strong);
+    }}
+
     /* ── Empty state ── */
     .vpx-{uid} .vpx-empty {{
         text-align: center;
@@ -1583,13 +2344,427 @@ def visualize_vertipaq(
         color: var(--vpx-text-tertiary);
         font-size: 14px;
     }}
+    /* ── Delta Analyzer button + dialog ── */
+    .vpx-{uid} .vpx-delta-btn {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    /* Keep the accent color on hover (do not fall back to the generic
+       .vpx-bar-toggle:hover color). */
+    .vpx-{uid} .vpx-delta-btn:hover {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-iconbtn {{
+        padding: 4px 6px;
+        gap: 0;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-loaded {{
+        background: var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-btn:disabled {{
+        opacity: 0.6;
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-delta-btn .vpx-toggle-icon {{
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+    }}
+    /* Running state: the button turns into a cancel button with a spinner and
+       a "<done>/<total>" progress counter. */
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running {{
+        color: #d70015;
+        border-color: #d70015;
+        background: transparent;
+        gap: 5px;
+        padding: 4px 8px;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running:hover {{
+        color: #d70015;
+        border-color: #d70015;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running .vpx-toggle-icon {{
+        display: none;
+    }}
+    .vpx-{uid} .vpx-delta-spinner {{
+        display: none;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        flex-shrink: 0;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running .vpx-delta-spinner {{
+        display: inline-block;
+        animation: vpxSpin{uid} 0.8s linear infinite;
+    }}
+    .vpx-{uid} .vpx-delta-progress {{
+        font-size: 11px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-delta-progress:empty {{
+        display: none;
+    }}
+    @keyframes vpxSpin{uid} {{
+        to {{ transform: rotate(360deg); }}
+    }}
+    .vpx-{uid} .vpx-delta-col .vpx-delta-colicon {{
+        width: 11px;
+        height: 11px;
+        margin-right: 4px;
+        vertical-align: -1px;
+        color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-col.vpx-delta-num {{
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-delta-status {{
+        display: none;
+        padding: 8px 24px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--vpx-border);
+        color: var(--vpx-text-secondary);
+        background: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} .vpx-delta-status.vpx-delta-status-error {{
+        color: #d70015;
+    }}
+    .vpx-{uid} .vpx-delta-status.vpx-delta-status-success {{
+        color: #248a3d;
+    }}
+    .vpx-{uid} .vpx-delta-dialog {{
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483100;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 24px;
+    }}
+    .vpx-{uid} .vpx-delta-modal {{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 460px;
+        max-height: 80vh;
+        overflow: hidden;
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius);
+        box-shadow: var(--vpx-shadow-lg);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head .vpx-delta-modal-title {{
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head .vpx-delta-modal-sub {{
+        font-size: 12px;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-delta-close {{
+        margin-left: auto;
+        border: 1px solid var(--vpx-border-strong);
+        background: var(--vpx-bg);
+        color: var(--vpx-text-secondary);
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body {{
+        overflow: auto;
+        padding: 12px 20px;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body .vpx-delta-listhead {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--vpx-text-tertiary);
+        margin-bottom: 6px;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body .vpx-delta-listhead button {{
+        border: none;
+        background: none;
+        color: var(--vpx-accent);
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        padding: 0 4px;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--vpx-text);
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow:hover {{
+        background: var(--vpx-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-tablerow .vpx-delta-tablename {{
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow .vpx-delta-tablesrc {{
+        color: var(--vpx-text-tertiary);
+        font-size: 12px;
+    }}
+    .vpx-{uid} .vpx-delta-switch {{
+        position: relative;
+        display: inline-block;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 20px;
+    }}
+    .vpx-{uid} .vpx-delta-switch input {{
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-switch .vpx-delta-slider {{
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: var(--vpx-border-strong);
+        pointer-events: none;
+        transition: background var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-delta-switch .vpx-delta-slider::before {{
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: var(--vpx-shadow-sm);
+        transition: transform var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:checked + .vpx-delta-slider {{
+        background: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:checked + .vpx-delta-slider::before {{
+        transform: translateX(14px);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:focus-visible + .vpx-delta-slider {{
+        box-shadow: 0 0 0 3px var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-skiprow {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        /* Same horizontal padding as the table rows so this toggle lines up
+           with the ones above it. */
+        padding: 12px 6px 2px 6px;
+        font-size: 13px;
+        color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-delta-skiprow > span:first-child {{
+        flex: 1;
+    }}
+    .vpx-{uid} .vpx-delta-modal-foot {{
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-delta-modal-foot button {{
+        border-radius: var(--vpx-radius-sm);
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-cancel {{
+        border: 1px solid var(--vpx-border-strong);
+        background: var(--vpx-bg);
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-delta-run {{
+        border: 1px solid var(--vpx-accent);
+        background: var(--vpx-accent);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .vpx-{uid} .vpx-delta-run:disabled {{
+        opacity: 0.5;
+        cursor: default;
+    }}
+    /* ── Workspace / semantic model picker ── */
+    .vpx-{uid} .vpx-picker-modal {{
+        max-width: 900px;
+    }}
+    .vpx-{uid} .vpx-picker-top {{
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 16px;
+    }}
+    .vpx-{uid} .vpx-picker-reload {{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        color: var(--vpx-text);
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border-strong);
+        border-radius: var(--vpx-radius-sm);
+        cursor: pointer;
+        transition: border-color var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-picker-reload:hover {{
+        border-color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-picker-reload:disabled {{
+        opacity: 0.5;
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-picker-reload svg {{
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+    }}
+    .vpx-{uid} .vpx-picker-grid {{
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }}
+    .vpx-{uid} .vpx-picker-grid .vpx-picker-field {{
+        flex: 1 1 260px;
+        margin-bottom: 0;
+    }}
+    .vpx-{uid} .vpx-picker-recent {{
+        display: none;
+        margin-top: 20px;
+    }}
+    .vpx-{uid} .vpx-picker-recent-head {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+        margin-bottom: 8px;
+    }}
+    .vpx-{uid} .vpx-picker-recent-list {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }}
+    .vpx-{uid} .vpx-picker-recentitem {{
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        padding: 6px 12px;
+        font-size: 12.5px;
+        font-family: inherit;
+        color: var(--vpx-text);
+        background: var(--vpx-bg-secondary);
+        border: 1px solid var(--vpx-border);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: color var(--vpx-transition), border-color var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-picker-recentitem:hover {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-picker-recentitem.vpx-current {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+        background: var(--ui-accent-soft);
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-picker-recentsub {{
+        font-size: 11px;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-picker-field {{
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 14px;
+    }}
+    .vpx-{uid} .vpx-picker-field label {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-picker-select {{
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-family: inherit;
+        color: var(--vpx-text);
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border-strong);
+        border-radius: var(--vpx-radius-sm);
+        outline: none;
+    }}
+    .vpx-{uid} .vpx-picker-select:focus {{
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-picker-select:disabled {{
+        opacity: 0.6;
+    }}
+    .vpx-{uid}.vpx-dark .vpx-picker-select option {{
+        background: #2c2c2e;
+        color: #f5f5f7;
+    }}
     {ui_attribution_css_scoped}
+    {ui_button_press_css_scoped}
     </style>
     """
 
     # ── Build HTML ────────────────────────────────────────────────────────
     search_svg = _UI_ICONS["search"].replace(
         "<svg ", '<svg class="vpx-search-icon" ', 1
+    )
+
+    # Delta Analyzer availability + button icon. The button is only rendered
+    # (and the widget is only made interactive) when the model has
+    # Direct-Lake-over-Lakehouse source tables to analyze.
+    delta_tables = delta_tables or []
+    has_delta = bool(delta_tables)
+    delta_btn_icon = _UI_ICONS["delta_stats"].replace(
+        "<svg ", '<svg class="vpx-toggle-icon" ', 1
+    )
+    # Same badge, used to mark the Delta-Analyzer-sourced column headers.
+    delta_col_icon = _UI_ICONS["delta_stats"].replace(
+        "<svg ", '<svg class="vpx-delta-colicon" ', 1
     )
 
     header_html = _ui_render_header_html(
@@ -1599,6 +2774,22 @@ def visualize_vertipaq(
         theme_btn_id=theme_btn_id,
         dark_mode=dark_mode,
         fullscreen_btn_id=fullscreen_btn_id,
+        title_icon=_UI_ICONS["vertipaq"],
+        # The picker calls back into Python to re-run the analysis, so it is
+        # only offered on the interactive (anywidget) render. It sits directly
+        # to the right of the title.
+        extra_buttons=(
+            [
+                {
+                    "id": picker_btn_id,
+                    "cls": "vpx-picker-btn",
+                    "icon": _UI_ICONS["swap"],
+                    "title": "Change semantic model / workspace",
+                }
+            ]
+            if can_pick
+            else []
+        ),
     )
 
     html_parts = []
@@ -1669,18 +2860,31 @@ def visualize_vertipaq(
         "Hierarchies": ["Used Size"],
     }
 
+    # Leading columns to freeze (sticky) per tab so the key identifier
+    # column(s) stay visible when the table is scrolled horizontally.
+    freeze_columns = {
+        "Tables": ["Table Name"],
+        "Columns": ["Table Name", "Column Name"],
+    }
+
     # Tab bar
     html_parts.append(f'<div class="vpx-tab-bar" id="vpx-tabbar-{uid}">')
-    for i, title in enumerate(df_dict.keys()):
+    for i, (title, (tab_df, _)) in enumerate(df_dict.items()):
         active = " vpx-active" if i == 0 else ""
         icon = tab_icons.get(title, "")
         html_parts.append(
             f'<button class="vpx-tab-btn{active}" '
             f'data-vpx-target="vpx-{uid}-p{i}" '
-            f'onclick="vpxSwitch_{uid}(this)">{icon}{title}</button>'
+            f'onclick="vpxSwitch_{uid}(this)">{icon}{title}'
+            f'<span class="vpx-tab-count">{len(tab_df):,}</span></button>'
         )
 
     html_parts.append("</div>")
+
+    # Delta Analyzer / picker status bar (shown across tabs while a run is in
+    # progress or when a run reports an error/summary). Wired by the widget.
+    if has_delta or can_pick:
+        html_parts.append('<div class="vpx-delta-status"></div>')
 
     # Panels
     for i, (title, (df, _)) in enumerate(df_dict.items()):
@@ -1705,6 +2909,27 @@ def visualize_vertipaq(
             f"</div>"
         )
         html_parts.append('<div class="vpx-toolbar-controls">')
+        # Delta Analyzer button — placed to the left of the Bars button. Only
+        # on the Tables/Columns tabs (the tabs whose rows receive merged Delta
+        # Analyzer stats) and only when the model has Direct-Lake-over-Lakehouse
+        # source tables. Wired in the anywidget frontend (it must call back into
+        # Python to run Spark).
+        if has_delta and title in ("Tables", "Columns"):
+            delta_btn_title = (
+                "Run Delta Analyzer stats \u2014 pick which Direct Lake source "
+                "tables to analyze on Spark, then merge the results into the "
+                "Tables and Columns tabs"
+            )
+            html_parts.append(
+                f'<button class="vpx-bar-toggle vpx-delta-btn vpx-delta-iconbtn" '
+                f'type="button" aria-label="Delta Analyzer" '
+                f'data-title="{delta_btn_title}" title="{delta_btn_title}">'
+                f"{delta_btn_icon}"
+                f'<span class="vpx-delta-spinner" aria-hidden="true"></span>'
+                f'<span class="vpx-delta-progress"></span>'
+                f"</button>"
+            )
+
         if has_bars:
             bar_toggle_icon = (
                 '<svg class="vpx-toggle-icon" viewBox="0 0 16 16" fill="none" '
@@ -1734,13 +2959,27 @@ def visualize_vertipaq(
         if df.empty:
             html_parts.append('<div class="vpx-empty">No data available</div>')
         else:
-            html_parts.append("<table>")
+            html_parts.append(f'<table data-vpx-tab="{title}">')
 
             # Determine numeric columns
             numeric_cols = set()
             for col in df.columns:
                 if df[col].dtype.kind in ("i", "f", "u"):
                     numeric_cols.add(col)
+
+            # Leading columns frozen (sticky) for this tab. They must be
+            # contiguous from the left; the last one gets an edge separator.
+            freeze_cols = freeze_columns.get(title, [])
+            freeze_set = [c for c in df.columns if c in freeze_cols]
+            freeze_edge = freeze_set[-1] if freeze_set else None
+
+            def _freeze_classes(col):
+                if col not in freeze_set:
+                    return []
+                cls = ["vpx-freeze"]
+                if col == freeze_edge:
+                    cls.append("vpx-freeze-edge")
+                return cls
 
             # Header
             presort_col = default_sort.get(title) if default_sort else None
@@ -1749,10 +2988,11 @@ def visualize_vertipaq(
                 tt = tooltip_lookup.get((vw, col), "")
                 num_cls = " vpx-numeric" if col in numeric_cols else ""
                 sort_cls = " vpx-sort-desc" if col == presort_col else ""
+                freeze_cls = "".join(f" {c}" for c in _freeze_classes(col))
                 tip_attr = f' title="{tt}"' if tt else ""
                 arrow = "&#x25BC;" if col == presort_col else "&#x25B2;"
                 html_parts.append(
-                    f'<th class="{(num_cls + sort_cls).strip()}"{tip_attr} '
+                    f'<th class="{(num_cls + sort_cls + freeze_cls).strip()}"{tip_attr} '
                     f'onclick="vpxSort_{uid}(this)">'
                     f'{col}<span class="vpx-sort-arrow">{arrow}</span>'
                     f'<div class="vpx-resize-handle" '
@@ -1791,6 +3031,7 @@ def visualize_vertipaq(
                         cls_parts.append("vpx-numeric")
                     if is_bar:
                         cls_parts.append("vpx-bar-cell")
+                    cls_parts.extend(_freeze_classes(col))
                     cls_attr = f' class="{" ".join(cls_parts)}"' if cls_parts else ""
                     if is_bar and cell_val:
                         try:
@@ -1824,6 +3065,110 @@ def visualize_vertipaq(
             ]
         )
     )
+
+    # Delta Analyzer table-picker dialog (hidden until the button is clicked).
+    if has_delta:
+        rows_html = []
+        for t in delta_tables:
+            tname = html_escape(str(t.get("tableName", "")))
+            src = html_escape(str(t.get("deltaTableName", "")))
+            rows_html.append(
+                f'<label class="vpx-delta-tablerow">'
+                f'<span class="vpx-delta-tablename">{tname}</span>'
+                f'<span class="vpx-delta-tablesrc">{src}</span>'
+                f'<span class="vpx-delta-switch">'
+                f'<input type="checkbox" class="vpx-delta-tablecb" checked '
+                f'role="switch" data-table="{tname}" />'
+                f'<span class="vpx-delta-slider"></span>'
+                f"</span>"
+                f"</label>"
+            )
+        delta_dialog_icon = _UI_ICONS["delta_stats"].replace(
+            "<svg ", '<svg class="vpx-toggle-icon" ', 1
+        )
+        html_parts.append(
+            f'<div class="vpx-delta-dialog">'
+            f'<div class="vpx-delta-modal">'
+            f'<div class="vpx-delta-modal-head">{delta_dialog_icon}'
+            f"<div>"
+            f'<div class="vpx-delta-modal-title">Run Delta Analyzer stats</div>'
+            f'<div class="vpx-delta-modal-sub">Choose the Direct Lake source '
+            f"tables to analyze on Spark.</div>"
+            f"</div>"
+            f'<button type="button" class="vpx-delta-close" '
+            f'aria-label="Close">\u00d7</button>'
+            f"</div>"
+            f'<div class="vpx-delta-modal-body">'
+            f'<div class="vpx-delta-listhead">'
+            f"<span>Tables</span>"
+            f"<span>"
+            f'<button type="button" class="vpx-delta-selectall">Select all</button>'
+            f'<button type="button" class="vpx-delta-clear">Clear</button>'
+            f"</span>"
+            f"</div>"
+            f'{"".join(rows_html)}'
+            f'<label class="vpx-delta-skiprow">'
+            f"<span>Skip cardinality (faster; skips per-column distinct "
+            f"counts)</span>"
+            f'<span class="vpx-delta-switch">'
+            f'<input type="checkbox" class="vpx-delta-skipcard" checked '
+            f'role="switch" />'
+            f'<span class="vpx-delta-slider"></span>'
+            f"</span>"
+            f"</label>"
+            f"</div>"
+            f'<div class="vpx-delta-modal-foot">'
+            f'<button type="button" class="vpx-delta-cancel">Cancel</button>'
+            f'<button type="button" class="vpx-delta-run">Run</button>'
+            f"</div>"
+            f"</div>"
+            f"</div>"
+        )
+
+    # Workspace / semantic model picker dialog (hidden until the header's swap
+    # button is clicked). The dropdowns are populated by the widget frontend
+    # from the ``workspaces`` / ``datasets`` traits.
+    if can_pick:
+        picker_dialog_icon = _UI_ICONS["swap"].replace(
+            "<svg ", '<svg class="vpx-toggle-icon" ', 1
+        )
+        picker_reload_icon = _UI_ICONS["refresh"]
+        html_parts.append(
+            f'<div class="vpx-delta-dialog vpx-picker-dialog">'
+            f'<div class="vpx-delta-modal vpx-picker-modal">'
+            f'<div class="vpx-delta-modal-head">{picker_dialog_icon}'
+            f"<div>"
+            f'<div class="vpx-delta-modal-title">Choose a semantic model</div>'
+            f'<div class="vpx-delta-modal-sub">Pick a workspace and semantic '
+            f"model to analyze.</div>"
+            f"</div>"
+            f'<button type="button" class="vpx-delta-close vpx-picker-close" '
+            f'aria-label="Close">\u00d7</button>'
+            f"</div>"
+            f'<div class="vpx-delta-modal-body">'
+            f'<div class="vpx-picker-top">'
+            f'<button type="button" class="vpx-picker-reload" '
+            f'title="Reload workspaces and semantic models">'
+            f"{picker_reload_icon}Reload</button>"
+            f"</div>"
+            f'<div class="vpx-picker-grid">'
+            f'<div class="vpx-picker-field"><label>Workspace</label>'
+            f'<select class="vpx-picker-select vpx-picker-ws"></select></div>'
+            f'<div class="vpx-picker-field"><label>Semantic model</label>'
+            f'<select class="vpx-picker-select vpx-picker-ds"></select></div>'
+            f"</div>"
+            f'<div class="vpx-picker-recent"></div>'
+            f"</div>"
+            f'<div class="vpx-delta-modal-foot">'
+            f'<button type="button" class="vpx-delta-cancel vpx-picker-cancel">'
+            f"Cancel</button>"
+            f'<button type="button" class="vpx-delta-run vpx-picker-connect" '
+            f"disabled>Connect</button>"
+            f"</div>"
+            f"</div>"
+            f"</div>"
+        )
+
     html_parts.append("</div>")  # root
 
     # ── JavaScript ────────────────────────────────────────────────────────
@@ -1838,7 +3183,11 @@ def visualize_vertipaq(
             btn.classList.add('vpx-active');
             container.querySelectorAll('.vpx-panel').forEach(function(p) {{ p.classList.remove('vpx-visible'); }});
             var target = container.querySelector('#' + btn.getAttribute('data-vpx-target'));
-            if (target) target.classList.add('vpx-visible');
+            if (target) {{
+                target.classList.add('vpx-visible');
+                var ft = target.querySelector('table');
+                if (ft) requestAnimationFrame(function() {{ window.vpxUpdateFreeze_{uid}(ft); }});
+            }}
         }};
 
         /* Filtering */
@@ -1890,11 +3239,13 @@ def visualize_vertipaq(
                 var newW = Math.max(minW, startW + diff);
                 th.style.width = newW + 'px';
                 th.style.minWidth = newW + 'px';
+                window.vpxUpdateFreeze_{uid}(table);
             }}
             function onUp() {{
                 handle.classList.remove('vpx-resizing');
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                window.vpxUpdateFreeze_{uid}(table);
                 setTimeout(function() {{ _vpxResizing_{uid} = false; }}, 0);
             }}
             document.addEventListener('mousemove', onMove);
@@ -1920,8 +3271,14 @@ def visualize_vertipaq(
             th.querySelector('.vpx-sort-arrow').innerHTML = asc ? '&#x25B2;' : '&#x25BC;';
 
             rows.sort(function(a, b) {{
-                var aVal = a.children[idx] ? a.children[idx].textContent.trim() : '';
-                var bVal = b.children[idx] ? b.children[idx].textContent.trim() : '';
+                /* Cells can carry a raw numeric value in data-vpx-sort (e.g.
+                   byte-formatted Delta Analyzer columns) - prefer it so the
+                   comparison is not thrown off by the unit suffix. */
+                var aCell = a.children[idx], bCell = b.children[idx];
+                var aRaw = aCell ? aCell.getAttribute('data-vpx-sort') : null;
+                var bRaw = bCell ? bCell.getAttribute('data-vpx-sort') : null;
+                var aVal = aRaw !== null ? aRaw : (aCell ? aCell.textContent.trim() : '');
+                var bVal = bRaw !== null ? bRaw : (bCell ? bCell.textContent.trim() : '');
                 /* Try numeric comparison */
                 var aNum = parseFloat(aVal.replace(/,/g, '').replace(/%/g, ''));
                 var bNum = parseFloat(bVal.replace(/,/g, '').replace(/%/g, ''));
@@ -1952,6 +3309,37 @@ def visualize_vertipaq(
             }});
         }};
 
+        /* Frozen (sticky) leading columns: set each frozen cell's left offset
+           to the cumulative width of the frozen columns before it. Recomputed
+           on tab switch and column resize since widths can change. */
+        window.vpxUpdateFreeze_{uid} = function(table) {{
+            var headRow = table.querySelector('thead tr');
+            if (!headRow) return;
+            var ths = Array.prototype.slice.call(headRow.children);
+            var bodyRows = table.querySelectorAll('tbody tr');
+            var offset = 0;
+            for (var i = 0; i < ths.length; i++) {{
+                var th = ths[i];
+                if (!th.classList.contains('vpx-freeze')) continue;
+                var left = offset + 'px';
+                th.style.left = left;
+                (function(idx, lv) {{
+                    bodyRows.forEach(function(tr) {{
+                        var cell = tr.children[idx];
+                        if (cell) cell.style.left = lv;
+                    }});
+                }})(i, left);
+                offset += th.offsetWidth;
+            }}
+        }};
+
+        /* Initialize frozen columns for the currently visible panel. */
+        requestAnimationFrame(function() {{
+            document.querySelectorAll('.vpx-{uid} .vpx-panel.vpx-visible table').forEach(function(t) {{
+                window.vpxUpdateFreeze_{uid}(t);
+            }});
+        }});
+
 
     }})();
     </script>
@@ -1966,17 +3354,400 @@ def visualize_vertipaq(
     fullscreen_script = _ui_fullscreen_toggle_script(
         btn_id=fullscreen_btn_id,
         root_selector=root_selector,
-        fullscreen_class=fullscreen_class,
+        fs_class="vpx-fs",
     )
 
-    # Render through a lightweight anywidget so the output lives in the
-    # notebook webview's light DOM (not the nested sandbox iframe used for raw
-    # HTML output). This lets the full-screen toggle use the native Fullscreen
-    # API and expand edge-to-edge, matching the other interactive tools. Falls
-    # back to plain HTML output if anywidget isn't installed.
-    _ui_display_html_widget(
-        styles + "\n".join(html_parts) + script + theme_script + fullscreen_script
+    static_html = styles + "\n".join(html_parts)
+    static_scripts = script + theme_script + fullscreen_script
+
+    # Raw JS (without the <script> wrappers) so the frontend can execute it via
+    # a dynamically created <script> element (innerHTML-injected scripts do not
+    # run).
+    raw_static_js = "\n".join(
+        s.replace("<script>", "").replace("</script>", "")
+        for s in (script, theme_script, fullscreen_script)
     )
+
+    # Re-render in place (the workspace / semantic model picker switched the
+    # widget to a different model), replacing the pre-built HTML/JS and the
+    # Delta Analyzer metadata the observers rely on.
+    if widget is not None:
+        # Keep the outgoing model's state so the user can switch back to it.
+        _vpx_snapshot_model(widget)
+        widget._delta_info = {t["tableName"]: t for t in delta_tables}
+        widget._col_src = column_source_map or {}
+        widget._model_key = _vpx_model_key(workspace_id, dataset_id)
+        widget._model_meta = {
+            "dataset": dataset_name or "",
+            "workspace": workspace_name or "",
+        }
+        widget.workspace_id = str(workspace_id or "")
+        widget.delta_tables = delta_tables
+        widget.delta_results = {}
+        widget.status = {}
+        widget.uid = uid
+        widget.script_content = raw_static_js
+        # Set last: the frontend redraws on this trait.
+        widget.html_content = static_html
+        _vpx_snapshot_model(widget)
+        _vpx_sync_recent(widget)
+        return
+
+    # When the model has no Direct-Lake-over-Lakehouse source tables and the
+    # picker is unavailable there is nothing to call back into Python for, so
+    # keep the lightweight static HTML render (no anywidget dependency).
+    if not has_delta and not can_pick:
+        display(HTML(static_html + static_scripts))
+        return
+
+    # Interactive path: the "Delta Analyzer" button must run Spark in Python on
+    # demand and merge the results back into the widget, which requires an
+    # anywidget (a static HTML button cannot call back into Python). Fall back
+    # to the static render if anywidget is unavailable.
+    try:
+        import anywidget
+        import traitlets
+    except ImportError:
+        display(HTML(static_html + static_scripts))
+        return
+
+    class _VertipaqWidget(anywidget.AnyWidget):
+        _esm = _VPX_WIDGET_JS
+        html_content = traitlets.Unicode("").tag(sync=True)
+        script_content = traitlets.Unicode("").tag(sync=True)
+        uid = traitlets.Unicode("").tag(sync=True)
+        delta_tables = traitlets.List().tag(sync=True)
+        pending_action = traitlets.Dict().tag(sync=True)
+        run = traitlets.Int(0).tag(sync=True)
+        delta_results = traitlets.Dict().tag(sync=True)
+        status = traitlets.Dict().tag(sync=True)
+        cancel = traitlets.Int(0).tag(sync=True)
+        delta_icon = traitlets.Unicode("").tag(sync=True)
+        workspace_id = traitlets.Unicode("").tag(sync=True)
+        workspaces = traitlets.List().tag(sync=True)
+        datasets = traitlets.Dict().tag(sync=True)
+        recent_models = traitlets.List().tag(sync=True)
+
+    # In a pure-Python (non-Spark) notebook the Delta Analyzer cannot run, so
+    # surface an upfront hint next to the button.
+    from sempy_labs._helper_functions import _pure_python_notebook
+
+    _initial_delta_status = {}
+    if _pure_python_notebook():
+        _initial_delta_status = {
+            "message": (
+                "The Delta Analyzer requires Spark. Run this in a PySpark "
+                "notebook to get the Delta Analyzer stats."
+            ),
+            "kind": "info",
+        }
+
+    widget = _VertipaqWidget(
+        html_content=static_html,
+        script_content=raw_static_js,
+        uid=uid,
+        delta_tables=delta_tables,
+        pending_action={},
+        run=0,
+        delta_results={},
+        status=_initial_delta_status,
+        cancel=0,
+        delta_icon=delta_col_icon,
+        workspace_id=str(workspace_id or ""),
+        workspaces=[],
+        datasets={},
+        recent_models=[],
+    )
+
+    # Delta Analyzer metadata for the model currently shown. Kept on the widget
+    # (not in this closure) so switching models via the picker can refresh it
+    # while the observers below stay bound.
+    widget._delta_info = {t["tableName"]: t for t in delta_tables}
+    widget._col_src = column_source_map or {}
+    # Every analyzed model is cached (rendered HTML/JS + Delta Analyzer
+    # results) so the picker can switch back to it instantly.
+    widget._cache = {}
+    widget._model_key = _vpx_model_key(workspace_id, dataset_id)
+    widget._model_meta = {
+        "dataset": dataset_name or "",
+        "workspace": workspace_name or "",
+    }
+    _vpx_snapshot_model(widget)
+    _vpx_sync_recent(widget)
+    # Long-running work (Delta Analyzer, switching models) runs inline on the
+    # kernel thread: Spark/OneLake calls (e.g. mounting the lakehouse) are not
+    # reliable from a background thread in Fabric notebooks. Trait updates sent
+    # while the kernel is busy still reach the frontend, so the progress
+    # counter keeps ticking; a cancel request can only be picked up between
+    # tables if the frontend manages to deliver it during the run.
+    _cancel_event = threading.Event()
+    _running = {"active": False}
+
+    def _run_delta(selected, skip_card):
+        total = len(selected)
+        prior = widget.delta_results or {}
+        results_tables = dict(prior.get("tables", {}))
+        results_columns = dict(prior.get("columns", {}))
+        completed = 0
+        try:
+            for idx, info in enumerate(selected, start=1):
+                if _cancel_event.is_set():
+                    break
+                tname = info.get("tableName")
+                widget.status = {
+                    "message": (
+                        f"Running Delta Analyzer on '{tname}' "
+                        f"({idx}/{total})\u2026 a cold Spark session can take a "
+                        f"few minutes."
+                    ),
+                    "kind": "info",
+                    "progress": {"done": completed, "total": total},
+                }
+                tbl_stats, col_stats_by_src = _compute_table_delta_stats(
+                    info, skip_cardinality=skip_card
+                )
+                results_tables[tname] = tbl_stats
+                src_map = widget._col_src.get(tname, {})
+                for model_col, src_col in src_map.items():
+                    stat = col_stats_by_src.get(src_col) or col_stats_by_src.get(
+                        model_col
+                    )
+                    if stat:
+                        results_columns[f"{tname}\u0000{model_col}"] = stat
+                completed += 1
+                # Reassign (new object) so the traitlet change fires and the
+                # frontend merges progressively after each table.
+                widget.delta_results = {
+                    "tables": dict(results_tables),
+                    "columns": dict(results_columns),
+                }
+            if _cancel_event.is_set():
+                widget.status = {
+                    "message": (
+                        f"Delta Analyzer cancelled after {completed} "
+                        f"table{'s' if completed != 1 else ''}."
+                    ),
+                    "kind": "info",
+                    "done": True,
+                    "auto_hide": True,
+                }
+            else:
+                widget.status = {
+                    "message": (
+                        f"Delta Analyzer complete for {total} "
+                        f"table{'s' if total != 1 else ''}."
+                    ),
+                    "kind": "success",
+                    "done": True,
+                    "auto_hide": True,
+                }
+        except Exception as e:  # noqa: BLE001
+            widget.status = {
+                "message": f"Delta Analyzer error: {e}",
+                "kind": "error",
+                "done": True,
+            }
+
+    def _api_items(request):
+        """Collect ``{id, name}`` entries from a paginated Fabric list API."""
+        responses = _base_api(request=request, uses_pagination=True, client="fabric_sp")
+        return [
+            {"id": str(v.get("id")), "name": str(v.get("displayName"))}
+            for r in responses
+            for v in r.get("value", [])
+            if v.get("id")
+        ]
+
+    def _df_items(df, id_names, name_names):
+        """Collect ``{id, name}`` entries from a sempy dataframe, tolerating the
+        different column spellings across semantic-link versions."""
+        cols = list(df.columns)
+        id_col = next((c for c in id_names if c in cols), None)
+        name_col = next((c for c in name_names if c in cols), None)
+        if id_col is None or name_col is None:
+            return []
+        return [
+            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
+        ]
+
+    def _list_workspaces_payload():
+        out = []
+        try:
+            out = _api_items("/v1/workspaces")
+        except Exception:
+            out = []
+        if not out:
+            try:
+                out = _df_items(fabric.list_workspaces(), ["Id", "ID"], ["Name"])
+            except Exception:
+                out = []
+        if not out:
+            return [{"id": str(workspace_id or ""), "name": str(workspace_name or "")}]
+        return sorted(out, key=lambda x: x["name"].lower())
+
+    def _list_datasets_payload(target_workspace_id):
+        out = []
+        try:
+            out = _api_items(f"/v1/workspaces/{target_workspace_id}/semanticModels")
+        except Exception:
+            out = []
+        if not out:
+            try:
+                out = _df_items(
+                    fabric.list_datasets(workspace=target_workspace_id),
+                    ["Dataset Id", "Dataset ID", "Id"],
+                    ["Dataset Name", "Name"],
+                )
+            except Exception:
+                out = []
+        return sorted(out, key=lambda x: x["name"].lower())
+
+    def _connect(target_workspace_id, target_dataset_id, target_names=None):
+        """Show the semantic model chosen in the picker: restored from the cache
+        when it was already analyzed, otherwise analyzed now and re-rendered in
+        place."""
+        names = target_names or {}
+        model_label = names.get("dataset") or str(target_dataset_id)
+        ws_label = names.get("workspace") or str(target_workspace_id)
+        try:
+            if _vpx_restore_model(
+                widget, _vpx_model_key(target_workspace_id, target_dataset_id)
+            ):
+                return
+            widget.status = {
+                "message": (
+                    f"Running Vertipaq Analyzer on '{model_label}' within "
+                    f"the '{ws_label}' workspace\u2026"
+                ),
+                "kind": "info",
+            }
+            vertipaq_analyzer(
+                dataset=target_dataset_id,
+                workspace=target_workspace_id,
+                read_stats_from_data=read_stats_from_data,
+                dark_mode=dark_mode,
+                _widget=widget,
+            )
+        except Exception as e:  # noqa: BLE001
+            widget.status = {
+                "message": (
+                    f"Could not analyze '{model_label}' within the "
+                    f"'{ws_label}' workspace: {e}"
+                ),
+                "kind": "error",
+                "done": True,
+            }
+
+    def _on_run(change):
+        action = dict(widget.pending_action or {})
+        action_name = action.get("action")
+
+        if action_name == "list_workspaces":
+            # Clear first so the trait always changes (an identical payload
+            # would not notify the frontend) and the dropdown shows "Loading".
+            widget.workspaces = []
+            widget.workspaces = _list_workspaces_payload()
+            return
+
+        if action_name == "list_datasets":
+            target = str(action.get("workspace_id") or "")
+            if not target:
+                return
+            new_map = dict(widget.datasets or {})
+            new_map.pop(target, None)
+            widget.datasets = new_map
+            refreshed = dict(new_map)
+            refreshed[target] = _list_datasets_payload(target)
+            widget.datasets = refreshed
+            return
+
+        if action_name == "restore":
+            _vpx_restore_model(widget, str(action.get("key") or ""))
+            return
+
+        if action_name == "connect":
+            target_ws = action.get("workspace_id")
+            target_ds = action.get("dataset_id")
+            if not target_ws or not target_ds or _running["active"]:
+                return
+            _running["active"] = True
+            try:
+                _connect(
+                    target_ws,
+                    target_ds,
+                    {
+                        "dataset": action.get("dataset_name"),
+                        "workspace": action.get("workspace_name"),
+                    },
+                )
+            finally:
+                _running["active"] = False
+            return
+
+        if action_name != "delta":
+            return
+
+        # The Delta Analyzer relies on Spark (e.g. reading the delta table
+        # detail/history), so it cannot run in a pure-Python notebook.
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        if _pure_python_notebook():
+            widget.status = {
+                "message": (
+                    "The Delta Analyzer requires Spark. Run this in a PySpark "
+                    "notebook to get the Delta Analyzer stats."
+                ),
+                "kind": "error",
+                "done": True,
+            }
+            return
+
+        if _running["active"]:
+            return
+
+        # The frontend sends the full delta-table descriptors, but the
+        # Python-side ``_delta_info`` (built from the Direct Lake partitions) is
+        # authoritative, so it is preferred when the table is known.
+        selected = []
+        for t in action.get("tables") or []:
+            name = t.get("tableName") if isinstance(t, dict) else t
+            info = widget._delta_info.get(name) or (t if isinstance(t, dict) else None)
+            if info:
+                selected.append(info)
+        skip_card = bool(action.get("skip_cardinality", True))
+        if not selected:
+            widget.status = {"message": "", "kind": "info", "done": True}
+            return
+
+        _cancel_event.clear()
+        _running["active"] = True
+        try:
+            _run_delta(selected, skip_card)
+        finally:
+            _running["active"] = False
+
+    def _on_cancel(change):
+        if not _running["active"]:
+            # The run already finished (the kernel only gets to this handler
+            # once it is free again), so just clear the spinner/status.
+            widget.status = {"message": "", "kind": "info", "done": True}
+            return
+        _cancel_event.set()
+        widget.status = {
+            "message": (
+                "Cancelling the Delta Analyzer\u2026 the table currently being "
+                "analyzed will finish first."
+            ),
+            "kind": "info",
+        }
+
+    widget.observe(_on_run, names=["run"])
+    widget.observe(_on_cancel, names=["cancel"])
+
+    # Keep a reference on the widget so the Python-side observer is not garbage
+    # collected after this function returns. We intentionally do NOT return the
+    # widget to avoid Jupyter auto-displaying it a second time after display().
+    display(widget)
 
 
 @log

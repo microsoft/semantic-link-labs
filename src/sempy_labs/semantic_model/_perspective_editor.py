@@ -66,6 +66,23 @@ _WIDGET_CSS = """
 }
 .slls-pe * { box-sizing: border-box; }
 
+.slls-pe.slls-pe-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: auto;
+}
+.slls-pe.slls-pe-fs .slls-pe-tree {
+    max-height: calc(100vh - 320px);
+}
+
 .slls-pe-header {
     display: flex;
     align-items: center;
@@ -487,6 +504,66 @@ function render({ model, el }) {
             (ws ? escapeHtml(ws) : "");
     }
 
+    // Theme toggle button (light/dark)
+    const SUN_SVG = `__SLLS_ICON_SUN__`;
+    const MOON_SVG = `__SLLS_ICON_MOON__`;
+    const themeBtn = document.createElement("button");
+    themeBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    themeBtn.type = "button";
+    function renderThemeBtn() {
+        const isDark = model.get("dark_mode") === true;
+        themeBtn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
+        themeBtn.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+        themeBtn.setAttribute("aria-label", themeBtn.title);
+    }
+    themeBtn.addEventListener("click", () => {
+        model.set("dark_mode", !(model.get("dark_mode") === true));
+        model.save_changes();
+    });
+    model.on("change:dark_mode", renderThemeBtn);
+    renderThemeBtn();
+
+    // Fullscreen toggle button. Notebook hosts often sandbox the output and
+    // reject the native Fullscreen API, so a CSS overlay (root pinned to the
+    // viewport) is the reliable primary mechanism, with native fullscreen
+    // attempted as a best-effort enhancement.
+    const FS_SVG = `__SLLS_ICON_FULLSCREEN__`;
+    const FSX_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
+    let peFsMode = false;
+    const fsBtn = document.createElement("button");
+    fsBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    fsBtn.type = "button";
+    function renderFsBtn() {
+        fsBtn.innerHTML = peFsMode ? FSX_SVG : FS_SVG;
+        fsBtn.title = peFsMode ? "Exit full screen" : "Toggle full screen";
+        fsBtn.setAttribute("aria-label", fsBtn.title);
+    }
+    function setPeFullscreen(on) {
+        peFsMode = on;
+        root.classList.toggle("slls-pe-fs", on);
+        try {
+            if (on) {
+                const req = root.requestFullscreen || root.webkitRequestFullscreen;
+                if (req) { const p = req.call(root); if (p && p.catch) p.catch(() => {}); }
+            } else {
+                const ex = document.exitFullscreen || document.webkitExitFullscreen;
+                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {
+                    const p = ex.call(document); if (p && p.catch) p.catch(() => {});
+                }
+            }
+        } catch (e) { /* native fullscreen blocked; CSS overlay handles it */ }
+        renderFsBtn();
+    }
+    fsBtn.addEventListener("click", () => setPeFullscreen(!peFsMode));
+    document.addEventListener("fullscreenchange", () => {
+        const nativeOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!nativeOn && peFsMode) { peFsMode = false; root.classList.remove("slls-pe-fs"); renderFsBtn(); }
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && peFsMode) setPeFullscreen(false);
+    });
+    renderFsBtn();
+
     const select = document.createElement("select");
     select.className = "slls-pe-select";
     header.appendChild(select);
@@ -520,42 +597,9 @@ function render({ model, el }) {
     createRow.appendChild(cancelBtn);
     header.appendChild(createRow);
 
-    // Theme toggle + full-screen buttons live at the far right of the header
-    // (to the right of the "new perspective" button). They are appended last
-    // so that, because the header cluster is right-aligned, they stay pinned
-    // to the right edge — including while the "create perspective" row is
-    // shown (which grows toward the left).
-
-    // Theme toggle button (light/dark)
-    const SUN_SVG = `__SLLS_ICON_SUN__`;
-    const MOON_SVG = `__SLLS_ICON_MOON__`;
-    const themeBtn = document.createElement("button");
-    themeBtn.className = "slls-pe-btn slls-pe-btn-icon";
-    themeBtn.type = "button";
-    function renderThemeBtn() {
-        const isDark = model.get("dark_mode") === true;
-        themeBtn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
-        themeBtn.title = isDark ? "Switch to light mode" : "Switch to dark mode";
-        themeBtn.setAttribute("aria-label", themeBtn.title);
-    }
-    themeBtn.addEventListener("click", () => {
-        model.set("dark_mode", !(model.get("dark_mode") === true));
-        model.save_changes();
-    });
-    model.on("change:dark_mode", renderThemeBtn);
-    renderThemeBtn();
+    // Fullscreen then theme, so the theme toggle is always the rightmost button.
+    header.appendChild(fsBtn);
     header.appendChild(themeBtn);
-
-    // Full-screen toggle button (expands the editor to fill the screen).
-    const FULLSCREEN_SVG = `__SLLS_ICON_FULLSCREEN__`;
-    const FULLSCREEN_EXIT_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
-    const fullscreenBtn = document.createElement("button");
-    fullscreenBtn.className = "slls-pe-btn slls-pe-btn-icon";
-    fullscreenBtn.type = "button";
-    header.appendChild(fullscreenBtn);
-    sllsSetupFullscreen(
-        root, fullscreenBtn, "slls-pe-fullscreen", FULLSCREEN_SVG, FULLSCREEN_EXIT_SVG
-    );
 
     // ----------- Toolbar -----------
     const toolbar = document.createElement("div");
@@ -1102,11 +1146,12 @@ export default { render };
 
 # Inject SVG icons from the shared UI components module so they stay in
 # sync with other widgets (e.g. ``vertipaq_analyzer``).
-from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
 from sempy_labs._ui_components import (  # noqa: E402
-    fullscreen_css as _ui_fullscreen_css,
-    fullscreen_setup_js as _ui_fullscreen_setup_js,
+    ICONS as _UI_ICONS,
+    scoped_button_press_css as _ui_scoped_button_press_css,
 )
+
+_WIDGET_CSS += _ui_scoped_button_press_css(".slls-pe")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])
@@ -1119,18 +1164,6 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])
     .replace("__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
     .replace("__SLLS_ICON_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
-)
-
-# Prepend the shared full-screen helper so ``render`` can call it, and append
-# the full-screen CSS (the ``.slls-pe`` root carries the card styling itself,
-# so no inner container selector is needed).
-_WIDGET_JS = _ui_fullscreen_setup_js() + _WIDGET_JS
-_WIDGET_CSS = (
-    _WIDGET_CSS
-    + "\n"
-    + _ui_fullscreen_css(
-        ".slls-pe", "slls-pe-fullscreen", bg_var="var(--slls-bg-solid)"
-    )
 )
 
 

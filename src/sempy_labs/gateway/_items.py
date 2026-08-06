@@ -519,3 +519,47 @@ def bind_semantic_model_to_gateway(
     print(
         f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been binded to the '{gateway_id}' gateway."
     )
+
+
+@log
+def restart_gateway(gateway: str | UUID):
+    """
+    Restarts the specified gateway.
+
+    This is a wrapper function for the following API: `Gateways - Restart Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/restart-gateway>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    gateway : str | uuid.UUID
+        The name or ID of the gateway.
+    """
+    
+    gateway_id = resolve_gateway_id(gateway)
+
+    _base_api(request=f"/v1/gateways/{gateway_id}/restart", method="post", status_codes=[200, 202], lro_return_status_code=True)
+
+    print(f"{icons.green_dot} The '{gateway}' gateway has been restarted.")
+
+
+@log
+def shutdown_gateway(gateway: str | UUID):
+    """
+    Shuts down the specified gateway.
+
+    This is a wrapper function for the following API: `Gateways - Shutdown Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/shutdown-gateway>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    gateway : str | uuid.UUID
+        The name or ID of the gateway.
+    """
+    
+    gateway_id = resolve_gateway_id(gateway)
+
+    _base_api(request=f"/v1/gateways/{gateway_id}/shutdown", method="post", status_codes=[200, 202], lro_return_status_code=True)
+
+    print(f"{icons.green_dot} The '{gateway}' gateway has been shut down.")

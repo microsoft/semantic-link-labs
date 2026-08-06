@@ -23,7 +23,6 @@ from ._update_directlake_model_lakehouse_connection import (
 )
 from ._update_directlake_partition_entity import (
     update_direct_lake_partition_entity,
-    add_table_to_direct_lake_semantic_model,
 )
 from ._warm_cache import (
     warm_direct_lake_cache_isresident,
@@ -47,7 +46,6 @@ __all__ = [
     "update_direct_lake_partition_entity",
     "warm_direct_lake_cache_isresident",
     "warm_direct_lake_cache_perspective",
-    "add_table_to_direct_lake_semantic_model",
     "generate_direct_lake_semantic_model",
     "update_direct_lake_model_connection",
     "set_autosync",

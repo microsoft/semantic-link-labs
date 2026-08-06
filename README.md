@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.15.1&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.17.0&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -131,6 +131,9 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.17.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.17.0) (July 29, 2026)
+* [0.16.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.16.0) (July 21, 2026)
+* [0.15.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.2) (July 1, 2026)
 * [0.15.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.1) (May 19, 2026)
 * [0.15.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.0) (May 14, 2026)
 * [0.14.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.3) (April 13, 2026)
@@ -275,12 +278,24 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 8. When prompted to open the cloned repository, click 'Open'.
 9. Open the integrated terminal (View -> Terminal).
 10. Run the following code in the terminal to ensure a virtual environment exists.
-```python
+
+For Windows:
+```cli
 python -m venv venv
 ```
+For Mac:
+```cli
+python3 -m venv venv
+```
 11. Run the following code in the terminal to activate the virtual environment.
-```python
+
+For Windows:
+```cli
 .\venv\Scripts\Activate.ps1
+```
+For Mac:
+```cli
+source venv/bin/activate
 ```
 12. Run the following code in the terminal to install the build module.
 ```

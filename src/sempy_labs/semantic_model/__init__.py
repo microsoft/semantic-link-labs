@@ -12,6 +12,15 @@ from ._perspective_editor import (
 from ._direct_lake_manager import (
     direct_lake_manager,
 )
+from ._lineage_view import (
+    lineage_view,
+)
+from ._direct_lake_migration import (
+    migrate_to_direct_lake,
+)
+from ._find_unused_objects import (
+    find_unused_objects,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -20,4 +29,7 @@ __all__ = [
     "enable_query_caching",
     "perspective_editor",
     "direct_lake_manager",
+    "lineage_view",
+    "migrate_to_direct_lake",
+    "find_unused_objects",
 ]

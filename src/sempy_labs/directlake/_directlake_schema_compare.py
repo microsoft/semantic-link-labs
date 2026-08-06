@@ -76,6 +76,9 @@ def direct_lake_schema_compare(
                     )
                 else:
                     for c in p.Parent.Columns:
+                        if c.Type not in (TOM.ColumnType.Data, TOM.ColumnType.CalculatedTableColumn):
+                            # Columns of type Calculated and RowNumber are not sourced from external sources and therefore they do not contain "SourceColumn" property. So we skip them in the comparison.
+                            continue
                         col_name = c.Name
                         source_col = c.SourceColumn
                         df_lake_filt = df_lake[

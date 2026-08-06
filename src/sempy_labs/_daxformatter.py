@@ -24,7 +24,7 @@ def _format_dax(
         for item in expressions
     ]
 
-    url = "https://daxformatter.azurewebsites.net/api/daxformatter/daxtextformatmulti"
+    url = "https://api.daxformatter.com/api/daxtextformatmulti"
 
     payload = {
         "Dax": expressions,
@@ -32,6 +32,8 @@ def _format_dax(
         "SkipSpaceAfterFunctionName": skip_space_after_function_name,
         "ListSeparator": ",",
         "DecimalSeparator": ".",
+        "CallerApp": lib_name,
+        "CallerVersion": lib_version,
     }
 
     headers = {
@@ -39,11 +41,9 @@ def _format_dax(
         "Accept-Encoding": "gzip,deflate",
         "Accept-Language": "en-US,en;q=0.8",
         "Content-Type": "application/json; charset=UTF-8",
-        "Host": "daxformatter.azurewebsites.net",
+        "Host": "api.daxformatter.com",
         "Expect": "100-continue",
         "Connection": "Keep-Alive",
-        "CallerApp": lib_name,
-        "CallerVersion": lib_version,
     }
 
     response = requests.post(url, json=payload, headers=headers)

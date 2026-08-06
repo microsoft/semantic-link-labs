@@ -9,6 +9,8 @@ from ._items import (
     update_vnet_gateway,
     update_on_premises_gateway,
     bind_semantic_model_to_gateway,
+    restart_gateway,
+    shutdown_gateway,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "update_vnet_gateway",
     "update_on_premises_gateway",
     "bind_semantic_model_to_gateway",
+    "restart_gateway",
+    "shutdown_gateway",
 ]

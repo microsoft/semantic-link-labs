@@ -1,14 +1,139 @@
 import sempy
 import pandas as pd
 import re
-from typing import Optional
+from typing import Optional, Set
 from sempy._utils._log import log
+
+
+def _memoize_on_tom(tom, key: str, factory):
+    """
+    Caches an expensive per-model lookup on the TOM wrapper instance so that a rule
+    which is evaluated once per object only performs the underlying query once.
+    """
+
+    cache = getattr(tom, "_bpa_rule_cache", None)
+    if cache is None:
+        cache = {}
+        try:
+            tom._bpa_rule_cache = cache
+        except Exception:
+            # If the wrapper does not accept new attributes, fall back to no caching.
+            return factory()
+
+    if key not in cache:
+        try:
+            cache[key] = factory()
+        except Exception:
+            # A rule must never abort the scan; degrade to "no violations".
+            cache[key] = set()
+
+    return cache[key]
+
+
+def _direct_lake_view_tables(tom) -> Set[str]:
+    """
+    Returns the names of Direct Lake tables which fall back to DirectQuery because
+    their lakehouse source object is a view (fallback reason 2).
+    """
+
+    def _load():
+        from sempy_labs.directlake._dl_helper import check_fallback_reason
+
+        if not tom.is_direct_lake():
+            return set()
+
+        df = check_fallback_reason(dataset=tom._dataset_id, workspace=tom._workspace_id)
+        return set(df.loc[df["FallbackReasonID"] == 2, "Table Name"].astype(str))
+
+    return _memoize_on_tom(tom, "direct_lake_view_tables", _load)
+
+
+def _non_vordered_direct_lake_tables(tom) -> Set[str]:
+    """
+    Returns the names of Direct Lake tables whose lakehouse source delta table is
+    not V-Ordered. Returns an empty set if the source cannot be inspected.
+    """
+
+    def _load():
+        import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs.lakehouse._helper import is_v_ordered
+
+        if not tom.is_direct_lake():
+            return set()
+
+        sources = tom.get_direct_lake_sources()
+        lakehouses = [s for s in sources if s.get("itemType") == "Lakehouse"]
+        if not lakehouses:
+            return set()
+
+        source = lakehouses[0]
+        result = set()
+        for t in tom.model.Tables:
+            for p in t.Partitions:
+                if p.Mode != TOM.ModeType.DirectLake:
+                    continue
+                source_table = getattr(p.Source, "EntityName", None) or t.Name
+                schema_name = getattr(p.Source, "SchemaName", None) or None
+                try:
+                    vordered = is_v_ordered(
+                        table_name=source_table,
+                        lakehouse=source.get("itemId"),
+                        workspace=source.get("workspaceId"),
+                        schema=schema_name,
+                    )
+                except Exception:
+                    # The source table may be inaccessible from this notebook.
+                    continue
+                if not vordered:
+                    result.add(t.Name)
+
+        return result
+
+    return _memoize_on_tom(tom, "non_vordered_direct_lake_tables", _load)
+
+
+def _string_column_names(tom) -> Set[str]:
+    """Returns the names of all columns in the model whose data type is String."""
+
+    def _load():
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        return {c.Name for c in tom.all_columns() if c.DataType == TOM.DataType.String}
+
+    return _memoize_on_tom(tom, "string_column_names", _load)
+
+
+def _uses_sum_or_average_on_string_column(obj, tom) -> bool:
+    """
+    Identifies whether a DAX expression applies SUM() or AVERAGE() to a column whose
+    data type is String, which raises an error at query time.
+    """
+
+    expression = None
+    try:
+        expression = tom._get_expression(object=obj)
+    except Exception:
+        expression = None
+    if not expression:
+        return False
+
+    string_columns = _string_column_names(tom)
+    if not string_columns:
+        return False
+
+    pattern = (
+        r"(?<![A-Za-z0-9_])(?:SUM|AVERAGE)\s*\(\s*"
+        r"(?:'[^']+'|[A-Za-z0-9_]+)?\[([^\]]+)\]\s*\)"
+    )
+    return any(
+        match.strip() in string_columns
+        for match in re.findall(pattern, expression, flags=re.IGNORECASE)
+    )
 
 
 @log
 def model_bpa_rules(
     dependencies: Optional[pd.DataFrame] = None,
-    **kwargs,
 ) -> pd.DataFrame:
     """
     Shows the default rules for the semantic model BPA used by the run_model_bpa function.
@@ -26,17 +151,6 @@ def model_bpa_rules(
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
-
-    if "dataset" in kwargs:
-        print(
-            "The 'dataset' parameter has been deprecated. Please remove this parameter from the function going forward."
-        )
-        del kwargs["dataset"]
-    if "workspace" in kwargs:
-        print(
-            "The 'workspace' parameter has been deprecated. Please remove this parameter from the function going forward."
-        )
-        del kwargs["workspace"]
 
     rules = pd.DataFrame(
         [
@@ -218,6 +332,26 @@ def model_bpa_rules(
                 lambda obj, tom: tom.is_direct_lake_using_view(),
                 "In Direct Lake mode, views will always fall back to DirectQuery. Thus, in order to obtain the best performance use lakehouse tables instead of views.",
                 "https://learn.microsoft.com/fabric/get-started/direct-lake-overview#fallback",
+            ),
+            (
+                "Performance",
+                "Partition",
+                "Warning",
+                "Ensure Direct Lake tables do not source from a SQL view",
+                lambda obj, tom: obj.Mode == TOM.ModeType.DirectLake
+                and obj.Parent.Name in _direct_lake_view_tables(tom),
+                "A Direct Lake table whose source is a SQL view (rather than a table) will always fall back to DirectQuery, which is slower and defeats the purpose of Direct Lake. Point the table at a lakehouse/warehouse table, or materialize the view as a delta table.",
+                "https://learn.microsoft.com/fabric/get-started/direct-lake-overview#fallback",
+            ),
+            (
+                "Performance",
+                "Partition",
+                "Warning",
+                "Ensure Direct Lake source tables are V-Ordered",
+                lambda obj, tom: obj.Mode == TOM.ModeType.DirectLake
+                and obj.Parent.Name in _non_vordered_direct_lake_tables(tom),
+                "For the best Direct Lake performance, the delta tables a Direct Lake model reads from should be written with V-Order. This rule flags Direct Lake partitions whose lakehouse source table is not V-Ordered; re-write or OPTIMIZE the source table with V-Order enabled.",
+                "https://learn.microsoft.com/fabric/data-engineering/delta-optimization-and-v-order",
             ),
             (
                 "Performance",
@@ -599,6 +733,20 @@ def model_bpa_rules(
             ),
             (
                 "DAX Expressions",
+                [
+                    "Measure",
+                    "Calculated Table",
+                    "Calculated Column",
+                    "Calculation Item",
+                ],
+                "Error",
+                "Avoid using SUM or AVERAGE on a string column",
+                lambda obj, tom: _uses_sum_or_average_on_string_column(obj, tom),
+                "The SUM and AVERAGE functions cannot aggregate a text (string) column and will raise an error. Ensure that these functions are applied to numeric columns, or use a different aggregation (for example COUNT or DISTINCTCOUNT) for text columns.",
+                "https://dax.guide/sum",
+            ),
+            (
+                "DAX Expressions",
                 "Relationship",
                 "Warning",
                 "Inactive relationships that are never activated",
@@ -649,7 +797,8 @@ def model_bpa_rules(
                 "Warning",
                 "Ensure tables have relationships",
                 lambda obj, tom: any(tom.used_in_relationships(object=obj)) is False
-                and obj.CalculationGroup is None,
+                and obj.CalculationGroup is None
+                and tom.is_field_parameter(table_name=obj.Name) is False,
                 "This rule highlights tables which are not connected to any other table in the model with a relationship.",
             ),
             (
@@ -845,6 +994,15 @@ def model_bpa_rules(
                 "Object names must not contain special characters",
                 lambda obj, tom: re.search(r"[\t\r\n]", obj.Name),
                 "Object names should not include tabs, line breaks, etc.",
+            ),
+            (
+                "Naming Conventions",
+                "Partition",
+                "Info",
+                "Partition name should match table name for single partition tables",
+                lambda obj, tom: obj.Parent.Partitions.Count == 1
+                and obj.Name != obj.Parent.Name,
+                "For a table with a single partition, the partition name should match the table name for clarity and consistency.",
             ),
         ],
         columns=[

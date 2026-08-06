@@ -20,10 +20,11 @@ from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy_labs._ui_components import scoped_button_press_css
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import os
-from uuid import UUID
+from uuid import UUID, uuid4
 
 
 @log
@@ -461,7 +462,8 @@ def run_model_bpa(
         for cat in bpa2["Category"].drop_duplicates().values
     }
 
-    styles = """
+    root_id = f"slls-model-bpa-{uuid4().hex[:8]}"
+    styles = f"<style>{scoped_button_press_css(f'#{root_id}')}</style>" + """
     <style>
         .tab { overflow: hidden; border: 1px solid #ccc; background-color: #f1f1f1; }
         .tab button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
@@ -554,4 +556,5 @@ def run_model_bpa(
 
     # Display the tabs, tab contents, and run the script
     if not export:
-        return display(HTML(styles + tab_html + content_html + script))
+        body = f'<div id="{root_id}">{tab_html}{content_html}</div>'
+        return display(HTML(styles + body + script))

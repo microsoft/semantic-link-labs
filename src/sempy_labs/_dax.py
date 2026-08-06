@@ -49,7 +49,7 @@ def evaluate_dax_impersonation(
 
     return fabric.evaluate_dax(
         dataset=dataset,
-        dax_query=dax_query,
+        dax_string=dax_query,
         effective_user_name=user_name,
         workspace=workspace,
     )
