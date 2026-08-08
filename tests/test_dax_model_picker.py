@@ -695,6 +695,7 @@ def test_eraser_button_clears_the_active_model_cache():
     assert 'cache_clear_loading = traitlets.Bool(False).tag(sync=True)' in source
     assert 'widget.observe(_on_clear_model_cache, names="cache_clear_trigger")' in source
     assert '_clear_cache_fn(\n                dataset=dataset_id,' in source
+    assert source.count("verbose=False") == 4
     assert "renderRunBtn(); renderClearModelCacheBtn(); renderSubtitle();" in source
 
 

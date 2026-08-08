@@ -16,7 +16,11 @@ from uuid import UUID
 
 
 @log
-def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
+def clear_cache(
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    verbose: bool = True,
+) -> None:
     """
     Clears the cache of a semantic model.
     See `here <https://learn.microsoft.com/analysis-services/instances/clear-the-analysis-services-caches?view=asallproducts-allversions>`_ for documentation.
@@ -29,6 +33,8 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    verbose : bool, default=True
+        If True, prints a confirmation message after clearing the cache.
     """
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
@@ -48,9 +54,10 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
             </ClearCache>
             """
     fabric.execute_xmla(dataset=dataset_id, xmla_command=xmla, workspace=workspace_id)
-    print(
-        f"{icons.green_dot} Cache cleared for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
-    )
+    if verbose:
+        print(
+            f"{icons.green_dot} Cache cleared for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+        )
 
 
 @log

@@ -706,7 +706,7 @@ def _run_dax_trace(
     from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
 
     if clear_cache:
-        _clear_cache_fn(dataset=dataset_id, workspace=workspace_id)
+        _clear_cache_fn(dataset=dataset_id, workspace=workspace_id, verbose=False)
 
     result_df: pd.DataFrame = pd.DataFrame()
     df = pd.DataFrame()
@@ -11053,7 +11053,7 @@ export default { render };
             if widget.clear_cache:
                 from sempy_labs._clear_cache import clear_cache as _clear_cache_fn
 
-                _clear_cache_fn(dataset=ds_id, workspace=ws_id)
+                _clear_cache_fn(dataset=ds_id, workspace=ws_id, verbose=False)
 
             from sempy_labs.report._generate_embed_token import generate_embed_token
 
@@ -11249,7 +11249,7 @@ export default { render };
                 role=role_name,
             ) + (None,)
         if clear_cache_flag:
-            _clear_cache_fn(dataset=ds_id, workspace=ws_id)
+            _clear_cache_fn(dataset=ds_id, workspace=ws_id, verbose=False)
         result_df, new_logs, new_count = _execute_and_capture(
             trace,
             ds_id,
@@ -11510,6 +11510,7 @@ export default { render };
             _clear_cache_fn(
                 dataset=dataset_id,
                 workspace=model_ctx["workspace_id"],
+                verbose=False,
             )
             widget.error_message = ""
         except Exception as exc:
