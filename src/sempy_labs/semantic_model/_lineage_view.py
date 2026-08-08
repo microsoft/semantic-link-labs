@@ -31,6 +31,16 @@ _WIDGET_CSS = """
     --slls-radius: 14px;
     --slls-radius-sm: 8px;
     --slls-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+    --ui-bg: var(--slls-bg-solid);
+    --ui-bg-solid: var(--slls-bg-solid);
+    --ui-bg-secondary: var(--slls-bg-secondary);
+    --ui-surface-2: var(--slls-surface-2);
+    --ui-border: var(--slls-border);
+    --ui-border-strong: var(--slls-border-strong);
+    --ui-text: var(--slls-text);
+    --ui-text-tertiary: var(--slls-text-tertiary);
+    --ui-accent: var(--slls-accent);
+    --ui-shadow-lg: var(--slls-shadow);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -252,16 +262,28 @@ _WIDGET_CSS = """
 .slls-lv-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
 /* Model / workspace picker ("connect" screen) */
-.slls-lv-picker-wrap { display: flex; align-items: center; justify-content: center; padding: 32px; overflow: auto; }
-.slls-lv-picker { width: 100%; max-width: 900px; background: var(--slls-bg-solid); border: 1px solid var(--slls-border); border-radius: var(--slls-radius); box-shadow: var(--slls-shadow); padding: 24px 28px; }
-.slls-lv-picker-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.slls-lv-picker-wrap { display: flex; align-items: flex-start; justify-content: stretch; padding: 0 24px 24px; overflow: auto; }
+.slls-lv-picker { width: 100%; background: var(--slls-surface); border: 1px solid var(--slls-border); border-radius: 14px; padding: 16px; }
+.slls-lv-picker-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .slls-lv-picker-head { min-width: 0; }
-.slls-lv-picker-title { font-size: 17px; font-weight: 600; }
+.slls-lv-picker-title { font-size: 14px; font-weight: 600; }
 .slls-lv-picker-sub { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 3px; }
-.slls-lv-picker-grid { display: flex; gap: 20px; flex-wrap: wrap; }
-.slls-lv-picker-grid .slls-lv-field { flex: 1 1 260px; margin-bottom: 0; }
-.slls-lv-picker-grid .slls-lv-select { padding-top: 10px; padding-bottom: 10px; font-size: 14px; }
-.slls-lv-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.slls-lv-picker-grid { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.slls-lv-picker-grid .slls-lv-field { flex: 1 1 240px; margin-bottom: 0; }
+.slls-lv-picker-grid .slls-lv-field label { padding-left: 4px; color: var(--slls-text-tertiary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.slls-lv-picker-grid .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--slls-surface); font-size: 13.5px; }
+.slls-lv-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.slls-lv-picker-reload { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--slls-border-strong); border-radius: 50%; background: var(--slls-surface); color: var(--slls-text); cursor: pointer; }
+.slls-lv-picker-reload:hover:not(:disabled) { border-color: var(--slls-text-tertiary); background: var(--slls-surface-2); }
+.slls-lv-picker-reload:disabled { opacity: 0.5; cursor: not-allowed; }
+.slls-lv-picker-reload svg { width: 14px; height: 14px; }
+.slls-lv-picker-reload.slls-lv-loading svg { animation: slls-lv-spin 0.8s linear infinite; }
+.slls-lv-modal .slls-lv-field label { padding-left: 4px; color: var(--slls-text-tertiary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.slls-lv-modal .slls-ss-btn { background: var(--slls-surface); font-size: 13px; padding: 8px 12px; }
+@media (max-width: 640px) {
+    .slls-lv-picker-wrap { padding: 0 16px 16px; }
+    .slls-lv-picker-grid { align-items: stretch; flex-direction: column; }
+}
 
 .slls-lv-spin { animation: slls-lv-spin 0.8s linear infinite; transform-origin: center; }
 @keyframes slls-lv-spin { to { transform: rotate(360deg); } }
@@ -1174,33 +1196,22 @@ function render({ model, el }) {
         const workspaces = model.get("workspaces") || [];
         const ds = (model.get("datasets") || {})[pickWs] || null;
 
-        const wsOptions =
-            `<option value="">Select a workspace\u2026</option>` +
-            workspaces.map((w) =>
-                `<option value="${esc(w.id)}" ${w.id === pickWs ? "selected" : ""}>${esc(w.name)}</option>`).join("");
-        let dsInner;
-        if (!pickWs) dsInner = `<option value="">Select a workspace first\u2026</option>`;
-        else if (ds === null) dsInner = `<option value="">Loading\u2026</option>`;
-        else if (ds.length === 0) dsInner = `<option value="">No semantic models</option>`;
-        else dsInner = `<option value="">Select a semantic model\u2026</option>` + ds.map((d) =>
-            `<option value="${esc(d.id)}" ${d.id === pickDs ? "selected" : ""}>${esc(d.name)}</option>`).join("");
-
         const card = document.createElement("div");
         card.className = "slls-lv-picker";
         card.innerHTML =
             `<div class="slls-lv-picker-top">` +
                 `<div class="slls-lv-picker-head">` +
-                    `<div class="slls-lv-picker-title">Choose a semantic model</div>` +
-                    `<div class="slls-lv-picker-sub">Pick a workspace and semantic model to evaluate its lineage.</div>` +
+                    `<div class="slls-lv-picker-title">Connect to a semantic model</div>` +
+                    `<div class="slls-lv-picker-sub">Select a workspace and semantic model to begin.</div>` +
                 `</div>` +
-                `<button class="slls-lv-btn" data-p="reload" title="Reload workspaces and semantic models" ${working() ? "disabled" : ""}>` +
-                    `${working() ? spinner() : ICON.refresh}Reload</button>` +
+                `<button class="slls-lv-picker-reload${working() ? " slls-lv-loading" : ""}" data-p="reload" type="button" ` +
+                    `title="Reload workspaces and semantic models" aria-label="Reload workspaces and semantic models" ${working() ? "disabled" : ""}>${ICON.refresh}</button>` +
             `</div>` +
             `<div class="slls-lv-picker-grid">` +
                 `<div class="slls-lv-field"><label>Workspace</label>` +
-                    `<select class="slls-lv-select" data-p="ws">${wsOptions}</select></div>` +
+                    `<div data-p="ws"></div></div>` +
                 `<div class="slls-lv-field"><label>Semantic model</label>` +
-                    `<select class="slls-lv-select" data-p="ds" ${(!pickWs || ds === null) ? "disabled" : ""}>${dsInner}</select></div>` +
+                    `<div data-p="ds"></div></div>` +
             `</div>` +
             `<div class="slls-lv-picker-actions">` +
                 (connected()
@@ -1210,10 +1221,37 @@ function render({ model, el }) {
                     `${working() ? spinner() : ""}Connect</button>` +
             `</div>`;
 
-        card.querySelector('[data-p="ws"]').onchange = (e) => {
-            pickWs = e.target.value; pickDs = ""; ensureDatasets(pickWs); renderAll();
-        };
-        card.querySelector('[data-p="ds"]').onchange = (e) => { pickDs = e.target.value; renderAll(); };
+        const wsPicker = createSearchSelect({
+            placeholder: "Select a workspace\u2026",
+            searchPlaceholder: "Filter workspaces\u2026",
+            ariaLabel: "Workspace",
+            emptyLabel: working() ? "Loading workspaces\u2026" : "No workspaces",
+            onChange: (option) => {
+                pickWs = option.value;
+                pickDs = "";
+                ensureDatasets(pickWs);
+                renderAll();
+            },
+        });
+        wsPicker.setOptions(
+            workspaces.map((w) => ({ value: w.id, label: w.name })), pickWs);
+        wsPicker.setDisabled(working());
+        card.querySelector('[data-p="ws"]').appendChild(wsPicker.el);
+
+        const dsPicker = createSearchSelect({
+            placeholder: "Select a semantic model\u2026",
+            searchPlaceholder: "Filter semantic models\u2026",
+            ariaLabel: "Semantic model",
+            emptyLabel: !pickWs
+                ? "Select a workspace first\u2026"
+                : (ds === null ? "Loading semantic models\u2026" : "No semantic models"),
+            onChange: (option) => { pickDs = option.value; renderAll(); },
+        });
+        dsPicker.setOptions(
+            (ds || []).map((d) => ({ value: d.id, label: d.name })), pickDs);
+        dsPicker.setDisabled(!pickWs || ds === null || working());
+        card.querySelector('[data-p="ds"]').appendChild(dsPicker.el);
+
         card.querySelector('[data-p="reload"]').onclick = () => reloadPickerLists();
         const cancel = card.querySelector('[data-p="cancel"]');
         if (cancel) cancel.onclick = () => { pickerReopen = false; renderAll(); };
@@ -1263,32 +1301,49 @@ function render({ model, el }) {
         const workspaces = model.get("workspaces") || [];
         const ds = (model.get("datasets") || {})[rebindWs] || null;
 
-        const wsOptions = workspaces.map((w) =>
-            `<option value="${esc(w.id)}" ${w.id === rebindWs ? "selected" : ""}>${esc(w.name)}</option>`).join("");
-        let dsInner;
-        if (ds === null) dsInner = `<option value="">Loading\u2026</option>`;
-        else if (ds.length === 0) dsInner = `<option value="">No semantic models</option>`;
-        else dsInner = `<option value="">Select a semantic model\u2026</option>` + ds.map((d) =>
-            `<option value="${esc(d.id)}" ${d.id === rebindDs ? "selected" : ""}>${esc(d.name)}</option>`).join("");
-
         const modal = document.createElement("div");
         modal.className = "slls-lv-modal";
         modal.innerHTML =
             `<h3>Rebind ${picked.size} report${picked.size === 1 ? "" : "s"}</h3>` +
             `<p>Point the selected report${picked.size === 1 ? "" : "s"} at a different semantic model.</p>` +
             `<div class="slls-lv-field"><label>Target workspace</label>` +
-            `<select class="slls-lv-select" data-r="ws">${wsOptions}</select></div>` +
+            `<div data-r="ws"></div></div>` +
             `<div class="slls-lv-field"><label>Target semantic model</label>` +
-            `<select class="slls-lv-select" data-r="ds" ${ds === null ? "disabled" : ""}>${dsInner}</select></div>` +
+            `<div data-r="ds"></div></div>` +
             `<div class="slls-lv-modal-actions">` +
             `<button class="slls-lv-btn" data-r="cancel">Cancel</button>` +
             `<button class="slls-lv-btn slls-lv-btn-primary" data-r="confirm" ${(!rebindDs || working()) ? "disabled" : ""}>` +
             `${ICON.link}Rebind${working() ? spinner() : ""}</button></div>`;
 
-        modal.querySelector('[data-r="ws"]').onchange = (e) => {
-            rebindWs = e.target.value; rebindDs = ""; ensureDatasets(rebindWs); renderAll();
-        };
-        modal.querySelector('[data-r="ds"]').onchange = (e) => { rebindDs = e.target.value; renderAll(); };
+        const wsPicker = createSearchSelect({
+            placeholder: "Select a workspace\u2026",
+            searchPlaceholder: "Filter workspaces\u2026",
+            ariaLabel: "Target workspace",
+            emptyLabel: working() ? "Loading workspaces\u2026" : "No workspaces",
+            onChange: (option) => {
+                rebindWs = option.value;
+                rebindDs = "";
+                ensureDatasets(rebindWs);
+                renderAll();
+            },
+        });
+        wsPicker.setOptions(
+            workspaces.map((w) => ({ value: w.id, label: w.name })), rebindWs);
+        wsPicker.setDisabled(working());
+        modal.querySelector('[data-r="ws"]').appendChild(wsPicker.el);
+
+        const dsPicker = createSearchSelect({
+            placeholder: "Select a semantic model\u2026",
+            searchPlaceholder: "Filter semantic models\u2026",
+            ariaLabel: "Target semantic model",
+            emptyLabel: ds === null ? "Loading semantic models\u2026" : "No semantic models",
+            onChange: (option) => { rebindDs = option.value; renderAll(); },
+        });
+        dsPicker.setOptions(
+            (ds || []).map((d) => ({ value: d.id, label: d.name })), rebindDs);
+        dsPicker.setDisabled(ds === null || working());
+        modal.querySelector('[data-r="ds"]').appendChild(dsPicker.el);
+
         modal.querySelector('[data-r="cancel"]').onclick = () => { rebindOpen = false; renderAll(); };
         modal.querySelector('[data-r="confirm"]').onclick = () => {
             if (!rebindDs) return;
@@ -1471,10 +1526,15 @@ export default { render };
 
 from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
+    SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
+    SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
     scoped_button_press_css as _ui_scoped_button_press_css,
 )
 
+_WIDGET_CSS += "\n" + _UI_SEARCH_SELECT_CSS
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-lv")
+
+_WIDGET_JS = _UI_SEARCH_SELECT_JS + "\n" + _WIDGET_JS
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__ICON_DATABASE__", _UI_ICONS["database"])
