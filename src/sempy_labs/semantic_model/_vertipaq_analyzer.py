@@ -35,6 +35,7 @@ from sempy_labs._ui_components import (
     render_header_html as _ui_render_header_html,
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_css as _ui_fullscreen_css,
     fullscreen_toggle_script as _ui_fullscreen_toggle_script,
 )
 
@@ -1889,6 +1890,12 @@ def visualize_vertipaq(
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
     ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
+    ui_fullscreen_css = _ui_fullscreen_css(
+        root_selector,
+        "vpx-fs",
+        container_selector=".vpx-container",
+        bg_var="var(--vpx-bg)",
+    )
 
     # ── CSS ──────────────────────────────────────────────────────────────
     # Light theme is the default; the ``.vpx-dark`` modifier on the root

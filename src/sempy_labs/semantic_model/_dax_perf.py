@@ -2426,7 +2426,6 @@ def _visualize_dax_test(
     width: 34px;
     height: 34px;
     padding: 0;
-    margin-right: 6px;
     flex: 0 0 auto;
     border-radius: 8px;
     border: 1px solid var(--ui-border);
@@ -5647,11 +5646,11 @@ function render({ model, el }) {
         monitoringVisible = !monitoringVisible;
         renderMonitoringChrome();
     });
-    header.appendChild(modelViewShowBtn);
-    header.appendChild(builderShowBtn);
-    header.appendChild(monitoringShowBtn);
     const headerViewActions = document.createElement("div");
     headerViewActions.className = "dtx-header-view-actions";
+    headerViewActions.appendChild(modelViewShowBtn);
+    headerViewActions.appendChild(builderShowBtn);
+    headerViewActions.appendChild(monitoringShowBtn);
     headerViewActions.appendChild(infoBtn);
     headerViewActions.appendChild(fullscreenBtn);
     headerViewActions.appendChild(themeBtn);
@@ -8980,19 +8979,6 @@ function render({ model, el }) {
         }
     });
 
-    const resultDownloadBtn = document.createElement("button");
-    resultDownloadBtn.type = "button";
-    resultDownloadBtn.className = "dtx-hist-download";
-    resultDownloadBtn.innerHTML = DOWNLOAD_SVG;
-    resultDownloadBtn.title = "Download the query result as an Excel file";
-    resultDownloadBtn.setAttribute("aria-label", "Download query result as Excel");
-    resultDownloadBtn.style.display = "none";
-    viewToolbar.appendChild(resultDownloadBtn);
-    resultDownloadBtn.addEventListener("click", () => {
-        if ((model.get("result_total_rows") || 0) <= 0) return;
-        model.set("download_result_trigger", (model.get("download_result_trigger") || 0) + 1);
-        model.save_changes();
-    });
     // Tracks the DAX query text that the currently displayed dependency tree
     // was computed for, so dependencies are only recomputed when it changes.
     let lastDepQuery = null;
@@ -9115,8 +9101,6 @@ function render({ model, el }) {
         histDownloadBtn.disabled = !hist.length;
         histClearBtn.style.display = (mode === "history") ? "" : "none";
         histClearBtn.disabled = !hist.length;
-        resultDownloadBtn.style.display = (mode === "result") ? "" : "none";
-        resultDownloadBtn.disabled = (model.get("result_total_rows") || 0) <= 0;
         // Logical/Physical toggle is only relevant on the DAX Query Plan tab.
         const planType = model.get("query_plan_type") || "Logical";
         planSeg.style.display = (mode === "queryplan") ? "" : "none";
@@ -9454,9 +9438,12 @@ function render({ model, el }) {
     monitoringReloadBtn.addEventListener("click", () => {
         const top = Math.min(200, Math.max(1, Math.round(Number(topInput.value) || 20)));
         topInput.value = String(top);
-        model.set("workspace_monitoring_request", { range: rangeSelect.value, top });
-        model.set("workspace_monitoring_trigger",
-            (model.get("workspace_monitoring_trigger") || 0) + 1);
+        const previousRequest = model.get("workspace_monitoring_request") || {};
+        model.set("workspace_monitoring_request", {
+            range: rangeSelect.value,
+            top,
+            request_id: Number(previousRequest.request_id || 0) + 1,
+        });
         model.save_changes();
     });
     monitoringFullscreenBtn.addEventListener("click", () => {
@@ -11998,9 +11985,9 @@ export default { render };
             return
         threading.Thread(target=_compute_performance, daemon=True).start()
 
-    def _load_workspace_monitoring() -> None:
+    def _load_workspace_monitoring(request: Optional[dict] = None) -> None:
         allowed_ranges = {"15m", "1h", "4h", "12h", "1d", "3d", "7d", "30d"}
-        request = dict(widget.workspace_monitoring_request or {})
+        request = dict(request or widget.workspace_monitoring_request or {})
         time_range = str(request.get("range") or "1d")
         if time_range not in allowed_ranges:
             time_range = "1d"
@@ -12029,7 +12016,7 @@ export default { render };
         try:
             if not dataset or not workspace:
                 raise ValueError("Choose a semantic model first.")
-            from sempy_labs import query_workspace_monitoring
+            from sempy_labs._kusto import query_workspace_monitoring
 
             monitoring_df = query_workspace_monitoring(
                 query=query,
@@ -12092,7 +12079,17 @@ export default { render };
     def _on_workspace_monitoring(change):
         if change["new"] == change["old"] or widget.workspace_monitoring_loading:
             return
+        widget.workspace_monitoring_loading = True
         threading.Thread(target=_load_workspace_monitoring, daemon=True).start()
+
+    def _on_workspace_monitoring_request(change):
+        if change["new"] == change["old"] or widget.workspace_monitoring_loading:
+            return
+        request = dict(change["new"] or {})
+        widget.workspace_monitoring_loading = True
+        threading.Thread(
+            target=_load_workspace_monitoring, args=(request,), daemon=True
+        ).start()
 
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
@@ -12102,6 +12099,9 @@ export default { render };
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
     widget.observe(_on_performance, names="performance_trigger")
     widget.observe(_on_workspace_monitoring, names="workspace_monitoring_trigger")
+    widget.observe(
+        _on_workspace_monitoring_request, names="workspace_monitoring_request"
+    )
     widget.observe(_on_report_capture_start, names="report_capture_start_trigger")
     widget.observe(
         _on_report_capture_checkpoint, names="report_capture_checkpoint_trigger"
@@ -12527,12 +12527,7 @@ export default { render };
                 "Could not build a DAX query from the current selection."
             )
             return
-        try:
-            formatted = _format_dax(dax)
-            dax_out = formatted[0] if formatted else dax
-        except Exception:
-            dax_out = dax
-        dax_out = dax_out.replace("\r\n", "\n").replace("\r", "\n")
+        dax_out = dax.replace("\r\n", "\n").replace("\r", "\n")
         widget.dax_query = dax_out
         widget.dax_tokens = _classify_dax_spans(dax_out)
         widget.error_message = ""
@@ -12540,7 +12535,7 @@ export default { render };
     def _on_build_query(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_build_query, daemon=True).start()
+        _build_query()
 
     widget.observe(_on_build_query, names="build_query_trigger")
 

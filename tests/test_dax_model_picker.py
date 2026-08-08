@@ -18,6 +18,19 @@ def test_dax_model_picker_source_has_valid_python_syntax():
     compile(_source(), str(SOURCE_PATH), "exec")
 
 
+def test_vertipaq_analyzer_defines_shared_fullscreen_css_before_rendering():
+    vertipaq_path = SOURCE_PATH.with_name("_vertipaq_analyzer.py")
+    source = vertipaq_path.read_text(encoding="utf-8")
+    compile(source, str(vertipaq_path), "exec")
+    assignment = source.index("ui_fullscreen_css = _ui_fullscreen_css(")
+    interpolation = source.index("{ui_fullscreen_css}")
+
+    assert "fullscreen_css as _ui_fullscreen_css" in source
+    assert assignment < interpolation
+    assert '        "vpx-fs",' in source[assignment:interpolation]
+    assert 'container_selector=".vpx-container"' in source[assignment:interpolation]
+
+
 def test_no_dataset_uses_searchable_theme_aware_pickers():
     source = _source()
     ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
@@ -63,6 +76,15 @@ def test_header_view_actions_are_right_aligned_with_theme_last():
         )
     ]
     assert "margin-left: auto;" in action_css
+    assert actions.index("appendChild(modelViewShowBtn)") < actions.index(
+        "appendChild(builderShowBtn)"
+    )
+    assert actions.index("appendChild(builderShowBtn)") < actions.index(
+        "appendChild(monitoringShowBtn)"
+    )
+    assert actions.index("appendChild(monitoringShowBtn)") < actions.index(
+        "appendChild(infoBtn)"
+    )
     assert actions.index("appendChild(infoBtn)") < actions.index(
         "appendChild(fullscreenBtn)"
     )
@@ -168,7 +190,7 @@ def test_model_view_and_collapsed_query_builder_are_identifiable():
 
     assert 'sidebarTitle.textContent = "Model View"' in source
     assert 'modelViewShowBtn.innerHTML = LIST_TREE_SVG' in source
-    assert 'header.appendChild(modelViewShowBtn)' in source
+    assert 'headerViewActions.appendChild(modelViewShowBtn)' in source
     assert 'sidebarMark.innerHTML = LIST_TREE_SVG' in source
     assert 'sidebarMark.title = "Model View"' in source
     assert ".dtx-sidebar.dtx-sidebar-collapsed .dtx-sidebar-mark" in source
@@ -683,6 +705,22 @@ def test_query_builder_filters_and_toolbar_actions_keep_stable_layouts():
     assert "    height: 30px;\n    min-height: 30px;\n    max-height: 30px;" in source
     assert 'buildBtn.innerHTML = BUILDER_SVG + "<span>Build</span>"' in source
     assert ".dtx .dtx-build-btn svg {{ width: 14px; height: 14px; }}" in source
+
+
+def test_query_builder_build_publishes_dax_without_external_formatter():
+    source = _source()
+    build_callback = source[
+        source.index("    def _build_query() -> None:") : source.index(
+            '    widget.observe(_on_build_query, names="build_query_trigger")'
+        )
+    ]
+
+    assert "dax = _build_summarize_dax(" in build_callback
+    assert "_format_dax(" not in build_callback
+    assert "widget.dax_query = dax_out" in build_callback
+    assert "widget.dax_tokens = _classify_dax_spans(dax_out)" in build_callback
+    assert "threading.Thread(target=_build_query" not in build_callback
+    assert "        _build_query()" in build_callback
 
 
 def test_dax_formatter_icon_fits_inside_its_button():
@@ -1216,11 +1254,13 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     )
     panel_start = source.index("// ---------- Workspace monitoring ----------")
     panel = source[panel_start : source.index("const chartControls", panel_start)]
-    worker_start = source.index("def _load_workspace_monitoring()")
+    worker_start = source.index(
+        "def _load_workspace_monitoring(request: Optional[dict] = None)"
+    )
     worker = source[worker_start : source.index("widget.observe(_on_run", worker_start)]
 
     assert '"activity": (' in ui_source
-    assert "header.appendChild(builderShowBtn);\n    header.appendChild(monitoringShowBtn);" in source
+    assert "headerViewActions.appendChild(builderShowBtn);\n    headerViewActions.appendChild(monitoringShowBtn);" in source
     assert 'monitoringShowBtn.innerHTML = ACTIVITY_SVG' in source
     assert '? "Hide workspace monitoring" : "Show workspace monitoring"' in panel
     assert '<span>Workspace monitoring</span>' in panel
@@ -1228,7 +1268,8 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert '["15m", "Last 15 min"]' in panel
     assert '["30d", "Last 30 days"]' in panel
     assert 'topInput.max = "200"' in panel
-    assert 'model.set("workspace_monitoring_trigger"' in panel
+    assert "request_id: Number(previousRequest.request_id || 0) + 1" in panel
+    assert 'model.set("workspace_monitoring_trigger"' not in panel
     assert 'installColumnResizers(monitoringContent.querySelector("table"))' in panel
     assert 'model.set("dax_query", query)' in panel
     assert 'data-monitoring-sort="${index}"' in panel
@@ -1312,6 +1353,15 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert "transform: rotate(-90deg);" in collapsed_chevron_css
     assert 'date.toLocaleString()' in panel
     assert 'workspace_monitoring_request = traitlets.Dict({}).tag(sync=True)' in source
+    assert 'names="workspace_monitoring_request"' in source
+    request_observer = source[
+        source.index("def _on_workspace_monitoring_request") : source.index(
+            'widget.observe(_on_run, names="run_trigger")'
+        )
+    ]
+    assert request_observer.index("widget.workspace_monitoring_loading = True") < request_observer.index(
+        "threading.Thread("
+    )
     assert 'workspace_monitoring_rows = traitlets.List([]).tag(sync=True)' in source
     assert 'workspace_monitoring_tokens = traitlets.List([]).tag(sync=True)' in source
     assert 'const monitoringTokens = model.get("workspace_monitoring_tokens") || [];' in panel
@@ -1361,7 +1411,7 @@ def test_trace_history_queries_copy_and_clear_with_user_feedback():
     ]
     history_controls = source[
         source.index('const histDownloadBtn = document.createElement("button")') :
-        source.index('const resultDownloadBtn = document.createElement("button")')
+        source.index("// Tracks the DAX query text")
     ]
 
     assert 'data-history-index="${index}"' in history_table
@@ -1381,3 +1431,4 @@ def test_trace_history_queries_copy_and_clear_with_user_feedback():
     assert 'showToast("Trace history cleared")' in history_controls
     assert 'toast.setAttribute("aria-live", "polite")' in source
     assert '.replace("__DTX_TRASH__", trash_icon)' in source
+    assert "resultDownloadBtn" not in source
