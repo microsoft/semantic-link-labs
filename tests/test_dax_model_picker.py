@@ -1,4 +1,6 @@
+import ast
 from pathlib import Path
+from typing import Optional
 
 
 SOURCE_PATH = (
@@ -14,8 +16,43 @@ def _source() -> str:
     return SOURCE_PATH.read_text(encoding="utf-8")
 
 
+def _load_source_function(name: str):
+    module = ast.parse(_source())
+    function = next(
+        node
+        for node in module.body
+        if isinstance(node, ast.FunctionDef) and node.name == name
+    )
+    namespace = {"Optional": Optional}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(SOURCE_PATH), "exec"), namespace)
+    return namespace[name]
+
+
 def test_dax_model_picker_source_has_valid_python_syntax():
     compile(_source(), str(SOURCE_PATH), "exec")
+
+
+def test_query_dependencies_show_measures_then_columns_without_folders():
+    build_dependency_tree = _load_source_function("_build_dependency_tree")
+
+    tree = build_dependency_tree(
+        rows=[
+            {"object_type": "COLUMN", "table": "Sales", "object": "Quantity"},
+            {"object_type": "MEASURE", "table": "Sales", "object": "Revenue"},
+            {"object_type": "COLUMN", "table": "Sales", "object": "Amount"},
+            {"object_type": "MEASURE", "table": "Sales", "object": "Cost"},
+        ],
+        rel_lookup={},
+        model_label="Model",
+    )
+
+    table_children = tree[0]["children"][0]["children"][0]["children"]
+    assert table_children == [
+        {"label": "Cost", "kind": "measure"},
+        {"label": "Revenue", "kind": "measure"},
+        {"label": "Amount", "kind": "column"},
+        {"label": "Quantity", "kind": "column"},
+    ]
 
 
 def test_vertipaq_analyzer_defines_shared_fullscreen_css_before_rendering():
@@ -1373,6 +1410,10 @@ def test_workspace_monitoring_matches_tools_app_behavior():
     assert 'EventText startswith "DEFINE"' in worker
     assert 'f\'| where ItemName == "{safe_dataset}"\\n\'' in worker
     assert 'f"| where Timestamp >= ago({time_range})\\n"' in worker
+    assert (
+        '"| project Timestamp, DurationMs, CpuTimeMs, ExecutingUser, "\n'
+        '            "EventText, ReportId, VisualId\\n"'
+    ) in worker
     assert 'f"| top {top_n} by DurationMs desc"' in worker
     assert "query_workspace_monitoring(" in worker
     assert 'dataset != str(widget.dataset_name or "")' in worker
@@ -1432,3 +1473,18 @@ def test_trace_history_queries_copy_and_clear_with_user_feedback():
     assert 'toast.setAttribute("aria-live", "polite")' in source
     assert '.replace("__DTX_TRASH__", trash_icon)' in source
     assert "resultDownloadBtn" not in source
+
+
+def test_trace_history_dax_queries_use_query_pane_syntax_highlighting():
+    source = _source()
+    history_table = source[
+        source.index("function renderHistoryTable") : source.index(
+            "function renderQueryPlanTable"
+        )
+    ]
+
+    assert 'const isDax = /^\\s*(?:EVALUATE|DEFINE)\\b/i.test(q);' in history_table
+    assert 'renderDaxTokens(h.dax_tokens || [], q)' in history_table
+    assert ': escapeHtml(q);' in history_table
+    assert '<pre>${queryHtml}</pre>' in history_table
+    assert source.count('"dax_tokens": _monitoring_dax_spans(') == 3

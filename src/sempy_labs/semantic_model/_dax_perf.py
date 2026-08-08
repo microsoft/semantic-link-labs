@@ -1124,11 +1124,12 @@ def _build_dependency_tree(
     """Organize flat ``INFO.CALCDEPENDENCY`` rows into a hierarchical tree.
 
     The tree has a single ``Model`` root whose children are a ``Tables`` group
-    (each referenced table, with its referenced columns / measures /
-    hierarchies grouped beneath it) and a ``Relationships`` group (each
-    referenced relationship, labeled with the columns it joins, looked up via
-    TOM in ``rel_lookup``). Columns whose TOM ``ColumnType`` is ``RowNumber``
-    (provided in ``rownumber_cols`` as ``(table, column)`` tuples) are omitted.
+    (each referenced table, with measures followed directly by columns and
+    any referenced hierarchies grouped beneath it) and a ``Relationships``
+    group (each referenced relationship, labeled with the columns it joins,
+    looked up via TOM in ``rel_lookup``). Columns whose TOM ``ColumnType`` is
+    ``RowNumber`` (provided in ``rownumber_cols`` as ``(table, column)`` tuples)
+    are omitted.
     """
 
     rownumber_cols = rownumber_cols or set()
@@ -1202,11 +1203,14 @@ def _build_dependency_tree(
     table_nodes = []
     for tname in sorted(tables, key=str.lower):
         tdata = tables[tname]
-        tchildren = []
-        if tdata["columns"]:
-            tchildren.append(_leaf_group("Columns", "column", tdata["columns"]))
-        if tdata["measures"]:
-            tchildren.append(_leaf_group("Measures", "measure", tdata["measures"]))
+        tchildren = [
+            {"label": name, "kind": "measure"}
+            for name in sorted(tdata["measures"], key=str.lower)
+        ]
+        tchildren.extend(
+            {"label": name, "kind": "column"}
+            for name in sorted(tdata["columns"], key=str.lower)
+        )
         if tdata["hierarchies"]:
             tchildren.append(
                 _leaf_group("Hierarchies", "hierarchy", tdata["hierarchies"])
@@ -9581,6 +9585,10 @@ function render({ model, el }) {
         }
         const body = indexedHistory.map(({ h, index }) => {
             const q = cleanDaxQuery(h.dax_query);
+            const isDax = /^\s*(?:EVALUATE|DEFINE)\b/i.test(q);
+            const queryHtml = isDax
+                ? renderDaxTokens(h.dax_tokens || [], q)
+                : escapeHtml(q);
             const run = String(h.start_time || "");
             const runTime = fmtRunTime(run);
             const metrics = renderMetrics(h.execution_metrics);
@@ -9597,7 +9605,7 @@ function render({ model, el }) {
                 <td>${escapeHtml(String(h.cache || ""))}</td>
                 <td class="dtx-hist-metrics">${metrics ? `<pre>${metrics}</pre>` : ""}</td>
                 <td>${escapeHtml(method)}</td>
-                <td class="dtx-hist-query" data-history-index="${index}" tabindex="0" role="button" aria-label="Copy query from trace history" title="Copy query to clipboard"><pre>${escapeHtml(q)}</pre></td>
+                <td class="dtx-hist-query" data-history-index="${index}" tabindex="0" role="button" aria-label="Copy query from trace history" title="Copy query to clipboard"><pre>${queryHtml}</pre></td>
                 <td>${escapeHtml(reportName)}</td>
                 <td>${escapeHtml(reportWorkspace)}</td>
             </tr>`;
@@ -11121,6 +11129,7 @@ export default { render };
                         "report_name": report_name,
                         "report_workspace_name": report_workspace_name,
                         "dax_query": item["dax_query"],
+                        "dax_tokens": _monitoring_dax_spans(item["dax_query"]),
                         "start_time": stamp,
                         "end_time": stamp,
                         "rows": 0,
@@ -11405,6 +11414,7 @@ export default { render };
                 "report_name": "",
                 "report_workspace_name": "",
                 "dax_query": query,
+                "dax_tokens": _monitoring_dax_spans(query),
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "rows": _row_count,
@@ -11836,6 +11846,7 @@ export default { render };
                 "report_name": "",
                 "report_workspace_name": "",
                 "dax_query": query,
+                "dax_tokens": _monitoring_dax_spans(query),
                 "start_time": _start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": _end_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 "rows": _row_count,
@@ -12008,7 +12019,7 @@ export default { render };
             "| extend ReportId = tostring(ctx.Sources[0].ReportId)\n"
             "| extend VisualId = tostring(ctx.Sources[0].VisualId)\n"
             "| project Timestamp, DurationMs, CpuTimeMs, ExecutingUser, "
-            "ReportId, VisualId, EventText\n"
+            "EventText, ReportId, VisualId\n"
             f"| top {top_n} by DurationMs desc"
         )
         widget.workspace_monitoring_loading = True
