@@ -41,6 +41,13 @@ from ._schemas import (
     is_schema_enabled,
     create_schema,
 )
+from ._partitioning import (
+    is_partitioned,
+    list_partitioned_columns,
+    get_delta_table_details,
+    is_over_partitioned,
+    list_over_partitioned_tables,
+)
 
 __all__ = [
     "get_lakehouse_columns",
@@ -68,4 +75,9 @@ __all__ = [
     "is_schema_enabled",
     "create_materialized_lake_view",
     "create_schema",
+    "is_partitioned",
+    "list_partitioned_columns",
+    "get_delta_table_details",
+    "is_over_partitioned",
+    "list_over_partitioned_tables",
 ]
