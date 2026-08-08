@@ -418,12 +418,20 @@ def test_model_view_uses_power_bi_typography_and_table_counts():
         )
     ]
 
+    assert 'const countDescription = [' in tree_render
+    assert '? "column" : "columns"' in tree_render
+    assert '? "measure" : "measures"' in tree_render
+    assert '? "hierarchy" : "hierarchies"' in tree_render
+    assert '`${(tbl.hierarchies || []).length}h`' in tree_render
+    assert "if ((tbl.hierarchies || []).length)" not in tree_render
+    assert 'title="${escapeHtml(countDescription.join(", "))}"' in tree_render
+
     assert 'font-family: "Segoe UI", SegoeUI, Arial, sans-serif;' in source
     assert ".dtx .dtx-tree-leaf .dtx-tree-label {{\n    font-size: 14px;" in source
     assert ".dtx .dtx-tree-counts {{" in source
     assert '`${(tbl.columns || []).length}c`' in tree_render
     assert '`${(tbl.measures || []).length}m`' in tree_render
-    assert 'countParts.push(`${tbl.hierarchies.length}h`)' in tree_render
+    assert '`${(tbl.hierarchies || []).length}h`' in tree_render
     assert 'countParts.join(" · ")' in tree_render
 
 

@@ -6679,15 +6679,18 @@ function render({ model, el }) {
             const countParts = [
                 `${(tbl.columns || []).length}c`,
                 `${(tbl.measures || []).length}m`,
+                `${(tbl.hierarchies || []).length}h`,
             ];
-            if ((tbl.hierarchies || []).length) {
-                countParts.push(`${tbl.hierarchies.length}h`);
-            }
+            const countDescription = [
+                `${(tbl.columns || []).length} ${(tbl.columns || []).length === 1 ? "column" : "columns"}`,
+                `${(tbl.measures || []).length} ${(tbl.measures || []).length === 1 ? "measure" : "measures"}`,
+                `${(tbl.hierarchies || []).length} ${(tbl.hierarchies || []).length === 1 ? "hierarchy" : "hierarchies"}`,
+            ];
             node.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
                 + `<span class="dtx-tree-icon">${tblIcon}</span>`
                 + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
                 + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`
-                + `<span class="dtx-tree-counts">${escapeHtml(countParts.join(" · "))}</span>`;
+                + `<span class="dtx-tree-counts" title="${escapeHtml(countDescription.join(", "))}">${escapeHtml(countParts.join(" · "))}</span>`;
             makeDraggable(node, daxTableRef(tbl.name));
             installObjectContextMenu(node, {
                 kind: "table", table: "", name: tbl.name, label: tbl.name,
