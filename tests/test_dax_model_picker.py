@@ -325,6 +325,62 @@ def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
     assert "L12 11.75" not in level_icon
 
 
+def test_model_tree_uses_specialized_table_kind_icons():
+    source = _source()
+    metadata = source[
+        source.index("def _model_tree_table_kind") : source.index(
+            "def _build_relationship_lookup"
+        )
+    ]
+    renderer = source[
+        source.index("function renderTree()") : source.index(
+            'const main = document.createElement("div")'
+        )
+    ]
+
+    assert 'return "calculation_group"' in metadata
+    assert 'tom.is_field_parameter(table_name=str(table.Name))' in metadata
+    assert 'return "field_parameter"' in metadata
+    assert 'tom.is_calculated_table(table_name=str(table.Name))' in metadata
+    assert 'return "calculated_table"' in metadata
+    assert '"kind": _model_tree_table_kind(tom, table)' in metadata
+    assert "calculation_group: CALC_GROUP_SVG" in renderer
+    assert "calculated_table: CALCULATED_TABLE_SVG" in renderer
+    assert "field_parameter: FIELD_PARAMETER_SVG" in renderer
+    assert '_UI_ICONS["calculated_table"]' in source
+    assert '_UI_ICONS["calculation_group"]' in source
+    assert '_UI_ICONS["field_parameter"]' in source
+
+
+def test_model_tree_table_kind_classification_precedence():
+    table_kind = _load_source_function("_model_tree_table_kind")
+
+    class FakeTom:
+        def __init__(self, field_parameter=False, calculated_table=False):
+            self.field_parameter = field_parameter
+            self.calculated_table = calculated_table
+
+        def is_field_parameter(self, table_name):
+            assert table_name == "Test Table"
+            return self.field_parameter
+
+        def is_calculated_table(self, table_name):
+            assert table_name == "Test Table"
+            return self.calculated_table
+
+    class FakeTable:
+        Name = "Test Table"
+        CalculationGroup = None
+
+    calculation_group = FakeTable()
+    calculation_group.CalculationGroup = object()
+
+    assert table_kind(FakeTom(True, True), calculation_group) == "calculation_group"
+    assert table_kind(FakeTom(True, True), FakeTable()) == "field_parameter"
+    assert table_kind(FakeTom(False, True), FakeTable()) == "calculated_table"
+    assert table_kind(FakeTom(), FakeTable()) == "table"
+
+
 def test_model_view_flattens_type_groups_and_preserves_display_folders():
     source = _source()
     renderer = source[

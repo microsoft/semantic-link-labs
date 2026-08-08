@@ -963,6 +963,16 @@ def _collect_model_tree(dataset_id: str, workspace_id: str) -> list:
         return []
 
 
+def _model_tree_table_kind(tom, table) -> str:
+    if getattr(table, "CalculationGroup", None) is not None:
+        return "calculation_group"
+    if tom.is_field_parameter(table_name=str(table.Name)):
+        return "field_parameter"
+    if tom.is_calculated_table(table_name=str(table.Name)):
+        return "calculated_table"
+    return "table"
+
+
 def _build_model_tree(tom) -> list:
     """Build the sidebar metadata tree from an already-open TOM connection."""
 
@@ -1037,6 +1047,7 @@ def _build_model_tree(tom) -> list:
             tree.append(
                 {
                     "name": tname,
+                    "kind": _model_tree_table_kind(tom, table),
                     "hidden": bool(getattr(table, "IsHidden", False)),
                     "description": str(getattr(table, "Description", "") or ""),
                     "calculation_group": bool(is_calc_group),
@@ -5020,7 +5031,9 @@ def _visualize_dax_test(
     moon_icon = _UI_ICONS["moon"].replace("`", "\\`")
     info_icon = _UI_ICONS["info"].replace("`", "\\`")
     table_icon = _UI_ICONS["table"].replace("`", "\\`")
+    calculated_table_icon = _UI_ICONS["calculated_table"].replace("`", "\\`")
     calc_group_icon = _UI_ICONS["calculation_group"].replace("`", "\\`")
+    field_parameter_icon = _UI_ICONS["field_parameter"].replace("`", "\\`")
     calc_item_icon = _UI_ICONS["calculation_item"].replace("`", "\\`")
     column_icon = _UI_ICONS["column"].replace("`", "\\`")
     measure_icon = _UI_ICONS["measure"].replace("`", "\\`")
@@ -5301,7 +5314,9 @@ function render({ model, el }) {
     const STOP_SVG = `__DTX_STOP__`;
     const ERASER_SVG = `__DTX_ERASER__`;
     const TABLE_SVG = `__DTX_TABLE__`;
+    const CALCULATED_TABLE_SVG = `__DTX_CALCULATED_TABLE__`;
     const CALC_GROUP_SVG = `__DTX_CALC_GROUP__`;
+    const FIELD_PARAMETER_SVG = `__DTX_FIELD_PARAMETER__`;
     const CALC_ITEM_SVG = `__DTX_CALC_ITEM__`;
     const COLUMN_SVG = `__DTX_COLUMN__`;
     const MEASURE_SVG = `__DTX_MEASURE__`;
@@ -6656,7 +6671,11 @@ function render({ model, el }) {
         for (const tbl of tree) {
             const node = document.createElement("div");
             node.className = "dtx-tree-node";
-            const tblIcon = tbl.calculation_group ? CALC_GROUP_SVG : TABLE_SVG;
+            const tblIcon = ({
+                calculation_group: CALC_GROUP_SVG,
+                calculated_table: CALCULATED_TABLE_SVG,
+                field_parameter: FIELD_PARAMETER_SVG,
+            })[tbl.kind] || TABLE_SVG;
             const countParts = [
                 `${(tbl.columns || []).length}c`,
                 `${(tbl.measures || []).length}m`,
@@ -10565,7 +10584,9 @@ export default { render };
         .replace("__DTX_MOON__", moon_icon)
         .replace("__DTX_INFO__", info_icon)
         .replace("__DTX_TABLE__", table_icon)
+        .replace("__DTX_CALCULATED_TABLE__", calculated_table_icon)
         .replace("__DTX_CALC_GROUP__", calc_group_icon)
+        .replace("__DTX_FIELD_PARAMETER__", field_parameter_icon)
         .replace("__DTX_CALC_ITEM__", calc_item_icon)
         .replace("__DTX_COLUMN__", column_icon)
         .replace("__DTX_MEASURE__", measure_icon)
