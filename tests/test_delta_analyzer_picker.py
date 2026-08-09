@@ -116,12 +116,15 @@ def test_delta_picker_analyze_immediately_shows_main_loading_shell():
 
     assert 'const loadingShell = document.createElement("div")' in source
     assert 'loadingShell.className = "slls-da-loading"' in source
-    assert "content.append(loadingShell, results)" in source
+    assert "content.append(loadingShell, resultsProgress, results)" in source
     assert (
         "const showLoading = !pickerOpen && (analysisRequested || analyzing);" in source
     )
-    assert 'panel.style.display = pickerOpen ? "" : "none";' in source
-    assert 'loadingShell.classList.toggle("slls-da-active", showLoading);' in source
+    assert 'pickerBackdrop.style.display = pickerOpen ? "flex" : "none";' in source
+    assert (
+        'loadingShell.classList.toggle("slls-da-active", showLoading && !hasResults);'
+        in source
+    )
     assert (
         'pickerOpen = false; analysisRequested = true; renderState(); dispatch("run_analysis_trigger")'
         in source
@@ -160,11 +163,41 @@ def test_delta_results_fullscreen_is_owned_by_anywidget():
     assert "_ui_display_html_widget" not in source
     assert "The Delta Analyzer visualization requires 'anywidget'." in source
     assert (
-        "sllsDaSetupFullscreen(root, resultsFullscreenBtn, "
-        '"slls-da-fullscreen", `__FS_ENTER__`, `__FS_EXIT__`)' in source
+        'resultsFullscreenBtn.addEventListener("click", event => { '
+        "event.preventDefault(); fullscreenBtn.click(); })" in source
     )
+    assert source.count("sllsDaSetupFullscreen(root,") == 1
     assert '.slls-da-picker:fullscreen .slls-da-results > [class*="-root"]' in source
     enter_start = ui_source.index("function enterFullscreen()")
     request_start = ui_source.index("root.requestFullscreen()", enter_start)
     immediate_fallback = ui_source.index("cssFullscreen = true;", enter_start)
     assert immediate_fallback < request_start
+
+
+def test_delta_analysis_shows_full_dashboard_layout_with_progress():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+
+    assert 'loadingCards.className = "slls-da-loading-cards"' in source
+    assert 'loadingTabs.className = "slls-da-loading-tabs"' in source
+    assert 'loadingToolbar.className = "slls-da-loading-toolbar"' in source
+    assert 'loadingTable.className = "slls-da-loading-table"' in source
+    assert (
+        "loadingShell.append(progress, loadingCards, loadingTabs, loadingToolbar, loadingTable)"
+        in source
+    )
+    assert 'results.style.display = hasResults ? "" : "none";' in source
+    assert (
+        'resultsProgress.classList.toggle("slls-da-active", showLoading && hasResults);'
+        in source
+    )
+
+
+def test_delta_change_picker_opens_as_modal_over_results():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+
+    assert 'pickerBackdrop.className = "slls-da-picker-backdrop"' in source
+    assert "const pickerModal = pickerOpen && hasResults;" in source
+    assert 'pickerBackdrop.classList.toggle("slls-da-modal", pickerModal);' in source
+    assert 'cancel.style.display = pickerModal ? "inline-flex" : "none";' in source
+    assert ".slls-da-picker-backdrop.slls-da-modal {" in source
+    assert 'content.style.display = pickerOpen && !pickerModal ? "none" : "";' in source

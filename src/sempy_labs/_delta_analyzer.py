@@ -1336,7 +1336,7 @@ _DA_PICKER_CSS = (
 .slls-da-picker {
     __LIGHT_VARS__
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-    display: flex; min-height: min(680px, calc(100vh - 32px)); flex-direction: column;
+    position: relative; display: flex; min-height: min(680px, calc(100vh - 32px)); flex-direction: column;
     color: var(--ui-text); max-width: 1200px; margin: 16px auto;
     background: var(--ui-bg); border: 1px solid var(--ui-border);
     border-radius: 12px; box-shadow: var(--ui-shadow-lg); overflow: hidden;
@@ -1344,7 +1344,10 @@ _DA_PICKER_CSS = (
 .slls-da-picker.slls-da-dark { __DARK_VARS__ }
 .slls-da-picker *, .slls-da-picker *::before, .slls-da-picker *::after { box-sizing: border-box; }
 .slls-da-shell-header { flex: 0 0 auto; padding: 20px 22px 16px; background: var(--ui-bg); }
+.slls-da-picker-backdrop { display: flex; flex: 1 1 auto; background: var(--ui-bg); }
+.slls-da-picker-backdrop.slls-da-modal { position: absolute; inset: 0; z-index: 120; align-items: flex-start; padding: 72px 24px 24px; overflow: auto; background: color-mix(in srgb, var(--ui-bg) 72%, transparent); backdrop-filter: blur(8px); }
 .slls-da-panel { flex: 1 1 auto; min-height: 480px; padding: 16px 22px 24px; background: var(--ui-bg); }
+.slls-da-picker-backdrop.slls-da-modal .slls-da-panel { flex: 0 1 960px; min-height: 0; margin: 0 auto; border: 1px solid var(--ui-border-strong); border-radius: 12px; box-shadow: var(--ui-shadow-lg); }
 .slls-da-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .slls-da-title { margin: 0; font-size: 14px; font-weight: 600; }
 .slls-da-subtitle { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
@@ -1352,7 +1355,8 @@ _DA_PICKER_CSS = (
 .slls-da-field { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; gap: 5px; }
 .slls-da-field label { padding-left: 4px; color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; }
 .slls-da-field .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--ui-surface); font-size: 13.5px; }
-.slls-da-actions { flex: 0 0 auto; }
+.slls-da-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.slls-da-cancel { display: none; border: 1px solid var(--ui-border-strong); border-radius: 999px; padding: 7px 16px; background: var(--ui-surface); color: var(--ui-text); font: 500 13.5px inherit; cursor: pointer; }
 .slls-da-run { border: 1px solid var(--ui-accent); border-radius: 999px; padding: 7px 16px; background: var(--ui-accent); color: var(--ui-on-accent); font: 500 13.5px inherit; cursor: pointer; }
 .slls-da-run:disabled { opacity: .5; cursor: default; }
 .slls-da-error { display: none; margin-top: 12px; color: var(--ui-danger-text); font-size: 12px; }
@@ -1361,10 +1365,21 @@ _DA_PICKER_CSS = (
 .slls-da-progress::after { content: ""; position: absolute; inset-block: 0; left: -35%; width: 35%; background: var(--ui-accent); animation: sllsDaProgress 1s ease-in-out infinite; }
 @keyframes sllsDaProgress { from { transform: translateX(0); } to { transform: translateX(390%); } }
 .slls-da-content { flex: 1 1 auto; min-height: 0; }
-.slls-da-loading { display: none; min-height: 480px; padding: 16px 22px 24px; flex-direction: column; background: var(--ui-bg); }
+.slls-da-loading { display: none; min-height: 520px; padding: 0 22px 24px; flex-direction: column; background: var(--ui-bg); }
 .slls-da-loading.slls-da-active { display: flex; }
-.slls-da-loading-title { margin: 0; font-size: 14px; font-weight: 600; }
-.slls-da-loading-subtitle { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-da-loading-cards { display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr)); gap: 12px; padding-bottom: 16px; }
+.slls-da-loading-card { min-height: 76px; padding: 14px 16px; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-bg-secondary); }
+.slls-da-loading-card-label { color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.slls-da-loading-card-value { margin-top: 8px; color: var(--ui-text-secondary); font-size: 20px; font-weight: 600; }
+.slls-da-loading-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--ui-border); overflow-x: auto; }
+.slls-da-loading-tab { padding: 10px 20px; color: var(--ui-text-secondary); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.slls-da-loading-tab:first-child { color: var(--ui-accent); border-bottom: 2px solid var(--ui-accent); font-weight: 600; }
+.slls-da-loading-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; }
+.slls-da-loading-search { width: min(280px, 60%); height: 32px; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-bg-secondary); }
+.slls-da-loading-table { flex: 1 1 auto; min-height: 220px; border: 1px solid var(--ui-border); background: var(--ui-bg); overflow: hidden; }
+.slls-da-loading-table-head { height: 36px; border-bottom: 1px solid var(--ui-border); background: var(--ui-bg-secondary); }
+.slls-da-loading-row { height: 38px; border-bottom: 1px solid var(--ui-border); background: linear-gradient(90deg, transparent, var(--ui-surface-2), transparent); }
+.slls-da-results-progress { margin: 0 22px 14px; }
 .slls-da-picker.slls-da-fullscreen {
     position: fixed; inset: 0; z-index: 2147483000; width: 100vw; height: 100vh;
     max-width: none; min-height: 100vh; margin: 0; border: none; border-radius: 0; overflow: auto;
@@ -1383,8 +1398,10 @@ _DA_PICKER_CSS = (
 .slls-da-field .slls-ss-list { max-height: min(360px, calc(100vh - 290px)); }
 @media (max-width: 700px) {
     .slls-da-picker { min-height: calc(100vh - 16px); margin: 8px; }
+    .slls-da-picker-backdrop.slls-da-modal { padding: 56px 12px 12px; }
     .slls-da-fields { align-items: stretch; flex-direction: column; }
     .slls-da-actions { align-self: flex-end; }
+    .slls-da-loading-cards { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
     .slls-da-field .slls-ss-list { max-height: max(160px, calc(100vh - 390px)); }
 }
 __HEADER_CSS__
@@ -1410,7 +1427,8 @@ function render({ model, el }) {
     const titleIcon = document.createElement("span"); titleIcon.className = "sl-title-icon"; titleIcon.innerHTML = `__DELTA_ICON__`;
     const titleWrap = document.createElement("div"); titleWrap.className = "sl-titlewrap";
     const shellTitle = document.createElement("div"); shellTitle.className = "sl-title"; shellTitle.textContent = "Delta Analyzer";
-    titleWrap.appendChild(shellTitle);
+    const shellSubtitle = document.createElement("div"); shellSubtitle.className = "sl-subtitle";
+    titleWrap.append(shellTitle, shellSubtitle);
     const spacer = document.createElement("div"); spacer.className = "sl-head-spacer";
     const fullscreenBtn = document.createElement("button"); fullscreenBtn.type = "button"; fullscreenBtn.className = "sl-theme-btn";
     const themeBtn = document.createElement("button"); themeBtn.type = "button"; themeBtn.className = "sl-theme-btn";
@@ -1428,6 +1446,7 @@ function render({ model, el }) {
     });
     sllsDaSetupFullscreen(root, fullscreenBtn, "slls-da-fullscreen", `__FS_ENTER__`, `__FS_EXIT__`);
     renderTheme();
+    const pickerBackdrop = document.createElement("div"); pickerBackdrop.className = "slls-da-picker-backdrop";
     const panel = document.createElement("div"); panel.className = "slls-da-panel";
     const head = document.createElement("div"); head.className = "slls-da-head";
     head.innerHTML = '<div><h2 class="slls-da-title">Connect to a delta table</h2><div class="slls-da-subtitle">Select a workspace, lakehouse, and Delta table to analyze.</div></div>';
@@ -1438,19 +1457,37 @@ function render({ model, el }) {
     const lh = createSearchSelect({ placeholder: "Select a lakehouse…", searchPlaceholder: "Filter lakehouses…", ariaLabel: "Lakehouse", emptyLabel: "Select a workspace first…", onChange: o => { model.set("selected_lakehouse_id", o.value); model.set("selected_table", ""); model.set("available_tables", []); dispatch("select_lakehouse_trigger"); } });
     const tb = createSearchSelect({ placeholder: "Select a Delta table…", searchPlaceholder: "Filter tables…", ariaLabel: "Delta table", emptyLabel: "Select a lakehouse first…", onChange: o => { model.set("selected_table", o.value); model.save_changes(); renderState(); } });
     const actions = document.createElement("div"); actions.className = "slls-da-actions";
-    const run = document.createElement("button"); run.type = "button"; run.className = "slls-da-run"; run.textContent = "Analyze"; actions.appendChild(run);
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "slls-da-cancel"; cancel.textContent = "Cancel";
+    const run = document.createElement("button"); run.type = "button"; run.className = "slls-da-run"; run.textContent = "Analyze"; actions.append(cancel, run);
     fields.append(field("Workspace", ws), field("Lakehouse", lh), field("Delta table", tb), actions);
     const error = document.createElement("div"); error.className = "slls-da-error";
     const content = document.createElement("div"); content.className = "slls-da-content";
     const loadingShell = document.createElement("div"); loadingShell.className = "slls-da-loading";
-    const loadingTitle = document.createElement("h2"); loadingTitle.className = "slls-da-loading-title"; loadingTitle.textContent = "Analyzing Delta table";
-    const loadingSubtitle = document.createElement("div"); loadingSubtitle.className = "slls-da-loading-subtitle";
     const progress = document.createElement("div"); progress.className = "slls-da-progress"; progress.setAttribute("role", "progressbar"); progress.setAttribute("aria-label", "Running Delta Analyzer");
+    const loadingCards = document.createElement("div"); loadingCards.className = "slls-da-loading-cards";
+    ["Row Count", "Total Size", "Parquet Files", "Row Groups", "Avg Rows / RG", "VOrder"].forEach(label => { const card = document.createElement("div"); card.className = "slls-da-loading-card"; card.innerHTML = `<div class="slls-da-loading-card-label">${label}</div><div class="slls-da-loading-card-value">—</div>`; loadingCards.appendChild(card); });
+    const loadingTabs = document.createElement("div"); loadingTabs.className = "slls-da-loading-tabs";
+    ["Parquet Files", "Row Groups", "Column Chunks", "Columns"].forEach(label => { const tab = document.createElement("div"); tab.className = "slls-da-loading-tab"; tab.textContent = label; loadingTabs.appendChild(tab); });
+    const loadingToolbar = document.createElement("div"); loadingToolbar.className = "slls-da-loading-toolbar";
+    const loadingSearch = document.createElement("div"); loadingSearch.className = "slls-da-loading-search";
+    const loadingStatus = document.createElement("div"); loadingStatus.className = "slls-da-subtitle"; loadingStatus.textContent = "Analyzing table…"; loadingToolbar.append(loadingSearch, loadingStatus);
+    const loadingTable = document.createElement("div"); loadingTable.className = "slls-da-loading-table";
+    const loadingTableHead = document.createElement("div"); loadingTableHead.className = "slls-da-loading-table-head"; loadingTable.appendChild(loadingTableHead);
+    for (let i = 0; i < 5; i += 1) { const row = document.createElement("div"); row.className = "slls-da-loading-row"; loadingTable.appendChild(row); }
+    const resultsProgress = document.createElement("div"); resultsProgress.className = "slls-da-progress slls-da-results-progress"; resultsProgress.setAttribute("role", "progressbar"); resultsProgress.setAttribute("aria-label", "Running Delta Analyzer");
     const results = document.createElement("div"); results.className = "slls-da-results";
-    loadingShell.append(loadingTitle, loadingSubtitle, progress); content.append(loadingShell, results);
-    panel.append(head, fields, error); root.append(shellHeader, panel, content); el.appendChild(root);
+    loadingShell.append(progress, loadingCards, loadingTabs, loadingToolbar, loadingTable); content.append(loadingShell, resultsProgress, results);
+    panel.append(head, fields, error); pickerBackdrop.appendChild(panel); root.append(shellHeader, pickerBackdrop, content); el.appendChild(root);
     let pickerOpen = !(model.get("content_html") || "").trim();
     let analysisRequested = false;
+    let resultsFullscreenBtn = null;
+    function syncResultsFullscreenButton() {
+        if (!resultsFullscreenBtn) return;
+        resultsFullscreenBtn.innerHTML = fullscreenBtn.innerHTML;
+        resultsFullscreenBtn.title = fullscreenBtn.title;
+        resultsFullscreenBtn.setAttribute("aria-label", fullscreenBtn.getAttribute("aria-label") || "Full screen");
+    }
+    new MutationObserver(syncResultsFullscreenButton).observe(fullscreenBtn, { attributes: true, childList: true, subtree: true });
     function renderState() {
         const loading = model.get("picker_loading") === true, analyzing = model.get("analyzing") === true;
         const message = model.get("error_message") || "";
@@ -1465,13 +1502,17 @@ function render({ model, el }) {
         run.disabled = analyzing || !(model.get("selected_table") || "");
         const showLoading = !pickerOpen && (analysisRequested || analyzing);
         const hasResults = Boolean((model.get("content_html") || "").trim());
-        loadingSubtitle.textContent = model.get("selected_table") || "Preparing analysis…";
-        progress.classList.toggle("slls-da-active", showLoading);
-        loadingShell.classList.toggle("slls-da-active", showLoading);
-        shellHeader.style.display = pickerOpen || showLoading ? "" : "none";
-        panel.style.display = pickerOpen ? "" : "none";
-        content.style.display = pickerOpen ? "none" : "";
-        results.style.display = !showLoading && hasResults ? "" : "none";
+        const pickerModal = pickerOpen && hasResults;
+        shellSubtitle.textContent = model.get("selected_table") || "Preparing analysis…";
+        progress.classList.toggle("slls-da-active", showLoading && !hasResults);
+        resultsProgress.classList.toggle("slls-da-active", showLoading && hasResults);
+        loadingShell.classList.toggle("slls-da-active", showLoading && !hasResults);
+        shellHeader.style.display = !hasResults && (pickerOpen || showLoading) ? "" : "none";
+        pickerBackdrop.style.display = pickerOpen ? "flex" : "none";
+        pickerBackdrop.classList.toggle("slls-da-modal", pickerModal);
+        cancel.style.display = pickerModal ? "inline-flex" : "none";
+        content.style.display = pickerOpen && !pickerModal ? "none" : "";
+        results.style.display = hasResults ? "" : "none";
         error.textContent = message; error.style.display = message ? "block" : "none";
     }
     function renderContent() {
@@ -1479,11 +1520,14 @@ function render({ model, el }) {
         results.querySelectorAll("script").forEach(oldScript => { const script = document.createElement("script"); script.textContent = oldScript.textContent; oldScript.replaceWith(script); });
         const change = results.querySelector('[id^="da-picker-"]');
         if (change) change.addEventListener("click", event => { event.preventDefault(); pickerOpen = true; renderState(); });
-        const resultsFullscreenBtn = results.querySelector('[id^="da-fullscreen-"]');
-        if (resultsFullscreenBtn) sllsDaSetupFullscreen(root, resultsFullscreenBtn, "slls-da-fullscreen", `__FS_ENTER__`, `__FS_EXIT__`);
+        resultsFullscreenBtn = results.querySelector('[id^="da-fullscreen-"]');
+        if (resultsFullscreenBtn) { resultsFullscreenBtn.addEventListener("click", event => { event.preventDefault(); fullscreenBtn.click(); }); syncResultsFullscreenButton(); }
         if (results.innerHTML.trim()) { analysisRequested = false; pickerOpen = false; }
         renderState();
     }
+    cancel.addEventListener("click", () => { pickerOpen = false; renderState(); });
+    pickerBackdrop.addEventListener("click", event => { if (event.target === pickerBackdrop && pickerBackdrop.classList.contains("slls-da-modal")) { pickerOpen = false; renderState(); } });
+    root.addEventListener("keydown", event => { if (event.key === "Escape" && pickerBackdrop.classList.contains("slls-da-modal")) { pickerOpen = false; renderState(); } });
     run.addEventListener("click", () => { if (!model.get("selected_table")) return; pickerOpen = false; analysisRequested = true; renderState(); dispatch("run_analysis_trigger"); });
     ["available_workspaces", "available_lakehouses", "available_tables", "selected_workspace_id", "selected_lakehouse_id", "selected_table", "picker_loading", "analyzing", "error_message"].forEach(name => model.on("change:" + name, renderState));
     model.on("change:content_html", renderContent); renderContent(); renderState();
