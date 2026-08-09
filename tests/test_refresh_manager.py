@@ -135,6 +135,12 @@ def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert ".slls-rm-iconbtn { width:34px;height:34px" in (
         refresh_manager_module._WIDGET_CSS
     )
+    assert "background:var(--ui-bg);color:var(--ui-text);display:inline-flex" in (
+        refresh_manager_module._WIDGET_CSS
+    )
+    assert "color:var(--ui-text-secondary);display:inline-flex" not in (
+        refresh_manager_module._WIDGET_CSS
+    )
     assert "data-picker-ws" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
@@ -163,6 +169,13 @@ def test_widget_uses_shared_expand_and_collapse_icons():
     )
     assert 'expandAll.title=collapse?"Collapse all":"Expand all"' in (
         refresh_manager_module._WIDGET_JS
+    )
+
+
+def test_objects_to_refresh_tables_are_sorted_alphabetically():
+    assert (
+        '.sort((left,right)=>left.name.localeCompare(right.name,undefined,'
+        '{sensitivity:"base"}))' in refresh_manager_module._WIDGET_JS
     )
 
 
