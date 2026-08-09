@@ -75,6 +75,32 @@ function render({ model, el }) {
         return c ? c.parentElement : null;
     }
 
+    function statusEl() {
+        const root = rootEl();
+        if (root && root.classList.contains("vpx-picker-only")) {
+            return el.querySelector(".vpx-picker-screen .vpx-delta-status");
+        }
+        return el.querySelector(".vpx-container > .vpx-delta-status")
+            || el.querySelector(".vpx-picker-screen .vpx-delta-status");
+    }
+
+    function setAnalyzing(on) {
+        const root = rootEl();
+        if (root) {
+            if (on) root.classList.remove("vpx-picker-only");
+            root.setAttribute("aria-busy", on ? "true" : "false");
+        }
+        const progress = el.querySelector(".vpx-analysis-progress");
+        if (progress) {
+            progress.classList.toggle("vpx-active", on);
+            progress.setAttribute("aria-hidden", on ? "false" : "true");
+        }
+        if (on) {
+            const picker = el.querySelector(".vpx-picker-dialog");
+            if (picker) picker.style.display = "none";
+        }
+    }
+
     function draw() {
         // Re-rendering (e.g. switching semantic models) replaces the whole
         // markup, so remember the view state and re-apply it afterwards.
@@ -205,8 +231,7 @@ function render({ model, el }) {
 
     function showStatus() {
         const s = model.get("status") || {};
-        const st = el.querySelector(".vpx-picker-screen .vpx-delta-status")
-            || el.querySelector(".vpx-delta-status");
+        const st = statusEl();
         if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
         if (st) {
             if (s.message) {
@@ -228,7 +253,10 @@ function render({ model, el }) {
         // Status updates without a progress payload (e.g. "cancelling") keep
         // the last reported counter.
         if (s.progress) setProgress(s.progress);
-        if (s.done) setRunning(false);
+        if (s.done) {
+            setRunning(false);
+            setAnalyzing(false);
+        }
     }
 
     function wireDelta() {
@@ -415,13 +443,13 @@ function render({ model, el }) {
         connectBtn.addEventListener("click", function () {
             if (!pickDs) return;
             connectBtn.disabled = true;
-            // Close right away - the analysis runs in Python and replaces the
-            // whole widget when it finishes.
-            closeDialog();
             const wsName = wsPicker.label;
             const dsName = dsPicker.label;
-            const st = el.querySelector(".vpx-picker-screen .vpx-delta-status")
-                || el.querySelector(".vpx-delta-status");
+            // Reveal the analyzer immediately. Python replaces this shell with
+            // the completed result, while the progress bar remains inside the
+            // same root in both normal and full-screen modes.
+            setAnalyzing(true);
+            const st = statusEl();
             if (st) {
                 st.textContent = "Running Vertipaq Analyzer on '" + dsName +
                     "' within the '" + wsName + "' workspace\u2026";
@@ -2014,6 +2042,30 @@ def visualize_vertipaq(
     .vpx-{uid}.vpx-dark {{
         {_UI_DARK_VARS}
     }}
+    .vpx-{uid} .vpx-analysis-progress {{
+        display: none;
+        position: relative;
+        height: 3px;
+        overflow: hidden;
+        background: var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-analysis-progress.vpx-active {{
+        display: block;
+    }}
+    .vpx-{uid} .vpx-analysis-progress::after {{
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        left: -35%;
+        width: 35%;
+        border-radius: inherit;
+        background: var(--vpx-accent);
+        animation: vpxAnalysisProgress{uid} 1s ease-in-out infinite;
+    }}
+    @keyframes vpxAnalysisProgress{uid} {{
+        from {{ transform: translateX(0); }}
+        to {{ transform: translateX(390%); }}
+    }}
     .vpx-{uid}.vpx-picker-only {{
         display: flex;
         flex-direction: column;
@@ -2071,6 +2123,19 @@ def visualize_vertipaq(
     }}
     .vpx-{uid}.vpx-fs .vpx-table-wrap {{
         max-height: calc(100vh - 260px);
+    }}
+    .vpx-{uid}.vpx-picker-only.vpx-fs .vpx-container,
+    .vpx-{uid}.vpx-picker-only:fullscreen .vpx-container,
+    .vpx-{uid}.vpx-picker-only:-webkit-full-screen .vpx-container {{
+        flex: 0 0 auto;
+        min-height: 0;
+    }}
+    .vpx-{uid}.vpx-picker-only.vpx-fs .vpx-picker-screen,
+    .vpx-{uid}.vpx-picker-only:fullscreen .vpx-picker-screen,
+    .vpx-{uid}.vpx-picker-only:-webkit-full-screen .vpx-picker-screen {{
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
     }}
     .vpx-{uid} *, .vpx-{uid} *::before, .vpx-{uid} *::after {{
         box-sizing: border-box;
@@ -2733,45 +2798,135 @@ def visualize_vertipaq(
     }}
     /* ── Workspace / semantic model picker ── */
     .vpx-{uid} .vpx-picker-screen {{
-        display: block;
+        display: flex;
+        align-items: flex-start;
+        justify-content: stretch;
         width: 100%;
-        padding: 20px 24px 28px;
+        min-height: 320px;
+        padding: 0 24px 24px;
         background: var(--vpx-bg);
     }}
     .vpx-{uid} .vpx-picker-screen .vpx-picker-panel {{
         width: 100%;
-        max-width: 900px;
-        margin: 0 auto;
+        padding: 16px;
+        border: 1px solid var(--vpx-border);
+        border-radius: 14px;
+        background: var(--ui-surface);
     }}
-    .vpx-{uid} .vpx-picker-screen .vpx-delta-modal-head,
-    .vpx-{uid} .vpx-picker-screen .vpx-delta-modal-body,
-    .vpx-{uid} .vpx-picker-screen .vpx-delta-modal-foot {{
-        padding-left: 0;
-        padding-right: 0;
-        border: none;
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-headrow {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
     }}
-    .vpx-{uid} .vpx-picker-screen .vpx-delta-modal-head {{
-        padding-top: 0;
-        padding-bottom: 20px;
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-head {{
+        min-width: 0;
     }}
-    .vpx-{uid} .vpx-picker-screen .vpx-delta-modal-body {{
-        overflow: visible;
-        padding-top: 0;
-        padding-bottom: 0;
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-title {{
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--vpx-text);
     }}
-    .vpx-{uid} .vpx-picker-screen .vpx-delta-modal-foot {{
-        padding-top: 20px;
-        padding-bottom: 0;
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-subtitle {{
+        margin-top: 3px;
+        font-size: 12.5px;
+        color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-fields {{
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-field {{
+        flex: 1 1 240px;
+        min-width: 0;
+        margin-bottom: 0;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-field .slls-ss-btn {{
+        border-radius: 999px;
+        padding: 7px 12px 7px 15px;
+        background: var(--ui-surface);
+        font-size: 13.5px;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-actions {{
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-connect {{
+        padding: 7px 16px;
+        border-radius: 999px;
+        font-size: 13.5px;
+        font-weight: 500;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-reload {{
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 50%;
+        background: var(--ui-surface);
     }}
     .vpx-{uid} .vpx-picker-screen .vpx-delta-status {{
-        margin-top: 16px;
+        margin-top: 14px;
         padding: 10px 12px;
         border: 1px solid var(--vpx-border);
         border-radius: var(--vpx-radius-sm);
         background: var(--vpx-bg-tertiary);
     }}
+    @media (max-width: 640px) {{
+        .vpx-{uid} .vpx-picker-screen {{ min-height: 280px; padding: 0 16px 16px; }}
+        .vpx-{uid} .vpx-picker-screen .vpx-picker-fields {{
+            align-items: stretch;
+            flex-direction: column;
+        }}
+        .vpx-{uid} .vpx-picker-screen .vpx-picker-actions {{
+            justify-content: flex-end;
+        }}
+    }}
     .vpx-{uid} .vpx-picker-modal {{
+        height: min(720px, calc(100vh - 32px));
+        min-height: min(560px, calc(100vh - 32px));
         max-width: 900px;
+        max-height: calc(100vh - 32px);
+    }}
+    .vpx-{uid} .vpx-picker-modal > .vpx-delta-modal-head,
+    .vpx-{uid} .vpx-picker-modal > .vpx-delta-modal-foot {{
+        flex: 0 0 auto;
+    }}
+    .vpx-{uid} .vpx-picker-modal > .vpx-delta-modal-body {{
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        flex-direction: column;
+        overflow: visible;
+    }}
+    .vpx-{uid} .vpx-picker-modal .vpx-picker-grid {{
+        flex: 1 1 auto;
+        min-height: 260px;
+        align-items: flex-start;
+    }}
+    .vpx-{uid} .vpx-picker-modal .slls-ss-panel {{
+        z-index: 90;
+    }}
+    .vpx-{uid} .vpx-picker-modal .slls-ss-list {{
+        max-height: min(360px, calc(100vh - 300px));
+    }}
+    @media (max-height: 600px), (max-width: 640px) {{
+        .vpx-{uid} .vpx-picker-modal {{
+            height: calc(100vh - 16px);
+            min-height: 0;
+            max-height: calc(100vh - 16px);
+        }}
+        .vpx-{uid} .vpx-picker-modal .vpx-picker-grid {{
+            min-height: 200px;
+        }}
+        .vpx-{uid} .vpx-picker-modal .slls-ss-list {{
+            max-height: max(140px, calc(100vh - 300px));
+        }}
     }}
     .vpx-{uid} .vpx-picker-top {{
         display: flex;
@@ -2950,6 +3105,10 @@ def visualize_vertipaq(
     html_parts.append(f'<div class="{root_classes}">')
     html_parts.append('<div class="vpx-container">')
     html_parts.append(f'<div class="vpx-header">{header_html}</div>')
+    html_parts.append(
+        '<div class="vpx-analysis-progress" role="progressbar" '
+        'aria-label="Running Vertipaq Analyzer" aria-hidden="true"></div>'
+    )
 
     # Model summary cards
     if not model_df.empty:
@@ -3286,62 +3445,73 @@ def visualize_vertipaq(
             "<svg ", '<svg class="vpx-toggle-icon" ', 1
         )
         picker_reload_icon = _UI_ICONS["refresh"]
-        picker_container_class = (
-            "vpx-picker-screen vpx-picker-dialog"
-            if picker_initial
-            else "vpx-delta-dialog vpx-picker-dialog"
-        )
-        picker_panel_class = (
-            "vpx-picker-panel"
-            if picker_initial
-            else "vpx-delta-modal vpx-picker-modal"
-        )
-        picker_close = (
-            ""
-            if picker_initial
-            else '<button type="button" class="vpx-delta-close vpx-picker-close" '
-            'aria-label="Close">\u00d7</button>'
-        )
-        picker_cancel = (
-            ""
-            if picker_initial
-            else '<button type="button" class="vpx-delta-cancel vpx-picker-cancel">'
-            "Cancel</button>"
-        )
-        html_parts.append(
-            f'<div class="{picker_container_class}">'
-            f'<div class="{picker_panel_class}">'
-            f'<div class="vpx-delta-modal-head">{picker_dialog_icon}'
-            f"<div>"
-            f'<div class="vpx-delta-modal-title">Choose a semantic model</div>'
-            f'<div class="vpx-delta-modal-sub">Pick a workspace and semantic '
-            f"model to analyze.</div>"
-            f"</div>"
-            f"{picker_close}"
-            f"</div>"
-            f'<div class="vpx-delta-modal-body">'
-            f'<div class="vpx-picker-top">'
-            f'<button type="button" class="vpx-picker-reload" '
-            f'title="Reload workspaces and semantic models">'
-            f"{picker_reload_icon}Reload</button>"
-            f"</div>"
-            f'<div class="vpx-picker-grid">'
-            f'<div class="vpx-picker-field"><label>Workspace</label>'
-            f'<div class="vpx-picker-ws"></div></div>'
-            f'<div class="vpx-picker-field"><label>Semantic model</label>'
-            f'<div class="vpx-picker-ds"></div></div>'
-            f"</div>"
-            f'<div class="vpx-picker-recent"></div>'
-            f'<div class="vpx-delta-status"></div>'
-            f"</div>"
-            f'<div class="vpx-delta-modal-foot">'
-            f"{picker_cancel}"
-            f'<button type="button" class="vpx-delta-run vpx-picker-connect" '
-            f"disabled>Connect</button>"
-            f"</div>"
-            f"</div>"
-            f"</div>"
-        )
+        if picker_initial:
+            html_parts.append(
+                f'<div class="vpx-picker-screen vpx-picker-dialog">'
+                f'<div class="vpx-picker-panel">'
+                f'<div class="vpx-picker-headrow">'
+                f'<div class="vpx-picker-head">'
+                f'<h2 class="vpx-picker-title">Connect to a semantic model</h2>'
+                f'<div class="vpx-picker-subtitle">Select a workspace and '
+                f"semantic model to begin.</div>"
+                f"</div>"
+                f'<button type="button" class="vpx-picker-reload" '
+                f'title="Reload workspaces and semantic models" '
+                f'aria-label="Reload workspaces and semantic models">'
+                f"{picker_reload_icon}</button>"
+                f"</div>"
+                f'<div class="vpx-picker-fields">'
+                f'<div class="vpx-picker-field"><label>Workspace</label>'
+                f'<div class="vpx-picker-ws"></div></div>'
+                f'<div class="vpx-picker-field"><label>Semantic model</label>'
+                f'<div class="vpx-picker-ds"></div></div>'
+                f'<div class="vpx-picker-actions">'
+                f'<button type="button" class="vpx-delta-run vpx-picker-connect" '
+                f"disabled>Connect</button>"
+                f"</div>"
+                f"</div>"
+                f'<div class="vpx-picker-recent"></div>'
+                f'<div class="vpx-delta-status"></div>'
+                f"</div>"
+                f"</div>"
+            )
+        else:
+            html_parts.append(
+                f'<div class="vpx-delta-dialog vpx-picker-dialog">'
+                f'<div class="vpx-delta-modal vpx-picker-modal">'
+                f'<div class="vpx-delta-modal-head">{picker_dialog_icon}'
+                f"<div>"
+                f'<div class="vpx-delta-modal-title">Choose a semantic model</div>'
+                f'<div class="vpx-delta-modal-sub">Pick a workspace and semantic '
+                f"model to analyze.</div>"
+                f"</div>"
+                f'<button type="button" class="vpx-delta-close vpx-picker-close" '
+                f'aria-label="Close">\u00d7</button>'
+                f"</div>"
+                f'<div class="vpx-delta-modal-body">'
+                f'<div class="vpx-picker-top">'
+                f'<button type="button" class="vpx-picker-reload" '
+                f'title="Reload workspaces and semantic models">'
+                f"{picker_reload_icon}Reload</button>"
+                f"</div>"
+                f'<div class="vpx-picker-grid">'
+                f'<div class="vpx-picker-field"><label>Workspace</label>'
+                f'<div class="vpx-picker-ws"></div></div>'
+                f'<div class="vpx-picker-field"><label>Semantic model</label>'
+                f'<div class="vpx-picker-ds"></div></div>'
+                f"</div>"
+                f'<div class="vpx-picker-recent"></div>'
+                f'<div class="vpx-delta-status"></div>'
+                f"</div>"
+                f'<div class="vpx-delta-modal-foot">'
+                f'<button type="button" class="vpx-delta-cancel vpx-picker-cancel">'
+                f"Cancel</button>"
+                f'<button type="button" class="vpx-delta-run vpx-picker-connect" '
+                f"disabled>Connect</button>"
+                f"</div>"
+                f"</div>"
+                f"</div>"
+            )
 
     html_parts.append("</div>")  # root
 
