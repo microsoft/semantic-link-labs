@@ -279,6 +279,19 @@ _WIDGET_CSS = """
     --slls-radius: 14px;
     --slls-radius-sm: 8px;
     --slls-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+    --ui-bg-solid: var(--slls-bg-solid);
+    --ui-bg: var(--slls-bg-solid);
+    --ui-bg-secondary: var(--slls-surface-2);
+    --ui-surface: var(--slls-surface);
+    --ui-surface-2: var(--slls-surface-2);
+    --ui-border: var(--slls-border);
+    --ui-border-strong: var(--slls-border-strong);
+    --ui-text: var(--slls-text);
+    --ui-text-secondary: var(--slls-text-secondary);
+    --ui-text-tertiary: var(--slls-text-tertiary);
+    --ui-accent: var(--slls-accent);
+    --ui-accent-soft: var(--slls-accent-soft);
+    --ui-shadow-lg: var(--slls-shadow);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -377,12 +390,27 @@ _WIDGET_CSS = """
 .slls-mdl-footer-end { justify-content: flex-end; }
 
 /* Model / workspace picker ("connect" screen) */
-.slls-mdl-picker { max-width: 760px; margin: 0 auto; }
-.slls-mdl-picker-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.slls-mdl-picker { display: flex; align-items: flex-start; justify-content: stretch; min-height: 430px; }
+.slls-mdl-picker-panel { width: 100%; padding: 16px; border: 1px solid var(--slls-border); border-radius: 14px; background: var(--slls-surface); }
+.slls-mdl-picker-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .slls-mdl-picker-head { min-width: 0; }
-.slls-mdl-picker-title { font-size: 16px; font-weight: 600; }
+.slls-mdl-picker-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--slls-text); }
 .slls-mdl-picker-sub { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 3px; }
-.slls-mdl-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.slls-mdl-picker-reload { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--slls-border-strong); border-radius: 50%; background: var(--slls-surface); color: var(--slls-text); cursor: pointer; }
+.slls-mdl-picker-reload:hover { border-color: var(--slls-text-tertiary); background: var(--slls-surface-2); }
+.slls-mdl-picker-reload:disabled { opacity: 0.5; cursor: not-allowed; }
+.slls-mdl-picker-reload svg { width: 14px; height: 14px; }
+.slls-mdl-picker-reload.is-loading svg { animation: slls-mdl-spin 0.8s linear infinite; }
+.slls-mdl-picker-fields { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.slls-mdl-picker-field { display: flex; flex: 1 1 240px; flex-direction: column; gap: 5px; min-width: 0; }
+.slls-mdl-picker-field .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--slls-surface); font-size: 13.5px; }
+.slls-mdl-picker-field .slls-ss-panel { z-index: 90; }
+.slls-mdl-picker-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+@media (max-width: 640px) {
+    .slls-mdl-picker { min-height: 360px; }
+    .slls-mdl-picker-fields { align-items: stretch; flex-direction: column; }
+    .slls-mdl-picker-actions { justify-content: flex-end; }
+}
 
 .slls-mdl-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .slls-mdl-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slls-text-tertiary); }
@@ -1174,37 +1202,24 @@ function render({ model, el }) {
 
     function pickerHtml() {
         if (!pickWs) pickWs = model.get("workspace_id") || "";
-        const workspaces = model.get("workspaces") || [];
-        const ds = (model.get("datasets") || {})[pickWs];
-        const wsOptions = optionsHtml(workspaces, pickWs, "Select a workspace\u2026");
-        let dsInner;
-        if (!pickWs) dsInner = `<option value="">Select a workspace first\u2026</option>`;
-        else if (ds === undefined) dsInner = `<option value="">Loading\u2026</option>`;
-        else if (ds.length === 0) dsInner = `<option value="">No semantic models</option>`;
-        else dsInner = optionsHtml(ds, pickDs, "Select a semantic model\u2026");
-        const dsDisabled = (!pickWs || ds === undefined) ? " disabled" : "";
         const spin = `<span class="slls-mdl-spin"></span>`;
         return `<div class="slls-mdl-picker">
-            <div class="slls-mdl-picker-top">
-                <div class="slls-mdl-picker-head">
-                    <div class="slls-mdl-picker-title">Choose a semantic model</div>
-                    <div class="slls-mdl-picker-sub">Pick a workspace and an import/DirectQuery semantic model to migrate to Direct Lake.</div>
+            <div class="slls-mdl-picker-panel">
+                <div class="slls-mdl-picker-top">
+                    <div class="slls-mdl-picker-head">
+                        <h2 class="slls-mdl-picker-title">Connect to a semantic model</h2>
+                        <div class="slls-mdl-picker-sub">Select a workspace and import/DirectQuery semantic model to migrate.</div>
+                    </div>
+                    <button class="slls-mdl-picker-reload${busy() ? " is-loading" : ""}" type="button" data-r="pick-reload" title="Reload workspaces and semantic models" aria-label="Reload workspaces and semantic models"${busy() ? " disabled" : ""}>${IC.refresh}</button>
                 </div>
-                <button class="slls-mdl-btn" data-r="pick-reload"${busy() ? " disabled" : ""}>${busy() ? spin : IC.refresh} Reload</button>
-            </div>
-            <div class="slls-mdl-grid">
-                <div class="slls-mdl-field">
-                    <span class="slls-mdl-label">Workspace</span>
-                    <select class="slls-mdl-select" data-r="pick-ws">${wsOptions}</select>
+                <div class="slls-mdl-picker-fields">
+                    <label class="slls-mdl-picker-field"><span class="slls-mdl-label">Workspace</span><span data-r="pick-ws-mount"></span></label>
+                    <label class="slls-mdl-picker-field"><span class="slls-mdl-label">Semantic model</span><span data-r="pick-ds-mount"></span></label>
+                    <div class="slls-mdl-picker-actions">
+                        ${connected() ? `<button class="slls-mdl-btn" data-r="pick-cancel">Cancel</button>` : ""}
+                        <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="pick-connect"${(!pickDs || busy()) ? " disabled" : ""}>${busy() ? spin : ""} Connect</button>
+                    </div>
                 </div>
-                <div class="slls-mdl-field">
-                    <span class="slls-mdl-label">Semantic model</span>
-                    <select class="slls-mdl-select" data-r="pick-ds"${dsDisabled}>${dsInner}</select>
-                </div>
-            </div>
-            <div class="slls-mdl-picker-actions">
-                ${connected() ? `<button class="slls-mdl-btn" data-r="pick-cancel">Cancel</button>` : ""}
-                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="pick-connect"${(!pickDs || busy()) ? " disabled" : ""}>${busy() ? spin : ""} Connect</button>
             </div>
         </div>`;
     }
@@ -1243,8 +1258,32 @@ function render({ model, el }) {
         // Model / workspace picker ("connect" screen).
         on('[data-r="change-model"]', "click", () => openPicker());
         on('[data-r="pick-reload"]', "click", () => reloadPickerLists());
-        on('[data-r="pick-ws"]', "change", (e) => { pickWs = e.target.value; pickDs = ""; ensureDatasets(pickWs); route(); });
-        on('[data-r="pick-ds"]', "change", (e) => { pickDs = e.target.value; route(); });
+        const workspaceMount = root.querySelector('[data-r="pick-ws-mount"]');
+        const datasetMount = root.querySelector('[data-r="pick-ds-mount"]');
+        if (workspaceMount && datasetMount) {
+            const workspaces = model.get("workspaces") || [];
+            const datasets = (model.get("datasets") || {})[pickWs];
+            const workspacePicker = createSearchSelect({
+                placeholder: "Select a workspace\u2026",
+                searchPlaceholder: "Filter workspaces\u2026",
+                ariaLabel: "Workspace",
+                emptyLabel: busy() ? "Loading workspaces\u2026" : "No workspaces",
+                onChange: (option) => { pickWs = option.value; pickDs = ""; ensureDatasets(pickWs); route(); },
+            });
+            const datasetPicker = createSearchSelect({
+                placeholder: "Select a semantic model\u2026",
+                searchPlaceholder: "Filter semantic models\u2026",
+                ariaLabel: "Semantic model",
+                emptyLabel: !pickWs ? "Select a workspace first\u2026" : (datasets === undefined ? "Loading semantic models\u2026" : "No semantic models"),
+                onChange: (option) => { pickDs = option.value; route(); },
+            });
+            workspaceMount.replaceWith(workspacePicker.el);
+            datasetMount.replaceWith(datasetPicker.el);
+            workspacePicker.setOptions(workspaces.map((item) => ({ value: item.id, label: item.name })), pickWs);
+            datasetPicker.setOptions((datasets || []).map((item) => ({ value: item.id, label: item.name })), pickDs);
+            workspacePicker.setDisabled(busy());
+            datasetPicker.setDisabled(!pickWs || datasets === undefined || busy());
+        }
         on('[data-r="pick-cancel"]', "click", () => { pickerReopen = false; route(); });
         on('[data-r="pick-connect"]', "click", () => {
             if (!pickDs) return;
@@ -2767,13 +2806,17 @@ def migrate_to_direct_lake(
 
 from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
+    SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
+    SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
     scoped_button_press_css as _ui_scoped_button_press_css,
 )
 
-_WIDGET_CSS += _ui_scoped_button_press_css(".slls-mdl")
+_WIDGET_CSS += _UI_SEARCH_SELECT_CSS + _ui_scoped_button_press_css(".slls-mdl")
 
 _WIDGET_JS = (
-    _WIDGET_JS.replace("__IC_DATABASE__", _UI_ICONS["database"])
+    _UI_SEARCH_SELECT_JS
+    + "\n"
+    + _WIDGET_JS.replace("__IC_DATABASE__", _UI_ICONS["database"])
     .replace("__IC_CHECK__", _UI_ICONS["check_circle"])
     .replace("__IC_ALERT__", _UI_ICONS["alert"])
     .replace("__IC_EXT__", _UI_ICONS["external_link"])
