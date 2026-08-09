@@ -1269,7 +1269,7 @@ def _build_delta_analyzer_html(
     fullscreen_script = _ui_fullscreen_toggle_script(
         btn_id=fullscreen_btn_id,
         root_selector=root_selector,
-        fs_class="da-fs",
+        fullscreen_class="da-fs",
     )
 
     display(HTML(full_html + theme_script + fullscreen_script))

@@ -1464,7 +1464,7 @@ def render_header_html(
         Controls the initial icon shown on the theme toggle button.
     fullscreen_btn_id : str, default=None
         If provided, includes a full-screen toggle button with this DOM id
-        (placed after the theme toggle). Pair with
+        (placed immediately before the theme toggle). Pair with
         :func:`fullscreen_toggle_script` to wire up behavior.
     picker_btn_id : str, default=None
         If provided, includes a small "change" (swap) button with this DOM id
@@ -1536,13 +1536,6 @@ def render_header_html(
         parts.append(
             f'<button type="button" class="sl-theme-btn" id="{theme_btn_id}" '
             f'title="{label}" aria-label="{label}">{icon}</button>'
-        )
-
-    if fullscreen_btn_id:
-        parts.append(
-            f'<button type="button" class="sl-theme-btn" id="{fullscreen_btn_id}" '
-            f'title="Full screen" aria-label="Full screen">'
-            f'{ICONS["fullscreen"]}</button>'
         )
 
     parts.append("</div>")

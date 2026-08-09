@@ -7,7 +7,7 @@ import sempy_labs.semantic_model._vertipaq_analyzer as vertipaq
 
 @log
 def vertipaq_analyzer(
-    dataset: str | UUID,
+    dataset: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     export: Optional[Literal["table"]] = None,
     read_stats_from_data: bool = False,
@@ -15,6 +15,7 @@ def vertipaq_analyzer(
     export_workspace: Optional[str | UUID] = None,
     export_schema: Optional[str] = None,
     dark_mode: bool = False,
+    visualize: bool = True,
 ) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
@@ -23,8 +24,9 @@ def vertipaq_analyzer(
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
-        Name or ID of the semantic model.
+    dataset : str | uuid.UUID, default=None
+        Name or ID of the semantic model. When None and ``visualize=True``, a
+        workspace and semantic model picker is displayed.
     workspace : str| uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -46,6 +48,10 @@ def vertipaq_analyzer(
         If True, renders the Vertipaq Analyzer visualization with a dark
         color theme. If False, renders with a light color theme. A toggle
         button in the header allows switching between modes at runtime.
+    visualize : bool, default=True
+        If True, displays the Vertipaq Analyzer or, when ``dataset`` is None,
+        a workspace and semantic model picker. If False, ``dataset`` is
+        required and only the dataframes are returned.
 
     Returns
     -------
@@ -62,6 +68,7 @@ def vertipaq_analyzer(
         export_workspace=export_workspace,
         export_schema=export_schema,
         dark_mode=dark_mode,
+        visualize=visualize,
     )
 
 
