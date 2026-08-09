@@ -412,8 +412,8 @@ _WIDGET_CSS = (
 .slls-bpa-selchip button:hover { opacity: 1; }
 
 /* ---------------- Rules panel (overlay) ----------------
-   Fixed to the viewport (not the widget) so the panel is always visible at the
-   top of the screen, however tall the results list is or how far it is scrolled.
+   Fixed to the viewport (not the widget) so the panel is always visible,
+   however tall the results list is or how far it is scrolled.
    The z-index sits above the full-screen overlay and the rule-info popover. */
 .slls-bpa-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2147483002;
     align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
@@ -421,8 +421,10 @@ _WIDGET_CSS = (
 /* A modal opened from another modal (e.g. the rule change history, opened from
    the rule editor) has to sit above it. */
 .slls-bpa-overlay-top { z-index: 2147483004; }
+/* Auto margins centre the modal but collapse to 0 once it outgrows the
+   viewport, so a tall modal stays scrollable from its top edge. */
 .slls-bpa-modal { background: var(--ui-bg-solid); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--slls-radius);
-    box-shadow: var(--ui-shadow-lg); width: 100%; max-width: 1040px; padding: 22px 24px; margin: 0 auto; }
+    box-shadow: var(--ui-shadow-lg); width: 100%; max-width: 1040px; padding: 22px 24px; margin: auto; }
 .slls-bpa-modal h2 { margin: 0 0 4px 0; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 9px; }
 .slls-bpa-modal h2 .slls-bpa-icon { color: var(--ui-accent); }
 .slls-bpa-modal h2 .slls-bpa-icon svg { width: 18px; height: 18px; }

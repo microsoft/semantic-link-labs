@@ -104,6 +104,24 @@ def test_rule_editor_shows_transient_status_inside_editor():
     assert "}, 3500)" in BPA_SOURCE
 
 
+def test_overlay_modals_are_vertically_centred():
+    modal_css = BPA_SOURCE[
+        BPA_SOURCE.index(".slls-bpa-modal {") : BPA_SOURCE.index(".slls-bpa-modal h2 {")
+    ]
+    overlay_css = BPA_SOURCE[
+        BPA_SOURCE.index(".slls-bpa-overlay {") : BPA_SOURCE.index(
+            ".slls-bpa-overlay.show"
+        )
+    ]
+
+    assert "margin: auto;" in modal_css
+    assert "margin: 0 auto;" not in modal_css
+    # Auto margins centre the modal without clipping one taller than the viewport,
+    # so the overlay stays top-aligned and scrollable.
+    assert "align-items: flex-start;" in overlay_css
+    assert "overflow-y: auto;" in overlay_css
+
+
 def test_change_model_opens_picker_as_modal_over_the_results():
     assert 'selectOverlay.className = "slls-bpa-overlay"' in BPA_SOURCE
     assert 'selectModal.className = "slls-bpa-modal slls-bpa-picker-modal"' in (
