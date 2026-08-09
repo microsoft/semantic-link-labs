@@ -61,7 +61,8 @@ def test_delta_visualization_adapter_and_builder_are_defined():
     builder_start = source.index("def _build_delta_analyzer_html(")
     adapter_start = source.index("def _visualize_delta_analyzer(")
     builder = source[builder_start:adapter_start]
-    assert "return full_html + theme_script + fullscreen_script" in builder
+    assert "return full_html + theme_script" in builder
+    assert "fullscreen_script" not in builder
     assert "display(HTML(full_html" not in builder
 
 
@@ -72,6 +73,17 @@ def test_delta_picker_has_usable_height_and_search_list_space():
     assert ".slls-da-panel { flex: 1 1 auto; min-height: 480px;" in source
     assert "max-height: min(360px, calc(100vh - 290px));" in source
     assert ".slls-da-picker:fullscreen .slls-da-panel" in source
+
+
+def test_delta_anywidget_fullscreen_fallback_covers_viewport():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+
+    fallback_start = source.index(".slls-da-picker.slls-da-fullscreen {")
+    fallback_end = source.index("}", fallback_start)
+    fallback = source[fallback_start:fallback_end]
+
+    assert "position: fixed; inset: 0; z-index: 2147483000;" in fallback
+    assert "width: 100vw; height: 100vh;" in fallback
 
 
 def test_delta_picker_has_fullscreen_and_rightmost_theme_controls():
@@ -138,3 +150,21 @@ def test_delta_analyzer_uses_vertipaq_delta_button_icon():
 
     assert 'title_icon=_UI_ICONS["delta_stats"]' in source
     assert '.replace("__DELTA_ICON__", _UI_ICONS["delta_stats"])' in source
+
+
+def test_delta_results_fullscreen_is_owned_by_anywidget():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+    ui_source = UI_SOURCE_PATH.read_text(encoding="utf-8")
+
+    assert "class DeltaAnalyzerWidget(anywidget.AnyWidget):" in source
+    assert "_ui_display_html_widget" not in source
+    assert "The Delta Analyzer visualization requires 'anywidget'." in source
+    assert (
+        "sllsDaSetupFullscreen(root, resultsFullscreenBtn, "
+        '"slls-da-fullscreen", `__FS_ENTER__`, `__FS_EXIT__`)' in source
+    )
+    assert '.slls-da-picker:fullscreen .slls-da-results > [class*="-root"]' in source
+    enter_start = ui_source.index("function enterFullscreen()")
+    request_start = ui_source.index("root.requestFullscreen()", enter_start)
+    immediate_fallback = ui_source.index("cssFullscreen = true;", enter_start)
+    assert immediate_fallback < request_start

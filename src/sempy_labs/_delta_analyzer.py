@@ -42,8 +42,6 @@ from sempy_labs._ui_components import (
     render_attribution_html as _ui_render_attribution_html,
     theme_toggle_script as _ui_theme_toggle_script,
     fullscreen_css as _ui_fullscreen_css,
-    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
-    display_html_widget as _ui_display_html_widget,
     ProgressBar as _ProgressBar,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
@@ -1270,13 +1268,7 @@ def _build_delta_analyzer_html(
         dark_class="da-dark",
     )
 
-    fullscreen_script = _ui_fullscreen_toggle_script(
-        btn_id=fullscreen_btn_id,
-        root_selector=root_selector,
-        fullscreen_class="da-fs",
-    )
-
-    return full_html + theme_script + fullscreen_script
+    return full_html + theme_script
 
 
 def _list_delta_picker_workspaces() -> list:
@@ -1373,12 +1365,20 @@ _DA_PICKER_CSS = (
 .slls-da-loading.slls-da-active { display: flex; }
 .slls-da-loading-title { margin: 0; font-size: 14px; font-weight: 600; }
 .slls-da-loading-subtitle { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
-.slls-da-picker.slls-da-fullscreen,
-.slls-da-picker:fullscreen { max-width: none; min-height: 100vh; margin: 0; border: none; border-radius: 0; overflow: auto; }
+.slls-da-picker.slls-da-fullscreen {
+    position: fixed; inset: 0; z-index: 2147483000; width: 100vw; height: 100vh;
+    max-width: none; min-height: 100vh; margin: 0; border: none; border-radius: 0; overflow: auto;
+}
+.slls-da-picker:fullscreen {
+    width: 100vw; height: 100vh; max-width: none; min-height: 100vh;
+    margin: 0; border: none; border-radius: 0; overflow: auto;
+}
 .slls-da-picker.slls-da-fullscreen .slls-da-panel,
 .slls-da-picker:fullscreen .slls-da-panel,
 .slls-da-picker.slls-da-fullscreen .slls-da-loading,
 .slls-da-picker:fullscreen .slls-da-loading { min-height: calc(100vh - 84px); }
+.slls-da-picker.slls-da-fullscreen .slls-da-results > [class*="-root"],
+.slls-da-picker:fullscreen .slls-da-results > [class*="-root"] { max-width: none; margin: 0; }
 .slls-da-field .slls-ss-panel { z-index: 90; }
 .slls-da-field .slls-ss-list { max-height: min(360px, calc(100vh - 290px)); }
 @media (max-width: 700px) {
@@ -1479,6 +1479,8 @@ function render({ model, el }) {
         results.querySelectorAll("script").forEach(oldScript => { const script = document.createElement("script"); script.textContent = oldScript.textContent; oldScript.replaceWith(script); });
         const change = results.querySelector('[id^="da-picker-"]');
         if (change) change.addEventListener("click", event => { event.preventDefault(); pickerOpen = true; renderState(); });
+        const resultsFullscreenBtn = results.querySelector('[id^="da-fullscreen-"]');
+        if (resultsFullscreenBtn) sllsDaSetupFullscreen(root, resultsFullscreenBtn, "slls-da-fullscreen", `__FS_ENTER__`, `__FS_EXIT__`);
         if (results.innerHTML.trim()) { analysisRequested = false; pickerOpen = false; }
         renderState();
     }
@@ -1520,11 +1522,8 @@ def _visualize_delta_analyzer(
         import anywidget
         import traitlets
     except ImportError as exc:
-        if initial_html:
-            _ui_display_html_widget(initial_html)
-            return
         raise ImportError(
-            "The interactive Delta Analyzer picker requires 'anywidget'. "
+            "The Delta Analyzer visualization requires 'anywidget'. "
             "Install it with: pip install anywidget"
         ) from exc
 

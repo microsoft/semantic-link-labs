@@ -1770,17 +1770,20 @@ _FULLSCREEN_BODY: str = r"""
         root.classList.toggle(fullscreenClass, cssFullscreen);
     }
     function enterFullscreen() {
+        cssFullscreen = true;
+        renderFullscreenBtn();
         if (root.requestFullscreen) {
-            root.requestFullscreen().then(function () {
-                cssFullscreen = false;
-                renderFullscreenBtn();
-            }).catch(function () {
-                cssFullscreen = true;
-                renderFullscreenBtn();
-            });
-        } else {
-            cssFullscreen = true;
-            renderFullscreenBtn();
+            try {
+                var request = root.requestFullscreen();
+                if (request && typeof request.then === "function") {
+                    request.then(function () {
+                        cssFullscreen = false;
+                        renderFullscreenBtn();
+                    }).catch(function () {});
+                }
+            } catch (error) {
+                // The CSS fallback is already active.
+            }
         }
     }
     function exitFullscreen() {
