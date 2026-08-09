@@ -1275,6 +1275,12 @@ HEADER_CSS: str = """\
     flex-direction: column;
     min-width: 0;
 }
+.sl-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
 .sl-title {
     font-size: 22px;
     font-weight: 600;
@@ -1325,20 +1331,18 @@ HEADER_CSS: str = """\
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     padding: 0;
-    margin-top: 6px;
     flex: 0 0 auto;
-    align-self: flex-start;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid var(--ui-border);
     background: transparent;
     color: var(--ui-text-secondary);
     cursor: pointer;
     transition: border-color 120ms ease, color 120ms ease;
 }
-.sl-change-btn svg { display: block; width: 15px; height: 15px; }
+.sl-change-btn svg { display: block; width: 17px; height: 17px; }
 .sl-change-btn:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
 """
 
@@ -1491,7 +1495,16 @@ def render_header_html(
     if title_icon:
         parts.append(f'<span class="sl-title-icon">{title_icon}</span>')
     parts.append('<div class="sl-titlewrap">')
+    parts.append('<div class="sl-title-row">')
     parts.append(f'<div class="sl-title">{_escape_html(title)}</div>')
+
+    if picker_btn_id:
+        parts.append(
+            f'<button type="button" class="sl-change-btn" id="{picker_btn_id}" '
+            f'title="Change table / workspace" aria-label="Change table / workspace">{ICONS["swap"]}</button>'
+        )
+
+    parts.append("</div>")  # title row
 
     if dataset_name or workspace_name:
         ds = _escape_html(dataset_name) if dataset_name else ""
@@ -1501,12 +1514,6 @@ def render_header_html(
         else:
             sub = f"<b>{ds}</b>" if ds else ws
         parts.append(f'<div class="sl-subtitle">{sub}</div>')
-
-    if picker_btn_id:
-        parts.append(
-            f'<button type="button" class="sl-change-btn" id="{picker_btn_id}" '
-            f'title="Change table" aria-label="Change table">{ICONS["swap"]}</button>'
-        )
 
     parts.append("</div>")  # titlewrap
 

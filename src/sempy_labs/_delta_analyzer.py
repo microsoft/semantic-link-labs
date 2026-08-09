@@ -44,8 +44,11 @@ from sempy_labs._ui_components import (
     fullscreen_css as _ui_fullscreen_css,
     fullscreen_toggle_script as _ui_fullscreen_toggle_script,
     display_html_widget as _ui_display_html_widget,
-    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
     ProgressBar as _ProgressBar,
+    SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
+    SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    HEADER_CSS as _UI_HEADER_CSS,
+    fullscreen_setup_js as _ui_fullscreen_setup_js,
 )
 
 
@@ -751,6 +754,7 @@ def _build_delta_analyzer_html(
         dark_mode=dark_mode,
         fullscreen_btn_id=fullscreen_btn_id,
         picker_btn_id=(f"da-picker-{uid}" if show_picker_button else None),
+        title_icon=_UI_ICONS["delta_stats"],
     )
     ui_header_css_scoped = _ui_scoped_header_css(root_selector)
     ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
@@ -791,7 +795,7 @@ def _build_delta_analyzer_html(
                          'Helvetica Neue', Arial, sans-serif;
             color: var(--da-text);
             max-width: 1200px;
-            margin: 24px auto;
+            margin: 0 auto 24px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }}
@@ -1272,7 +1276,387 @@ def _build_delta_analyzer_html(
         fullscreen_class="da-fs",
     )
 
-    display(HTML(full_html + theme_script + fullscreen_script))
+    return full_html + theme_script + fullscreen_script
+
+
+def _list_delta_picker_workspaces() -> list:
+    """Return workspace options for the interactive Delta Analyzer picker."""
+
+    import sempy.fabric as fabric
+
+    try:
+        df = fabric.list_workspaces()
+    except Exception:
+        return []
+    return sorted(
+        [
+            {"id": str(row["Id"]), "name": str(row["Name"])}
+            for _, row in df.iterrows()
+        ],
+        key=lambda item: item["name"].lower(),
+    )
+
+
+def _list_delta_picker_lakehouses(workspace_id: str) -> list:
+    """Return lakehouse options for a workspace."""
+
+    from sempy_labs._list_functions import list_lakehouses
+
+    try:
+        df = list_lakehouses(workspace=workspace_id)
+    except Exception:
+        return []
+    return sorted(
+        [
+            {"id": str(row["Lakehouse ID"]), "name": str(row["Lakehouse Name"])}
+            for _, row in df.iterrows()
+        ],
+        key=lambda item: item["name"].lower(),
+    )
+
+
+def _list_delta_picker_tables(workspace_id: str, lakehouse_id: str) -> list:
+    """Return Delta table options for a lakehouse."""
+
+    from sempy_labs.lakehouse._schemas import list_tables
+
+    try:
+        df = list_tables(lakehouse=lakehouse_id, workspace=workspace_id)
+    except Exception:
+        return []
+    options = []
+    for _, row in df.iterrows():
+        table_format = str(row.get("Format") or "").lower()
+        if table_format and table_format != "delta":
+            continue
+        table = str(row["Table Name"])
+        raw_schema = row.get("Schema Name")
+        schema = "" if pd.isna(raw_schema) or str(raw_schema) in ("", "None") else str(raw_schema)
+        display_name = f"{schema}.{table}" if schema else table
+        options.append(
+            {"table": table, "schema": schema, "display": display_name}
+        )
+    return sorted(options, key=lambda item: item["display"].lower())
+
+
+_DA_PICKER_CSS = (
+    """
+.slls-da-picker {
+    __LIGHT_VARS__
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    display: flex; min-height: min(680px, calc(100vh - 32px)); flex-direction: column;
+    color: var(--ui-text); max-width: 1200px; margin: 16px auto;
+    background: var(--ui-bg); border: 1px solid var(--ui-border);
+    border-radius: 12px; box-shadow: var(--ui-shadow-lg); overflow: hidden;
+}
+.slls-da-picker.slls-da-dark { __DARK_VARS__ }
+.slls-da-picker *, .slls-da-picker *::before, .slls-da-picker *::after { box-sizing: border-box; }
+.slls-da-shell-header { flex: 0 0 auto; padding: 20px 22px 16px; background: var(--ui-bg); }
+.slls-da-panel { flex: 1 1 auto; min-height: 480px; padding: 16px 22px 24px; background: var(--ui-bg); }
+.slls-da-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.slls-da-title { margin: 0; font-size: 14px; font-weight: 600; }
+.slls-da-subtitle { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-da-fields { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.slls-da-field { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; gap: 5px; }
+.slls-da-field label { padding-left: 4px; color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.slls-da-field .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--ui-surface); font-size: 13.5px; }
+.slls-da-actions { flex: 0 0 auto; }
+.slls-da-run { border: 1px solid var(--ui-accent); border-radius: 999px; padding: 7px 16px; background: var(--ui-accent); color: var(--ui-on-accent); font: 500 13.5px inherit; cursor: pointer; }
+.slls-da-run:disabled { opacity: .5; cursor: default; }
+.slls-da-error { display: none; margin-top: 12px; color: var(--ui-danger-text); font-size: 12px; }
+.slls-da-progress { display: none; position: relative; height: 3px; margin-top: 14px; overflow: hidden; background: var(--ui-accent-soft); }
+.slls-da-progress.slls-da-active { display: block; }
+.slls-da-progress::after { content: ""; position: absolute; inset-block: 0; left: -35%; width: 35%; background: var(--ui-accent); animation: sllsDaProgress 1s ease-in-out infinite; }
+@keyframes sllsDaProgress { from { transform: translateX(0); } to { transform: translateX(390%); } }
+.slls-da-content { flex: 1 1 auto; min-height: 0; }
+.slls-da-loading { display: none; min-height: 480px; padding: 16px 22px 24px; flex-direction: column; background: var(--ui-bg); }
+.slls-da-loading.slls-da-active { display: flex; }
+.slls-da-loading-title { margin: 0; font-size: 14px; font-weight: 600; }
+.slls-da-loading-subtitle { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-da-picker.slls-da-fullscreen,
+.slls-da-picker:fullscreen { max-width: none; min-height: 100vh; margin: 0; border: none; border-radius: 0; overflow: auto; }
+.slls-da-picker.slls-da-fullscreen .slls-da-panel,
+.slls-da-picker:fullscreen .slls-da-panel,
+.slls-da-picker.slls-da-fullscreen .slls-da-loading,
+.slls-da-picker:fullscreen .slls-da-loading { min-height: calc(100vh - 84px); }
+.slls-da-field .slls-ss-panel { z-index: 90; }
+.slls-da-field .slls-ss-list { max-height: min(360px, calc(100vh - 290px)); }
+@media (max-width: 700px) {
+    .slls-da-picker { min-height: calc(100vh - 16px); margin: 8px; }
+    .slls-da-fields { align-items: stretch; flex-direction: column; }
+    .slls-da-actions { align-self: flex-end; }
+    .slls-da-field .slls-ss-list { max-height: max(160px, calc(100vh - 390px)); }
+}
+__HEADER_CSS__
+__SEARCH_CSS__
+"""
+    .replace("__LIGHT_VARS__", _UI_LIGHT_VARS)
+    .replace("__DARK_VARS__", _UI_DARK_VARS)
+    .replace("__HEADER_CSS__", _UI_HEADER_CSS)
+    .replace("__SEARCH_CSS__", _UI_SEARCH_SELECT_CSS)
+)
+
+
+_DA_PICKER_JS = (
+    _UI_SEARCH_SELECT_JS
+    + "\n"
+    + _ui_fullscreen_setup_js("sllsDaSetupFullscreen")
+    + r"""
+function render({ model, el }) {
+    const root = document.createElement("div");
+    root.className = "slls-da-picker" + (model.get("dark_mode") ? " slls-da-dark" : "");
+    const shellHeader = document.createElement("div"); shellHeader.className = "slls-da-shell-header";
+    const header = document.createElement("div"); header.className = "sl-header";
+    const titleIcon = document.createElement("span"); titleIcon.className = "sl-title-icon"; titleIcon.innerHTML = `__DELTA_ICON__`;
+    const titleWrap = document.createElement("div"); titleWrap.className = "sl-titlewrap";
+    const shellTitle = document.createElement("div"); shellTitle.className = "sl-title"; shellTitle.textContent = "Delta Analyzer";
+    titleWrap.appendChild(shellTitle);
+    const spacer = document.createElement("div"); spacer.className = "sl-head-spacer";
+    const fullscreenBtn = document.createElement("button"); fullscreenBtn.type = "button"; fullscreenBtn.className = "sl-theme-btn";
+    const themeBtn = document.createElement("button"); themeBtn.type = "button"; themeBtn.className = "sl-theme-btn";
+    header.append(titleIcon, titleWrap, spacer, fullscreenBtn, themeBtn); shellHeader.appendChild(header);
+    function renderTheme() {
+        const dark = root.classList.contains("slls-da-dark");
+        themeBtn.innerHTML = dark ? `__SUN_ICON__` : `__MOON_ICON__`;
+        const label = dark ? "Switch to light mode" : "Switch to dark mode";
+        themeBtn.title = label; themeBtn.setAttribute("aria-label", label);
+    }
+    themeBtn.addEventListener("click", () => {
+        root.classList.toggle("slls-da-dark");
+        model.set("dark_mode", root.classList.contains("slls-da-dark")); model.save_changes();
+        renderTheme();
+    });
+    sllsDaSetupFullscreen(root, fullscreenBtn, "slls-da-fullscreen", `__FS_ENTER__`, `__FS_EXIT__`);
+    renderTheme();
+    const panel = document.createElement("div"); panel.className = "slls-da-panel";
+    const head = document.createElement("div"); head.className = "slls-da-head";
+    head.innerHTML = '<div><h2 class="slls-da-title">Connect to a delta table</h2><div class="slls-da-subtitle">Select a workspace, lakehouse, and Delta table to analyze.</div></div>';
+    const fields = document.createElement("div"); fields.className = "slls-da-fields";
+    function field(label, picker) { const wrap = document.createElement("div"); wrap.className = "slls-da-field"; const lab = document.createElement("label"); lab.textContent = label; wrap.append(lab, picker.el); return wrap; }
+    function dispatch(name) { model.set(name, (model.get(name) || 0) + 1); model.save_changes(); }
+    const ws = createSearchSelect({ placeholder: "Select a workspace…", searchPlaceholder: "Filter workspaces…", ariaLabel: "Workspace", emptyLabel: "Loading workspaces…", onChange: o => { model.set("selected_workspace_id", o.value); model.set("selected_lakehouse_id", ""); model.set("selected_table", ""); model.set("available_lakehouses", []); model.set("available_tables", []); dispatch("select_workspace_trigger"); } });
+    const lh = createSearchSelect({ placeholder: "Select a lakehouse…", searchPlaceholder: "Filter lakehouses…", ariaLabel: "Lakehouse", emptyLabel: "Select a workspace first…", onChange: o => { model.set("selected_lakehouse_id", o.value); model.set("selected_table", ""); model.set("available_tables", []); dispatch("select_lakehouse_trigger"); } });
+    const tb = createSearchSelect({ placeholder: "Select a Delta table…", searchPlaceholder: "Filter tables…", ariaLabel: "Delta table", emptyLabel: "Select a lakehouse first…", onChange: o => { model.set("selected_table", o.value); model.save_changes(); renderState(); } });
+    const actions = document.createElement("div"); actions.className = "slls-da-actions";
+    const run = document.createElement("button"); run.type = "button"; run.className = "slls-da-run"; run.textContent = "Analyze"; actions.appendChild(run);
+    fields.append(field("Workspace", ws), field("Lakehouse", lh), field("Delta table", tb), actions);
+    const error = document.createElement("div"); error.className = "slls-da-error";
+    const content = document.createElement("div"); content.className = "slls-da-content";
+    const loadingShell = document.createElement("div"); loadingShell.className = "slls-da-loading";
+    const loadingTitle = document.createElement("h2"); loadingTitle.className = "slls-da-loading-title"; loadingTitle.textContent = "Analyzing Delta table";
+    const loadingSubtitle = document.createElement("div"); loadingSubtitle.className = "slls-da-loading-subtitle";
+    const progress = document.createElement("div"); progress.className = "slls-da-progress"; progress.setAttribute("role", "progressbar"); progress.setAttribute("aria-label", "Running Delta Analyzer");
+    const results = document.createElement("div"); results.className = "slls-da-results";
+    loadingShell.append(loadingTitle, loadingSubtitle, progress); content.append(loadingShell, results);
+    panel.append(head, fields, error); root.append(shellHeader, panel, content); el.appendChild(root);
+    let pickerOpen = !(model.get("content_html") || "").trim();
+    let analysisRequested = false;
+    function renderState() {
+        const loading = model.get("picker_loading") === true, analyzing = model.get("analyzing") === true;
+        const message = model.get("error_message") || "";
+        if (message && analysisRequested && !analyzing) { analysisRequested = false; pickerOpen = true; }
+        const workspaces = model.get("available_workspaces") || [], lakehouses = model.get("available_lakehouses") || [], tables = model.get("available_tables") || [];
+        ws.setOptions(workspaces.map(x => ({ value: x.id, label: x.name })), model.get("selected_workspace_id") || "");
+        lh.setEmptyLabel(!model.get("selected_workspace_id") ? "Select a workspace first…" : (loading ? "Loading lakehouses…" : "No lakehouses"));
+        lh.setOptions(lakehouses.map(x => ({ value: x.id, label: x.name })), model.get("selected_lakehouse_id") || "");
+        tb.setEmptyLabel(!model.get("selected_lakehouse_id") ? "Select a lakehouse first…" : (loading ? "Loading tables…" : "No Delta tables"));
+        tb.setOptions(tables.map(x => ({ value: x.display, label: x.display })), model.get("selected_table") || "");
+        ws.setDisabled(loading || analyzing); lh.setDisabled(!model.get("selected_workspace_id") || loading || analyzing); tb.setDisabled(!model.get("selected_lakehouse_id") || loading || analyzing);
+        run.disabled = analyzing || !(model.get("selected_table") || "");
+        const showLoading = !pickerOpen && (analysisRequested || analyzing);
+        const hasResults = Boolean((model.get("content_html") || "").trim());
+        loadingSubtitle.textContent = model.get("selected_table") || "Preparing analysis…";
+        progress.classList.toggle("slls-da-active", showLoading);
+        loadingShell.classList.toggle("slls-da-active", showLoading);
+        shellHeader.style.display = pickerOpen || showLoading ? "" : "none";
+        panel.style.display = pickerOpen ? "" : "none";
+        content.style.display = pickerOpen ? "none" : "";
+        results.style.display = !showLoading && hasResults ? "" : "none";
+        error.textContent = message; error.style.display = message ? "block" : "none";
+    }
+    function renderContent() {
+        results.innerHTML = model.get("content_html") || "";
+        results.querySelectorAll("script").forEach(oldScript => { const script = document.createElement("script"); script.textContent = oldScript.textContent; oldScript.replaceWith(script); });
+        const change = results.querySelector('[id^="da-picker-"]');
+        if (change) change.addEventListener("click", event => { event.preventDefault(); pickerOpen = true; renderState(); });
+        if (results.innerHTML.trim()) { analysisRequested = false; pickerOpen = false; }
+        renderState();
+    }
+    run.addEventListener("click", () => { if (!model.get("selected_table")) return; pickerOpen = false; analysisRequested = true; renderState(); dispatch("run_analysis_trigger"); });
+    ["available_workspaces", "available_lakehouses", "available_tables", "selected_workspace_id", "selected_lakehouse_id", "selected_table", "picker_loading", "analyzing", "error_message"].forEach(name => model.on("change:" + name, renderState));
+    model.on("change:content_html", renderContent); renderContent(); renderState();
+}
+export default { render };
+"""
+    .replace("__DELTA_ICON__", _UI_ICONS["delta_stats"])
+    .replace("__SUN_ICON__", _UI_ICONS["sun"])
+    .replace("__MOON_ICON__", _UI_ICONS["moon"])
+    .replace("__FS_ENTER__", _UI_ICONS["fullscreen"])
+    .replace("__FS_EXIT__", _UI_ICONS["fullscreen_exit"])
+)
+
+
+def _visualize_delta_analyzer(
+    initial_dataframes: Optional[Dict[str, pd.DataFrame]],
+    table_name: Optional[str],
+    schema: Optional[str],
+    workspace: Optional[str | UUID] = None,
+    lakehouse: Optional[str | UUID] = None,
+    approx_distinct_count: bool = True,
+    column_stats: bool = True,
+    skip_cardinality: bool = True,
+    dark_mode: bool = False,
+) -> None:
+    """Render results or an interactive workspace/lakehouse/table picker."""
+
+    if initial_dataframes is not None and table_name is not None:
+        initial_html = _build_delta_analyzer_html(
+            initial_dataframes, table_name, schema, dark_mode, show_picker_button=True
+        )
+    else:
+        initial_html = ""
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError as exc:
+        if initial_html:
+            _ui_display_html_widget(initial_html)
+            return
+        raise ImportError(
+            "The interactive Delta Analyzer picker requires 'anywidget'. "
+            "Install it with: pip install anywidget"
+        ) from exc
+
+    from IPython.display import display
+
+    initial_workspace_id = ""
+    initial_lakehouse_id = ""
+    try:
+        if workspace is not None or table_name is not None:
+            _, resolved_workspace_id = resolve_workspace_name_and_id(workspace)
+            initial_workspace_id = str(resolved_workspace_id)
+            if lakehouse is not None or table_name is not None:
+                _, resolved_lakehouse_id = resolve_lakehouse_name_and_id(
+                    lakehouse, resolved_workspace_id
+                )
+                initial_lakehouse_id = str(resolved_lakehouse_id)
+    except Exception:
+        pass
+
+    workspaces = _list_delta_picker_workspaces()
+    lakehouses = (
+        _list_delta_picker_lakehouses(initial_workspace_id)
+        if initial_workspace_id
+        else []
+    )
+    tables = (
+        _list_delta_picker_tables(initial_workspace_id, initial_lakehouse_id)
+        if initial_workspace_id and initial_lakehouse_id
+        else []
+    )
+    selected_table = f"{schema}.{table_name}" if schema and table_name else (table_name or "")
+
+    class DeltaAnalyzerWidget(anywidget.AnyWidget):
+        _esm = _DA_PICKER_JS
+        _css = _DA_PICKER_CSS
+        available_workspaces = traitlets.List([]).tag(sync=True)
+        available_lakehouses = traitlets.List([]).tag(sync=True)
+        available_tables = traitlets.List([]).tag(sync=True)
+        selected_workspace_id = traitlets.Unicode("").tag(sync=True)
+        selected_lakehouse_id = traitlets.Unicode("").tag(sync=True)
+        selected_table = traitlets.Unicode("").tag(sync=True)
+        picker_loading = traitlets.Bool(False).tag(sync=True)
+        analyzing = traitlets.Bool(False).tag(sync=True)
+        content_html = traitlets.Unicode("").tag(sync=True)
+        error_message = traitlets.Unicode("").tag(sync=True)
+        dark_mode = traitlets.Bool(False).tag(sync=True)
+        select_workspace_trigger = traitlets.Int(0).tag(sync=True)
+        select_lakehouse_trigger = traitlets.Int(0).tag(sync=True)
+        run_analysis_trigger = traitlets.Int(0).tag(sync=True)
+
+    widget = DeltaAnalyzerWidget(
+        available_workspaces=workspaces,
+        available_lakehouses=lakehouses,
+        available_tables=tables,
+        selected_workspace_id=initial_workspace_id,
+        selected_lakehouse_id=initial_lakehouse_id,
+        selected_table=selected_table,
+        content_html=initial_html,
+        dark_mode=bool(dark_mode),
+    )
+
+    def _on_workspace(change):
+        if change["new"] == change["old"]:
+            return
+        widget.picker_loading = True
+        widget.error_message = ""
+        try:
+            widget.available_lakehouses = _list_delta_picker_lakehouses(
+                widget.selected_workspace_id
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to list lakehouses: {exc}"
+        finally:
+            widget.picker_loading = False
+
+    def _on_lakehouse(change):
+        if change["new"] == change["old"]:
+            return
+        widget.picker_loading = True
+        widget.error_message = ""
+        try:
+            widget.available_tables = _list_delta_picker_tables(
+                widget.selected_workspace_id, widget.selected_lakehouse_id
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Failed to list tables: {exc}"
+        finally:
+            widget.picker_loading = False
+
+    def _on_run(change):
+        if change["new"] == change["old"] or widget.analyzing:
+            return
+        selected = next(
+            (
+                item
+                for item in widget.available_tables
+                if item.get("display") == widget.selected_table
+            ),
+            None,
+        )
+        if not selected:
+            return
+        widget.analyzing = True
+        widget.error_message = ""
+        try:
+            result = delta_analyzer(
+                table_name=selected["table"],
+                workspace=widget.selected_workspace_id,
+                lakehouse=widget.selected_lakehouse_id,
+                schema=selected.get("schema") or None,
+                approx_distinct_count=approx_distinct_count,
+                column_stats=column_stats,
+                skip_cardinality=skip_cardinality,
+                visualize=False,
+                _show_progress=False,
+            )
+            widget.content_html = _build_delta_analyzer_html(
+                result,
+                selected["table"],
+                selected.get("schema") or None,
+                bool(widget.dark_mode),
+                show_picker_button=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            widget.error_message = f"Delta Analyzer error: {exc}"
+        finally:
+            widget.analyzing = False
+
+    widget.observe(_on_workspace, names="select_workspace_trigger")
+    widget.observe(_on_lakehouse, names="select_lakehouse_trigger")
+    widget.observe(_on_run, names="run_analysis_trigger")
+    display(widget)
 
 
 @log
