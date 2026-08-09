@@ -3772,6 +3772,7 @@ def _visualize_dax_test(
     color: var(--ui-text-secondary);
 }}
 .dtx .dtx-object-deps-icon svg {{ width: 16px; height: 16px; }}
+.dtx .dtx-object-deps-head .dtx-object-deps-icon {{ color: var(--ui-accent); }}
 .dtx .dtx-object-deps-label {{
     min-width: 0;
     overflow: hidden;

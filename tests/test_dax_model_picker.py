@@ -1305,6 +1305,11 @@ def test_model_objects_open_bidirectional_dependency_tree_and_graph():
             ".dtx .dtx-object-deps-node-text {{"
         )
     ]
+    # The dialog header icon is accent-colored; node icons keep their per-kind color.
+    assert (
+        ".dtx .dtx-object-deps-head .dtx-object-deps-icon "
+        "{{ color: var(--ui-accent); }}" in source
+    )
 
 
 def test_optional_query_controls_hide_only_when_measured_width_does_not_fit():
