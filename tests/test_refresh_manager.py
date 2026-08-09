@@ -72,7 +72,7 @@ def test_refresh_manager_public_signature():
 
 
 def test_widget_includes_optional_dataset_picker():
-    assert "Choose a semantic model" in refresh_manager_module._WIDGET_JS
+    assert "Connect to a semantic model" in refresh_manager_module._WIDGET_JS
     assert 'dispatch("connect"' in refresh_manager_module._WIDGET_JS
     assert 'model.get("connected")' in refresh_manager_module._WIDGET_JS
     assert ">Connect</button>" in refresh_manager_module._WIDGET_JS
@@ -83,6 +83,28 @@ def test_widget_includes_optional_dataset_picker():
     assert "flex:none;width:auto;min-width:96px" in refresh_manager_module._WIDGET_CSS
     assert "data-picker-close" in refresh_manager_module._WIDGET_JS
     assert "data-picker-cancel" not in refresh_manager_module._WIDGET_JS
+
+
+def test_picker_matches_lineage_view_design():
+    widget_js = refresh_manager_module._WIDGET_JS
+    widget_css = refresh_manager_module._WIDGET_CSS
+
+    assert "createSearchSelect({" in widget_js
+    assert widget_js.count("createSearchSelect({") == 2
+    assert 'searchPlaceholder:"Filter workspaces\\u2026"' in widget_js
+    assert 'searchPlaceholder:"Filter semantic models\\u2026"' in widget_js
+    assert "slls-rm-combo" not in widget_js
+    assert "slls-rm-combo" not in widget_css
+    assert "Select a workspace and semantic model to begin." in widget_js
+    assert ".slls-ss-btn" in widget_css
+    assert ".slls-rm-picker-grid .slls-ss-btn { border-radius:999px;" in widget_css
+    assert (
+        ".slls-rm-picker { width:100%;border:1px solid var(--ui-border);"
+        "border-radius:14px;background:var(--ui-surface);padding:16px; }" in widget_css
+    )
+    assert ".slls-rm-picker-reload { display:inline-flex;" in widget_css
+    assert "width:32px;height:32px;" in widget_css
+    assert ".slls-rm-picker-grid { display:flex;align-items:flex-end;" in widget_css
 
 
 def test_no_dataset_picker_renders_before_discovery():
@@ -113,24 +135,10 @@ def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert ".slls-rm-iconbtn { width:34px;height:34px" in (
         refresh_manager_module._WIDGET_CSS
     )
-    assert "data-combo-input" in refresh_manager_module._WIDGET_JS
+    assert "data-picker-ws" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
-    assert 'event.key==="Tab"&&kind==="dataset"' in refresh_manager_module._WIDGET_JS
-    assert 'if(connect&&!connect.disabled)connect.focus()' in (
-        refresh_manager_module._WIDGET_JS
-    )
-    assert "choice=exact||(visible.length===1?visible[0]:null)" in (
-        refresh_manager_module._WIDGET_JS
-    )
-    assert "if(choice&&!s.pickDs)" in refresh_manager_module._WIDGET_JS
-    assert "onChoose(choice.dataset.id)" in refresh_manager_module._WIDGET_JS
-    assert "s.pickDs=id;draw();requestAnimationFrame" in (
-        refresh_manager_module._WIDGET_JS
-    )
-    assert 'class="slls-rm-iconbtn" data-picker-reload' in (
-        refresh_manager_module._WIDGET_JS
-    )
+    assert 'class="slls-rm-picker-reload' in refresh_manager_module._WIDGET_JS
     assert 'title="Reload workspaces and semantic models"' in (
         refresh_manager_module._WIDGET_JS
     )
