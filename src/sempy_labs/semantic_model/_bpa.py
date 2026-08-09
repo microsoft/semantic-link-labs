@@ -429,6 +429,11 @@ _WIDGET_CSS = (
 .slls-bpa-rule-editor-modal { position: relative; }
 .slls-bpa-rule-editor-close { position: absolute; top: 16px; right: 18px; }
 .slls-bpa-rule-editor-modal > h2,.slls-bpa-rule-editor-modal > .slls-bpa-modal-sub { padding-right: 42px; }
+/* The picker modal reuses the select screen's section, which the modal already frames. */
+.slls-bpa-picker-modal { position: relative; max-width: 720px; }
+.slls-bpa-picker-modal > .slls-bpa-section { border: none; background: transparent; padding: 0; margin-top: 0; }
+.slls-bpa-picker-modal > .slls-bpa-section > h3 { padding-right: 42px; }
+.slls-bpa-picker-close { position: absolute; top: 16px; right: 18px; }
 .slls-bpa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .slls-bpa-rulelist { max-height: 68vh; min-height: 320px; overflow-y: auto; border: 1px solid var(--ui-border); border-radius: var(--slls-radius-sm); }
 .slls-bpa-rule-count { font-size: 11.5px; color: var(--ui-text-tertiary); margin-bottom: 7px; }
@@ -1093,7 +1098,7 @@ function render({ model, el }) {
         // Staged fixes belong to the model they were staged against, so warn
         // before switching (which throws them away).
         if (stagedFixes.size > 0) openDiscardConfirm();
-        else goToSelectScreen();
+        else openSelectPicker();
     });
     header.appendChild(changeModelBtn);
 
@@ -1191,6 +1196,7 @@ function render({ model, el }) {
         if (historyOverlay.classList.contains("show")) closeHistory();
         else if (stagedOverlay.classList.contains("show")) closeStaged();
         else if (discardOverlay.classList.contains("show")) closeDiscardConfirm();
+        else if (selectOverlay.classList.contains("show")) closeSelectPicker();
         else if (overlay.classList.contains("show")) overlay.classList.remove("show");
         else if (fsMode) setFullscreen(false);
     }
@@ -1692,6 +1698,7 @@ function render({ model, el }) {
     }
 
     function startRun() {
+        closeSelectPicker();
         resetFilters();
         if (bulkMode) {
             runAction("run_bulk", {
@@ -1727,6 +1734,39 @@ function render({ model, el }) {
     model.on("change:workspaces", renderWorkspaces);
     model.on("change:datasets", renderDatasets);
     model.on("change:workspace_datasets", renderBulkTree);
+
+    // Reached from the results screen: the picker opens over the report instead
+    // of replacing it, so closing it leaves the results exactly as they were.
+    const selectOverlay = document.createElement("div");
+    selectOverlay.className = "slls-bpa-overlay";
+    root.appendChild(selectOverlay);
+    selectOverlay.addEventListener("click", (ev) => {
+        if (ev.target === selectOverlay) closeSelectPicker();
+    });
+
+    const selectModal = document.createElement("div");
+    selectModal.className = "slls-bpa-modal slls-bpa-picker-modal";
+    selectOverlay.appendChild(selectModal);
+
+    const selectCloseBtn = makeButton(
+        "", "slls-bpa-btn-sm slls-bpa-btn-icon-sm slls-bpa-picker-close", ICON.close);
+    selectCloseBtn.title = "Close and return to the results";
+    selectCloseBtn.setAttribute("aria-label", selectCloseBtn.title);
+    selectCloseBtn.addEventListener("click", closeSelectPicker);
+    selectModal.appendChild(selectCloseBtn);
+
+    // The picker lives on the select screen, so it is moved in and back out
+    // rather than duplicated (its state and listeners travel with the node).
+    function openSelectPicker() {
+        selectModal.appendChild(selectSection);
+        selectOverlay.classList.add("show");
+    }
+
+    function closeSelectPicker() {
+        if (!selectOverlay.classList.contains("show")) return;
+        selectOverlay.classList.remove("show");
+        selectScreen.appendChild(selectSection);
+    }
 
     // ==================================================================
     // RESULTS SCREEN
@@ -2033,13 +2073,6 @@ function render({ model, el }) {
         stagedOverlay.classList.remove("show");
     }
 
-    function goToSelectScreen() {
-        closeBulkDetail();
-        model.set("screen", "select");
-        model.save_changes();
-        renderScreen();
-    }
-
     function closeDiscardConfirm() {
         discardOverlay.classList.remove("show");
     }
@@ -2049,7 +2082,7 @@ function render({ model, el }) {
     // offering a look at what would be lost.
     function openDiscardConfirm() {
         if (stagedFixes.size === 0) {
-            goToSelectScreen();
+            openSelectPicker();
             return;
         }
         clear(discardOverlay);
@@ -2087,7 +2120,7 @@ function render({ model, el }) {
             // Hides the save bar (and closes the staged changes modal).
             renderStaged();
             refreshViolations();
-            goToSelectScreen();
+            openSelectPicker();
         });
         footer.appendChild(discardChangeBtn);
         modal.appendChild(footer);
