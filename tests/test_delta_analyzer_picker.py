@@ -198,6 +198,47 @@ def test_delta_change_picker_opens_as_modal_over_results():
     assert 'pickerBackdrop.className = "slls-da-picker-backdrop"' in source
     assert "const pickerModal = pickerOpen && hasResults;" in source
     assert 'pickerBackdrop.classList.toggle("slls-da-modal", pickerModal);' in source
-    assert 'cancel.style.display = pickerModal ? "inline-flex" : "none";' in source
+    assert 'closePicker.className = "slls-da-close"' in source
+    assert 'closePicker.setAttribute("aria-label", "Close table picker")' in source
+    assert 'closePicker.addEventListener("click"' in source
+    assert "slls-da-cancel" not in source
     assert ".slls-da-picker-backdrop.slls-da-modal {" in source
     assert 'content.style.display = pickerOpen && !pickerModal ? "none" : "";' in source
+
+
+def test_delta_opening_subtitle_and_fullscreen_modal_height_are_compact():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+
+    assert "Preparing analysis" not in source
+    assert 'shellSubtitle.textContent = pickerOpen ? ""' in source
+    assert (
+        ".slls-da-picker:fullscreen .slls-da-picker-backdrop.slls-da-modal .slls-da-panel"
+        in source
+    )
+    assert "min-height: 0; max-height: calc(100vh - 48px);" in source
+
+
+def test_delta_sticky_headers_stay_above_scrolling_bar_values():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+
+    table_start = source.index(".da-{uid}-table {{")
+    table_end = source.index("}}", table_start)
+    table_css = source[table_start:table_end]
+    thead_start = source.index(".da-{uid}-table thead {{")
+    thead_end = source.index("}}", thead_start)
+    thead_css = source[thead_start:thead_end]
+    header_start = source.index(".da-{uid}-table thead th {{")
+    header_end = source.index("}}", header_start)
+    header_css = source[header_start:header_end]
+    bar_cell_start = source.index("tbody td.da-{uid}-bar-cell {{")
+    bar_cell_end = source.index("}}", bar_cell_start)
+    bar_cell_css = source[bar_cell_start:bar_cell_end]
+
+    assert "border-collapse: separate;" in table_css
+    assert "border-spacing: 0;" in table_css
+    assert "position: sticky;" in thead_css
+    assert "z-index: 10;" in thead_css
+    assert "isolation: isolate;" in thead_css
+    assert "position: relative;" in header_css
+    assert "z-index: 0;" in bar_cell_css
+    assert "isolation: isolate;" in bar_cell_css

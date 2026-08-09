@@ -933,14 +933,19 @@ def _build_delta_analyzer_html(
         }}
         .da-{uid}-table {{
             table-layout: fixed;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 13px;
             color: var(--da-text);
         }}
-        .da-{uid}-table thead th {{
+        .da-{uid}-table thead {{
             position: sticky;
             top: 0;
-            z-index: 1;
+            z-index: 10;
+            isolation: isolate;
+        }}
+        .da-{uid}-table thead th {{
+            position: relative;
             background: var(--da-bg-secondary);
             font-weight: 600;
             font-size: 11px;
@@ -958,7 +963,8 @@ def _build_delta_analyzer_html(
         }}
         .da-{uid}-table thead th:hover {{
             color: var(--da-text);
-            background: var(--da-accent-soft);
+            background-color: var(--da-bg-secondary);
+            background-image: linear-gradient(var(--da-accent-soft), var(--da-accent-soft));
         }}
         .da-{uid}-th-text {{
             pointer-events: none;
@@ -1038,6 +1044,8 @@ def _build_delta_analyzer_html(
         /* Data bars */
         .da-{uid}-table tbody td.da-{uid}-bar-cell {{
             position: relative;
+            z-index: 0;
+            isolation: isolate;
             overflow: hidden;
         }}
         .da-{uid}-table tbody td.da-{uid}-bar-cell .da-{uid}-bar {{
@@ -1345,18 +1353,20 @@ _DA_PICKER_CSS = (
 .slls-da-picker *, .slls-da-picker *::before, .slls-da-picker *::after { box-sizing: border-box; }
 .slls-da-shell-header { flex: 0 0 auto; padding: 20px 22px 16px; background: var(--ui-bg); }
 .slls-da-picker-backdrop { display: flex; flex: 1 1 auto; background: var(--ui-bg); }
-.slls-da-picker-backdrop.slls-da-modal { position: absolute; inset: 0; z-index: 120; align-items: flex-start; padding: 72px 24px 24px; overflow: auto; background: color-mix(in srgb, var(--ui-bg) 72%, transparent); backdrop-filter: blur(8px); }
+.slls-da-picker-backdrop.slls-da-modal { position: absolute; inset: 0; z-index: 120; align-items: center; padding: 24px; overflow: auto; background: color-mix(in srgb, var(--ui-bg) 72%, transparent); backdrop-filter: blur(8px); }
 .slls-da-panel { flex: 1 1 auto; min-height: 480px; padding: 16px 22px 24px; background: var(--ui-bg); }
 .slls-da-picker-backdrop.slls-da-modal .slls-da-panel { flex: 0 1 960px; min-height: 0; margin: 0 auto; border: 1px solid var(--ui-border-strong); border-radius: 12px; box-shadow: var(--ui-shadow-lg); }
 .slls-da-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .slls-da-title { margin: 0; font-size: 14px; font-weight: 600; }
 .slls-da-subtitle { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-da-close { display: none; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--ui-border-strong); border-radius: 50%; background: var(--ui-surface); color: var(--ui-text); cursor: pointer; }
+.slls-da-close svg { width: 16px; height: 16px; }
+.slls-da-picker-backdrop.slls-da-modal .slls-da-close { display: inline-flex; }
 .slls-da-fields { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .slls-da-field { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; gap: 5px; }
 .slls-da-field label { padding-left: 4px; color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; }
 .slls-da-field .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--ui-surface); font-size: 13.5px; }
 .slls-da-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.slls-da-cancel { display: none; border: 1px solid var(--ui-border-strong); border-radius: 999px; padding: 7px 16px; background: var(--ui-surface); color: var(--ui-text); font: 500 13.5px inherit; cursor: pointer; }
 .slls-da-run { border: 1px solid var(--ui-accent); border-radius: 999px; padding: 7px 16px; background: var(--ui-accent); color: var(--ui-on-accent); font: 500 13.5px inherit; cursor: pointer; }
 .slls-da-run:disabled { opacity: .5; cursor: default; }
 .slls-da-error { display: none; margin-top: 12px; color: var(--ui-danger-text); font-size: 12px; }
@@ -1392,6 +1402,8 @@ _DA_PICKER_CSS = (
 .slls-da-picker:fullscreen .slls-da-panel,
 .slls-da-picker.slls-da-fullscreen .slls-da-loading,
 .slls-da-picker:fullscreen .slls-da-loading { min-height: calc(100vh - 84px); }
+.slls-da-picker.slls-da-fullscreen .slls-da-picker-backdrop.slls-da-modal .slls-da-panel,
+.slls-da-picker:fullscreen .slls-da-picker-backdrop.slls-da-modal .slls-da-panel { min-height: 0; max-height: calc(100vh - 48px); }
 .slls-da-picker.slls-da-fullscreen .slls-da-results > [class*="-root"],
 .slls-da-picker:fullscreen .slls-da-results > [class*="-root"] { max-width: none; margin: 0; }
 .slls-da-field .slls-ss-panel { z-index: 90; }
@@ -1450,6 +1462,7 @@ function render({ model, el }) {
     const panel = document.createElement("div"); panel.className = "slls-da-panel";
     const head = document.createElement("div"); head.className = "slls-da-head";
     head.innerHTML = '<div><h2 class="slls-da-title">Connect to a delta table</h2><div class="slls-da-subtitle">Select a workspace, lakehouse, and Delta table to analyze.</div></div>';
+    const closePicker = document.createElement("button"); closePicker.type = "button"; closePicker.className = "slls-da-close"; closePicker.innerHTML = `__CLOSE_ICON__`; closePicker.title = "Close"; closePicker.setAttribute("aria-label", "Close table picker"); head.appendChild(closePicker);
     const fields = document.createElement("div"); fields.className = "slls-da-fields";
     function field(label, picker) { const wrap = document.createElement("div"); wrap.className = "slls-da-field"; const lab = document.createElement("label"); lab.textContent = label; wrap.append(lab, picker.el); return wrap; }
     function dispatch(name) { model.set(name, (model.get(name) || 0) + 1); model.save_changes(); }
@@ -1457,8 +1470,7 @@ function render({ model, el }) {
     const lh = createSearchSelect({ placeholder: "Select a lakehouse…", searchPlaceholder: "Filter lakehouses…", ariaLabel: "Lakehouse", emptyLabel: "Select a workspace first…", onChange: o => { model.set("selected_lakehouse_id", o.value); model.set("selected_table", ""); model.set("available_tables", []); dispatch("select_lakehouse_trigger"); } });
     const tb = createSearchSelect({ placeholder: "Select a Delta table…", searchPlaceholder: "Filter tables…", ariaLabel: "Delta table", emptyLabel: "Select a lakehouse first…", onChange: o => { model.set("selected_table", o.value); model.save_changes(); renderState(); } });
     const actions = document.createElement("div"); actions.className = "slls-da-actions";
-    const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "slls-da-cancel"; cancel.textContent = "Cancel";
-    const run = document.createElement("button"); run.type = "button"; run.className = "slls-da-run"; run.textContent = "Analyze"; actions.append(cancel, run);
+    const run = document.createElement("button"); run.type = "button"; run.className = "slls-da-run"; run.textContent = "Analyze"; actions.appendChild(run);
     fields.append(field("Workspace", ws), field("Lakehouse", lh), field("Delta table", tb), actions);
     const error = document.createElement("div"); error.className = "slls-da-error";
     const content = document.createElement("div"); content.className = "slls-da-content";
@@ -1503,14 +1515,13 @@ function render({ model, el }) {
         const showLoading = !pickerOpen && (analysisRequested || analyzing);
         const hasResults = Boolean((model.get("content_html") || "").trim());
         const pickerModal = pickerOpen && hasResults;
-        shellSubtitle.textContent = model.get("selected_table") || "Preparing analysis…";
+        shellSubtitle.textContent = pickerOpen ? "" : (model.get("selected_table") || "");
         progress.classList.toggle("slls-da-active", showLoading && !hasResults);
         resultsProgress.classList.toggle("slls-da-active", showLoading && hasResults);
         loadingShell.classList.toggle("slls-da-active", showLoading && !hasResults);
         shellHeader.style.display = !hasResults && (pickerOpen || showLoading) ? "" : "none";
         pickerBackdrop.style.display = pickerOpen ? "flex" : "none";
         pickerBackdrop.classList.toggle("slls-da-modal", pickerModal);
-        cancel.style.display = pickerModal ? "inline-flex" : "none";
         content.style.display = pickerOpen && !pickerModal ? "none" : "";
         results.style.display = hasResults ? "" : "none";
         error.textContent = message; error.style.display = message ? "block" : "none";
@@ -1525,7 +1536,7 @@ function render({ model, el }) {
         if (results.innerHTML.trim()) { analysisRequested = false; pickerOpen = false; }
         renderState();
     }
-    cancel.addEventListener("click", () => { pickerOpen = false; renderState(); });
+    closePicker.addEventListener("click", () => { pickerOpen = false; renderState(); });
     pickerBackdrop.addEventListener("click", event => { if (event.target === pickerBackdrop && pickerBackdrop.classList.contains("slls-da-modal")) { pickerOpen = false; renderState(); } });
     root.addEventListener("keydown", event => { if (event.key === "Escape" && pickerBackdrop.classList.contains("slls-da-modal")) { pickerOpen = false; renderState(); } });
     run.addEventListener("click", () => { if (!model.get("selected_table")) return; pickerOpen = false; analysisRequested = true; renderState(); dispatch("run_analysis_trigger"); });
@@ -1537,6 +1548,7 @@ export default { render };
     .replace("__DELTA_ICON__", _UI_ICONS["delta_stats"])
     .replace("__SUN_ICON__", _UI_ICONS["sun"])
     .replace("__MOON_ICON__", _UI_ICONS["moon"])
+    .replace("__CLOSE_ICON__", _UI_ICONS["close"])
     .replace("__FS_ENTER__", _UI_ICONS["fullscreen"])
     .replace("__FS_EXIT__", _UI_ICONS["fullscreen_exit"])
 )
