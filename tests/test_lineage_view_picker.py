@@ -55,8 +55,10 @@ def test_lineage_picker_maps_shared_theme_tokens_and_matches_dax_perf_layout():
         assert token in source
     assert ".slls-lv-picker-grid .slls-ss-btn" in source
     assert "border-radius: 999px" in source
-    assert 'class="slls-lv-picker-reload' in source
-    assert ".slls-lv-picker-reload.slls-lv-loading svg" in source
+    # The reload control comes from the shared UI components module.
+    assert 'class="sl-reload-btn' in source
+    assert "sl-spinning" in source
+    assert ".slls-lv-picker-reload" not in source
     assert "Connect to a semantic model" in source
     assert "Select a workspace and semantic model to begin." in source
 

@@ -672,13 +672,18 @@ def test_fullscreen_container_has_no_later_shape_override():
 
 def test_change_model_button_is_larger_and_beside_the_tool_name():
     source = _source()
+    ui_source = SOURCE_PATH.parents[1].joinpath("_ui_components.py").read_text(
+        encoding="utf-8"
+    )
     title_start = source.index('title.textContent = "DAX Perf Optimizer"')
-    change_start = source.index('changeModelBtn.className = "dtx-change-btn"')
+    change_start = source.index('changeModelBtn.className = "sl-change-btn"')
     title_row_end = source.index("titleRow.appendChild(changeModelBtn)", change_start)
 
     assert title_start < change_start < title_row_end
-    assert '.dtx .dtx-change-btn {{' in source
-    assert "    width: 32px;\n    height: 32px;" in source
+    # The button chrome is owned by the shared UI components module.
+    assert ".dtx-change-btn" not in source
+    assert ".sl-change-btn {" in ui_source
+    assert "    width: 32px;\n    height: 32px;" in ui_source
     assert 'changeModelBtn.title = "Change model / workspace"' in source
 
 

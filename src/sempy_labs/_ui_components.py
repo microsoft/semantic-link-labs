@@ -1326,6 +1326,7 @@ HEADER_CSS: str = """\
     border-color: var(--ui-text-tertiary);
 }
 .sl-theme-btn:active { transform: scale(0.95); }
+.sl-theme-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .sl-theme-btn svg { display: block; width: 18px; height: 18px; }
 .sl-change-btn {
     display: inline-flex;
@@ -1336,14 +1337,45 @@ HEADER_CSS: str = """\
     padding: 0;
     flex: 0 0 auto;
     border-radius: 8px;
-    border: 1px solid var(--ui-border);
-    background: transparent;
-    color: var(--ui-text-secondary);
+    border: 1px solid var(--ui-border-strong);
+    background: var(--ui-surface);
+    color: var(--ui-text);
     cursor: pointer;
-    transition: border-color 120ms ease, color 120ms ease;
+    font-family: inherit;
+    transition: border-color 120ms ease, color 120ms ease,
+        background 120ms ease, transform 80ms ease;
 }
-.sl-change-btn svg { display: block; width: 17px; height: 17px; }
+.sl-change-btn svg { display: block; width: 18px; height: 18px; }
 .sl-change-btn:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
+.sl-change-btn:active { transform: scale(0.95); }
+.sl-change-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sl-reload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 50%;
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease,
+        transform 80ms ease;
+}
+.sl-reload-btn svg { display: block; width: 14px; height: 14px; }
+.sl-reload-btn:hover:not(:disabled) {
+    border-color: var(--ui-text-tertiary);
+    background: var(--ui-surface-2);
+}
+.sl-reload-btn:active:not(:disabled) { transform: scale(0.95); }
+.sl-reload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Add sl-spinning while a reload is in flight. */
+.sl-reload-btn.sl-spinning svg { animation: sl-spin 0.8s linear infinite; }
+@keyframes sl-spin { to { transform: rotate(360deg); } }
 """
 
 
@@ -1481,8 +1513,10 @@ def render_header_html(
         accent-colored badge to the left of the title.
     extra_buttons : list[dict[str, str]], default=None
         Optional extra icon buttons rendered immediately to the right of the
-        title. Each dict accepts ``id``, ``icon`` (SVG markup), ``title`` and an
-        optional ``cls`` appended to the button's classes.
+        title. Each dict accepts ``id``, ``icon`` (SVG markup), ``title``, an
+        optional ``cls`` appended to the button's classes and an optional
+        ``base`` class (defaults to ``"sl-theme-btn"``; use
+        ``"sl-change-btn"`` for a change model/workspace control).
 
     Returns
     -------
@@ -1518,7 +1552,8 @@ def render_header_html(
     parts.append("</div>")  # titlewrap
 
     for btn in extra_buttons or []:
-        cls = f"sl-theme-btn {btn.get('cls', '')}".strip()
+        base = btn.get("base", "sl-theme-btn")
+        cls = f"{base} {btn.get('cls', '')}".strip()
         label = btn.get("title", "")
         parts.append(
             f'<button type="button" class="{cls}" id="{btn.get("id", "")}" '

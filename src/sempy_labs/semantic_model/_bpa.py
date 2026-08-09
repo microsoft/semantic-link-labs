@@ -8,6 +8,7 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_button_press_css as _ui_scoped_button_press_css,
+    scoped_header_css as _ui_scoped_header_css,
 )
 
 # The maximum number of models a single bulk scan may target. Keeps the run time
@@ -544,6 +545,7 @@ _WIDGET_CSS = (
 .slls-bpa-searchwrap .slls-bpa-input { padding-left: 32px; min-width: 240px; }
 """
 )
+_WIDGET_CSS += _ui_scoped_header_css(".slls-bpa")
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-bpa")
 
 
@@ -1090,7 +1092,7 @@ function render({ model, el }) {
     subtitle.className = "slls-bpa-subtitle";
     titleWrap.appendChild(subtitle);
 
-    const changeModelBtn = makeButton("", "slls-bpa-btn-icon", ICON.swap);
+    const changeModelBtn = makeButton("", "sl-change-btn", ICON.swap);
     changeModelBtn.title = "Change semantic model / workspace";
     changeModelBtn.setAttribute("aria-label", "Change semantic model / workspace");
     changeModelBtn.style.display = "none";
@@ -1127,7 +1129,7 @@ function render({ model, el }) {
     rerunBtn.addEventListener("click", () => rerun());
     header.appendChild(rerunBtn);
 
-    const themeBtn = makeButton("", "slls-bpa-btn-icon slls-bpa-view-btn", "");
+    const themeBtn = makeButton("", "sl-theme-btn slls-bpa-view-btn", "");
     function renderThemeBtn() {
         const isDark = model.get("dark_mode") === true;
         themeBtn.innerHTML = isDark ? ICON.sun : ICON.moon;
@@ -1150,7 +1152,7 @@ function render({ model, el }) {
     // native fullscreen attempted as a best-effort enhancement.
     // ------------------------------------------------------------------
     let fsMode = false;
-    const fullscreenBtn = makeButton("", "slls-bpa-btn-icon slls-bpa-view-btn", "");
+    const fullscreenBtn = makeButton("", "sl-theme-btn slls-bpa-view-btn", "");
     function renderFullscreenBtn() {
         fullscreenBtn.innerHTML = fsMode ? ICON.fullscreen_exit : ICON.fullscreen;
         fullscreenBtn.title = fsMode ? "Exit full screen" : "Full screen";
@@ -1356,7 +1358,7 @@ function render({ model, el }) {
 
     // Refetches the workspaces, the models of the selected workspace and any
     // workspace already expanded in the multi-model picker.
-    const reloadBtn = makeButton("", "slls-bpa-btn-icon", ICON.refresh);
+    const reloadBtn = makeButton("", "sl-reload-btn", ICON.refresh);
     reloadBtn.title = "Reload workspaces and semantic models";
     reloadBtn.setAttribute("aria-label", reloadBtn.title);
     reloadBtn.addEventListener("click", () => {

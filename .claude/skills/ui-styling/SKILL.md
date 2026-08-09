@@ -42,7 +42,7 @@ Semantic Link Labs has exactly two supported patterns for interactive UI tools. 
 | `ICONS` | Dict of monochrome SVG icons. All use `stroke="currentColor"` / `fill="currentColor"` so they adapt to light and dark themes automatically. Keys include tabular-object icons (`table`, `calculation_group`, `column`, `column_chunk`, `measure`, `hierarchy`, `calculation_item`, `partition`, `relationship`), tree/navigation icons (`caret_right`, `folder`, `level`), and UI/action icons (`sun`, `moon`, `search`, `plus`, `play`, `stop`, `refresh`, `swap`, `sort_asc`, `sort_desc`, `panel_collapse`, `panel_expand`, `builder`, `close`, `fullscreen`, `fullscreen_exit`). |
 | `LIGHT_THEME_VARS`, `DARK_THEME_VARS` | CSS custom-property blocks defining the Apple-inspired light and dark palettes. Always reference colors via these `--ui-*` tokens, never hard-coded hex values. Includes semantic tokens for hover backgrounds (`--ui-bg-hover`), on-accent text (`--ui-on-accent`), and destructive/error states (`--ui-danger*`). |
 | `SYNTAX_HIGHLIGHT_VARS` | Theme-independent `--ui-syntax-*` token block for colorizing DAX/code in an editor. Inject once into the widget's base scope (it is the same in light and dark). |
-| `HEADER_CSS`, `scoped_header_css(root_selector)` | Standard widget header styles (title + dataset/workspace subtitle + theme toggle button). `scoped_header_css` prefixes every rule with the root selector so the styles win against notebook host CSS (e.g. Jupyter's `.jp-RenderedHTMLCommon button`). |
+| `HEADER_CSS`, `scoped_header_css(root_selector)` | Standard widget header styles (title + dataset/workspace subtitle) **and the four standard header controls** (`.sl-theme-btn`, `.sl-change-btn`, `.sl-reload-btn`). `scoped_header_css` prefixes every rule with the root selector so the styles win against notebook host CSS (e.g. Jupyter's `.jp-RenderedHTMLCommon button`). Every tool must inject this, even when it builds its own header markup. |
 | `render_header_html(title, dataset_name, workspace_name, theme_btn_id, dark_mode, fullscreen_btn_id)` | Renders the standard header markup. Pass `fullscreen_btn_id` to include a full-screen toggle button next to the theme toggle. |
 | `theme_toggle_script(btn_id, root_selector, dark_class)` | Returns a `<script>` block that wires the theme toggle button to flip a `dark_class` on the root element and swap the sun/moon icon. |
 | `fullscreen_css(root_selector, fullscreen_class, container_selector=None, bg_var)` | Returns the CSS for a widget's full-screen state (covers both the native `:fullscreen` pseudo-class and the `fullscreen_class` CSS-overlay fallback). Pass `container_selector` when an inner element carries the card styling; pass `bg_var` to match the widget's background token. |
@@ -55,6 +55,49 @@ Semantic Link Labs has exactly two supported patterns for interactive UI tools. 
 ### When to extend `_ui_components`
 
 Add a new export to `_ui_components.py` whenever the same visual element appears (or *should* appear) in more than one tool. Typical candidates: a new icon, a shared button style, a status-pill style, a confirmation-dialog component, a toast/notification helper. Do **not** copy-paste CSS or SVGs between widgets — promote them to `_ui_components` instead.
+
+---
+
+## Standard Header Controls (mandatory)
+
+Four controls recur in nearly every tool. They must look and behave identically
+everywhere, so both their icon and their chrome come from `_ui_components` — a
+tool never defines its own size, radius, border or icon for them. The
+`sempy_labs.semantic_model.test` (DAX Perf Optimizer) widget is the reference
+implementation.
+
+| Control | Class | Icon | Footprint |
+|---------|-------|------|-----------|
+| Light/dark mode | `sl-theme-btn` | `ICONS["sun"]` / `ICONS["moon"]` | 32×32 circle, 18px icon |
+| Full screen | `sl-theme-btn` | `ICONS["fullscreen"]` / `ICONS["fullscreen_exit"]` | 32×32 circle, 18px icon |
+| Change model / workspace | `sl-change-btn` | `ICONS["swap"]` | 32×32, 8px radius, 18px icon |
+| Reload (workspaces, models, lists) | `sl-reload-btn` | `ICONS["refresh"]` | 32×32 circle, 14px icon |
+
+Rules:
+
+- Inject `scoped_header_css(root_selector)` into the widget stylesheet, and use
+  the class names above. Do **not** re-declare `.sl-theme-btn`,
+  `.sl-change-btn` or `.sl-reload-btn` in a tool — `tests/test_ui_header_controls.py`
+  fails if a tool restyles them.
+- While a reload is in flight, add `sl-spinning` to the reload button; the
+  shared CSS animates the icon.
+- If the tool uses `--slls-*` (or other) palette names, alias the `--ui-*`
+  tokens the shared CSS reads: `--ui-surface`, `--ui-surface-2`,
+  `--ui-border-strong`, `--ui-text`, `--ui-text-secondary`,
+  `--ui-text-tertiary`, `--ui-accent`, `--ui-accent-soft`.
+- Tools rendering their header with `render_header_html` get these for free via
+  `theme_btn_id`, `fullscreen_btn_id` and `picker_btn_id`. For an extra button
+  that changes the model/workspace, pass `"base": "sl-change-btn"` in
+  `extra_buttons`.
+- Buttons that are *not* one of these four (e.g. expand/collapse, delete,
+  tool-specific actions) keep their own tool-scoped classes.
+
+### Workspace / semantic model pickers
+
+Always resolve the workspace with `resolve_workspace_name_and_id(workspace)`
+**even when the caller passed nothing**, and seed the picker with the result, so
+the workspace dropdown opens pre-selected on the current workspace. Passing
+`None` resolves to the attached lakehouse's workspace, or the notebook's.
 
 ---
 

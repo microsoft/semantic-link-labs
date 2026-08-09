@@ -1363,16 +1363,16 @@ function render({ model, el }) {
 
     function themeBtnHtml() {
         const d = model.get("dark_mode") === true;
-        return `<button class="fuo-icon-btn" data-r="theme" type="button" title="${d ? 'Switch to light mode' : 'Switch to dark mode'}">${d ? SUN : MOON}</button>`;
+        return `<button class="sl-theme-btn" data-r="theme" type="button" title="${d ? 'Switch to light mode' : 'Switch to dark mode'}">${d ? SUN : MOON}</button>`;
     }
     function fsBtnHtml() {
-        return `<button class="fuo-icon-btn" data-r="fs" type="button" title="${fsMode ? 'Exit full screen' : 'Toggle full screen'}">${fsMode ? FSX : FS}</button>`;
+        return `<button class="sl-theme-btn" data-r="fs" type="button" title="${fsMode ? 'Exit full screen' : 'Toggle full screen'}">${fsMode ? FSX : FS}</button>`;
     }
     function rerunBtnHtml() {
         return `<button class="fuo-rerun" data-r="rerun" type="button" title="Run a new analysis">${IC.rerun}<span>New analysis</span></button>`;
     }
     function swapBtnHtml() {
-        return `<button class="fuo-icon-btn" data-r="swap" type="button" title="Change semantic model / workspace">${IC.swap}</button>`;
+        return `<button class="sl-change-btn" data-r="swap" type="button" title="Change semantic model / workspace">${IC.swap}</button>`;
     }
     function wireHeaderCtrls() {
         const tb = root.querySelector('[data-r="theme"]');
@@ -1462,7 +1462,7 @@ function render({ model, el }) {
         }
     }
     function reloadBtnHtml() {
-        return `<button class="fuo-icon-btn" data-r="preload" type="button" title="Reload workspaces and semantic models">${IC.rerun}</button>`;
+        return `<button class="sl-reload-btn" data-r="preload" type="button" title="Reload workspaces and semantic models">${IC.rerun}</button>`;
     }
     function openPicker() {
         pickWs = model.get("workspace_id") || "";
@@ -1955,6 +1955,7 @@ from sempy_labs._ui_components import (  # noqa: E402
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
     scoped_button_press_css as _ui_scoped_button_press_css,
+    scoped_header_css as _ui_scoped_header_css,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
 )
@@ -1964,6 +1965,7 @@ _WIDGET_CSS = (
     .replace("__DARK__", _UI_DARK_VARS)
     .replace("__SEARCH_SELECT_CSS__", _UI_SEARCH_SELECT_CSS)
 )
+_WIDGET_CSS += _ui_scoped_header_css(".fuo")
 _WIDGET_CSS += _ui_scoped_button_press_css(".fuo")
 
 _WIDGET_JS = (

@@ -34,12 +34,15 @@ _WIDGET_CSS = """
     --ui-bg: var(--slls-bg-solid);
     --ui-bg-solid: var(--slls-bg-solid);
     --ui-bg-secondary: var(--slls-bg-secondary);
+    --ui-surface: var(--slls-surface);
     --ui-surface-2: var(--slls-surface-2);
     --ui-border: var(--slls-border);
     --ui-border-strong: var(--slls-border-strong);
     --ui-text: var(--slls-text);
+    --ui-text-secondary: var(--slls-text-secondary);
     --ui-text-tertiary: var(--slls-text-tertiary);
     --ui-accent: var(--slls-accent);
+    --ui-accent-soft: var(--slls-accent-soft);
     --ui-shadow-lg: var(--slls-shadow);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -274,11 +277,6 @@ _WIDGET_CSS = """
 .slls-lv-picker-grid .slls-lv-field label { padding-left: 4px; color: var(--slls-text-tertiary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .slls-lv-picker-grid .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--slls-surface); font-size: 13.5px; }
 .slls-lv-picker-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-.slls-lv-picker-reload { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--slls-border-strong); border-radius: 50%; background: var(--slls-surface); color: var(--slls-text); cursor: pointer; }
-.slls-lv-picker-reload:hover:not(:disabled) { border-color: var(--slls-text-tertiary); background: var(--slls-surface-2); }
-.slls-lv-picker-reload:disabled { opacity: 0.5; cursor: not-allowed; }
-.slls-lv-picker-reload svg { width: 14px; height: 14px; }
-.slls-lv-picker-reload.slls-lv-loading svg { animation: slls-lv-spin 0.8s linear infinite; }
 .slls-lv-modal .slls-lv-field label { padding-left: 4px; color: var(--slls-text-tertiary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .slls-lv-modal .slls-ss-btn { background: var(--slls-surface); font-size: 13px; padding: 8px 12px; }
 @media (max-width: 640px) {
@@ -582,7 +580,7 @@ function render({ model, el }) {
                 `<div class="slls-lv-subtitle">${subtitle}</div>` +
             `</div>` +
             (connected() && !picking
-                ? `<button class="slls-lv-btn slls-lv-btn-icon" data-act="change-model" title="Change semantic model / workspace">${ICON.swap}</button>`
+                ? `<button class="sl-change-btn" data-act="change-model" title="Change semantic model / workspace">${ICON.swap}</button>`
                 : "") +
             `<div class="slls-lv-head-spacer"></div>` +
             (!picking && stagedFixes.size > 0
@@ -593,11 +591,11 @@ function render({ model, el }) {
                 ? `<button class="slls-lv-btn" data-act="open-rebind">${ICON.link}Rebind ${nPick}</button>`
                 : "") +
             (!picking
-                ? `<button class="slls-lv-btn slls-lv-btn-icon" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
+                ? `<button class="sl-reload-btn" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
                     `${working() ? spinner() : ICON.refresh}</button>`
                 : "") +
-            `<button class="slls-lv-btn slls-lv-btn-icon" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
-            `<button class="slls-lv-btn slls-lv-btn-icon" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
+            `<button class="sl-theme-btn" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
+            `<button class="sl-theme-btn" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
         const rf = h.querySelector('[data-act="refresh"]');
         if (rf) rf.onclick = () => dispatch({ action: "refresh" });
@@ -1205,7 +1203,7 @@ function render({ model, el }) {
                     `<div class="slls-lv-picker-title">Connect to a semantic model</div>` +
                     `<div class="slls-lv-picker-sub">Select a workspace and semantic model to begin.</div>` +
                 `</div>` +
-                `<button class="slls-lv-picker-reload${working() ? " slls-lv-loading" : ""}" data-p="reload" type="button" ` +
+                `<button class="sl-reload-btn${working() ? " sl-spinning" : ""}" data-p="reload" type="button" ` +
                     `title="Reload workspaces and semantic models" aria-label="Reload workspaces and semantic models" ${working() ? "disabled" : ""}>${ICON.refresh}</button>` +
             `</div>` +
             `<div class="slls-lv-picker-grid">` +
@@ -1530,9 +1528,11 @@ from sempy_labs._ui_components import (  # noqa: E402
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
     scoped_button_press_css as _ui_scoped_button_press_css,
+    scoped_header_css as _ui_scoped_header_css,
 )
 
 _WIDGET_CSS += "\n" + _UI_SEARCH_SELECT_CSS
+_WIDGET_CSS += _ui_scoped_header_css(".slls-lv")
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-lv")
 
 _WIDGET_JS = _UI_SEARCH_SELECT_JS + "\n" + _WIDGET_JS

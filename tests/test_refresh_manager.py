@@ -102,7 +102,7 @@ def test_picker_matches_lineage_view_design():
         ".slls-rm-picker { width:100%;border:1px solid var(--ui-border);"
         "border-radius:14px;background:var(--ui-surface);padding:16px; }" in widget_css
     )
-    assert ".slls-rm-picker-reload { display:inline-flex;" in widget_css
+    assert ".sl-reload-btn {" in widget_css
     assert "width:32px;height:32px;" in widget_css
     assert ".slls-rm-picker-grid { display:flex;align-items:flex-end;" in widget_css
 
@@ -125,10 +125,14 @@ def test_no_dataset_picker_renders_before_discovery():
 def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert "slls-rm-header-action" not in refresh_manager_module._WIDGET_JS
     assert "slls-rm-header-action" not in refresh_manager_module._WIDGET_CSS
-    assert 'class="slls-rm-iconbtn" data-fullscreen' in (
+    # The header controls are the shared ones from sempy_labs._ui_components.
+    assert 'class="sl-theme-btn" data-fullscreen' in (
         refresh_manager_module._WIDGET_JS
     )
-    assert 'class="slls-rm-iconbtn" data-theme' in refresh_manager_module._WIDGET_JS
+    assert 'class="sl-theme-btn" data-theme' in refresh_manager_module._WIDGET_JS
+    assert 'class="sl-change-btn" data-change-model' in (
+        refresh_manager_module._WIDGET_JS
+    )
     assert ".slls-rm-title-row .slls-rm-iconbtn" not in (
         refresh_manager_module._WIDGET_CSS
     )
@@ -144,7 +148,8 @@ def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert "data-picker-ws" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
-    assert 'class="slls-rm-picker-reload' in refresh_manager_module._WIDGET_JS
+    assert 'class="sl-reload-btn' in refresh_manager_module._WIDGET_JS
+    assert "slls-rm-picker-reload" not in refresh_manager_module._WIDGET_JS
     assert 'title="Reload workspaces and semantic models"' in (
         refresh_manager_module._WIDGET_JS
     )

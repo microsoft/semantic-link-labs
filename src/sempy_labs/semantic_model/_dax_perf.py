@@ -137,9 +137,9 @@ def dax_perf_optimizer(
                 effective_user_name=effective_user_name,
                 role=role,
             )
-    elif workspace is not None:
-        # No dataset chosen yet, but a workspace was provided: resolve it so
-        # the widget's model picker can pre-select that workspace.
+    else:
+        # No dataset chosen yet: resolve the workspace anyway so the widget's
+        # model picker pre-selects the current workspace.
         workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if visualize:
@@ -2417,28 +2417,6 @@ def _visualize_dax_test(
     gap: 8px;
     min-width: 0;
 }}
-.dtx .dtx-change-btn {{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    flex: 0 0 auto;
-    border-radius: 8px;
-    border: 1px solid var(--ui-border-strong);
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    cursor: pointer;
-}}
-.dtx .dtx-change-btn svg {{
-    width: 18px;
-    height: 18px;
-}}
-.dtx .dtx-change-btn:hover {{
-    border-color: var(--ui-accent);
-    color: var(--ui-accent);
-}}
 .dtx .dtx-builder-show-btn {{
     display: inline-flex;
     align-items: center;
@@ -2814,29 +2792,6 @@ def _visualize_dax_test(
     margin-bottom: 14px;
 }}
 .dtx .dtx-picker-head {{ min-width: 0; }}
-.dtx .dtx-picker-reload {{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: 1px solid var(--ui-border-strong);
-    border-radius: 50%;
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    font: inherit;
-    cursor: pointer;
-}}
-.dtx .dtx-picker-reload:hover {{
-    border-color: var(--ui-text-tertiary);
-    background: var(--ui-surface-2);
-}}
-.dtx .dtx-picker-reload:disabled {{ opacity: 0.5; cursor: not-allowed; }}
-.dtx .dtx-picker-reload svg {{ width: 14px; height: 14px; }}
-.dtx .dtx-picker-reload.dtx-loading svg {{ animation: dtx-spin 0.8s linear infinite; }}
-@keyframes dtx-spin {{ to {{ transform: rotate(360deg); }} }}
 .dtx .dtx-picker-title {{
     margin: 0;
     font-size: 14px;
@@ -5497,7 +5452,7 @@ function render({ model, el }) {
 
     const changeModelBtn = document.createElement("button");
     changeModelBtn.type = "button";
-    changeModelBtn.className = "dtx-change-btn";
+    changeModelBtn.className = "sl-change-btn";
     changeModelBtn.innerHTML = SWAP_SVG;
     changeModelBtn.title = "Change model / workspace";
     changeModelBtn.setAttribute("aria-label", "Change model / workspace");
@@ -7380,7 +7335,7 @@ function render({ model, el }) {
     pickerTop.appendChild(pickerHead);
     const pickerReloadBtn = document.createElement("button");
     pickerReloadBtn.type = "button";
-    pickerReloadBtn.className = "dtx-picker-reload";
+    pickerReloadBtn.className = "sl-reload-btn";
     pickerReloadBtn.innerHTML = REFRESH_SVG;
     pickerReloadBtn.title = "Reload workspaces and semantic models";
     pickerReloadBtn.setAttribute("aria-label", pickerReloadBtn.title);
@@ -7463,7 +7418,7 @@ function render({ model, el }) {
         wsPicker.picker.setDisabled(loading);
         dsPicker.picker.setDisabled(!curWs || loading || !dss.length);
         pickerReloadBtn.disabled = loading;
-        pickerReloadBtn.classList.toggle("dtx-loading", loading);
+        pickerReloadBtn.classList.toggle("sl-spinning", loading);
         // Disable Connect when the selection matches the model already
         // in use (same workspace and dataset).
         const sameAsActive = curWs === (model.get("active_workspace_id") || "")

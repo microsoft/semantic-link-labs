@@ -26,12 +26,15 @@ _WIDGET_CSS = """
     --ui-bg: var(--slls-bg-solid);
     --ui-bg-solid: var(--slls-bg-solid);
     --ui-bg-secondary: var(--slls-surface-2);
+    --ui-surface: var(--slls-surface);
     --ui-surface-2: var(--slls-surface-2);
     --ui-border: var(--slls-border);
     --ui-border-strong: var(--slls-border-strong);
     --ui-text: var(--slls-text);
+    --ui-text-secondary: var(--slls-text-secondary);
     --ui-text-tertiary: var(--slls-text-tertiary);
     --ui-accent: var(--slls-accent);
+    --ui-accent-soft: var(--slls-accent-soft);
     --ui-shadow-lg: var(--slls-shadow);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -225,7 +228,6 @@ _WIDGET_CSS = """
     font-size: 18px;
     line-height: 1;
 }
-.slls-pe-change-btn svg { width: 16px; height: 16px; }
 
 .slls-pe.slls-pe-picker-open > :not(.slls-pe-header):not(.slls-pe-picker-screen):not(.slls-pe-attribution) { display: none !important; }
 .slls-pe-picker-screen { display: none; align-items: flex-start; justify-content: stretch; min-height: 430px; }
@@ -240,12 +242,6 @@ _WIDGET_CSS = """
 .slls-pe-picker-label { padding-left: 4px; color: var(--slls-text-tertiary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .slls-pe-picker-field .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--slls-surface); font-size: 13.5px; }
 .slls-pe-picker-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 0 0 auto; }
-.slls-pe-picker-reload { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--slls-border-strong); border-radius: 50%; background: var(--slls-surface); color: var(--slls-text); cursor: pointer; }
-.slls-pe-picker-reload:hover:not(:disabled) { border-color: var(--slls-text-tertiary); background: var(--slls-surface-2); }
-.slls-pe-picker-reload:disabled { opacity: 0.5; cursor: not-allowed; }
-.slls-pe-picker-reload svg { width: 14px; height: 14px; }
-.slls-pe-picker-reload.slls-pe-picker-loading svg { animation: slls-pe-picker-spin 0.8s linear infinite; }
-@keyframes slls-pe-picker-spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) {
     .slls-pe-picker-fields { align-items: stretch; flex-direction: column; }
     .slls-pe-picker-actions { justify-content: flex-end; }
@@ -541,7 +537,7 @@ function render({ model, el }) {
     titleRow.appendChild(title);
 
     const changeModelBtn = document.createElement("button");
-    changeModelBtn.className = "slls-pe-btn slls-pe-btn-icon slls-pe-change-btn";
+    changeModelBtn.className = "sl-change-btn";
     changeModelBtn.type = "button";
     changeModelBtn.innerHTML = ICON_SVG.swap;
     changeModelBtn.title = "Change model / workspace";
@@ -569,7 +565,7 @@ function render({ model, el }) {
     const SUN_SVG = `__SLLS_ICON_SUN__`;
     const MOON_SVG = `__SLLS_ICON_MOON__`;
     const themeBtn = document.createElement("button");
-    themeBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    themeBtn.className = "sl-theme-btn";
     themeBtn.type = "button";
     function renderThemeBtn() {
         const isDark = model.get("dark_mode") === true;
@@ -592,7 +588,7 @@ function render({ model, el }) {
     const FSX_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
     let peFsMode = false;
     const fsBtn = document.createElement("button");
-    fsBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    fsBtn.className = "sl-theme-btn";
     fsBtn.type = "button";
     function renderFsBtn() {
         fsBtn.innerHTML = peFsMode ? FSX_SVG : FS_SVG;
@@ -877,7 +873,7 @@ function render({ model, el }) {
                         <h2 class="slls-pe-picker-title">Connect to a semantic model</h2>
                         <div class="slls-pe-picker-subtitle">Select a workspace and semantic model to begin.</div>
                     </div>
-                    <button class="slls-pe-picker-reload${loading ? " slls-pe-picker-loading" : ""}" type="button"
+                    <button class="sl-reload-btn${loading ? " sl-spinning" : ""}" type="button"
                         data-picker="reload" title="Reload workspaces and semantic models"
                         aria-label="Reload workspaces and semantic models" ${loading ? "disabled" : ""}>__SLLS_ICON_REFRESH__</button>
                 </div>
@@ -1375,9 +1371,11 @@ from sempy_labs._ui_components import (  # noqa: E402
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
     scoped_button_press_css as _ui_scoped_button_press_css,
+    scoped_header_css as _ui_scoped_header_css,
 )
 
 _WIDGET_CSS += "\n" + _UI_SEARCH_SELECT_CSS
+_WIDGET_CSS += _ui_scoped_header_css(".slls-pe")
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-pe")
 
 _WIDGET_JS = _UI_SEARCH_SELECT_JS + "\n" + _WIDGET_JS

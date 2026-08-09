@@ -330,7 +330,7 @@ function render({ model, el }) {
         const wsHost = dialog.querySelector(".vpx-picker-ws");
         const dsHost = dialog.querySelector(".vpx-picker-ds");
         const connectBtn = dialog.querySelector(".vpx-picker-connect");
-        const reloadBtn = dialog.querySelector(".vpx-picker-reload");
+        const reloadBtn = dialog.querySelector(".sl-reload-btn");
         let reloading = false;
         function closeDialog() {
             if (!initialPicker) dialog.style.display = "none";
@@ -1902,10 +1902,8 @@ def _show_vertipaq_picker(
 ) -> None:
     """Display the Vertipaq widget in its initial model-picker state."""
 
-    workspace_name = None
-    workspace_id = None
-    if workspace is not None:
-        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    # Always resolve so the picker opens on the current workspace.
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     empty_sections = {
         "Model": {"data": pd.DataFrame(columns=["Dataset Name"])},
@@ -2862,14 +2860,6 @@ def visualize_vertipaq(
         font-size: 13.5px;
         font-weight: 500;
     }}
-    .vpx-{uid} .vpx-picker-screen .vpx-picker-reload {{
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        border-radius: 50%;
-        background: var(--ui-surface);
-    }}
     .vpx-{uid} .vpx-picker-screen .vpx-delta-status {{
         margin-top: 14px;
         padding: 10px 12px;
@@ -2932,33 +2922,6 @@ def visualize_vertipaq(
         display: flex;
         justify-content: flex-end;
         margin-bottom: 16px;
-    }}
-    .vpx-{uid} .vpx-picker-reload {{
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        font-size: 13px;
-        font-weight: 600;
-        font-family: inherit;
-        color: var(--vpx-text);
-        background: var(--vpx-bg);
-        border: 1px solid var(--vpx-border-strong);
-        border-radius: var(--vpx-radius-sm);
-        cursor: pointer;
-        transition: border-color var(--vpx-transition);
-    }}
-    .vpx-{uid} .vpx-picker-reload:hover {{
-        border-color: var(--vpx-text-tertiary);
-    }}
-    .vpx-{uid} .vpx-picker-reload:disabled {{
-        opacity: 0.5;
-        cursor: default;
-    }}
-    .vpx-{uid} .vpx-picker-reload svg {{
-        width: 15px;
-        height: 15px;
-        flex-shrink: 0;
     }}
     .vpx-{uid} .vpx-picker-grid {{
         display: flex;
@@ -3086,6 +3049,7 @@ def visualize_vertipaq(
             [
                 {
                     "id": picker_btn_id,
+                    "base": "sl-change-btn",
                     "cls": "vpx-picker-btn",
                     "icon": _UI_ICONS["swap"],
                     "title": "Change semantic model / workspace",
@@ -3455,7 +3419,7 @@ def visualize_vertipaq(
                 f'<div class="vpx-picker-subtitle">Select a workspace and '
                 f"semantic model to begin.</div>"
                 f"</div>"
-                f'<button type="button" class="vpx-picker-reload" '
+                f'<button type="button" class="sl-reload-btn" '
                 f'title="Reload workspaces and semantic models" '
                 f'aria-label="Reload workspaces and semantic models">'
                 f"{picker_reload_icon}</button>"
@@ -3490,9 +3454,10 @@ def visualize_vertipaq(
                 f"</div>"
                 f'<div class="vpx-delta-modal-body">'
                 f'<div class="vpx-picker-top">'
-                f'<button type="button" class="vpx-picker-reload" '
-                f'title="Reload workspaces and semantic models">'
-                f"{picker_reload_icon}Reload</button>"
+                f'<button type="button" class="sl-reload-btn" '
+                f'title="Reload workspaces and semantic models" '
+                f'aria-label="Reload workspaces and semantic models">'
+                f"{picker_reload_icon}</button>"
                 f"</div>"
                 f'<div class="vpx-picker-grid">'
                 f'<div class="vpx-picker-field"><label>Workspace</label>'
