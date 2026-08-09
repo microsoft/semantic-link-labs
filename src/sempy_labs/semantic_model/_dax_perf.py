@@ -968,6 +968,11 @@ def _model_tree_table_kind(tom, table) -> str:
         return "calculation_group"
     if tom.is_field_parameter(table_name=str(table.Name)):
         return "field_parameter"
+    # Marked as a date table: DataCategory "Time" plus an integer or date key column.
+    if str(getattr(table, "DataCategory", "")) == "Time":
+        for column in table.Columns:
+            if column.IsKey and str(column.DataType) in ("Int64", "DateTime"):
+                return "date_table"
     if tom.is_calculated_table(table_name=str(table.Name)):
         return "calculated_table"
     return "table"
@@ -4483,9 +4488,10 @@ def _visualize_dax_test(
 .dtx .dtx-tree-node {{
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 3px 6px;
-    border-radius: 4px;
+    gap: 8px;
+    min-height: 30px;
+    padding: 4px 8px;
+    border-radius: 7px;
     cursor: pointer;
     user-select: none;
     color: var(--ui-text);
@@ -4527,9 +4533,10 @@ def _visualize_dax_test(
 .dtx .dtx-tree-leaf {{
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 6px 2px 6px;
-    border-radius: 4px;
+    gap: 8px;
+    min-height: 28px;
+    padding: 3px 8px;
+    border-radius: 7px;
     color: var(--ui-text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -4611,9 +4618,13 @@ def _visualize_dax_test(
     color: var(--ui-text);
 }}
 .dtx .dtx-tree-type {{
-    margin-left: 6px;
+    margin-left: 8px;
     flex: 0 0 auto;
-    font-size: 10px;
+    padding: 2px 9px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-bg-secondary);
+    font-size: 11px;
     font-weight: 500;
     color: var(--ui-text-tertiary);
     text-transform: lowercase;
@@ -4627,9 +4638,10 @@ def _visualize_dax_test(
 .dtx .dtx-tree-folder-header {{
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    gap: 8px;
+    min-height: 28px;
+    padding: 3px 8px;
+    border-radius: 7px;
     cursor: pointer;
     user-select: none;
     color: var(--ui-text-secondary);
@@ -5035,6 +5047,7 @@ def _visualize_dax_test(
     calculated_table_icon = _UI_ICONS["calculated_table"].replace("`", "\\`")
     calc_group_icon = _UI_ICONS["calculation_group"].replace("`", "\\`")
     field_parameter_icon = _UI_ICONS["field_parameter"].replace("`", "\\`")
+    date_table_icon = _UI_ICONS["date_table"].replace("`", "\\`")
     calc_item_icon = _UI_ICONS["calculation_item"].replace("`", "\\`")
     column_icon = _UI_ICONS["column"].replace("`", "\\`")
     measure_icon = _UI_ICONS["measure"].replace("`", "\\`")
@@ -5318,6 +5331,7 @@ function render({ model, el }) {
     const CALCULATED_TABLE_SVG = `__DTX_CALCULATED_TABLE__`;
     const CALC_GROUP_SVG = `__DTX_CALC_GROUP__`;
     const FIELD_PARAMETER_SVG = `__DTX_FIELD_PARAMETER__`;
+    const DATE_TABLE_SVG = `__DTX_DATE_TABLE__`;
     const CALC_ITEM_SVG = `__DTX_CALC_ITEM__`;
     const COLUMN_SVG = `__DTX_COLUMN__`;
     const MEASURE_SVG = `__DTX_MEASURE__`;
@@ -6676,6 +6690,7 @@ function render({ model, el }) {
                 calculation_group: CALC_GROUP_SVG,
                 calculated_table: CALCULATED_TABLE_SVG,
                 field_parameter: FIELD_PARAMETER_SVG,
+                date_table: DATE_TABLE_SVG,
             })[tbl.kind] || TABLE_SVG;
             const countParts = [
                 `${(tbl.columns || []).length}c`,
@@ -8643,8 +8658,8 @@ function render({ model, el }) {
             // placeholder helper text in the highlight overlay instead. It
             // disappears as soon as the user types anything.
             hl.innerHTML = '<span class="dtx-query-placeholder">'
-                + 'EVALUATE — type a DAX query here, drag model objects in '
-                + 'from the left, or use the Query Builder.'
+                + 'EVALUATE — type a DAX query here, use the Query Builder '
+                + 'or generate a DAX query using natural language.'
                 + '</span>';
             hl.scrollTop = textarea.scrollTop;
             hl.scrollLeft = textarea.scrollLeft;
@@ -10589,6 +10604,7 @@ export default { render };
         .replace("__DTX_INFO__", info_icon)
         .replace("__DTX_TABLE__", table_icon)
         .replace("__DTX_CALCULATED_TABLE__", calculated_table_icon)
+        .replace("__DTX_DATE_TABLE__", date_table_icon)
         .replace("__DTX_CALC_GROUP__", calc_group_icon)
         .replace("__DTX_FIELD_PARAMETER__", field_parameter_icon)
         .replace("__DTX_CALC_ITEM__", calc_item_icon)

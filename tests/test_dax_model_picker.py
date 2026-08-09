@@ -310,10 +310,10 @@ def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
     assert "transform: rotate(0deg);" in caret_css
     assert "font-size: 14px;" in label_css
     assert "font-weight: 600;" in label_css
-    assert "background:" not in datatype_css
-    assert "border:" not in datatype_css
-    assert "border-radius:" not in datatype_css
-    assert "padding:" not in datatype_css
+    assert "background: var(--ui-bg-secondary);" in datatype_css
+    assert "border: 1px solid var(--ui-border);" in datatype_css
+    assert "border-radius: 8px;" in datatype_css
+    assert "padding: 2px 9px;" in datatype_css
     level_icon = ui_source[
         ui_source.index('    "level": (') : ui_source.index(
             '    "play": (', ui_source.index('    "level": (')
@@ -343,13 +343,16 @@ def test_model_tree_uses_specialized_table_kind_icons():
     assert 'return "field_parameter"' in metadata
     assert 'tom.is_calculated_table(table_name=str(table.Name))' in metadata
     assert 'return "calculated_table"' in metadata
+    assert 'return "date_table"' in metadata
     assert '"kind": _model_tree_table_kind(tom, table)' in metadata
     assert "calculation_group: CALC_GROUP_SVG" in renderer
     assert "calculated_table: CALCULATED_TABLE_SVG" in renderer
     assert "field_parameter: FIELD_PARAMETER_SVG" in renderer
+    assert "date_table: DATE_TABLE_SVG" in renderer
     assert '_UI_ICONS["calculated_table"]' in source
     assert '_UI_ICONS["calculation_group"]' in source
     assert '_UI_ICONS["field_parameter"]' in source
+    assert '_UI_ICONS["date_table"]' in source
 
 
 def test_model_tree_table_kind_classification_precedence():
@@ -371,6 +374,19 @@ def test_model_tree_table_kind_classification_precedence():
     class FakeTable:
         Name = "Test Table"
         CalculationGroup = None
+        DataCategory = ""
+        Columns = ()
+
+    class FakeColumn:
+        def __init__(self, is_key, data_type):
+            self.IsKey = is_key
+            self.DataType = data_type
+
+    def date_table(data_type="DateTime", is_key=True):
+        table = FakeTable()
+        table.DataCategory = "Time"
+        table.Columns = (FakeColumn(is_key, data_type),)
+        return table
 
     calculation_group = FakeTable()
     calculation_group.CalculationGroup = object()
@@ -378,6 +394,10 @@ def test_model_tree_table_kind_classification_precedence():
     assert table_kind(FakeTom(True, True), calculation_group) == "calculation_group"
     assert table_kind(FakeTom(True, True), FakeTable()) == "field_parameter"
     assert table_kind(FakeTom(False, True), FakeTable()) == "calculated_table"
+    # Being marked as a date table wins over the calculated-table icon.
+    assert table_kind(FakeTom(False, True), date_table()) == "date_table"
+    assert table_kind(FakeTom(False, False), date_table("Int64")) == "date_table"
+    assert table_kind(FakeTom(False, False), date_table(is_key=False)) == "table"
     assert table_kind(FakeTom(), FakeTable()) == "table"
 
 
