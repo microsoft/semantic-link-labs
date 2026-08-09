@@ -4489,9 +4489,10 @@ def _visualize_dax_test(
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 30px;
-    padding: 4px 8px;
+    min-height: 24px;
+    padding: 2px 8px;
     border-radius: 7px;
+    line-height: 1.2;
     cursor: pointer;
     user-select: none;
     color: var(--ui-text);
@@ -4534,9 +4535,10 @@ def _visualize_dax_test(
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 28px;
-    padding: 3px 8px;
+    min-height: 22px;
+    padding: 1px 8px;
     border-radius: 7px;
+    line-height: 1.2;
     color: var(--ui-text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -4583,7 +4585,7 @@ def _visualize_dax_test(
     white-space: nowrap;
 }}
 .dtx .dtx-tree-node > .dtx-tree-label {{
-    font-size: 14px;
+    font-size: 12.5px;
     font-weight: 600;
 }}
 .dtx .dtx-tree-counts {{
@@ -4597,7 +4599,7 @@ def _visualize_dax_test(
     white-space: nowrap;
 }}
 .dtx .dtx-tree-leaf .dtx-tree-label {{
-    font-size: 14px;
+    font-size: 12.5px;
     font-weight: 600;
 }}
 .dtx .dtx-tree-label.dtx-hidden {{
@@ -4620,10 +4622,6 @@ def _visualize_dax_test(
 .dtx .dtx-tree-type {{
     margin-left: 8px;
     flex: 0 0 auto;
-    padding: 2px 9px;
-    border: 1px solid var(--ui-border);
-    border-radius: 8px;
-    background: var(--ui-bg-secondary);
     font-size: 11px;
     font-weight: 500;
     color: var(--ui-text-tertiary);
@@ -4639,9 +4637,10 @@ def _visualize_dax_test(
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 28px;
-    padding: 3px 8px;
+    min-height: 22px;
+    padding: 1px 8px;
     border-radius: 7px;
+    line-height: 1.2;
     cursor: pointer;
     user-select: none;
     color: var(--ui-text-secondary);
@@ -4651,7 +4650,7 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-tree-folder-header:hover {{ background: var(--ui-surface-2); color: var(--ui-text); }}
 .dtx .dtx-tree-folder-header .dtx-tree-icon {{ color: var(--ui-text-tertiary); }}
-.dtx .dtx-tree-folder-header .dtx-tree-label {{ font-size: 14px; font-weight: 600; }}
+.dtx .dtx-tree-folder-header .dtx-tree-label {{ font-size: 12.5px; font-weight: 600; }}
 .dtx .dtx-tree-level {{ color: var(--ui-text-tertiary); cursor: default; }}
 .dtx .dtx-tree-level:hover {{ background: var(--ui-surface-2); color: var(--ui-text-secondary); }}
 .dtx .dtx-tree-group {{

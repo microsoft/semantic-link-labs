@@ -308,12 +308,12 @@ def test_model_tree_uses_monitoring_chevrons_and_plain_datatype_text():
     assert "flex: 0 0 18px;" in caret_css
     assert "transform: rotate(-90deg);" in caret_css
     assert "transform: rotate(0deg);" in caret_css
-    assert "font-size: 14px;" in label_css
+    assert "font-size: 12.5px;" in label_css
     assert "font-weight: 600;" in label_css
-    assert "background: var(--ui-bg-secondary);" in datatype_css
-    assert "border: 1px solid var(--ui-border);" in datatype_css
-    assert "border-radius: 8px;" in datatype_css
-    assert "padding: 2px 9px;" in datatype_css
+    assert "background:" not in datatype_css
+    assert "border:" not in datatype_css
+    assert "border-radius:" not in datatype_css
+    assert "padding:" not in datatype_css
     level_icon = ui_source[
         ui_source.index('    "level": (') : ui_source.index(
             '    "play": (', ui_source.index('    "level": (')
@@ -447,7 +447,7 @@ def test_model_view_uses_power_bi_typography_and_table_counts():
     assert 'title="${escapeHtml(countDescription.join(", "))}"' in tree_render
 
     assert 'font-family: "Segoe UI", SegoeUI, Arial, sans-serif;' in source
-    assert ".dtx .dtx-tree-leaf .dtx-tree-label {{\n    font-size: 14px;" in source
+    assert ".dtx .dtx-tree-leaf .dtx-tree-label {{\n    font-size: 12.5px;" in source
     assert ".dtx .dtx-tree-counts {{" in source
     assert '`${(tbl.columns || []).length}c`' in tree_render
     assert '`${(tbl.measures || []).length}m`' in tree_render
