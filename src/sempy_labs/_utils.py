@@ -87,4 +87,5 @@ items = {
     "OrgAppAudience": "orgAppAudiences",
     "OrgApp": "orgApps",
     "PaginatedReport": "paginatedReports",
+    "Plan": "plans",
 }
