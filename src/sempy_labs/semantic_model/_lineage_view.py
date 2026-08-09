@@ -263,6 +263,7 @@ _WIDGET_CSS = """
 
 /* Model / workspace picker ("connect" screen) */
 .slls-lv-picker-wrap { display: flex; align-items: flex-start; justify-content: stretch; padding: 0 24px 24px; overflow: auto; }
+.slls-lv-graphwrap.slls-lv-picker-wrap { background: var(--slls-bg-solid); }
 .slls-lv-picker { width: 100%; background: var(--slls-surface); border: 1px solid var(--slls-border); border-radius: 14px; padding: 16px; }
 .slls-lv-picker-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .slls-lv-picker-head { min-width: 0; }

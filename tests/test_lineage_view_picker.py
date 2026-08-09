@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 SOURCE_PATH = (
     Path(__file__).parents[1]
     / "src"
@@ -38,9 +37,9 @@ def test_lineage_uses_shared_searchable_model_pickers():
     assert 'searchPlaceholder: "Filter semantic models\\u2026"' in rebind_picker
     assert "<select" not in connect_picker
     assert "<select" not in rebind_picker
-    assert 'wsPicker.setDisabled(working())' in connect_picker
-    assert 'dsPicker.setDisabled(!pickWs || ds === null || working())' in connect_picker
-    assert 'dsPicker.setDisabled(ds === null || working())' in rebind_picker
+    assert "wsPicker.setDisabled(working())" in connect_picker
+    assert "dsPicker.setDisabled(!pickWs || ds === null || working())" in connect_picker
+    assert "dsPicker.setDisabled(ds === null || working())" in rebind_picker
 
 
 def test_lineage_picker_maps_shared_theme_tokens_and_matches_dax_perf_layout():
@@ -60,3 +59,17 @@ def test_lineage_picker_maps_shared_theme_tokens_and_matches_dax_perf_layout():
     assert ".slls-lv-picker-reload.slls-lv-loading svg" in source
     assert "Connect to a semantic model" in source
     assert "Select a workspace and semantic model to begin." in source
+
+
+def test_lineage_picker_gray_surface_is_limited_to_picker_card():
+    source = _source()
+
+    assert (
+        ".slls-lv-graphwrap.slls-lv-picker-wrap { "
+        "background: var(--slls-bg-solid); }" in source
+    )
+    assert ".slls-lv-picker { width: 100%; background: var(--slls-surface);" in source
+    assert (
+        ".slls-lv-graphwrap { position: relative; flex: 1; min-width: 0; "
+        "background: var(--slls-bg-secondary); }" in source
+    )

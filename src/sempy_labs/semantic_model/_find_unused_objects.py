@@ -1014,7 +1014,7 @@ _WIDGET_CSS = """
     -moz-osx-font-smoothing: grayscale;
     color: var(--ui-text);
     width: 100%;
-    max-width: 640px;
+    max-width: 760px;
     background: var(--ui-bg);
     border: 1px solid var(--ui-border);
     border-radius: 16px;
@@ -1251,7 +1251,7 @@ __SEARCH_SELECT_CSS__
 .fuo-search:focus { border-color: var(--ui-accent); }
 
 /* ---- Tree ---- */
-.fuo-tree { max-height: 460px; overflow: auto; padding: 6px 12px 4px 12px; }
+.fuo-tree { max-height: 520px; overflow: auto; padding: 6px 12px 4px 12px; }
 .fuo-table-row {
     display: flex; align-items: center; gap: 8px; padding: 7px 8px;
     border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 600;
