@@ -200,9 +200,48 @@ def test_analyze_also_checks_excel_workbooks():
     # Legacy .xls workbooks have no OPC parts to inspect.
     assert 'x.kind !== "opc"' in scan
     assert '"Only .xlsx-format workbooks can be analyzed."' in scan
-    # Broken objects are listed read-only: a local file cannot be rewritten.
-    assert "function brokenObjRow(o)" in source
     assert "brokenExcel.forEach((x) => addRow(x, ICON.excel));" in source
+
+
+def test_excel_broken_objects_offer_the_same_fix_picker():
+    source = _source()
+    scan = _scan_section(source)
+
+    # Excel rows reuse the report fix row, so staging works identically.
+    assert (
+        "(x.invalidObjects || []).forEach((o) => bodyEl.appendChild(buildBrokenRow(x, o)));"
+        in source
+    )
+    assert 'const isExcelId = (id) => String(id).startsWith("xl-");' in source
+    assert "const excel = all.filter((f) => isExcelId(f.reportId));" in source
+    assert "if (excel.length > 0) applyExcelFixes(excel);" in source
+    assert (
+        'if (reports.length > 0) dispatch({ action: "save_fixes", fixes: reports });'
+        in source
+    )
+    # A back-end save must not clear the browser-side Excel fixes.
+    assert "if (!isExcelId(f.reportId)) stagedFixes.delete(k);" in source
+
+
+def test_excel_fixes_rewrite_the_package_without_touching_the_original():
+    scan = _scan_section(_source())
+
+    # Longest form first so [T].[C].[C] is rewritten before its [T].[C] prefix.
+    assert "function mdxRenames(f)" in scan
+    assert "`${oldC}.${q(f.brokenName)}`, to: `${newC}.${q(f.targetName)}`" in scan
+    assert "`${oldC}.[All]`, to: `${newC}.[All]`" in scan
+    assert "function rewriteWorkbookPart(partName, text, renames)" in scan
+    assert "out = out.split(r.from).join(r.to);" in scan
+    # Rebuilt in place: entry order and positional indices must survive.
+    assert "async function zipRewrite(file, replacements)" in scan
+    assert "function crc32(bytes)" in scan
+    assert "0x04034b50" in scan and "0x02014b50" in scan and "0x06054b50" in scan
+    assert "const flags = e.flags & 0x0800;" in scan
+    # The picked file is read-only, so the result is saved as a copy.
+    assert "async function saveWorkbookCopy(blob, suggestedName)" in scan
+    assert "window.showSaveFilePicker" in scan
+    assert '" (fixed).xlsx"' in scan
+    assert "the original workbook is unchanged." in scan
 
 
 def test_scanned_files_are_dropped_when_the_model_changes():

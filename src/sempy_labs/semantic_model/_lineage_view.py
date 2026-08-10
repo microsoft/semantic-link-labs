@@ -464,6 +464,7 @@ function render({ model, el }) {
     let busyLocal = false;
     const working = () => busyLocal || busy();
     const modelObjects = () => model.get("model_objects") || [];
+    const isExcelId = (id) => String(id).startsWith("xl-");
     const health = (r) => (!r.analyzed ? "error" : (r.invalidCount > 0 ? "broken" : "clean"));
     const fixKey = (rid, type, table, name, hierarchy) =>
         `${rid}\u0000${type}\u0000${table}\u0000${hierarchy || ""}\u0000${name}`;
@@ -499,7 +500,11 @@ function render({ model, el }) {
 
     function saveFixes() {
         if (stagedFixes.size === 0) return;
-        dispatch({ action: "save_fixes", fixes: [...stagedFixes.values()] });
+        const all = [...stagedFixes.values()];
+        const excel = all.filter((f) => isExcelId(f.reportId));
+        const reports = all.filter((f) => !isExcelId(f.reportId));
+        if (excel.length > 0) applyExcelFixes(excel);
+        if (reports.length > 0) dispatch({ action: "save_fixes", fixes: reports });
     }
 
     // Font stack shared with the CSS so off-screen text measurement matches
@@ -1253,12 +1258,17 @@ function render({ model, el }) {
             `</div>` +
             `<div class="slls-lv-section-label">Broken elements</div>` +
             (hs === "broken"
-                ? (x.invalidObjects || []).map(brokenObjRow).join("")
+                ? ""
                 : hs === "clean"
                     ? emptyState("check", "No broken elements",
                         "Every object this workbook references exists in the model.", true)
                     : emptyState("scan", "Not analyzed",
-                        x.error || "Use the \u201CAnalyze\u201D button to check this workbook.", false)) +
+                        x.error || "Use the \u201CAnalyze\u201D button to check this workbook.", false));
+        if (hs === "broken") {
+            (x.invalidObjects || []).forEach((o) => bodyEl.appendChild(buildBrokenRow(x, o)));
+        }
+        const connWrap = document.createElement("div");
+        connWrap.innerHTML =
             `<div class="slls-lv-section-label">Semantic model connections</div>` +
             (x.connections || []).map((c) =>
                 `<div class="slls-lv-obj">` +
@@ -1268,6 +1278,7 @@ function render({ model, el }) {
                     `<div class="slls-lv-obj-meta"><span class="slls-lv-tag type">` +
                     `${esc(c.matchedOn)}</span></div>` +
                 `</div>`).join("");
+        bodyEl.appendChild(connWrap);
         const remove = document.createElement("button");
         remove.className = "slls-lv-btn";
         remove.innerHTML = `${ICON.close}Remove from diagram`;
@@ -1278,16 +1289,6 @@ function render({ model, el }) {
         };
         bodyEl.appendChild(remove);
         panel.appendChild(bodyEl);
-    }
-
-    // Read-only broken-object row: a workbook on the user's machine cannot be
-    // rewritten from here, so no fix picker is offered.
-    function brokenObjRow(o) {
-        return `<div class="slls-lv-obj"><div class="slls-lv-obj-top">` +
-            `<div class="slls-lv-obj-main">` +
-            `<span class="slls-lv-obj-ic">${typeIcon(o.objectType)}</span>` +
-            `<span class="slls-lv-obj-name">${esc(objLabel(o.objectType, o.table, o.name, o.hierarchy))}</span>` +
-            `</div><span class="slls-lv-tag type">${esc(o.objectType)}</span></div></div>`;
     }
 
     function buildBrokenRow(r, o) {
@@ -1722,13 +1723,11 @@ function render({ model, el }) {
         }
     }
 
-    // Read the named parts out of a zip Blob. Only the central directory and
-    // the wanted entries are fetched (Blob.slice is lazy), so large workbooks
-    // are never loaded into memory in full.
-    async function zipReadParts(file, wanted) {
-        const out = {};
+    // Read the zip central directory. Only the directory itself is fetched
+    // (Blob.slice is lazy), so large workbooks are never loaded in full.
+    async function zipCentralDirectory(file) {
         const size = file.size;
-        if (size < 22) return out;
+        if (size < 22) return [];
         const tailLen = Math.min(size, 66560);
         const tailBuf = await file.slice(size - tailLen).arrayBuffer();
         const tail = new DataView(tailBuf);
@@ -1736,21 +1735,21 @@ function render({ model, el }) {
         for (let i = tail.byteLength - 22; i >= 0; i--) {
             if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
         }
-        if (eocd < 0) return out;
+        if (eocd < 0) return [];
         let cdSize = tail.getUint32(eocd + 12, true);
         let cdOffset = tail.getUint32(eocd + 16, true);
         if (cdSize === 0xffffffff || cdOffset === 0xffffffff) {
             const loc = eocd - 20;
-            if (loc < 0 || tail.getUint32(loc, true) !== 0x07064b50) return out;
+            if (loc < 0 || tail.getUint32(loc, true) !== 0x07064b50) return [];
             const z64 = Number(tail.getBigUint64(loc + 8, true));
             const hb = await file.slice(z64, z64 + 56).arrayBuffer();
-            if (hb.byteLength < 56) return out;
+            if (hb.byteLength < 56) return [];
             const hdr = new DataView(hb);
-            if (hdr.getUint32(0, true) !== 0x06064b50) return out;
+            if (hdr.getUint32(0, true) !== 0x06064b50) return [];
             cdSize = Number(hdr.getBigUint64(40, true));
             cdOffset = Number(hdr.getBigUint64(48, true));
         }
-        if (!cdSize || cdOffset + cdSize > size) return out;
+        if (!cdSize || cdOffset + cdSize > size) return [];
 
         const cdBuf = await file.slice(cdOffset, cdOffset + cdSize).arrayBuffer();
         const cd = new DataView(cdBuf);
@@ -1758,31 +1757,47 @@ function render({ model, el }) {
         const entries = [];
         let p = 0;
         while (p + 46 <= cd.byteLength && cd.getUint32(p, true) === 0x02014b50) {
-            const method = cd.getUint16(p + 10, true);
-            const csize = cd.getUint32(p + 20, true);
             const nameLen = cd.getUint16(p + 28, true);
             const extraLen = cd.getUint16(p + 30, true);
             const cmtLen = cd.getUint16(p + 32, true);
-            const local = cd.getUint32(p + 42, true);
-            const name = dec.decode(new Uint8Array(cdBuf, p + 46, nameLen));
+            const e = {
+                flags: cd.getUint16(p + 8, true),
+                method: cd.getUint16(p + 10, true),
+                time: cd.getUint16(p + 12, true),
+                date: cd.getUint16(p + 14, true),
+                crc: cd.getUint32(p + 16, true),
+                csize: cd.getUint32(p + 20, true),
+                usize: cd.getUint32(p + 24, true),
+                local: cd.getUint32(p + 42, true),
+                name: dec.decode(new Uint8Array(cdBuf, p + 46, nameLen)),
+            };
             // Zip64-only entries (0xffffffff placeholders) keep their real
             // sizes in the extra field; those parts are simply skipped.
-            if (wanted(name) && csize !== 0xffffffff && local !== 0xffffffff) {
-                entries.push({ name, method, csize, local });
-            }
+            if (e.csize !== 0xffffffff && e.local !== 0xffffffff) entries.push(e);
             p += 46 + nameLen + extraLen + cmtLen;
         }
+        return entries;
+    }
 
-        for (const e of entries) {
+    // Raw (still compressed) bytes of one entry.
+    async function zipEntryData(file, e) {
+        const lb = await file.slice(e.local, e.local + 30).arrayBuffer();
+        if (lb.byteLength < 30) return null;
+        const lh = new DataView(lb);
+        if (lh.getUint32(0, true) !== 0x04034b50) return null;
+        const start = e.local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+        return new Uint8Array(await file.slice(start, start + e.csize).arrayBuffer());
+    }
+
+    async function zipReadParts(file, wanted) {
+        const out = {};
+        const dec = new TextDecoder("utf-8");
+        for (const e of await zipCentralDirectory(file)) {
+            if (!wanted(e.name)) continue;
             try {
-                const lb = await file.slice(e.local, e.local + 30).arrayBuffer();
-                if (lb.byteLength < 30) continue;
-                const lh = new DataView(lb);
-                if (lh.getUint32(0, true) !== 0x04034b50) continue;
-                const start = e.local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
-                const raw = new Uint8Array(await file.slice(start, start + e.csize).arrayBuffer());
-                const bytes = e.method === 0 ? raw : await inflateRaw(raw);
-                out[e.name] = dec.decode(bytes);
+                const raw = await zipEntryData(file, e);
+                if (raw === null) continue;
+                out[e.name] = dec.decode(e.method === 0 ? raw : await inflateRaw(raw));
             } catch (err) { /* unreadable part: ignore */ }
         }
         return out;
@@ -1985,6 +2000,240 @@ function render({ model, el }) {
                 x.error = String((e && e.message) || e);
             }
         }
+        renderAll();
+    }
+
+    // ---------- Applying fixes to a workbook ----------
+    // The browser only has read access to the picked file, so a fix produces a
+    // corrected copy the user saves; the original is never modified.
+    const FIX_PARTS = /^xl\/(pivotCache\/pivotCacheDefinition\d*\.xml|pivotTables\/pivotTable\d*\.xml|slicerCaches\/[^/]+\.xml|slicers\/[^/]+\.xml|worksheets\/sheet\d*\.xml)$/i;
+
+    let crcTable = null;
+    function crc32(bytes) {
+        if (crcTable === null) {
+            crcTable = new Uint32Array(256);
+            for (let i = 0; i < 256; i++) {
+                let c = i;
+                for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+                crcTable[i] = c >>> 0;
+            }
+        }
+        let c = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) {
+            c = crcTable[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+        }
+        return (c ^ 0xffffffff) >>> 0;
+    }
+
+    // Rebuild the package. Untouched entries are copied with their original
+    // compressed bytes; rewritten parts are stored uncompressed, which keeps
+    // the archive valid without needing a deflate implementation.
+    async function zipRewrite(file, replacements) {
+        const entries = await zipCentralDirectory(file);
+        if (entries.length === 0) throw new Error("Not a readable .xlsx package");
+        const enc = new TextEncoder();
+        const chunks = [];
+        const central = [];
+        let offset = 0;
+
+        for (const e of entries) {
+            const nameBytes = enc.encode(e.name);
+            let data, method, crc, csize, usize;
+            if (Object.prototype.hasOwnProperty.call(replacements, e.name)) {
+                data = enc.encode(replacements[e.name]);
+                method = 0;
+                crc = crc32(data);
+                csize = data.length;
+                usize = data.length;
+            } else {
+                data = await zipEntryData(file, e);
+                if (data === null) throw new Error(`Could not read ${e.name}`);
+                method = e.method;
+                crc = e.crc;
+                csize = e.csize;
+                usize = e.usize;
+            }
+            // Sizes are always known here, so the data-descriptor flag is cleared.
+            const flags = e.flags & 0x0800;
+
+            const lh = new DataView(new ArrayBuffer(30));
+            lh.setUint32(0, 0x04034b50, true);
+            lh.setUint16(4, 20, true);
+            lh.setUint16(6, flags, true);
+            lh.setUint16(8, method, true);
+            lh.setUint16(10, e.time, true);
+            lh.setUint16(12, e.date, true);
+            lh.setUint32(14, crc, true);
+            lh.setUint32(18, csize, true);
+            lh.setUint32(22, usize, true);
+            lh.setUint16(26, nameBytes.length, true);
+            lh.setUint16(28, 0, true);
+            chunks.push(new Uint8Array(lh.buffer), nameBytes, data);
+
+            const cdr = new DataView(new ArrayBuffer(46));
+            cdr.setUint32(0, 0x02014b50, true);
+            cdr.setUint16(4, 20, true);
+            cdr.setUint16(6, 20, true);
+            cdr.setUint16(8, flags, true);
+            cdr.setUint16(10, method, true);
+            cdr.setUint16(12, e.time, true);
+            cdr.setUint16(14, e.date, true);
+            cdr.setUint32(16, crc, true);
+            cdr.setUint32(20, csize, true);
+            cdr.setUint32(24, usize, true);
+            cdr.setUint16(28, nameBytes.length, true);
+            cdr.setUint32(42, offset, true);
+            central.push(new Uint8Array(cdr.buffer), nameBytes);
+
+            offset += 30 + nameBytes.length + csize;
+        }
+
+        const cdOffset = offset;
+        let cdSize = 0;
+        for (const c of central) cdSize += c.length;
+        const eocd = new DataView(new ArrayBuffer(22));
+        eocd.setUint32(0, 0x06054b50, true);
+        eocd.setUint16(8, entries.length, true);
+        eocd.setUint16(10, entries.length, true);
+        eocd.setUint32(12, cdSize, true);
+        eocd.setUint32(16, cdOffset, true);
+        return new Blob([...chunks, ...central, new Uint8Array(eocd.buffer)], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+    }
+
+    const xmlAttrEsc = (s) => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+    // Unique-name substitutions for one staged fix, longest form first so the
+    // level-qualified names are rewritten before their shorter prefix.
+    function mdxRenames(f) {
+        const q = (s) => `[${xmlAttrEsc(s)}]`;
+        if (f.objectType === "Measure") {
+            return [{ from: `[Measures].${q(f.brokenName)}`, to: `[Measures].${q(f.targetName)}` }];
+        }
+        if (f.objectType === "Hierarchy Level") {
+            const oldH = `${q(f.brokenTable)}.${q(f.brokenHierarchy)}`;
+            const newH = `${q(f.targetTable)}.${q(f.targetHierarchy)}`;
+            return [
+                { from: `${oldH}.${q(f.brokenName)}`, to: `${newH}.${q(f.targetName)}` },
+                { from: oldH, to: newH },
+            ];
+        }
+        const oldC = `${q(f.brokenTable)}.${q(f.brokenName)}`;
+        const newC = `${q(f.targetTable)}.${q(f.targetName)}`;
+        return [
+            { from: `${oldC}.${q(f.brokenName)}`, to: `${newC}.${q(f.targetName)}` },
+            { from: `${oldC}.[All]`, to: `${newC}.[All]` },
+            { from: oldC, to: newC },
+        ];
+    }
+
+    function rewriteWorkbookPart(partName, text, renames) {
+        const applyName = (s) => {
+            let out = s;
+            for (const r of renames) out = out.split(r.from).join(r.to);
+            return out;
+        };
+        // Unique names are exact bracketed tokens, so a whole-part replacement
+        // also catches the cached member items (…&[key]) that reference them.
+        const out = applyName(text);
+        if (!/pivotCacheDefinition/i.test(partName)) return out;
+        // The cache's captions are what Excel shows, so they follow the rename.
+        const targets = renames.map((r) => r.to);
+        return out.replace(/<(?:cacheField|cacheHierarchy)\b[^>]*>/g, (tag) => {
+            const nm = /\s(?:name|uniqueName)="([^"]*)"/.exec(tag);
+            if (!nm) return tag;
+            const base = nm[1];
+            if (!targets.some((t) => base === t || base.startsWith(t + ".["))) return tag;
+            const ref = parseMdxName(base);
+            if (!ref) return tag;
+            return tag.replace(/(\scaption=")([^"]*)(")/, (m0, a, v, b) => a + ref.name + b);
+        });
+    }
+
+    async function saveWorkbookCopy(blob, suggestedName) {
+        if (typeof window !== "undefined" && window.showSaveFilePicker) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName,
+                    types: [{
+                        description: "Excel workbook",
+                        accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] },
+                    }],
+                });
+                const w = await handle.createWritable();
+                await w.write(blob);
+                await w.close();
+                return "saved";
+            } catch (e) {
+                if (e && e.name === "AbortError") return "cancelled";
+            }
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = suggestedName;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return "downloaded";
+    }
+
+    async function applyExcelFixes(fixes) {
+        const byFile = new Map();
+        for (const f of fixes) {
+            if (!byFile.has(f.reportId)) byFile.set(f.reportId, []);
+            byFile.get(f.reportId).push(f);
+        }
+        let saved = 0, cancelled = 0;
+        const notes = [];
+        for (const [id, list] of byFile) {
+            const x = excelFiles.find((e) => e.id === id);
+            if (!x || !x.file) continue;
+            try {
+                const renames = list.flatMap(mdxRenames);
+                const parts = await zipReadParts(x.file, (n) => FIX_PARTS.test(n));
+                const replacements = {};
+                for (const [name, text] of Object.entries(parts)) {
+                    const next = rewriteWorkbookPart(name, text, renames);
+                    if (next !== text) replacements[name] = next;
+                }
+                if (Object.keys(replacements).length === 0) {
+                    notes.push(`No references to update in ${x.name}.`);
+                    continue;
+                }
+                const blob = await zipRewrite(x.file, replacements);
+                const dot = x.name.lastIndexOf(".");
+                const suggested = (dot > 0 ? x.name.slice(0, dot) : x.name) + " (fixed).xlsx";
+                const result = await saveWorkbookCopy(blob, suggested);
+                if (result === "cancelled") { cancelled += 1; continue; }
+                saved += list.length;
+                for (const f of list) {
+                    stagedFixes.delete(fixKey(f.reportId, f.objectType, f.brokenTable,
+                        f.brokenName, f.brokenHierarchy));
+                }
+                x.invalidObjects = (x.invalidObjects || []).filter((o) => !list.some((f) =>
+                    f.objectType === o.objectType && f.brokenTable === (o.table || "")
+                    && f.brokenName === o.name
+                    && (f.brokenHierarchy || "") === (o.hierarchy || "")));
+                x.invalidCount = x.invalidObjects.length;
+                x.fixedCopy = suggested;
+            } catch (e) {
+                notes.push(`${x.name}: ${String((e && e.message) || e)}`);
+            }
+        }
+        const parts = [];
+        if (saved > 0) {
+            parts.push(`Saved ${saved} fix${saved === 1 ? "" : "es"} to a corrected copy; ` +
+                "the original workbook is unchanged.");
+        }
+        if (cancelled > 0) parts.push(`${cancelled} save${cancelled === 1 ? "" : "s"} cancelled.`);
+        setLocalStatus(parts.concat(notes).join(" ") || "Nothing to apply.",
+            saved > 0 ? "success" : "info", saved > 0 ? STATUS_HIDE_MS : 0);
         renderAll();
     }
 
@@ -2241,7 +2490,12 @@ function render({ model, el }) {
         busyLocal = false; rebindOpen = false; picked = new Set(); selectedId = null; renderAll();
     });
     model.on("change:fixes_saved", () => {
-        busyLocal = false; stagedFixes = new Map(); renderAll();
+        busyLocal = false;
+        // Excel fixes are applied in the browser, so only the report ones clear.
+        for (const [k, f] of [...stagedFixes]) {
+            if (!isExcelId(f.reportId)) stagedFixes.delete(k);
+        }
+        renderAll();
     });
 
     renderAll();
