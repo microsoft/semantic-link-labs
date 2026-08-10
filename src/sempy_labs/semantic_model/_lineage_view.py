@@ -168,12 +168,8 @@ _WIDGET_CSS = """
 .slls-lv-node.clean .slls-lv-node-status { color: var(--slls-success); }
 .slls-lv-node.error .slls-lv-node-status { color: var(--slls-text-tertiary); }
 
-/* Excel workbook nodes discovered by scanning a local folder. They share the
-   neutral "not analyzed" styling because a workbook is never checked for
-   broken objects. */
-.slls-lv-node.excel { border-color: var(--slls-border-strong); background: var(--slls-surface); }
-.slls-lv-node.excel .slls-lv-dot { background: var(--slls-text-tertiary); }
-.slls-lv-node.excel .slls-lv-node-status { color: var(--slls-text-tertiary); }
+/* Excel workbook nodes discovered by scanning a local folder. They reuse the
+   report health classes, so an unanalyzed workbook stays neutral. */
 .slls-lv-node.excel .slls-lv-node-name { padding-right: 0; }
 .slls-lv-kv { display: flex; gap: 10px; font-size: 12px; padding: 6px 2px; border-bottom: 1px solid var(--slls-border); }
 .slls-lv-kv:last-child { border-bottom: none; }
@@ -805,8 +801,8 @@ function render({ model, el }) {
             line.setAttribute("stroke-width", selectedId === r.id ? "2.4" : "1.5");
             svg.appendChild(line);
         });
-        // Excel workbooks connect to the model just like reports do, and are
-        // drawn in the neutral "not analyzed" colour.
+        // Excel workbooks connect to the model just like reports do and carry
+        // the same health colouring once analyzed.
         excelFiles.forEach((x) => {
             const p = positions[x.id];
             if (!p) return;
@@ -816,7 +812,10 @@ function render({ model, el }) {
             line.setAttribute("id", "slls-lv-edge-" + x.id);
             line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
             line.setAttribute("x2", b.x); line.setAttribute("y2", b.y);
-            line.setAttribute("stroke", selectedId === x.id ? "var(--slls-accent)" : "var(--slls-border-strong)");
+            const hs = health(x);
+            line.setAttribute("stroke", selectedId === x.id ? "var(--slls-accent)"
+                : hs === "broken" ? "var(--slls-danger)"
+                : hs === "clean" ? "var(--slls-success)" : "var(--slls-border-strong)");
             line.setAttribute("stroke-width", selectedId === x.id ? "2.4" : "1.5");
             svg.appendChild(line);
         });
@@ -954,19 +953,20 @@ function render({ model, el }) {
 
     function buildExcelNode(x) {
         const p = positions[x.id];
+        const hs = health(x);
         const node = document.createElement("div");
-        node.className = "slls-lv-node excel" + (selectedId === x.id ? " selected" : "");
+        node.className = "slls-lv-node excel " + hs + (selectedId === x.id ? " selected" : "");
         node.id = "slls-lv-node-" + x.id;
         node.style.width = NODE_W + "px";
         node.style.height = NODE_H + "px";
         node.style.left = (p.x - NODE_W / 2) + "px";
         node.style.top = (p.y - NODE_H / 2) + "px";
-        const n = (x.connections || []).length;
+        const label = hs === "broken" ? `${x.invalidCount} broken`
+            : hs === "clean" ? "No issues" : "Not analyzed";
         node.innerHTML =
             `<div class="slls-lv-node-name">${esc(x.name)}</div>` +
             `<div class="slls-lv-node-ws">${ICON.excel}<span>${esc(x.folder || "\u2014")}</span></div>` +
-            `<div class="slls-lv-node-status"><span class="slls-lv-dot"></span>` +
-            `${n} connection${n === 1 ? "" : "s"}</div>`;
+            `<div class="slls-lv-node-status"><span class="slls-lv-dot"></span>${esc(label)}</div>`;
         node.appendChild(makeResizeGrip(false));
         node.addEventListener("pointerdown", (e) => startDrag(e, x.id));
         node.addEventListener("click", () => {
@@ -1122,23 +1122,26 @@ function render({ model, el }) {
         bodyEl.className = "slls-lv-panel-body";
         const rs = reports();
         const brokenReports = rs.filter((r) => health(r) === "broken");
+        const brokenExcel = excelFiles.filter((x) => health(x) === "broken");
         if (!analyzed()) {
             bodyEl.innerHTML = emptyState("scan", "Not analyzed yet",
                 "Broken elements are not calculated automatically. Use the \u201CAnalyze broken elements\u201D button to check each report.", false);
-        } else if (brokenReports.length === 0) {
-            bodyEl.innerHTML = emptyState("check", "All reports are healthy",
-                "Every downstream report only references objects that exist in the model.", true);
+        } else if (brokenReports.length === 0 && brokenExcel.length === 0) {
+            bodyEl.innerHTML = emptyState("check", "Everything is healthy",
+                "Every downstream report and Excel file only references objects that exist in the model.", true);
         } else {
-            brokenReports.forEach((r) => {
+            const addRow = (item, ic) => {
                 const b = document.createElement("button");
                 b.className = "slls-lv-repbtn";
                 b.innerHTML =
-                    `<span class="slls-lv-ic">${ICON.report}</span>` +
-                    `<span class="slls-lv-rp"><span class="slls-lv-repbtn-name">${esc(r.name)}</span></span>` +
-                    `<span class="slls-lv-badge">${r.invalidCount}</span>`;
-                b.onclick = () => { selectedId = r.id; renderAll(); };
+                    `<span class="slls-lv-ic">${ic}</span>` +
+                    `<span class="slls-lv-rp"><span class="slls-lv-repbtn-name">${esc(item.name)}</span></span>` +
+                    `<span class="slls-lv-badge">${item.invalidCount}</span>`;
+                b.onclick = () => { selectedId = item.id; renderAll(); };
                 bodyEl.appendChild(b);
-            });
+            };
+            brokenReports.forEach((r) => addRow(r, ICON.report));
+            brokenExcel.forEach((x) => addRow(x, ICON.excel));
         }
         panel.appendChild(bodyEl);
     }
@@ -1237,13 +1240,25 @@ function render({ model, el }) {
 
         const bodyEl = document.createElement("div");
         bodyEl.className = "slls-lv-panel-body";
+        const hs = health(x);
         bodyEl.innerHTML =
             `<div class="slls-lv-section-label">File</div>` +
             `<div class="slls-lv-obj">` +
                 kvRow("Path", x.path) +
                 kvRow("Size", fmtBytes(x.size)) +
                 kvRow("Modified", fmtDate(x.modified)) +
+                (x.analyzed
+                    ? kvRow("References", `${x.objectCount} model object${x.objectCount === 1 ? "" : "s"}`)
+                    : "") +
             `</div>` +
+            `<div class="slls-lv-section-label">Broken elements</div>` +
+            (hs === "broken"
+                ? (x.invalidObjects || []).map(brokenObjRow).join("")
+                : hs === "clean"
+                    ? emptyState("check", "No broken elements",
+                        "Every object this workbook references exists in the model.", true)
+                    : emptyState("scan", "Not analyzed",
+                        x.error || "Use the \u201CAnalyze\u201D button to check this workbook.", false)) +
             `<div class="slls-lv-section-label">Semantic model connections</div>` +
             (x.connections || []).map((c) =>
                 `<div class="slls-lv-obj">` +
@@ -1265,7 +1280,18 @@ function render({ model, el }) {
         panel.appendChild(bodyEl);
     }
 
-    function buildBrokenRow(r, o) {        const d = document.createElement("div");
+    // Read-only broken-object row: a workbook on the user's machine cannot be
+    // rewritten from here, so no fix picker is offered.
+    function brokenObjRow(o) {
+        return `<div class="slls-lv-obj"><div class="slls-lv-obj-top">` +
+            `<div class="slls-lv-obj-main">` +
+            `<span class="slls-lv-obj-ic">${typeIcon(o.objectType)}</span>` +
+            `<span class="slls-lv-obj-name">${esc(objLabel(o.objectType, o.table, o.name, o.hierarchy))}</span>` +
+            `</div><span class="slls-lv-tag type">${esc(o.objectType)}</span></div></div>`;
+    }
+
+    function buildBrokenRow(r, o) {
+        const d = document.createElement("div");
         d.className = "slls-lv-obj";
         const key = fixKey(r.id, o.objectType, o.table, o.name, o.hierarchy);
         const staged = stagedFixes.get(key);
@@ -1583,6 +1609,11 @@ function render({ model, el }) {
     // customXml), so the relevant parts are unzipped and pattern-matched.
     const EXCEL_EXT = /\.(xlsx|xlsm|xlsb|xltx|xltm|xls)$/i;
     const CONN_PARTS = /^(xl\/connections\.xml|customXml\/item\d*\.xml|xl\/queryTables\/[^/]+\.xml)$/i;
+    // Parts naming the model objects a workbook actually uses. The pivot cache's
+    // <cacheHierarchy> list mirrors the whole cube, so only <cacheField> (the
+    // fields placed in the PivotTable), slicer sources and the MDX inside CUBE
+    // formulas count as real dependencies.
+    const MDX_PARTS = /^xl\/(pivotCache\/pivotCacheDefinition\d*\.xml|slicerCaches\/[^/]+\.xml|worksheets\/sheet\d*\.xml)$/i;
     // Legacy .xls workbooks are OLE2 compound files rather than zips, and so is
     // any workbook encrypted by a sensitivity label or password: Office then
     // wraps the real OOXML package in an "EncryptedPackage" stream while the
@@ -1837,7 +1868,7 @@ function render({ model, el }) {
         return conns;
     }
 
-    function makeExcelNode(file, conns) {
+    function makeExcelNode(file, conns, kind) {
         const rel = file.webkitRelativePath || file.name;
         return {
             id: "xl-" + (++excelSeq),
@@ -1847,7 +1878,114 @@ function render({ model, el }) {
             size: file.size,
             modified: file.lastModified || 0,
             connections: conns,
+            // Kept so "Analyze" can re-read the workbook without re-picking it.
+            file: file,
+            kind: kind,
+            objectCount: 0,
+            invalidCount: 0,
+            invalidObjects: [],
+            analyzed: false,
+            error: null,
         };
+    }
+
+    // ---------- Excel broken-element analysis ----------
+    // Model objects appear in a workbook as MDX unique names: [Measures].[M],
+    // [Table].[Column], [Table].[Column].[Column] (a column's attribute
+    // hierarchy) or [Table].[Hierarchy].[Level].
+    function parseMdxName(raw) {
+        const text = String(raw || "").split(".&")[0];
+        const segs = [];
+        const re = /\[([^\]]*)\]/g;
+        let m;
+        while ((m = re.exec(text)) !== null) segs.push(m[1]);
+        if (segs.length < 2 || segs.some((s) => !s)) return null;
+        if (segs[0] === "Measures") {
+            return { objectType: "Measure", table: "", name: segs[1], hierarchy: null };
+        }
+        const table = segs[0];
+        if (segs.length === 2 || segs[2] === "All" || segs[1] === segs[2]) {
+            return { objectType: "Column", table, name: segs[1], hierarchy: null };
+        }
+        return { objectType: "Hierarchy Level", table, name: segs[2], hierarchy: segs[1] };
+    }
+
+    function extractExcelRefs(parts) {
+        const found = new Map();
+        const add = (raw) => {
+            const ref = parseMdxName(raw);
+            if (!ref) return;
+            const k = fixKey("", ref.objectType, ref.table, ref.name, ref.hierarchy);
+            if (!found.has(k)) found.set(k, ref);
+        };
+        for (const [partName, text] of Object.entries(parts)) {
+            let m;
+            if (/pivotCacheDefinition/i.test(partName)) {
+                const re = /<cacheField[^>]*?\sname="([^"]*)"/g;
+                while ((m = re.exec(text)) !== null) add(m[1]);
+            } else if (/slicerCaches/i.test(partName)) {
+                const re = /\ssourceName="([^"]*)"/g;
+                while ((m = re.exec(text)) !== null) add(m[1]);
+            } else {
+                const re = /\[[^\]\[<>"]+\](?:\.\[[^\]\[<>"]+\])+/g;
+                while ((m = re.exec(text)) !== null) add(m[0]);
+            }
+        }
+        return [...found.values()];
+    }
+
+    function buildModelSets(objects) {
+        const sets = {
+            measures: new Set(), columns: new Set(),
+            hierarchies: new Set(), levels: new Set(),
+        };
+        const key = (...p) => p.map((s) => String(s || "").toLowerCase()).join("\u0000");
+        for (const o of objects) {
+            if (o.type === "Measure") sets.measures.add(String(o.name).toLowerCase());
+            else if (o.type === "Column") sets.columns.add(key(o.table, o.name));
+            else if (o.type === "Hierarchy") sets.hierarchies.add(key(o.table, o.name));
+            else if (o.type === "Hierarchy Level") sets.levels.add(key(o.table, o.hierarchy, o.name));
+        }
+        return sets;
+    }
+
+    function excelRefIsValid(ref, sets) {
+        const key = (...p) => p.map((s) => String(s || "").toLowerCase()).join("\u0000");
+        if (ref.objectType === "Measure") return sets.measures.has(ref.name.toLowerCase());
+        if (ref.objectType === "Column") {
+            return sets.columns.has(key(ref.table, ref.name))
+                || sets.hierarchies.has(key(ref.table, ref.name));
+        }
+        return sets.levels.has(key(ref.table, ref.hierarchy, ref.name));
+    }
+
+    // Run alongside the report analysis: the workbooks live in the browser, so
+    // they are checked here against the model objects the back end published.
+    async function analyzeExcelFiles() {
+        const objects = modelObjects();
+        if (excelFiles.length === 0 || objects.length === 0) return;
+        const sets = buildModelSets(objects);
+        for (const x of excelFiles) {
+            if (x.kind !== "opc" || !x.file) {
+                x.analyzed = false;
+                x.error = "Only .xlsx-format workbooks can be analyzed.";
+                continue;
+            }
+            try {
+                const parts = await zipReadParts(x.file, (n) => MDX_PARTS.test(n));
+                const refs = extractExcelRefs(parts);
+                const invalid = refs.filter((r) => !excelRefIsValid(r, sets));
+                x.objectCount = refs.length;
+                x.invalidObjects = invalid;
+                x.invalidCount = invalid.length;
+                x.analyzed = true;
+                x.error = null;
+            } catch (e) {
+                x.analyzed = false;
+                x.error = String((e && e.message) || e);
+            }
+        }
+        renderAll();
     }
 
     async function scanExcelFiles(fileList, source) {
@@ -1874,7 +2012,7 @@ function render({ model, el }) {
                 if (kind === "opc") {
                     const conns = matchConnections(
                         await zipReadParts(f, (n) => CONN_PARTS.test(n)));
-                    if (conns.length > 0) matches.push(makeExcelNode(f, conns));
+                    if (conns.length > 0) matches.push(makeExcelNode(f, conns, kind));
                 } else if (kind === "ole2") {
                     const text = await oleReadText(f);
                     if (text === null) {
@@ -1894,7 +2032,7 @@ function render({ model, el }) {
                             "Workbook stream": text.narrow,
                             "Workbook stream (Unicode)": text.wide,
                         });
-                        if (conns.length > 0) matches.push(makeExcelNode(f, conns));
+                        if (conns.length > 0) matches.push(makeExcelNode(f, conns, kind));
                     }
                 } else {
                     failed += 1;
@@ -1930,6 +2068,7 @@ function render({ model, el }) {
             parts.push(`${failed} file${failed === 1 ? "" : "s"} could not be read.`);
         }
         setLocalStatus(parts.join(" "), found > 0 ? "success" : "info", STATUS_HIDE_MS);
+        if (analyzed()) analyzeExcelFiles();
     }
 
     // ---------- Node width resize ----------
@@ -2094,7 +2233,10 @@ function render({ model, el }) {
     });
     model.on("change:workspaces", () => { if (rebindOpen || showPicker()) renderAll(); });
     model.on("change:datasets", () => { busyLocal = false; if (rebindOpen || showPicker()) renderAll(); });
-    model.on("change:model_objects", () => { if (selectedId) renderAll(); });
+    model.on("change:model_objects", () => {
+        if (selectedId) renderAll();
+        analyzeExcelFiles();
+    });
     model.on("change:rebind_done", () => {
         busyLocal = false; rebindOpen = false; picked = new Set(); selectedId = null; renderAll();
     });

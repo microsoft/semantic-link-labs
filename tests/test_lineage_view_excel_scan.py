@@ -97,11 +97,10 @@ def test_excel_files_are_rendered_as_diagram_nodes():
     assert "function buildExcelNode(x)" in source
     assert "function buildExcelDetail(panel, x)" in source
     assert "excelFiles.forEach((x) => canvas.appendChild(buildExcelNode(x)));" in source
-    assert '"slls-lv-node excel"' in source
-    # Workbooks are never analyzed, so they share the neutral report styling.
+    # Workbooks reuse the report health classes, so an unanalyzed one is neutral.
     assert (
-        ".slls-lv-node.excel { border-color: var(--slls-border-strong); "
-        "background: var(--slls-surface); }" in source
+        '"slls-lv-node excel " + hs + (selectedId === x.id ? " selected" : "")'
+        in source
     )
     assert "--slls-excel" not in source
     # Excel nodes orbit the model alongside the downstream reports.
@@ -177,6 +176,33 @@ def test_scan_notification_hides_itself():
         'setLocalStatus(`This notebook host does not allow browsing local ${what}.`, "error")'
         in scan
     )
+
+
+def test_analyze_also_checks_excel_workbooks():
+    source = _source()
+    scan = _scan_section(source)
+
+    # The pivot cache's <cacheHierarchy> list mirrors the whole cube, so only
+    # the fields actually placed in the workbook count as dependencies.
+    assert "pivotCache\\/pivotCacheDefinition" in scan
+    assert 'const re = /<cacheField[^>]*?\\sname="([^"]*)"/g;' in scan
+    assert 'const re = /\\ssourceName="([^"]*)"/g;' in scan
+    assert "function parseMdxName(raw)" in scan
+    assert 'if (segs[0] === "Measures")' in scan
+    assert 'segs.length === 2 || segs[2] === "All" || segs[1] === segs[2]' in scan
+    assert 'String(raw || "").split(".&")[0]' in scan
+    assert "function excelRefIsValid(ref, sets)" in scan
+    # Validated in the browser against the model objects the back end publishes.
+    assert "async function analyzeExcelFiles()" in scan
+    assert "const objects = modelObjects();" in scan
+    assert "analyzeExcelFiles();" in source
+    assert "if (analyzed()) analyzeExcelFiles();" in scan
+    # Legacy .xls workbooks have no OPC parts to inspect.
+    assert 'x.kind !== "opc"' in scan
+    assert '"Only .xlsx-format workbooks can be analyzed."' in scan
+    # Broken objects are listed read-only: a local file cannot be rewritten.
+    assert "function brokenObjRow(o)" in source
+    assert "brokenExcel.forEach((x) => addRow(x, ICON.excel));" in source
 
 
 def test_scanned_files_are_dropped_when_the_model_changes():
