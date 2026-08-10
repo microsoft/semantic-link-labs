@@ -801,6 +801,22 @@ ICONS: dict[str, str] = {
         '<path d="M2.5 4.5h11M6 2.5h4M4.5 4.5l.6 9h5.8l.6-9"/>'
         '<path d="M6.5 7v4M9.5 7v4"/></svg>'
     ),
+    "minus": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'aria-hidden="true"><path d="M3.5 8h9"/></svg>'
+    ),
+    # Two branches with opposing arrows: the "compare these two things" mark.
+    "git_compare": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="4" cy="12.2" r="1.7"/><circle cx="12" cy="3.8" r="1.7"/>'
+        '<path d="M4 10.5V6.2a2 2 0 0 1 2-2h3.4"/>'
+        '<path d="M8.1 2.6 9.9 4.2 8.1 5.8"/>'
+        '<path d="M12 5.5v4.3a2 2 0 0 1-2 2H6.6"/>'
+        '<path d="M7.9 10.2 6.1 11.8l1.8 1.6"/></svg>'
+    ),
 }
 
 
