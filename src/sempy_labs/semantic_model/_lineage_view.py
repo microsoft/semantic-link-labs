@@ -2572,7 +2572,7 @@ def lineage_view(
     workbooks that are connected to the same semantic model, or specific
     workbooks can be picked instead; any matches are added to the diagram as
     extra nodes. The workbooks are read in the browser (not on the kernel), so
-    this works when the notebook runs remotely.
+    this works when the notebook runs remotely. 
 
 
     Both the 'PBIR' and 'PBIRLegacy' report formats are supported for
