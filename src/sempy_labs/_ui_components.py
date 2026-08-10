@@ -171,7 +171,7 @@ ICONS: dict[str, str] = {
         '<path d="M4.1 17.5a8.5 8.5 0 1 1 15.8 0"/>'
         '<path d="m12 14.5 4.1-4.8"/>'
         '<circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none"/>'
-        '</svg>'
+        "</svg>"
     ),
     "activity": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -186,7 +186,7 @@ ICONS: dict[str, str] = {
         '<rect width="16" height="16" x="4" y="4" rx="2"/>'
         '<rect width="6" height="6" x="9" y="9" rx="1"/>'
         '<path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/>'
-        '</svg>'
+        "</svg>"
     ),
     "database": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -195,7 +195,7 @@ ICONS: dict[str, str] = {
         '<ellipse cx="12" cy="5" rx="9" ry="3"/>'
         '<path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>'
         '<path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>'
-        '</svg>'
+        "</svg>"
     ),
     "vertipaq": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
@@ -212,7 +212,7 @@ ICONS: dict[str, str] = {
         'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true">'
         '<path d="M4 14a1 1 0 0 1-.78-1.63l9-11a.5.5 0 0 1 .87.43L11.92 8h7.18a1 1 0 0 1 .78 1.63l-9 11a.5.5 0 0 1-.87-.43l1.17-6.2z"/>'
-        '</svg>'
+        "</svg>"
     ),
     "list_tree": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -297,6 +297,17 @@ ICONS: dict[str, str] = {
         'aria-hidden="true">'
         '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
         '<path d="M14 2v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg>'
+    ),
+    # Spreadsheet document marked with an X; stands in for an Excel workbook
+    # without reproducing the Microsoft Excel brand asset.
+    "excel": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9.4 1.6H4.3c-.7 0-1.3.6-1.3 1.3v10.2c0 .7.6 1.3 1.3 '
+        '1.3h7.4c.7 0 1.3-.6 1.3-1.3V5.2z"/>'
+        '<path d="M9.4 1.6v3.6H13"/>'
+        '<path d="m6.1 8.2 3.8 3.8M9.9 8.2l-3.8 3.8"/></svg>'
     ),
     "chevron_down": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '

@@ -109,6 +109,14 @@ _WIDGET_CSS = """
 .slls-lv-btn-icon { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 50%; }
 .slls-lv-btn svg { display: block; }
 
+/* Button-anchored popover menu */
+.slls-lv-menuwrap { position: relative; display: inline-flex; }
+.slls-lv-caret { display: inline-flex; }
+.slls-lv-caret svg { width: 12px; height: 12px; display: block; }
+.slls-lv-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 50; min-width: 200px; background: var(--slls-bg-solid); border: 1px solid var(--slls-border-strong); border-radius: 10px; box-shadow: var(--slls-shadow); padding: 4px; }
+.slls-lv-menu button { width: 100%; display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: none; background: transparent; color: var(--slls-text); font-family: inherit; font-size: 12.5px; text-align: left; border-radius: 7px; cursor: pointer; }
+.slls-lv-menu button:hover { background: var(--slls-accent-soft); color: var(--slls-accent); }
+
 /* Summary bar */
 .slls-lv-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 26px; padding: 10px 20px; border-bottom: 1px solid var(--slls-border); background: var(--slls-surface-2); }
 .slls-lv-stat { display: flex; flex-direction: column; line-height: 1.15; }
@@ -118,6 +126,14 @@ _WIDGET_CSS = """
 .slls-lv-stat.good .slls-lv-stat-value { color: var(--slls-success); }
 .slls-lv-stat.warn .slls-lv-stat-value { color: var(--slls-warn); }
 .slls-lv-summary-note { font-size: 12.5px; color: var(--slls-text-secondary); }
+
+/* Hover card listing the workbooks behind a summary stat */
+.slls-lv-stat-hover { position: relative; cursor: default; outline: none; }
+.slls-lv-hovercard { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; min-width: 240px; max-width: 400px; max-height: 240px; overflow-y: auto; background: var(--slls-bg-solid); border: 1px solid var(--slls-border-strong); border-radius: 10px; box-shadow: var(--slls-shadow); padding: 9px 11px; display: none; }
+.slls-lv-stat-hover:hover .slls-lv-hovercard, .slls-lv-stat-hover:focus-visible .slls-lv-hovercard { display: block; }
+.slls-lv-hovercard-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slls-text-tertiary); margin-bottom: 7px; }
+.slls-lv-hovercard-item { font-size: 12px; color: var(--slls-text); padding: 4px 0; overflow-wrap: anywhere; }
+.slls-lv-hovercard-item span { display: block; font-size: 11px; color: var(--slls-text-secondary); }
 
 /* Body layout */
 .slls-lv-body { display: flex; flex: 1; min-height: 0; }
@@ -151,6 +167,18 @@ _WIDGET_CSS = """
 .slls-lv-node.broken .slls-lv-node-status { color: var(--slls-danger); }
 .slls-lv-node.clean .slls-lv-node-status { color: var(--slls-success); }
 .slls-lv-node.error .slls-lv-node-status { color: var(--slls-text-tertiary); }
+
+/* Excel workbook nodes discovered by scanning a local folder. They share the
+   neutral "not analyzed" styling because a workbook is never checked for
+   broken objects. */
+.slls-lv-node.excel { border-color: var(--slls-border-strong); background: var(--slls-surface); }
+.slls-lv-node.excel .slls-lv-dot { background: var(--slls-text-tertiary); }
+.slls-lv-node.excel .slls-lv-node-status { color: var(--slls-text-tertiary); }
+.slls-lv-node.excel .slls-lv-node-name { padding-right: 0; }
+.slls-lv-kv { display: flex; gap: 10px; font-size: 12px; padding: 6px 2px; border-bottom: 1px solid var(--slls-border); }
+.slls-lv-kv:last-child { border-bottom: none; }
+.slls-lv-kv-k { color: var(--slls-text-secondary); flex: 0 0 88px; }
+.slls-lv-kv-v { color: var(--slls-text); min-width: 0; overflow-wrap: anywhere; }
 
 .slls-lv-model { align-items: center; text-align: center; border-width: 2px; border-color: var(--slls-accent); background: var(--slls-accent-soft); }
 .slls-lv-model-top { display: flex; align-items: center; gap: 7px; color: var(--slls-accent); font-size: 14px; font-weight: 700; line-height: 1.35; overflow: hidden; max-width: 100%; }
@@ -306,7 +334,8 @@ function render({ model, el }) {
         measure: `__ICON_MEASURE__`, column: `__ICON_COLUMN__`, hierarchy: `__ICON_HIERARCHY__`,
         save: `__ICON_SAVE__`, wrench: `__ICON_WRENCH__`, undo: `__ICON_UNDO__`,
         chevron_left: `__ICON_CHEVRON_LEFT__`, chevron_right: `__ICON_CHEVRON_RIGHT__`,
-        swap: `__ICON_SWAP__`,
+        swap: `__ICON_SWAP__`, folder: `__ICON_FOLDER__`, excel: `__ICON_EXCEL__`,
+        chevron_down: `__ICON_CHEVRON_DOWN__`,
     };
 
     const MODEL_KEY = "__model__";
@@ -316,6 +345,7 @@ function render({ model, el }) {
     // first layout pass has sane values before any measurement runs.
     let NODE_W = 184, CENTER_W = 204;
     const MIN_ZOOM = 0.3, MAX_ZOOM = 2.5;
+    const STATUS_HIDE_MS = 6000;
 
     const root = document.createElement("div");
     root.className = "slls-lv";
@@ -365,11 +395,21 @@ function render({ model, el }) {
         if (!nativeOn && fsMode) { fsMode = false; root.classList.remove("slls-lv-fs"); renderAll(); }
     }
     function onEscKey(e) {
-        if (e.key === "Escape" && fsMode) setFullscreen(false);
+        if (e.key !== "Escape") return;
+        if (excelMenuOpen) { excelMenuOpen = false; renderAll(); return; }
+        if (fsMode) setFullscreen(false);
+    }
+    function onDocPointerDown(e) {
+        if (!excelMenuOpen) return;
+        const t = e.target;
+        if (t && t.closest && t.closest(".slls-lv-menuwrap")) return;
+        excelMenuOpen = false;
+        renderAll();
     }
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("webkitfullscreenchange", onFullscreenChange);
     document.addEventListener("keydown", onEscKey);
+    document.addEventListener("pointerdown", onDocPointerDown, true);
 
     // --- Local UI state ---
     let selectedId = null;
@@ -400,6 +440,15 @@ function render({ model, el }) {
     let viewKey = "";
     let viewport = null;
     const PANEL_MIN = 280, PANEL_MAX = 720;
+    // Excel workbooks found by scanning a local folder (front-end only state:
+    // the files live on the user's machine, never on the kernel).
+    let excelFiles = [];
+    let excelSeq = 0;
+    let excelScan = null;      // {done, total} while a folder scan runs
+    let excelUnverified = [];  // protected workbooks that could not be inspected
+    let excelMenuOpen = false; // Excel button's folder / files dropdown
+    let localStatus = null;    // front-end status message (overrides the synced one)
+    let localStatusTimer = null;
 
     const esc = (s) => String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -440,6 +489,7 @@ function render({ model, el }) {
         // the clicked button shows its working state before the round-trip
         // completes.
         busyLocal = true;
+        clearLocalStatus();
         model.set("pending_action", payload);
         // Guard against an undefined "run" (some notebook hosts do not seed
         // every synced trait into the front-end model): "undefined + 1" is NaN,
@@ -469,6 +519,13 @@ function render({ model, el }) {
     // fit inside the panel instead of spilling past the rounded border. Widths
     // are clamped so a single very long name cannot make the graph unwieldy;
     // beyond the cap the CSS ellipsis takes over.
+    // Every node orbiting the model: downstream reports first, then any Excel
+    // workbooks discovered by a local folder scan.
+    const spokes = () => [
+        ...reports().map((r) => ({ id: r.id, kind: "report" })),
+        ...excelFiles.map((x) => ({ id: x.id, kind: "excel" })),
+    ];
+
     function computeNodeWidths() {
         const HPAD = 28;         // node left + right padding (14px each)
         const ICON_GAP = 16 + 5; // workspace-row icon width + gap
@@ -480,6 +537,10 @@ function render({ model, el }) {
             const nameW = textWidth(r.name, "600 13px") + CHECK_PAD;
             const wsW = ICON_GAP + textWidth(r.workspaceName, "11px");
             need = Math.max(need, nameW, wsW);
+        }
+        for (const x of excelFiles) {
+            need = Math.max(need, textWidth(x.name, "600 13px"),
+                ICON_GAP + textWidth(x.folder || "\u2014", "11px"));
         }
         NODE_W = nodeWOverride != null
             ? nodeWOverride
@@ -495,22 +556,22 @@ function render({ model, el }) {
     }
 
     function computePositions() {
-        const rs = reports();
-        const n = rs.length;
+        const items = spokes();
+        const n = items.length;
         const radius = Math.max(240, (n * (NODE_W + 48)) / (2 * Math.PI));
         const cx = radius + CENTER_W + MARGIN;
         const cy = radius + CENTER_H + MARGIN;
         const pos = {};
         pos[MODEL_KEY] = { x: cx, y: cy };
-        rs.forEach((r, i) => {
+        items.forEach((s, i) => {
             const a = -Math.PI / 2 + (i / Math.max(1, n)) * Math.PI * 2;
-            pos[r.id] = { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
+            pos[s.id] = { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
         });
         return pos;
     }
 
     function syncPositions() {
-        const key = reports().map((r) => r.id).join("\u0000");
+        const key = spokes().map((s) => s.id).join("\u0000");
         if (key !== positionsKey) {
             computeNodeWidths();
             positions = computePositions();
@@ -551,7 +612,7 @@ function render({ model, el }) {
             root.appendChild(buildSummary());
             root.appendChild(buildBody());
         }
-        const st = model.get("status") || {};
+        const st = localStatus || model.get("status") || {};
         if (st.message) {
             const s = document.createElement("div");
             s.className = "slls-lv-status " + (st.kind || "info");
@@ -591,6 +652,21 @@ function render({ model, el }) {
                 ? `<button class="slls-lv-btn" data-act="open-rebind">${ICON.link}Rebind ${nPick}</button>`
                 : "") +
             (!picking
+                ? `<span class="slls-lv-menuwrap">` +
+                    `<button class="slls-lv-btn" data-act="excel-menu" title="Add Excel files that use this semantic model" ${excelScan ? "disabled" : ""}>` +
+                        `${excelScan ? spinner() : ICON.excel}Excel<span class="slls-lv-caret">${ICON.chevron_down}</span></button>` +
+                    (excelMenuOpen
+                        ? `<div class="slls-lv-menu">` +
+                            `<button data-act="scan-files">${ICON.excel}Select files\u2026</button>` +
+                            `<button data-act="scan-folder">${ICON.folder}Select a folder\u2026</button>` +
+                          `</div>`
+                        : "") +
+                  `</span>`
+                : "") +
+            (!picking && (excelFiles.length > 0 || excelUnverified.length > 0) && !excelScan
+                ? `<button class="slls-lv-btn slls-lv-btn-icon" data-act="clear-excel" title="Remove the scanned Excel files from the diagram">${ICON.close}</button>`
+                : "") +
+            (!picking
                 ? `<button class="sl-reload-btn" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
                     `${working() ? spinner() : ICON.refresh}</button>`
                 : "") +
@@ -611,6 +687,22 @@ function render({ model, el }) {
         if (cm) cm.onclick = () => openPicker();
         const sv = h.querySelector('[data-act="save"]');
         if (sv) sv.onclick = () => saveFixes();
+        const xm = h.querySelector('[data-act="excel-menu"]');
+        if (xm) xm.onclick = () => { excelMenuOpen = !excelMenuOpen; renderAll(); };
+        const xl = h.querySelector('[data-act="scan-folder"]');
+        if (xl) xl.onclick = () => { excelMenuOpen = false; openFolderPicker(); };
+        const xf = h.querySelector('[data-act="scan-files"]');
+        if (xf) xf.onclick = () => { excelMenuOpen = false; openFilePicker(); };
+        const xc = h.querySelector('[data-act="clear-excel"]');
+        if (xc) xc.onclick = () => {
+            excelFiles = [];
+            excelUnverified = [];
+            if (selectedId && String(selectedId).startsWith("xl-")) selectedId = null;
+            clearLocalStatus();
+            renderAll();
+        };
+        h.appendChild(folderInput);
+        h.appendChild(fileInput);
         return h;
     }
 
@@ -626,6 +718,8 @@ function render({ model, el }) {
         const errored = rs.filter((r) => health(r) === "error").length;
         const brokenObjs = rs.reduce((n, r) => n + (r.invalidCount || 0), 0);
         let html = stat("Downstream reports", rs.length, "");
+        if (excelFiles.length > 0) html += stat("Excel files", excelFiles.length, "");
+        if (excelUnverified.length > 0) html += unverifiedStat();
         if (analyzed()) {
             html += stat("Reports with broken elements", broken, broken > 0 ? "bad" : "good");
             html += stat("Broken objects", brokenObjs, brokenObjs > 0 ? "bad" : "good");
@@ -642,12 +736,25 @@ function render({ model, el }) {
             `<span class="slls-lv-stat-value">${value}</span></div>`;
     }
 
+    // Protected workbooks are only counted; hovering reveals which ones.
+    function unverifiedStat() {
+        return `<div class="slls-lv-stat warn slls-lv-stat-hover" tabindex="0">` +
+            `<span class="slls-lv-stat-label">Unverified Excel files</span>` +
+            `<span class="slls-lv-stat-value">${excelUnverified.length}</span>` +
+            `<div class="slls-lv-hovercard">` +
+                `<div class="slls-lv-hovercard-title">Could not be inspected</div>` +
+                excelUnverified.map((u) =>
+                    `<div class="slls-lv-hovercard-item">${esc(u.path)}` +
+                    `<span>${esc(u.reason)}</span></div>`).join("") +
+            `</div></div>`;
+    }
+
     function buildBody() {
         const body = document.createElement("div");
         body.className = "slls-lv-body";
         body.appendChild(buildGraph());
         const rs = reports();
-        if (rs.length > 0) body.appendChild(buildPanel());
+        if (rs.length > 0 || excelFiles.length > 0) body.appendChild(buildPanel());
         return body;
     }
 
@@ -656,11 +763,11 @@ function render({ model, el }) {
         wrap.className = "slls-lv-graphwrap";
         const rs = reports();
 
-        if (busy() && rs.length === 0) {
+        if (busy() && rs.length === 0 && excelFiles.length === 0) {
             wrap.innerHTML = centerMsg("scan", "Loading downstream reports\u2026", "");
             return wrap;
         }
-        if (rs.length === 0) {
+        if (rs.length === 0 && excelFiles.length === 0) {
             wrap.innerHTML = centerMsg("report", "No downstream reports",
                 "No reports in this workspace consume this semantic model.");
             return wrap;
@@ -698,12 +805,29 @@ function render({ model, el }) {
             line.setAttribute("stroke-width", selectedId === r.id ? "2.4" : "1.5");
             svg.appendChild(line);
         });
+        // Excel workbooks connect to the model just like reports do, and are
+        // drawn in the neutral "not analyzed" colour.
+        excelFiles.forEach((x) => {
+            const p = positions[x.id];
+            if (!p) return;
+            const a = edgePoint(m.x, m.y, p.x, p.y, CENTER_W / 2, CENTER_H / 2);
+            const b = edgePoint(p.x, p.y, m.x, m.y, NODE_W / 2, NODE_H / 2);
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("id", "slls-lv-edge-" + x.id);
+            line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
+            line.setAttribute("x2", b.x); line.setAttribute("y2", b.y);
+            line.setAttribute("stroke", selectedId === x.id ? "var(--slls-accent)" : "var(--slls-border-strong)");
+            line.setAttribute("stroke-width", selectedId === x.id ? "2.4" : "1.5");
+            svg.appendChild(line);
+        });
         canvas.appendChild(svg);
 
         // Model node
         canvas.appendChild(buildModelNode());
         // Report nodes
         rs.forEach((r) => canvas.appendChild(buildReportNode(r)));
+        // Excel workbook nodes
+        excelFiles.forEach((x) => canvas.appendChild(buildExcelNode(x)));
 
         scroll.appendChild(canvas);
 
@@ -828,6 +952,31 @@ function render({ model, el }) {
         return node;
     }
 
+    function buildExcelNode(x) {
+        const p = positions[x.id];
+        const node = document.createElement("div");
+        node.className = "slls-lv-node excel" + (selectedId === x.id ? " selected" : "");
+        node.id = "slls-lv-node-" + x.id;
+        node.style.width = NODE_W + "px";
+        node.style.height = NODE_H + "px";
+        node.style.left = (p.x - NODE_W / 2) + "px";
+        node.style.top = (p.y - NODE_H / 2) + "px";
+        const n = (x.connections || []).length;
+        node.innerHTML =
+            `<div class="slls-lv-node-name">${esc(x.name)}</div>` +
+            `<div class="slls-lv-node-ws">${ICON.excel}<span>${esc(x.folder || "\u2014")}</span></div>` +
+            `<div class="slls-lv-node-status"><span class="slls-lv-dot"></span>` +
+            `${n} connection${n === 1 ? "" : "s"}</div>`;
+        node.appendChild(makeResizeGrip(false));
+        node.addEventListener("pointerdown", (e) => startDrag(e, x.id));
+        node.addEventListener("click", () => {
+            if (dragMoved) { dragMoved = false; return; }
+            selectedId = selectedId === x.id ? null : x.id;
+            renderAll();
+        });
+        return node;
+    }
+
     function buildZoom() {
         const z = document.createElement("div");
         z.className = "slls-lv-zoom";
@@ -897,7 +1046,9 @@ function render({ model, el }) {
         handle.addEventListener("pointerdown", startPanelResize);
         panel.appendChild(handle);
         const rep = reports().find((r) => r.id === selectedId) || null;
+        const xls = excelFiles.find((x) => x.id === selectedId) || null;
         if (rep) buildReportDetail(panel, rep);
+        else if (xls) buildExcelDetail(panel, xls);
         else buildBrokenSummary(panel);
         return panel;
     }
@@ -1050,8 +1201,71 @@ function render({ model, el }) {
         panel.appendChild(bodyEl);
     }
 
-    function buildBrokenRow(r, o) {
-        const d = document.createElement("div");
+    function kvRow(k, v) {
+        return `<div class="slls-lv-kv"><span class="slls-lv-kv-k">${esc(k)}</span>` +
+            `<span class="slls-lv-kv-v">${esc(v)}</span></div>`;
+    }
+
+    function fmtBytes(n) {
+        if (!n && n !== 0) return "\u2014";
+        const u = ["B", "KB", "MB", "GB"];
+        let i = 0, v = n;
+        while (v >= 1024 && i < u.length - 1) { v /= 1024; i += 1; }
+        return `${i === 0 ? v : v.toFixed(1)} ${u[i]}`;
+    }
+
+    function fmtDate(ms) {
+        if (!ms) return "\u2014";
+        try { return new Date(ms).toLocaleString(); } catch (e) { return "\u2014"; }
+    }
+
+    function buildExcelDetail(panel, x) {
+        const head = document.createElement("div");
+        head.className = "slls-lv-panel-head";
+        head.innerHTML =
+            `<span class="slls-lv-ic">${ICON.excel}</span>` +
+            `<div class="slls-lv-pt"><div class="slls-lv-panel-title">${esc(x.name)}</div>` +
+            `<div class="slls-lv-panel-sub">${ICON.excel}<span>${esc(x.folder || "\u2014")}</span></div>` +
+            `</div>` +
+            `<button class="slls-lv-panel-close" title="Close">${ICON.close}</button>` +
+            collapseBtn();
+        head.querySelector(".slls-lv-panel-close").onclick = () => { selectedId = null; renderAll(); };
+        head.querySelector('[data-act="collapse"]').onclick = () => {
+            panelCollapsed = true; renderAll();
+        };
+        panel.appendChild(head);
+
+        const bodyEl = document.createElement("div");
+        bodyEl.className = "slls-lv-panel-body";
+        bodyEl.innerHTML =
+            `<div class="slls-lv-section-label">File</div>` +
+            `<div class="slls-lv-obj">` +
+                kvRow("Path", x.path) +
+                kvRow("Size", fmtBytes(x.size)) +
+                kvRow("Modified", fmtDate(x.modified)) +
+            `</div>` +
+            `<div class="slls-lv-section-label">Semantic model connections</div>` +
+            (x.connections || []).map((c) =>
+                `<div class="slls-lv-obj">` +
+                    kvRow("Catalog", c.catalog || "\u2014") +
+                    kvRow("Data source", c.source || "\u2014") +
+                    kvRow("Part", c.part || "\u2014") +
+                    `<div class="slls-lv-obj-meta"><span class="slls-lv-tag type">` +
+                    `${esc(c.matchedOn)}</span></div>` +
+                `</div>`).join("");
+        const remove = document.createElement("button");
+        remove.className = "slls-lv-btn";
+        remove.innerHTML = `${ICON.close}Remove from diagram`;
+        remove.onclick = () => {
+            excelFiles = excelFiles.filter((f) => f.id !== x.id);
+            selectedId = null;
+            renderAll();
+        };
+        bodyEl.appendChild(remove);
+        panel.appendChild(bodyEl);
+    }
+
+    function buildBrokenRow(r, o) {        const d = document.createElement("div");
         d.className = "slls-lv-obj";
         const key = fixKey(r.id, o.objectType, o.table, o.name, o.hierarchy);
         const staged = stagedFixes.get(key);
@@ -1360,6 +1574,364 @@ function render({ model, el }) {
         return overlay;
     }
 
+    // ---------- Local Excel folder scan ----------
+    // The selected folder lives on the user's machine while the kernel usually
+    // runs remotely (Fabric), so the workbooks are opened here in the browser
+    // and only the extracted metadata is kept. Excel files are OPC packages
+    // (zip), and connections to a semantic model are stored as connection
+    // strings inside xl/connections.xml (or the embedded ODC blobs in
+    // customXml), so the relevant parts are unzipped and pattern-matched.
+    const EXCEL_EXT = /\.(xlsx|xlsm|xlsb|xltx|xltm|xls)$/i;
+    const CONN_PARTS = /^(xl\/connections\.xml|customXml\/item\d*\.xml|xl\/queryTables\/[^/]+\.xml)$/i;
+    // Legacy .xls workbooks are OLE2 compound files rather than zips, and so is
+    // any workbook encrypted by a sensitivity label or password: Office then
+    // wraps the real OOXML package in an "EncryptedPackage" stream while the
+    // file keeps its .xlsx name, so the format is sniffed, not assumed.
+    const OLE2_SIG = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+    const OLE2_MAX_BYTES = 64 * 1024 * 1024;
+
+    // Hidden inputs; clicking one opens the browser's native chooser, either a
+    // directory picker or a multi-file picker.
+    const folderInput = makeChooser(true);
+    const fileInput = makeChooser(false);
+
+    function makeChooser(directory) {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.multiple = true;
+        if (directory) {
+            input.setAttribute("webkitdirectory", "");
+            input.setAttribute("directory", "");
+        } else {
+            input.accept = ".xlsx,.xlsm,.xlsb,.xltx,.xltm,.xls";
+        }
+        input.style.display = "none";
+        input.addEventListener("change", () => {
+            const files = input.files ? [...input.files] : [];
+            input.value = "";
+            if (files.length > 0) scanExcelFiles(files, directory ? "folder" : "selection");
+        });
+        return input;
+    }
+
+    function openFolderPicker() { openChooser(folderInput, "folders"); }
+
+    function openFilePicker() { openChooser(fileInput, "files"); }
+
+    function openChooser(input, what) {
+        if (excelScan) return;
+        try {
+            input.click();
+        } catch (e) {
+            setLocalStatus(`This notebook host does not allow browsing local ${what}.`, "error");
+        }
+    }
+
+    function clearLocalStatus() {
+        if (localStatusTimer) { clearTimeout(localStatusTimer); localStatusTimer = null; }
+        localStatus = null;
+    }
+
+    function setLocalStatus(message, kind, autoHideMs) {
+        clearLocalStatus();
+        localStatus = message ? { message, kind: kind || "info" } : null;
+        if (message && autoHideMs) {
+            localStatusTimer = setTimeout(() => {
+                localStatusTimer = null;
+                localStatus = null;
+                renderAll();
+            }, autoHideMs);
+        }
+        renderAll();
+    }
+
+    // Patch the status line in place so scan progress does not re-render (and
+    // therefore re-layout) the whole graph on every file.
+    function paintScanProgress() {
+        const el = root.querySelector(".slls-lv-status");
+        if (el && localStatus) el.textContent = localStatus.message;
+        else renderAll();
+    }
+
+    async function collectStream(stream, tolerant) {
+        const reader = stream.getReader();
+        const chunks = [];
+        let len = 0;
+        try {
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                len += value.length;
+            }
+        } catch (e) {
+            if (!tolerant) throw e;
+        }
+        const out = new Uint8Array(len);
+        let at = 0;
+        for (const c of chunks) { out.set(c, at); at += c.length; }
+        return out;
+    }
+
+    async function inflateRaw(bytes) {
+        if (typeof DecompressionStream === "undefined") {
+            throw new Error("DecompressionStream unavailable");
+        }
+        try {
+            const s = new DecompressionStream("deflate-raw");
+            return await collectStream(new Blob([bytes]).stream().pipeThrough(s), false);
+        } catch (e) {
+            // Engines without "deflate-raw" still expose zlib "deflate": add a
+            // header and tolerate the missing adler32 trailer at the end.
+            const wrapped = new Uint8Array(bytes.length + 2);
+            wrapped[0] = 0x78; wrapped[1] = 0x01;
+            wrapped.set(bytes, 2);
+            const s = new DecompressionStream("deflate");
+            return await collectStream(new Blob([wrapped]).stream().pipeThrough(s), true);
+        }
+    }
+
+    // Read the named parts out of a zip Blob. Only the central directory and
+    // the wanted entries are fetched (Blob.slice is lazy), so large workbooks
+    // are never loaded into memory in full.
+    async function zipReadParts(file, wanted) {
+        const out = {};
+        const size = file.size;
+        if (size < 22) return out;
+        const tailLen = Math.min(size, 66560);
+        const tailBuf = await file.slice(size - tailLen).arrayBuffer();
+        const tail = new DataView(tailBuf);
+        let eocd = -1;
+        for (let i = tail.byteLength - 22; i >= 0; i--) {
+            if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+        }
+        if (eocd < 0) return out;
+        let cdSize = tail.getUint32(eocd + 12, true);
+        let cdOffset = tail.getUint32(eocd + 16, true);
+        if (cdSize === 0xffffffff || cdOffset === 0xffffffff) {
+            const loc = eocd - 20;
+            if (loc < 0 || tail.getUint32(loc, true) !== 0x07064b50) return out;
+            const z64 = Number(tail.getBigUint64(loc + 8, true));
+            const hb = await file.slice(z64, z64 + 56).arrayBuffer();
+            if (hb.byteLength < 56) return out;
+            const hdr = new DataView(hb);
+            if (hdr.getUint32(0, true) !== 0x06064b50) return out;
+            cdSize = Number(hdr.getBigUint64(40, true));
+            cdOffset = Number(hdr.getBigUint64(48, true));
+        }
+        if (!cdSize || cdOffset + cdSize > size) return out;
+
+        const cdBuf = await file.slice(cdOffset, cdOffset + cdSize).arrayBuffer();
+        const cd = new DataView(cdBuf);
+        const dec = new TextDecoder("utf-8");
+        const entries = [];
+        let p = 0;
+        while (p + 46 <= cd.byteLength && cd.getUint32(p, true) === 0x02014b50) {
+            const method = cd.getUint16(p + 10, true);
+            const csize = cd.getUint32(p + 20, true);
+            const nameLen = cd.getUint16(p + 28, true);
+            const extraLen = cd.getUint16(p + 30, true);
+            const cmtLen = cd.getUint16(p + 32, true);
+            const local = cd.getUint32(p + 42, true);
+            const name = dec.decode(new Uint8Array(cdBuf, p + 46, nameLen));
+            // Zip64-only entries (0xffffffff placeholders) keep their real
+            // sizes in the extra field; those parts are simply skipped.
+            if (wanted(name) && csize !== 0xffffffff && local !== 0xffffffff) {
+                entries.push({ name, method, csize, local });
+            }
+            p += 46 + nameLen + extraLen + cmtLen;
+        }
+
+        for (const e of entries) {
+            try {
+                const lb = await file.slice(e.local, e.local + 30).arrayBuffer();
+                if (lb.byteLength < 30) continue;
+                const lh = new DataView(lb);
+                if (lh.getUint32(0, true) !== 0x04034b50) continue;
+                const start = e.local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+                const raw = new Uint8Array(await file.slice(start, start + e.csize).arrayBuffer());
+                const bytes = e.method === 0 ? raw : await inflateRaw(raw);
+                out[e.name] = dec.decode(bytes);
+            } catch (err) { /* unreadable part: ignore */ }
+        }
+        return out;
+    }
+
+    // Pull candidate connection strings out of a package part. Both the
+    // <dbPr connection="..."/> attribute in connections.xml and the ODC blobs
+    // in customXml keep the whole string in a single quoted value.
+    function extractConnections(xml) {
+        const found = [];
+        const re = /(?:Provider|Data\s*Source)\s*=[^"'<>]{0,2000}/gi;
+        let m;
+        while ((m = re.exec(xml)) !== null) found.push(m[0]);
+        return found;
+    }
+
+    function connField(conn, key) {
+        const re = new RegExp(key.replace(/ /g, "\\s*") + "\\s*=\\s*([^;\"'<>]*)", "i");
+        const m = re.exec(conn);
+        return m ? m[1].trim() : "";
+    }
+
+    // Decide whether a connection string points at the connected model.
+    // "Analyze in Excel" files carry the semantic model id in the catalog
+    // (sobe_wowvirtualserver-<guid>), while XMLA endpoint connections use
+    // powerbi://api.powerbi.com/v1.0/myorg/<workspace> plus the model name.
+    function connMatchesModel(conn) {
+        const source = connField(conn, "Data Source");
+        if (!/powerbi:\/\/|pbiazure:\/\/|api\.powerbi\.com|analysis\.windows\.net/i.test(source)) {
+            return null;
+        }
+        const catalog = connField(conn, "Initial Catalog");
+        const dsId = String(model.get("dataset_id") || "").trim().toLowerCase();
+        const dsName = String(model.get("dataset_name") || "").trim().toLowerCase();
+        const wsName = String(model.get("workspace_name") || "").trim().toLowerCase();
+        if (dsId && conn.toLowerCase().includes(dsId)) {
+            return { catalog, source, matchedOn: "Semantic model ID" };
+        }
+        if (dsName && catalog.trim().toLowerCase() === dsName) {
+            let wsInSource = "";
+            try {
+                wsInSource = decodeURIComponent(source).replace(/\/+$/, "").split("/").pop().toLowerCase();
+            } catch (e) { wsInSource = ""; }
+            if (!wsName || !wsInSource || wsInSource === wsName) {
+                return { catalog, source, matchedOn: "Model name" };
+            }
+        }
+        return null;
+    }
+
+    async function sniffFormat(file) {
+        const b = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+        if (b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04) return "opc";
+        if (OLE2_SIG.every((v, i) => b[i] === v)) return "ole2";
+        return "";
+    }
+
+    // OLE2 stores stream names and BIFF strings as UTF-16LE on even offsets,
+    // so decoding the whole buffer both ways exposes the readable text runs
+    // without walking the compound-file directory.
+    async function oleReadText(file) {
+        if (file.size > OLE2_MAX_BYTES) return null;
+        const buf = await file.arrayBuffer();
+        return {
+            narrow: new TextDecoder("windows-1252").decode(buf),
+            wide: new TextDecoder("utf-16le").decode(buf),
+        };
+    }
+
+    function matchConnections(parts) {
+        const conns = [];
+        const seen = new Set();
+        for (const [partName, text] of Object.entries(parts)) {
+            for (const c of extractConnections(text)) {
+                const hit = connMatchesModel(c);
+                if (!hit) continue;
+                const k = hit.catalog + "\u0000" + hit.source;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                conns.push({ ...hit, part: partName });
+            }
+        }
+        return conns;
+    }
+
+    function makeExcelNode(file, conns) {
+        const rel = file.webkitRelativePath || file.name;
+        return {
+            id: "xl-" + (++excelSeq),
+            name: file.name,
+            path: rel,
+            folder: rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "",
+            size: file.size,
+            modified: file.lastModified || 0,
+            connections: conns,
+        };
+    }
+
+    async function scanExcelFiles(fileList, source) {
+        // "~$" files are Excel's lock files, not real workbooks.
+        const candidates = fileList.filter((f) =>
+            EXCEL_EXT.test(f.name) && !f.name.startsWith("~$"));
+        if (candidates.length === 0) {
+            setLocalStatus(source === "folder"
+                ? `No Excel workbooks found in the selected folder (${fileList.length} file${fileList.length === 1 ? "" : "s"} scanned).`
+                : "None of the selected files are Excel workbooks.", "info", STATUS_HIDE_MS);
+            return;
+        }
+
+        excelScan = { done: 0, total: candidates.length };
+        selectedId = null;
+        setLocalStatus(`Scanning Excel files\u2026 0 / ${candidates.length}`, "info");
+
+        const matches = [];
+        const unverified = [];
+        let failed = 0;
+        for (const f of candidates) {
+            try {
+                const kind = await sniffFormat(f);
+                if (kind === "opc") {
+                    const conns = matchConnections(
+                        await zipReadParts(f, (n) => CONN_PARTS.test(n)));
+                    if (conns.length > 0) matches.push(makeExcelNode(f, conns));
+                } else if (kind === "ole2") {
+                    const text = await oleReadText(f);
+                    if (text === null) {
+                        failed += 1;
+                    } else if (text.wide.includes("EncryptedPackage")) {
+                        // Encrypted package: its connections cannot be read, so
+                        // the workbook is only reported, never added.
+                        unverified.push({
+                            name: f.name,
+                            path: f.webkitRelativePath || f.name,
+                            reason: text.wide.includes("DRMEncryptedDataSpace")
+                                ? "Protected by a sensitivity label"
+                                : "Password protected",
+                        });
+                    } else {
+                        const conns = matchConnections({
+                            "Workbook stream": text.narrow,
+                            "Workbook stream (Unicode)": text.wide,
+                        });
+                        if (conns.length > 0) matches.push(makeExcelNode(f, conns));
+                    }
+                } else {
+                    failed += 1;
+                }
+            } catch (e) {
+                failed += 1;
+            }
+            excelScan.done += 1;
+            localStatus = {
+                message: `Scanning Excel files\u2026 ${excelScan.done} / ${candidates.length}`,
+                kind: "info",
+            };
+            paintScanProgress();
+        }
+
+        excelScan = null;
+        // Each scan adds to the results; anything re-scanned is refreshed, so a
+        // workbook that no longer matches drops off. The clear button resets all.
+        const rescanned = new Set(candidates.map((f) => f.webkitRelativePath || f.name));
+        excelFiles = [...excelFiles.filter((x) => !rescanned.has(x.path)), ...matches];
+        excelUnverified = [
+            ...excelUnverified.filter((u) => !rescanned.has(u.path)), ...unverified];
+        const found = matches.length;
+        const nUnverified = unverified.length;
+        const parts = [];
+        parts.push(found === 0
+            ? `No Excel files connected to this semantic model were found (${candidates.length} workbook${candidates.length === 1 ? "" : "s"} scanned).`
+            : `Found ${found} Excel file${found === 1 ? "" : "s"} connected to this semantic model (${candidates.length} workbook${candidates.length === 1 ? "" : "s"} scanned).`);
+        if (nUnverified > 0) {
+            parts.push(`${nUnverified} protected workbook${nUnverified === 1 ? " is" : "s are"} unverified and not shown.`);
+        }
+        if (failed > 0) {
+            parts.push(`${failed} file${failed === 1 ? "" : "s"} could not be read.`);
+        }
+        setLocalStatus(parts.join(" "), found > 0 ? "success" : "info", STATUS_HIDE_MS);
+    }
+
     // ---------- Node width resize ----------
     // A thin grip on each node's right edge lets the user widen / narrow the
     // nodes. Report nodes share one width and the model (center) node has its
@@ -1392,6 +1964,14 @@ function render({ model, el }) {
         reports().forEach((r) => {
             const el = document.getElementById("slls-lv-node-" + r.id);
             const p = positions[r.id];
+            if (el && p) {
+                el.style.width = NODE_W + "px";
+                el.style.left = (p.x - NODE_W / 2) + "px";
+            }
+        });
+        excelFiles.forEach((x) => {
+            const el = document.getElementById("slls-lv-node-" + x.id);
+            const p = positions[x.id];
             if (el && p) {
                 el.style.width = NODE_W + "px";
                 el.style.left = (p.x - NODE_W / 2) + "px";
@@ -1464,10 +2044,10 @@ function render({ model, el }) {
 
     function updateEdges(key) {
         const m = positions[MODEL_KEY];
-        const rs = key === MODEL_KEY ? reports() : reports().filter((r) => r.id === key);
-        rs.forEach((r) => {
-            const p = positions[r.id];
-            const line = document.getElementById("slls-lv-edge-" + r.id);
+        const items = key === MODEL_KEY ? spokes() : spokes().filter((s) => s.id === key);
+        items.forEach((s) => {
+            const p = positions[s.id];
+            const line = document.getElementById("slls-lv-edge-" + s.id);
             if (!p || !line) return;
             const a = edgePoint(m.x, m.y, p.x, p.y, CENTER_W / 2, CENTER_H / 2);
             const b = edgePoint(p.x, p.y, m.x, m.y, NODE_W / 2, NODE_H / 2);
@@ -1494,6 +2074,8 @@ function render({ model, el }) {
             selectedId = null;
             picked = new Set();
             stagedFixes = new Map();
+            excelFiles = [];
+            excelUnverified = [];
         }
         renderAll();
     });
@@ -1506,6 +2088,8 @@ function render({ model, el }) {
         selectedId = null;
         picked = new Set();
         stagedFixes = new Map();
+        excelFiles = [];
+        excelUnverified = [];
         renderAll();
     });
     model.on("change:workspaces", () => { if (rebindOpen || showPicker()) renderAll(); });
@@ -1563,6 +2147,9 @@ _WIDGET_JS = (
     .replace("__ICON_CHEVRON_LEFT__", _UI_ICONS["chevron_left"])
     .replace("__ICON_CHEVRON_RIGHT__", _UI_ICONS["chevron_right"])
     .replace("__ICON_SWAP__", _UI_ICONS["swap"])
+    .replace("__ICON_FOLDER__", _UI_ICONS["folder"])
+    .replace("__ICON_EXCEL__", _UI_ICONS["excel"])
+    .replace("__ICON_CHEVRON_DOWN__", _UI_ICONS["chevron_down"])
 )
 
 
@@ -1584,6 +2171,12 @@ def lineage_view(
     be chosen from the model to stage a fix, and the staged fixes are written
     back to the report(s) with the Save button. Reports can also be selected and
     rebound to a different semantic model.
+
+    A folder on the local machine can additionally be scanned for Excel
+    workbooks that are connected to the same semantic model, or specific
+    workbooks can be picked instead; any matches are added to the diagram as
+    extra nodes. The workbooks are read in the browser (not on the kernel), so
+    this works when the notebook runs remotely.
 
 
     Both the 'PBIR' and 'PBIRLegacy' report formats are supported for
@@ -2230,6 +2823,7 @@ def lineage_view(
         _css = _WIDGET_CSS
 
         dataset_name = traitlets.Unicode("").tag(sync=True)
+        dataset_id = traitlets.Unicode("").tag(sync=True)
         workspace_name = traitlets.Unicode("").tag(sync=True)
         workspace_id = traitlets.Unicode("").tag(sync=True)
         connected = traitlets.Bool(False).tag(sync=True)
@@ -2249,6 +2843,7 @@ def lineage_view(
 
     widget = LineageViewWidget(
         dataset_name=ds_name,
+        dataset_id=ds_id,
         workspace_name=ws_name or "",
         workspace_id=ws_id,
         connected=connected,
@@ -2314,6 +2909,7 @@ def lineage_view(
                 ws_name = data.get("workspace_name") or ws_name
                 ds_name = data.get("dataset_name") or ds_name
                 widget.dataset_name = ds_name
+                widget.dataset_id = ds_id
                 widget.workspace_name = ws_name
                 widget.workspace_id = ws_id
                 widget.model_objects = []
