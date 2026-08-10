@@ -104,7 +104,6 @@ _WIDGET_CSS = """
 .slls-mc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .slls-mc-btn-primary { background: var(--slls-accent); border-color: var(--slls-accent); color: #fff; }
 .slls-mc-btn-primary:hover { background: var(--slls-accent-hover); border-color: var(--slls-accent-hover); }
-.slls-mc-btn-on { border-color: var(--slls-accent); background: var(--slls-accent-soft); color: var(--slls-accent); }
 .slls-mc-btn svg { display: block; }
 
 /* Compared-models bar */
@@ -402,6 +401,9 @@ function render({ model, el }) {
                 `<div class="slls-mc-title">Model comparison</div>` +
                 `<div class="slls-mc-subtitle">${subtitle}</div>` +
             `</div>` +
+            (compared() && !pickerOpen
+                ? `<button class="sl-change-btn" data-act="change-model" title="Change semantic model / workspace" aria-label="Change semantic model / workspace">${ICON.swap}</button>`
+                : "") +
             `<div class="slls-mc-head-spacer"></div>` +
             (compared()
                 ? `<button class="sl-reload-btn${working() ? " sl-spinning" : ""}" data-act="reload" ` +
@@ -413,6 +415,14 @@ function render({ model, el }) {
 
         const rl = h.querySelector('[data-act="reload"]');
         if (rl) rl.onclick = () => dispatch({ action: "reload" });
+        const cm = h.querySelector('[data-act="change-model"]');
+        if (cm) cm.onclick = () => {
+            pickerOpen = true;
+            ensureWorkspaces();
+            ensureDatasets(baseWs);
+            ensureDatasets(cmpWs);
+            renderAll();
+        };
         h.querySelector('[data-act="fullscreen"]').onclick = () => setFullscreen(!fsMode);
         h.querySelector('[data-act="theme"]').onclick = () => {
             model.set("dark_mode", !(model.get("dark_mode") === true));
@@ -438,14 +448,7 @@ function render({ model, el }) {
         d.innerHTML =
             modelChip("Current model", model.get("base_name"), model.get("base_workspace"), "current") +
             `<span class="slls-mc-vs">${ICON.compare}</span>` +
-            modelChip("Compared model", model.get("compared_name"), model.get("compared_workspace"), "compared") +
-            `<button class="slls-mc-btn${pickerOpen ? " slls-mc-btn-on" : ""}" data-act="toggle-picker" ` +
-                `aria-pressed="${pickerOpen}">${ICON.pencil}Change models</button>`;
-        d.querySelector('[data-act="toggle-picker"]').onclick = () => {
-            pickerOpen = !pickerOpen;
-            if (pickerOpen) { ensureWorkspaces(); ensureDatasets(baseWs); ensureDatasets(cmpWs); }
-            renderAll();
-        };
+            modelChip("Compared model", model.get("compared_name"), model.get("compared_workspace"), "compared");
         return d;
     }
 

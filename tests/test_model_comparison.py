@@ -205,6 +205,10 @@ def test_widget_uses_the_shared_ui_building_blocks():
     assert "<select" not in source
     assert 'class="sl-reload-btn' in source
     assert 'class="sl-theme-btn"' in source
+    # The model/workspace picker is reopened with the shared swap control.
+    assert 'class="sl-change-btn" data-act="change-model"' in source
+    assert "${ICON.swap}" in source
+    assert "Change models" not in source
     # Icons are substituted from _ui_components, not inlined in the widget JS.
     assert source.count('.replace("__ICON_') == 26
     assert '_UI_ICONS["git_compare"]' in source
