@@ -786,6 +786,9 @@ def test_eraser_button_clears_the_active_model_cache():
     assert '_clear_cache_fn(\n                dataset=dataset_id,' in source
     assert source.count("verbose=False") == 4
     assert "renderRunBtn(); renderClearModelCacheBtn(); renderSubtitle();" in source
+    # A completed clear is confirmed with a transient toast.
+    assert "cacheClearPending = true;" in source
+    assert 'showToast("Model cache cleared");' in source
 
 
 def test_run_button_matches_adjacent_toolbar_button_size():
@@ -1648,8 +1651,12 @@ def test_vertipaq_bar_controls_and_delta_columns():
     assert "background-image: linear-gradient(var(--ui-accent-soft), var(--ui-accent-soft));" in source
 
     # Delta Analyzer columns are badged and sort like every other column.
-    assert "deltaCols: new Set(extraCols)" in renderer
+    assert "deltaCols: new Set(usedCols)," in renderer
     assert "const isDelta = deltaCols.has(column);" in renderer
+    # A stat that was never collected (e.g. skipped cardinality) is empty for
+    # every row, so it is dropped rather than shown as an unsortable column.
+    assert "const usedCols = extraCols.filter(name =>" in renderer
+    assert "keys.some(key => !vertipaqIsBlank((store[key] || {})[name])));" in renderer
     assert '<span class="dtx-vp-delta-colicon">${DELTA_STATS_SVG}</span>' in renderer
     assert 'data-vertipaq-sort="${index}"' in renderer
     head = renderer[

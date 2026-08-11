@@ -8384,6 +8384,7 @@ function render({ model, el }) {
     clearModelCacheBtn.className = "dtx-fmt-btn dtx-clear-model-cache-btn";
     clearModelCacheBtn.innerHTML = ERASER_SVG;
     clearModelCacheBtn.setAttribute("aria-label", "Clear model cache");
+    let cacheClearPending = false;
     function renderClearModelCacheBtn() {
         const chosen = model.get("dataset_chosen") === true;
         const loading = model.get("cache_clear_loading") === true;
@@ -8396,6 +8397,7 @@ function render({ model, el }) {
     clearModelCacheBtn.addEventListener("click", () => {
         if (model.get("dataset_chosen") !== true
             || model.get("cache_clear_loading") === true) return;
+        cacheClearPending = true;
         model.set("error_message", "");
         model.set("cache_clear_loading", true);
         model.set("cache_clear_trigger",
@@ -10254,6 +10256,8 @@ function render({ model, el }) {
 
     const vertipaqSortBySection = new Map();
     let vertipaqScrollSection = null;
+    const vertipaqIsBlank = value => value === null || value === undefined
+        || (typeof value === "string" && value.trim() === "");
 
     function vertipaqActiveSection() {
         const sections = model.get("vertipaq_sections") || [];
@@ -10331,17 +10335,24 @@ function render({ model, el }) {
             return plain;
         }
         if (!extraCols.length || !Object.keys(store).length) return plain;
-        rows.forEach(row => {
-            const stat = store[keyOf(row)] || {};
-            extraCols.forEach(name => {
+        const keys = rows.map(keyOf);
+        // Stats that were not collected (e.g. cardinality was skipped) come
+        // back empty for every row; an all-blank column cannot be sorted, so
+        // it is left out entirely.
+        const usedCols = extraCols.filter(name =>
+            keys.some(key => !vertipaqIsBlank((store[key] || {})[name])));
+        if (!usedCols.length) return plain;
+        rows.forEach((row, index) => {
+            const stat = store[keys[index]] || {};
+            usedCols.forEach(name => {
                 const value = stat[name];
                 row.push(value === undefined ? null : value);
             });
         });
         return {
-            cols: cols.concat(extraCols),
+            cols: cols.concat(usedCols),
             rows,
-            deltaCols: new Set(extraCols),
+            deltaCols: new Set(usedCols),
         };
     }
 
@@ -10423,8 +10434,7 @@ function render({ model, el }) {
             const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             return `${parsed.sign < 0 ? "-" : ""}${grouped}${fraction ? `.${fraction}` : ""}`;
         };
-        const isBlank = value => value === null || value === undefined
-            || (typeof value === "string" && value.trim() === "");
+        const isBlank = vertipaqIsBlank;
         const numericColumns = cols.map((_, index) => {
             const values = rows.map(row => row[index]).filter(value => !isBlank(value));
             return values.length > 0 && values.every(value => parseNumeric(value) !== null);
@@ -10977,7 +10987,15 @@ function render({ model, el }) {
     });
     model.on("change:dataset_chosen", renderNlBtn);
     model.on("change:clear_cache", renderCacheBtn);
-    model.on("change:cache_clear_loading", renderClearModelCacheBtn);
+    model.on("change:cache_clear_loading", () => {
+        renderClearModelCacheBtn();
+        if (!cacheClearPending || model.get("cache_clear_loading") === true) return;
+        cacheClearPending = false;
+        // Failures already surface through the error banner.
+        if (!String(model.get("error_message") || "").trim()) {
+            showToast("Model cache cleared");
+        }
+    });
     model.on("change:impersonation_mode", renderImpersonation);
     model.on("change:impersonation_value", renderImpersonation);
     model.on("change:model_roles", renderImpersonation);
