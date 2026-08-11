@@ -958,8 +958,8 @@ def test_vertipaq_output_sorts_numeric_columns_and_formats_numbers():
     assert 'scope="col"' in renderer
     assert 'role="button"' not in renderer
     assert 'aria-sort="${direction}"' in renderer
-    assert 'header.addEventListener("click"' in renderer
-    assert 'event.key === "Enter" || event.key === " "' in renderer
+    assert 'tableWrap.addEventListener("click", vertipaqSortFromEvent)' in renderer
+    assert 'event.key !== "Enter" && event.key !== " "' in renderer
     assert 'vertipaqSortBySection.set(section.name, { index, direction })' in renderer
     assert 'vertipaqSortBySection.clear();' in source
     assert ".dtx .dtx-vertipaq-table th[data-vertipaq-sort]" in source
@@ -1627,9 +1627,19 @@ def test_vertipaq_bar_controls_and_delta_columns():
     assert "vpOwnsFullscreen = !isFullscreen();" in bar
     assert "if (vpOwnsFullscreen) exitFullscreen();" in bar
 
-    # Reload/full screen controls stay hidden until the first results arrive.
-    assert 'vpReloadBtn.style.display = firstLoad ? "none" : "";' in bar
-    assert 'vpFsBtn.style.display = firstLoad ? "none" : "";' in bar
+    # Reload/full screen controls only show once results are on screen.
+    assert 'vpReloadBtn.style.display = hasResults ? "" : "none";' in bar
+    assert 'vpFsBtn.style.display = hasResults ? "" : "none";' in bar
+    # An empty section toggle would paint as a stray pill while loading.
+    assert 'vpSeg.style.display = sections.length ? "" : "none";' in source
+
+    # Search bar filters the rows of the selected section.
+    assert 'vpSearchInput.className = "dtx-vp-search"' in bar
+    assert 'vpSearchInput.style.display = hasResults ? "" : "none";' in bar
+    assert "vertipaqSearch = vpSearchInput.value.trim().toLowerCase();" in bar
+    assert ".dtx .dtx-vp-search {{" in source
+    assert "!vertipaqSearch || row.some(" in renderer
+    assert 'const empty = rows.length ? "No matching rows." : "No rows.";' in renderer
 
     # The Delta Analyzer button uses the neutral icon-button styling.
     assert ".dtx .dtx-vp-delta-btn {{\n    border-color: var(--ui-accent);" not in source
@@ -1646,6 +1656,12 @@ def test_vertipaq_bar_controls_and_delta_columns():
         renderer.index("const head = cols.map(") : renderer.index("const displayValue")
     ]
     assert "${icon}${escapeHtml(String(column))}" in head
+    # Sorting is delegated, so it also works when the click lands on the badge
+    # icon of a Delta Analyzer header or after the resizers decorate the table.
+    assert 'tableWrap.addEventListener("click", vertipaqSortFromEvent);' in renderer
+    assert 'target.closest("th[data-vertipaq-sort]")' in renderer
+    assert 'if (target.closest(".dtx-column-resizer")) return;' in renderer
+    assert "vertipaqSortBySection.set(section.name, { index, direction });" in renderer
     # Sorting a trailing (Delta Analyzer) column keeps it in view.
     assert "tableWrap.scrollLeft = scrollLeft;" in renderer
     assert "const keepScroll = vertipaqScrollSection === section.name;" in renderer

@@ -2957,6 +2957,23 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-vp-icon-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
 .dtx .dtx-vp-icon-btn.dtx-vp-spinning svg {{ animation: dtxVpDeltaSpin 1s linear infinite; }}
+.dtx .dtx-vp-search {{
+    margin-left: auto;
+    width: min(240px, 30vw);
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: inherit;
+    font-size: 12px;
+}}
+.dtx .dtx-vp-search:focus {{
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}}
 .dtx .dtx-vp-delta-btn:disabled {{ opacity: 0.6; cursor: not-allowed; }}
 .dtx .dtx-vp-delta-btn.dtx-vp-delta-loaded {{ background: var(--ui-bg-hover); }}
 .dtx .dtx-vp-delta-btn.dtx-vp-delta-running {{
@@ -9149,6 +9166,19 @@ function render({ model, el }) {
     vpDeltaStatus.style.display = "none";
     vpBar.appendChild(vpDeltaStatus);
 
+    let vertipaqSearch = "";
+    const vpSearchInput = document.createElement("input");
+    vpSearchInput.type = "search";
+    vpSearchInput.className = "dtx-vp-search";
+    vpSearchInput.placeholder = "Search rows";
+    vpSearchInput.title = "Filter the rows of the selected Vertipaq Analyzer section";
+    vpSearchInput.setAttribute("aria-label", "Search Vertipaq Analyzer results");
+    vpBar.appendChild(vpSearchInput);
+    vpSearchInput.addEventListener("input", () => {
+        vertipaqSearch = vpSearchInput.value.trim().toLowerCase();
+        renderVertipaqTable();
+    });
+
     const vpDeltaOverlay = document.createElement("div");
     vpDeltaOverlay.className = "dtx-confirm-overlay";
     vpDeltaOverlay.innerHTML = `
@@ -9286,12 +9316,12 @@ function render({ model, el }) {
     function renderVpBar() {
         renderVpDeltaBtn();
         const loading = model.get("vertipaq_loading") === true;
-        // Nothing to reload or expand until the first results have arrived.
-        const firstLoad = loading
-            && (model.get("vertipaq_sections") || []).length === 0;
-        vpReloadBtn.style.display = firstLoad ? "none" : "";
-        vpFsBtn.style.display = firstLoad ? "none" : "";
-        vpReloadBtn.disabled = loading;
+        // Nothing to reload or expand unless results are on screen.
+        const hasResults = !loading
+            && (model.get("vertipaq_sections") || []).length > 0;
+        vpReloadBtn.style.display = hasResults ? "" : "none";
+        vpFsBtn.style.display = hasResults ? "" : "none";
+        vpSearchInput.style.display = hasResults ? "" : "none";
         vpReloadBtn.classList.toggle("dtx-vp-spinning", loading);
         vpFsBtn.innerHTML = vpFullscreen ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
         const fsLabel = vpFullscreen
@@ -9306,6 +9336,8 @@ function render({ model, el }) {
         if (!sections.some(s => s.name === active)) {
             active = sections.length ? sections[0].name : "";
         }
+        // An empty segmented control still paints as a small rounded pill.
+        vpSeg.style.display = sections.length ? "" : "none";
         vpSeg.innerHTML = "";
         sections.forEach(s => {
             const b = document.createElement("button");
@@ -10222,6 +10254,41 @@ function render({ model, el }) {
 
     const vertipaqSortBySection = new Map();
     let vertipaqScrollSection = null;
+
+    function vertipaqActiveSection() {
+        const sections = model.get("vertipaq_sections") || [];
+        if (!sections.length) return null;
+        return sections.find(s => s.name === (model.get("vertipaq_section") || ""))
+            || sections[0];
+    }
+    // Delegated so sorting keeps working for every header (including the
+    // trailing Delta Analyzer columns) no matter how the table is re-rendered
+    // or decorated afterwards by the column resizers.
+    function vertipaqSortFromEvent(event) {
+        const target = event.target;
+        if (!target || typeof target.closest !== "function") return;
+        if (target.closest(".dtx-column-resizer")) return;
+        const header = target.closest("th[data-vertipaq-sort]");
+        if (!header) return;
+        const section = vertipaqActiveSection();
+        if (!section) return;
+        const index = Number(header.dataset.vertipaqSort);
+        if (!Number.isInteger(index)) return;
+        const current = vertipaqSortBySection.get(section.name);
+        const direction =
+            current?.index === index && current.direction === "ascending"
+                ? "descending" : "ascending";
+        vertipaqSortBySection.set(section.name, { index, direction });
+        renderVertipaqTable();
+    }
+    tableWrap.addEventListener("click", vertipaqSortFromEvent);
+    tableWrap.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (!event.target?.closest?.("th[data-vertipaq-sort]")) return;
+        event.preventDefault();
+        vertipaqSortFromEvent(event);
+    });
+
     function updateVertipaqFrozen(table) {
         if (!table?.classList.contains("dtx-vertipaq-table")) return;
         const headers = Array.from(table.querySelectorAll("thead th"));
@@ -10283,13 +10350,11 @@ function render({ model, el }) {
             tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
             return;
         }
-        const sections = model.get("vertipaq_sections") || [];
-        if (!sections.length) {
+        const section = vertipaqActiveSection();
+        if (!section) {
             tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">No Vertipaq Analyzer results available.</div></div>`;
             return;
         }
-        let section = sections.find(s => s.name === (model.get("vertipaq_section") || ""));
-        if (!section) section = sections[0];
         // Re-rendering replaces the table, which would reset the scroll offset
         // and hide the trailing (Delta Analyzer) columns the user just sorted.
         const keepScroll = vertipaqScrollSection === section.name;
@@ -10365,7 +10430,11 @@ function render({ model, el }) {
             return values.length > 0 && values.every(value => parseNumeric(value) !== null);
         });
         const sortState = vertipaqSortBySection.get(section.name) || null;
-        const viewRows = rows.map((row, index) => ({ row, index }));
+        const viewRows = rows
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => !vertipaqSearch || row.some(
+                value => String(value ?? "").toLowerCase().includes(vertipaqSearch)
+            ));
         if (sortState && sortState.index < cols.length) {
             viewRows.sort((left, right) => {
                 const a = left.row[sortState.index];
@@ -10396,8 +10465,9 @@ function render({ model, el }) {
             return formatNumeric(parseNumeric(value));
         };
         let body;
-        if (!rows.length) {
-            body = `<tr><td colspan="${Math.max(cols.length, 1)}" class="dtx-empty">No rows.</td></tr>`;
+        if (!viewRows.length) {
+            const empty = rows.length ? "No matching rows." : "No rows.";
+            body = `<tr><td colspan="${Math.max(cols.length, 1)}" class="dtx-empty">${empty}</td></tr>`;
         } else {
             body = viewRows.map(({ row }) => `<tr>`
                 + row.map((value, index) => `<td class="${numericColumns[index] ? "dtx-num" : ""}${frozenClasses(index)}">${escapeHtml(displayValue(value, index))}</td>`).join("")
@@ -10412,22 +10482,6 @@ function render({ model, el }) {
             updateVertipaqFrozen(tableWrap.querySelector(".dtx-vertipaq-table"));
             tableWrap.scrollLeft = scrollLeft;
             tableWrap.scrollTop = scrollTop;
-        });
-        const sortColumn = header => {
-            const index = Number(header.dataset.vertipaqSort);
-            const direction = sortState?.index === index && sortState.direction === "ascending"
-                ? "descending" : "ascending";
-            vertipaqSortBySection.set(section.name, { index, direction });
-            renderVertipaqTable();
-        };
-        tableWrap.querySelectorAll("th[data-vertipaq-sort]").forEach(header => {
-            header.addEventListener("click", () => sortColumn(header));
-            header.addEventListener("keydown", event => {
-                if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    sortColumn(header);
-                }
-            });
         });
     }
 
