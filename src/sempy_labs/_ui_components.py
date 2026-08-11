@@ -1267,6 +1267,37 @@ SEARCH_SELECT_JS = SEARCH_SELECT_JS.replace(
 
 
 # ---------------------------------------------------------------------------
+# Widget background work
+# ---------------------------------------------------------------------------
+def run_widget_task(target, args: Sequence = ()):
+    """Run a widget action on the kernel thread.
+
+    Fabric PySpark notebooks route widget messages through the running cell, so
+    trait updates emitted from a worker thread never reach the browser (the UI
+    keeps showing its progress bar even though the work finished), and the
+    first sempy/TOM call made there blocks on the Spark gateway. Widget work is
+    therefore never moved off the kernel thread. The kernel is busy while the
+    action runs, which is why long actions must report progress through traits
+    rather than relying on the user being able to interact meanwhile.
+
+    Parameters
+    ----------
+    target : typing.Callable
+        The function to run.
+    args : typing.Sequence, default=()
+        Positional arguments passed to ``target``.
+
+    Returns
+    -------
+    None
+        Always None; the action has already completed when this returns.
+    """
+
+    target(*args)
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Reusable header (title + dataset/workspace subtitle + theme toggle)
 # ---------------------------------------------------------------------------
 HEADER_CSS: str = """\

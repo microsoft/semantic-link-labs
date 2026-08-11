@@ -7,6 +7,7 @@ from sempy_labs._ui_components import (
     ICONS as _UI_ICONS,
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
+    run_widget_task as _run_widget_task,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
 )
@@ -4477,4 +4478,4 @@ def bpa(
 
     display(widget)
     if not widget.rules:
-        threading.Thread(target=_warm_rule_editor_rules, daemon=True).start()
+        _run_widget_task(_warm_rule_editor_rules)

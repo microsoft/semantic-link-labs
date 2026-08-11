@@ -1227,7 +1227,7 @@ def test_object_dependencies_use_raw_model_graph_with_isolated_state():
     assert 'str(model_ctx["workspace_id"]) == str(workspace_snapshot)' in worker
     assert "widget.object_dependency_trigger == request_id" in worker
     assert "or widget.object_dependencies_loading" not in worker
-    assert "args=(request_id,)" in worker
+    assert "(request_id,)" in worker
     assert "widget.object_dependency_edges = edges" in worker
     assert 'names="object_dependency_trigger"' in source
     activation = source[
@@ -1493,7 +1493,7 @@ def test_workspace_monitoring_matches_tools_app_behavior():
         )
     ]
     assert request_observer.index("widget.workspace_monitoring_loading = True") < request_observer.index(
-        "threading.Thread("
+        "_run_widget_task("
     )
     assert 'workspace_monitoring_rows = traitlets.List([]).tag(sync=True)' in source
     assert 'workspace_monitoring_tokens = traitlets.List([]).tag(sync=True)' in source

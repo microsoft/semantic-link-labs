@@ -1,5 +1,4 @@
 # flake8: noqa: E501
-import threading
 import time
 import warnings
 from typing import Any, Optional
@@ -11,6 +10,7 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    run_widget_task as _run_widget_task,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
 )
@@ -758,19 +758,11 @@ def refresh_manager(
         widget.gantt_events = []
         try:
             if bool(data.get("visualize")):
-                threading.Thread(
-                    target=run_visualized_refresh,
-                    args=(dict(data),),
-                    daemon=True,
-                ).start()
+                _run_widget_task(run_visualized_refresh, (dict(data),))
             else:
                 request_id, refresh_type = submit_refresh(data)
                 widget.refresh_id = request_id
-                threading.Thread(
-                    target=poll_refresh,
-                    args=(request_id, refresh_type),
-                    daemon=True,
-                ).start()
+                _run_widget_task(poll_refresh, (request_id, refresh_type))
         except Exception as exc:
             widget.busy = False
             set_error(str(exc))
@@ -938,5 +930,5 @@ def refresh_manager(
             datasets[workspace_id] = list_datasets(workspace_id)
             widget.datasets = datasets
 
-        threading.Thread(target=load_initial_workspaces, daemon=True).start()
-        threading.Thread(target=load_initial_datasets, daemon=True).start()
+        _run_widget_task(load_initial_workspaces)
+        _run_widget_task(load_initial_datasets)

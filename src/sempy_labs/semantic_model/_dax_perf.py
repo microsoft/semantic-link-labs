@@ -8307,9 +8307,12 @@ function render({ model, el }) {
     }
     runBtn.addEventListener("click", () => {
         if (model.get("is_running") === true) {
-            // Cancel
+            // Cancel. The kernel is busy running the query, so it only sees
+            // this once the query returns; stop waiting for it here instead.
+            model.set("is_running", false);
             model.set("cancel_trigger", (model.get("cancel_trigger") || 0) + 1);
             model.save_changes();
+            renderRunBtn();
             return;
         }
         // Run
@@ -11267,8 +11270,15 @@ export default { render };
         # must be (re)captured for the query currently in the query pane.
         "traced_query": None,
         "deps_query": None,
+        # True only while a query is executing, so a cancel that is delivered
+        # after the run finished is not mistaken for a real cancellation.
+        "active": False,
     }
     state_lock = threading.Lock()
+
+    # Widget work always runs on the kernel thread: trait updates emitted from
+    # a worker thread never reach the browser in a Fabric PySpark notebook.
+    _run_widget_task = _ui_components.run_widget_task
 
     # ---- Persistent (long-running) trace shared by all queries in the UI ----
     # Instead of creating a fresh trace per query, the widget keeps a single
@@ -11573,17 +11583,17 @@ export default { render };
     def _on_report_capture_start(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_start_report_capture, daemon=True).start()
+        _run_widget_task(_start_report_capture)
 
     def _on_report_capture_finish(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_finish_report_capture, daemon=True).start()
+        _run_widget_task(_finish_report_capture)
 
     def _on_report_capture_checkpoint(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_checkpoint_report_capture, daemon=True).start()
+        _run_widget_task(_checkpoint_report_capture)
 
     def _update_history_execution_metrics(history_id, metric_rows: list) -> None:
         metrics = _execution_metrics_dict(metric_rows)
@@ -11864,19 +11874,26 @@ export default { render };
         with state_lock:
             run_state["current_run_id"] += 1
             run_id = run_state["current_run_id"]
-        thread = threading.Thread(
-            target=_worker,
-            args=(query, bool(widget.clear_cache), run_id, effective_user, role_name),
-            daemon=True,
-        )
-        with state_lock:
-            run_state["thread"] = thread
-        thread.start()
+            run_state["active"] = True
+        try:
+            thread = _run_widget_task(
+                _worker,
+                (query, bool(widget.clear_cache), run_id, effective_user, role_name),
+            )
+            with state_lock:
+                run_state["thread"] = thread
+        finally:
+            with state_lock:
+                run_state["active"] = False
 
     def _on_cancel(change):
         if change["new"] == change["old"]:
             return
         with state_lock:
+            if not run_state["active"]:
+                # Delivered after the query finished, so there is nothing to
+                # stop and the results that just landed must be kept.
+                return
             run_id = run_state["current_run_id"]
             run_state["canceled_run_ids"].add(run_id)
         widget.is_running = False
@@ -11910,7 +11927,7 @@ export default { render };
             widget.cache_clear_loading = False
             widget.error_message = "Wait for report query capture to finish first."
             return
-        threading.Thread(target=_clear_model_cache, daemon=True).start()
+        _run_widget_task(_clear_model_cache)
 
     def _compute_dependencies() -> None:
         """Compute the model objects (tables, columns, measures,
@@ -12011,7 +12028,7 @@ export default { render };
         if widget.dependencies_loading:
             return
         widget.dependencies_loading = True
-        threading.Thread(target=_compute_dependencies, daemon=True).start()
+        _run_widget_task(_compute_dependencies)
 
     def _compute_object_dependencies(request_id: int) -> None:
         dataset_snapshot = model_ctx["dataset_id"]
@@ -12085,11 +12102,7 @@ export default { render };
         if change["new"] == change["old"]:
             return
         request_id = int(change["new"])
-        threading.Thread(
-            target=_compute_object_dependencies,
-            args=(request_id,),
-            daemon=True,
-        ).start()
+        _run_widget_task(_compute_object_dependencies, (request_id,))
 
     def _compute_vertipaq() -> None:
         """Run the Vertipaq Analyzer against the active semantic model and push
@@ -12182,7 +12195,7 @@ export default { render };
         if widget.vertipaq_loading:
             return
         widget.vertipaq_loading = True
-        threading.Thread(target=_compute_vertipaq, daemon=True).start()
+        _run_widget_task(_compute_vertipaq)
 
     # Delta Analyzer runs (merged into the Vertipaq Analyzer Tables/Columns
     # sections) execute inline on the kernel thread: Spark/OneLake calls (e.g.
@@ -12553,7 +12566,7 @@ export default { render };
             widget.performance_loading = False
             widget.error_message = "Wait for report query capture to finish first."
             return
-        threading.Thread(target=_compute_performance, daemon=True).start()
+        _run_widget_task(_compute_performance)
 
     def _load_workspace_monitoring(request: Optional[dict] = None) -> None:
         allowed_ranges = {"15m", "1h", "4h", "12h", "1d", "3d", "7d", "30d"}
@@ -12650,16 +12663,14 @@ export default { render };
         if change["new"] == change["old"] or widget.workspace_monitoring_loading:
             return
         widget.workspace_monitoring_loading = True
-        threading.Thread(target=_load_workspace_monitoring, daemon=True).start()
+        _run_widget_task(_load_workspace_monitoring)
 
     def _on_workspace_monitoring_request(change):
         if change["new"] == change["old"] or widget.workspace_monitoring_loading:
             return
         request = dict(change["new"] or {})
         widget.workspace_monitoring_loading = True
-        threading.Thread(
-            target=_load_workspace_monitoring, args=(request,), daemon=True
-        ).start()
+        _run_widget_task(_load_workspace_monitoring, (request,))
 
     widget.observe(_on_run, names="run_trigger")
     widget.observe(_on_cancel, names="cancel_trigger")
@@ -12750,7 +12761,7 @@ export default { render };
     def _on_download_history(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_build_history_excel, daemon=True).start()
+        _run_widget_task(_build_history_excel)
 
     widget.observe(_on_download_history, names="download_history_trigger")
 
@@ -12795,7 +12806,7 @@ export default { render };
     def _on_download_result(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_build_result_excel, daemon=True).start()
+        _run_widget_task(_build_result_excel)
 
     widget.observe(_on_download_result, names="download_result_trigger")
 
@@ -12838,8 +12849,7 @@ export default { render };
         if change["new"] == change["old"]:
             return
         widget.metadata_loading = True
-        # Runs inline: see _on_load_workspaces.
-        _load_metadata()
+        _run_widget_task(_load_metadata)
 
     widget.observe(_on_refresh_metadata, names="refresh_metadata_trigger")
 
@@ -12871,8 +12881,7 @@ export default { render };
         if change["new"] == change["old"]:
             return
         widget.picker_loading = True
-        # Runs inline: see _on_load_workspaces.
-        _load_datasets_for_selected_workspace()
+        _run_widget_task(_load_datasets_for_selected_workspace)
 
     widget.observe(_on_select_workspace, names="select_workspace_trigger")
 
@@ -12960,10 +12969,7 @@ export default { render };
         if change["new"] == change["old"]:
             return
         widget.picker_loading = True
-        # Runs inline: connecting reads the model through TOM, and that first
-        # .NET/XMLA call blocks forever off the main thread in a PySpark
-        # notebook (see _on_load_workspaces).
-        _activate_selected_dataset()
+        _run_widget_task(_activate_selected_dataset)
 
     widget.observe(_on_select_dataset, names="select_dataset_trigger")
 
@@ -12988,13 +12994,7 @@ export default { render };
         if change["new"] == change["old"]:
             return
         widget.picker_loading = True
-        # Runs inline on the kernel thread rather than on a worker thread. When
-        # no dataset was supplied this is the first sempy call of the session,
-        # so it is the one that initializes the .NET runtime and acquires the
-        # Fabric token; in a PySpark notebook that initialization goes through
-        # the Spark gateway and blocks forever off the main thread, leaving the
-        # picker stuck on "Loading workspaces...".
-        _load_workspaces()
+        _run_widget_task(_load_workspaces)
 
     widget.observe(_on_load_workspaces, names="load_workspaces_trigger")
 
@@ -13022,7 +13022,7 @@ export default { render };
         if widget.format_loading:
             return
         widget.format_loading = True
-        threading.Thread(target=_format_query, daemon=True).start()
+        _run_widget_task(_format_query)
 
     widget.observe(_on_format_query, names="format_query_trigger")
 
@@ -13078,7 +13078,7 @@ export default { render };
     def _on_nl_to_dax(change):
         if change["new"] == change["old"]:
             return
-        threading.Thread(target=_nl_to_dax_run, daemon=True).start()
+        _run_widget_task(_nl_to_dax_run)
 
     widget.observe(_on_nl_to_dax, names="nl_to_dax_trigger")
 
@@ -13137,12 +13137,9 @@ export default { render };
     # Start the long-running trace for the initially selected model (if any)
     # so it is ready by the time the first query runs.
     if model_ctx["dataset_id"] is not None:
-        threading.Thread(
-            target=lambda: _ensure_trace(
-                model_ctx["dataset_id"], model_ctx["workspace_id"]
-            ),
-            daemon=True,
-        ).start()
+        _run_widget_task(
+            _ensure_trace, (model_ctx["dataset_id"], model_ctx["workspace_id"])
+        )
 
     display(widget)
 

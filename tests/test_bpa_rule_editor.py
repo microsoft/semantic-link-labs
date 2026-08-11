@@ -19,9 +19,7 @@ def test_rule_editor_rules_are_warmed_after_initial_display():
     assert "with _catalog_lock:" in BPA_SOURCE
     assert "def _warm_rule_editor_rules():" in BPA_SOURCE
     display_index = BPA_SOURCE.index("    display(widget)")
-    warm_index = BPA_SOURCE.index(
-        "threading.Thread(target=_warm_rule_editor_rules, daemon=True).start()"
-    )
+    warm_index = BPA_SOURCE.index("_run_widget_task(_warm_rule_editor_rules)")
     assert display_index < warm_index
 
 
