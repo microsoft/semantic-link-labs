@@ -1618,7 +1618,24 @@ def test_vertipaq_bar_controls_and_delta_columns():
         in bar
     )
     assert "function clearVpFullscreenIfExited()" in bar
-    assert ".dtx.dtx-vp-fs .dtx-main > *:not(.dtx-view-toolbar)" in source
+    # The results tabs are irrelevant while the Vertipaq view is full screen.
+    assert ".dtx.dtx-vp-fs .dtx-main > *:not(.dtx-vp-bar):not(.dtx-table-wrap)" in source
+    assert ".dtx.dtx-vp-fs .dtx-main {{ overflow: hidden; }}" in source
+    assert ".dtx.dtx-vp-fs .dtx-table-wrap {{\n    flex: 1 1 auto;" in source
+
+    # Leaving the Vertipaq full screen keeps a tool-level full screen intact.
+    assert "vpOwnsFullscreen = !isFullscreen();" in bar
+    assert "if (vpOwnsFullscreen) exitFullscreen();" in bar
+
+    # Reload/full screen controls stay hidden until the first results arrive.
+    assert 'vpReloadBtn.style.display = firstLoad ? "none" : "";' in bar
+    assert 'vpFsBtn.style.display = firstLoad ? "none" : "";' in bar
+
+    # The Delta Analyzer button uses the neutral icon-button styling.
+    assert ".dtx .dtx-vp-delta-btn {{\n    border-color: var(--ui-accent);" not in source
+
+    # Frozen columns stay opaque so scrolled columns cannot show through.
+    assert "background-image: linear-gradient(var(--ui-accent-soft), var(--ui-accent-soft));" in source
 
     # Delta Analyzer columns are badged and sort like every other column.
     assert "deltaCols: new Set(extraCols)" in renderer
@@ -1629,3 +1646,6 @@ def test_vertipaq_bar_controls_and_delta_columns():
         renderer.index("const head = cols.map(") : renderer.index("const displayValue")
     ]
     assert "${icon}${escapeHtml(String(column))}" in head
+    # Sorting a trailing (Delta Analyzer) column keeps it in view.
+    assert "tableWrap.scrollLeft = scrollLeft;" in renderer
+    assert "const keepScroll = vertipaqScrollSection === section.name;" in renderer

@@ -2957,14 +2957,8 @@ def _visualize_dax_test(
 }}
 .dtx .dtx-vp-icon-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
 .dtx .dtx-vp-icon-btn.dtx-vp-spinning svg {{ animation: dtxVpDeltaSpin 1s linear infinite; }}
-.dtx .dtx-vp-delta-btn {{
-    border-color: var(--ui-accent);
-    color: var(--ui-accent);
-    background: transparent;
-}}
-.dtx .dtx-vp-delta-btn:hover:not(:disabled) {{ background: var(--ui-accent-soft); }}
 .dtx .dtx-vp-delta-btn:disabled {{ opacity: 0.6; cursor: not-allowed; }}
-.dtx .dtx-vp-delta-btn.dtx-vp-delta-loaded {{ background: var(--ui-accent-soft); }}
+.dtx .dtx-vp-delta-btn.dtx-vp-delta-loaded {{ background: var(--ui-bg-hover); }}
 .dtx .dtx-vp-delta-btn.dtx-vp-delta-running {{
     border-color: var(--ui-danger);
     color: var(--ui-danger);
@@ -2994,14 +2988,20 @@ def _visualize_dax_test(
     color: var(--ui-accent);
 }}
 .dtx .dtx-vp-delta-colicon svg {{ width: 11px; height: 11px; display: block; }}
-/* Vertipaq Analyzer full screen: only its toolbar and table remain. */
+/* Vertipaq Analyzer full screen: only its own toolbar and table remain. */
 .dtx.dtx-vp-fs .dtx-sidebar,
 .dtx.dtx-vp-fs .dtx-sidebar-resizer,
 .dtx.dtx-vp-fs .dtx-monitoring {{ display: none !important; }}
-.dtx.dtx-vp-fs .dtx-main > *:not(.dtx-view-toolbar):not(.dtx-vp-bar):not(.dtx-table-wrap) {{
+.dtx.dtx-vp-fs .dtx-main > *:not(.dtx-vp-bar):not(.dtx-table-wrap) {{
     display: none !important;
 }}
-.dtx.dtx-vp-fs .dtx-table-wrap {{ max-height: none; }}
+/* The table wrapper stays the scroll container so headers keep sticking. */
+.dtx.dtx-vp-fs .dtx-main {{ overflow: hidden; }}
+.dtx.dtx-vp-fs .dtx-table-wrap {{
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+}}
 .dtx .dtx-vp-delta-status {{
     font-size: 12px;
     color: var(--ui-text-secondary);
@@ -3492,18 +3492,23 @@ def _visualize_dax_test(
 .dtx .dtx-vertipaq-table .dtx-vp-frozen {{
     position: sticky;
     left: 0;
-    background: var(--ui-bg);
+    /* The base colour must stay fully opaque: a translucent frozen cell lets
+       the columns scrolling underneath show through it. Tints are layered on
+       top via background-image instead of replacing the colour. */
+    background-color: var(--ui-bg);
+    background-image: none;
 }}
 .dtx .dtx-vertipaq-table tbody tr:nth-child(even) .dtx-vp-frozen {{
-    background: var(--ui-bg-tertiary);
+    background-color: var(--ui-bg-tertiary);
 }}
 .dtx .dtx-vertipaq-table tbody tr:hover .dtx-vp-frozen {{
-    background: var(--ui-accent-soft);
+    background-image: linear-gradient(var(--ui-accent-soft), var(--ui-accent-soft));
 }}
-.dtx .dtx-vertipaq-table td.dtx-vp-frozen {{ z-index: 2; }}
+.dtx .dtx-vertipaq-table td.dtx-vp-frozen {{ z-index: 3; }}
+.dtx .dtx-vertipaq-table thead th {{ z-index: 4; }}
 .dtx .dtx-vertipaq-table th.dtx-vp-frozen {{
     z-index: 5;
-    background: var(--ui-bg-secondary);
+    background-color: var(--ui-bg-secondary);
 }}
 .dtx .dtx-vertipaq-table .dtx-vp-frozen-edge {{
     box-shadow: inset -1px 0 0 var(--ui-border-strong);
@@ -9111,6 +9116,9 @@ function render({ model, el }) {
     });
 
     let vpFullscreen = false;
+    // True only when the Vertipaq view is what put the tool into full screen,
+    // so leaving it does not drop a tool-level full screen the user chose.
+    let vpOwnsFullscreen = false;
     const vpFsBtn = document.createElement("button");
     vpFsBtn.type = "button";
     vpFsBtn.className = "dtx-vp-icon-btn";
@@ -9118,12 +9126,19 @@ function render({ model, el }) {
     function setVpFullscreen(on) {
         vpFullscreen = on;
         root.classList.toggle("dtx-vp-fs", on);
-        if (on) { enterFullscreen(); } else { exitFullscreen(); }
+        if (on) {
+            vpOwnsFullscreen = !isFullscreen();
+            if (vpOwnsFullscreen) enterFullscreen();
+        } else {
+            if (vpOwnsFullscreen) exitFullscreen();
+            vpOwnsFullscreen = false;
+        }
         renderVpBar();
     }
     function clearVpFullscreenIfExited() {
         if (!vpFullscreen || isFullscreen()) return;
         vpFullscreen = false;
+        vpOwnsFullscreen = false;
         root.classList.remove("dtx-vp-fs");
         renderVpBar();
     }
@@ -9271,6 +9286,11 @@ function render({ model, el }) {
     function renderVpBar() {
         renderVpDeltaBtn();
         const loading = model.get("vertipaq_loading") === true;
+        // Nothing to reload or expand until the first results have arrived.
+        const firstLoad = loading
+            && (model.get("vertipaq_sections") || []).length === 0;
+        vpReloadBtn.style.display = firstLoad ? "none" : "";
+        vpFsBtn.style.display = firstLoad ? "none" : "";
         vpReloadBtn.disabled = loading;
         vpReloadBtn.classList.toggle("dtx-vp-spinning", loading);
         vpFsBtn.innerHTML = vpFullscreen ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
@@ -10201,6 +10221,7 @@ function render({ model, el }) {
     }
 
     const vertipaqSortBySection = new Map();
+    let vertipaqScrollSection = null;
     function updateVertipaqFrozen(table) {
         if (!table?.classList.contains("dtx-vertipaq-table")) return;
         const headers = Array.from(table.querySelectorAll("thead th"));
@@ -10269,6 +10290,12 @@ function render({ model, el }) {
         }
         let section = sections.find(s => s.name === (model.get("vertipaq_section") || ""));
         if (!section) section = sections[0];
+        // Re-rendering replaces the table, which would reset the scroll offset
+        // and hide the trailing (Delta Analyzer) columns the user just sorted.
+        const keepScroll = vertipaqScrollSection === section.name;
+        const scrollLeft = keepScroll ? tableWrap.scrollLeft : 0;
+        const scrollTop = keepScroll ? tableWrap.scrollTop : 0;
+        vertipaqScrollSection = section.name;
         const merged = vertipaqDeltaMerge(section);
         const cols = merged.cols;
         const rows = merged.rows;
@@ -10381,9 +10408,11 @@ function render({ model, el }) {
                 <thead><tr>${head}</tr></thead>
                 <tbody>${body}</tbody>
             </table>`;
-        requestAnimationFrame(() => updateVertipaqFrozen(
-            tableWrap.querySelector(".dtx-vertipaq-table")
-        ));
+        requestAnimationFrame(() => {
+            updateVertipaqFrozen(tableWrap.querySelector(".dtx-vertipaq-table"));
+            tableWrap.scrollLeft = scrollLeft;
+            tableWrap.scrollTop = scrollTop;
+        });
         const sortColumn = header => {
             const index = Number(header.dataset.vertipaqSort);
             const direction = sortState?.index === index && sortState.direction === "ascending"
