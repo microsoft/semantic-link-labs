@@ -892,6 +892,25 @@ def _execution_metrics_dict(metric_rows: list) -> dict:
     }
 
 
+def _payload_cell(value):
+    """Normalize one dataframe cell for JSON transport."""
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, float):
+        return None if value != value else value
+    if isinstance(value, (bool, int)):
+        return value
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return str(value)
+
+
 def _result_payload_from_df(df: pd.DataFrame, max_rows: int = 5000) -> dict:
     """Convert a query result dataframe to a payload of ``{columns, rows,
     total_rows, truncated}`` for the front-end."""
@@ -902,17 +921,12 @@ def _result_payload_from_df(df: pd.DataFrame, max_rows: int = 5000) -> dict:
     total_rows = int(len(df))
     truncated = total_rows > max_rows
     view = df.head(max_rows) if truncated else df
-    rows: list = []
-    for _, r in view.iterrows():
-        row: list = []
-        for v in r.tolist():
-            if v is None:
-                row.append(None)
-            elif pd.isna(v):
-                row.append(None)
-            else:
-                row.append(v if isinstance(v, (int, float, bool, str)) else str(v))
-        rows.append(row)
+    # itertuples avoids building a Series per row, which dominates the cost of
+    # serializing the wide Vertipaq Analyzer tables.
+    rows = [
+        [_payload_cell(value) for value in values]
+        for values in view.itertuples(index=False, name=None)
+    ]
     return {
         "columns": columns,
         "rows": rows,
@@ -9129,6 +9143,17 @@ function render({ model, el }) {
     // Tables, Partitions, Columns, Relationships, Hierarchies). This
     // segmented control (built dynamically from the returned sections) lets
     // the user switch between them. It is shown only on the Vertipaq tab.
+
+    // The kernel only reports that it started working after a comm round
+    // trip, so these mirror its loading state optimistically and the progress
+    // bar appears the moment the user asks for the results.
+    let dependenciesPending = false;
+    let vertipaqPending = false;
+    const dependenciesBusy = () =>
+        dependenciesPending || model.get("dependencies_loading") === true;
+    const vertipaqBusy = () =>
+        vertipaqPending || model.get("vertipaq_loading") === true;
+
     const vpBar = document.createElement("div");
     vpBar.className = "dtx-vp-bar";
     vpBar.style.display = "none";
@@ -9167,12 +9192,14 @@ function render({ model, el }) {
     vpReloadBtn.setAttribute("aria-label", vpReloadBtn.title);
     vpBar.appendChild(vpReloadBtn);
     vpReloadBtn.addEventListener("click", () => {
-        if (model.get("vertipaq_loading") === true) return;
+        if (vertipaqBusy()) return;
         // The kernel owns vertipaq_loading; setting it here would make its
         // observer treat the request as a duplicate and drop it.
+        vertipaqPending = true;
         model.set("vertipaq_trigger", (model.get("vertipaq_trigger") || 0) + 1);
         model.save_changes();
         renderVpBar();
+        renderTable();
     });
 
     let vpFullscreen = false;
@@ -9358,7 +9385,7 @@ function render({ model, el }) {
     }
     function renderVpBar() {
         renderVpDeltaBtn();
-        const loading = model.get("vertipaq_loading") === true;
+        const loading = vertipaqBusy();
         // Nothing to reload or expand unless results are on screen.
         const hasResults = !loading
             && (model.get("vertipaq_sections") || []).length > 0;
@@ -9502,9 +9529,11 @@ function render({ model, el }) {
         const curQuery = model.get("dax_query") || "";
         if (curQuery !== lastDepQuery) {
             lastDepQuery = curQuery;
+            dependenciesPending = true;
             model.set("dependencies_trigger", (model.get("dependencies_trigger") || 0) + 1);
         }
         model.save_changes();
+        renderTable();
     });
 
     // Tracks the dataset id the displayed Vertipaq Analyzer results were
@@ -9517,9 +9546,11 @@ function render({ model, el }) {
         const curDs = model.get("active_dataset_id") || "";
         if (curDs && curDs !== lastVertipaqDataset) {
             lastVertipaqDataset = curDs;
+            vertipaqPending = true;
             model.set("vertipaq_trigger", (model.get("vertipaq_trigger") || 0) + 1);
         }
         model.save_changes();
+        renderTable();
     });
 
     // Trigger a fresh DAX performance analysis and switch to its tab. The
@@ -10277,7 +10308,7 @@ function render({ model, el }) {
     }
 
     function renderDependenciesTable() {
-        if (model.get("dependencies_loading") === true) {
+        if (dependenciesBusy()) {
             tableWrap.innerHTML = loadingHtml("Computing query dependencies\u2026");
             return;
         }
@@ -10406,7 +10437,7 @@ function render({ model, el }) {
     }
 
     function renderVertipaqTable() {
-        if (model.get("vertipaq_loading") === true) {
+        if (vertipaqBusy()) {
             tableWrap.innerHTML = loadingHtml("Running Vertipaq Analyzer\u2026");
             return;
         }
@@ -10443,7 +10474,8 @@ function render({ model, el }) {
             if (typeof value !== "number" && typeof value !== "string") return null;
             let text = String(value).trim();
             // Stats can arrive pre-grouped (e.g. "1,234"); sort on magnitude.
-            if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(text)) {
+            if (text.includes(",")
+                    && /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(text)) {
                 text = text.replace(/,/g, "");
             }
             const match = /^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
@@ -10490,9 +10522,17 @@ function render({ model, el }) {
             return `${parsed.sign < 0 ? "-" : ""}${grouped}${fraction ? `.${fraction}` : ""}`;
         };
         const isBlank = vertipaqIsBlank;
+        // Stops at the first unparsable value instead of materializing and
+        // parsing every cell of a text column.
         const numericColumns = cols.map((_, index) => {
-            const values = rows.map(row => row[index]).filter(value => !isBlank(value));
-            return values.length > 0 && values.every(value => parseNumeric(value) !== null);
+            let sawValue = false;
+            for (const row of rows) {
+                const value = row[index];
+                if (isBlank(value)) continue;
+                if (parseNumeric(value) === null) return false;
+                sawValue = true;
+            }
+            return sawValue;
         });
         const sortState = vertipaqSortBySection.get(section.name) || null;
         const viewRows = rows
@@ -10942,7 +10982,10 @@ function render({ model, el }) {
     model.on("change:query_plan_type", renderTable);
     model.on("change:execution_metrics", renderTable);
     model.on("change:dependency_tree", renderTable);
-    model.on("change:dependencies_loading", renderTable);
+    model.on("change:dependencies_loading", () => {
+        dependenciesPending = false;
+        renderTable();
+    });
     model.on("change:dependency_columns", renderTable);
     model.on("change:dependency_view", renderTable);
     model.on("change:object_dependencies_loading", renderObjectDependencies);
@@ -10954,7 +10997,11 @@ function render({ model, el }) {
         renderTable();
     });
     model.on("change:vertipaq_section", () => { renderVpBar(); renderTable(); });
-    model.on("change:vertipaq_loading", () => { renderVpBar(); renderTable(); });
+    model.on("change:vertipaq_loading", () => {
+        vertipaqPending = false;
+        renderVpBar();
+        renderTable();
+    });
     model.on("change:vertipaq_delta_tables", () => {
         vertipaqSortBySection.clear();
         renderVpBar();
@@ -11017,7 +11064,17 @@ function render({ model, el }) {
         root.classList.toggle("dtx-running", model.get("is_running") === true);
         renderRunBtn();
     });
-    model.on("change:error_message", renderError);
+    model.on("change:error_message", () => {
+        // A request the kernel rejected outright never flips its loading
+        // trait, so the optimistic progress bar has to stop here.
+        if (String(model.get("error_message") || "").trim()) {
+            dependenciesPending = false;
+            vertipaqPending = false;
+            renderVpBar();
+            renderTable();
+        }
+        renderError();
+    });
     model.on("change:dax_query", () => {
         if (textarea.value !== model.get("dax_query")) {
             const newVal = model.get("dax_query") || "";
@@ -11356,6 +11413,14 @@ export default { render };
     # current ids from this dict rather than closing over fixed values).
     model_ctx = {"dataset_id": dataset_id, "workspace_id": workspace_id}
     dataset_chosen = dataset_id is not None
+    # Model-level lookups reused by the query dependencies view (rebuilding
+    # them means reopening the XMLA connection, which is the slow part).
+    dep_meta_cache: dict = {
+        "dataset_id": None,
+        "rel_lookup": {},
+        "rel_columns": {},
+        "rownumber_cols": set(),
+    }
 
     # Collect the model metadata tree synchronously before constructing the
     # widget. Loading it in a background thread that sets traits right after
@@ -11381,20 +11446,18 @@ export default { render };
         initial_roles = []
         initial_reports = []
 
-    # Avoid blocking the initial picker screen on workspace enumeration. For a
-    # supplied dataset, retain the existing eager picker data so Change Model
-    # is immediately ready.
-    if dataset_chosen:
-        try:
-            initial_workspaces = _list_workspaces_for_picker()
-        except Exception:
-            initial_workspaces = []
-        try:
-            initial_datasets = _list_datasets_for_picker(workspace_id)
-        except Exception:
-            initial_datasets = []
-    else:
+    # Ship the picker lists as initial widget state so the workspace/model
+    # selectors are populated on first paint instead of after a comm
+    # round-trip once the front-end has rendered.
+    try:
+        initial_workspaces = _list_workspaces_for_picker()
+    except Exception:
         initial_workspaces = []
+    try:
+        initial_datasets = (
+            _list_datasets_for_picker(workspace_id) if workspace_id else []
+        )
+    except Exception:
         initial_datasets = []
 
     widget = DaxTestWidget(
@@ -12239,22 +12302,41 @@ export default { render };
                 "COLUMN" in (row["object_type"] or "").upper() for row in rows
             )
             if needs_rel or needs_cols:
-                try:
-                    from sempy_labs.tom import connect_semantic_model
+                # Opening the XMLA connection dominates this call, so the
+                # model-level lookups are cached until the model changes.
+                cached = dep_meta_cache.get("dataset_id") == model_ctx["dataset_id"]
+                if not cached:
+                    try:
+                        from sempy_labs.tom import connect_semantic_model
 
-                    with connect_semantic_model(
-                        dataset=model_ctx["dataset_id"],
-                        workspace=model_ctx["workspace_id"],
-                        readonly=True,
-                    ) as tom:
-                        if needs_rel:
-                            rel_lookup = _build_relationship_lookup(tom)
-                            rel_columns = _build_relationship_columns(tom)
-                        rownumber_cols = _build_rownumber_columns(tom)
-                except Exception:
-                    rel_lookup = {}
-                    rel_columns = {}
-                    rownumber_cols = set()
+                        with connect_semantic_model(
+                            dataset=model_ctx["dataset_id"],
+                            workspace=model_ctx["workspace_id"],
+                            readonly=True,
+                        ) as tom:
+                            dep_meta_cache["rel_lookup"] = _build_relationship_lookup(
+                                tom
+                            )
+                            dep_meta_cache["rel_columns"] = _build_relationship_columns(
+                                tom
+                            )
+                            dep_meta_cache["rownumber_cols"] = _build_rownumber_columns(
+                                tom
+                            )
+                        dep_meta_cache["dataset_id"] = model_ctx["dataset_id"]
+                    except Exception:
+                        dep_meta_cache.update(
+                            {
+                                "dataset_id": None,
+                                "rel_lookup": {},
+                                "rel_columns": {},
+                                "rownumber_cols": set(),
+                            }
+                        )
+                if needs_rel:
+                    rel_lookup = dep_meta_cache["rel_lookup"]
+                    rel_columns = dep_meta_cache["rel_columns"]
+                rownumber_cols = dep_meta_cache["rownumber_cols"]
             widget.dependency_tree = _build_dependency_tree(
                 rows, rel_lookup, widget.dataset_name or "Model", rownumber_cols
             )
@@ -13192,6 +13274,14 @@ export default { render };
         widget.vertipaq_delta_status = {}
         widget._vp_delta_info = {}  # type: ignore[attr-defined]
         widget._vp_col_src = {}  # type: ignore[attr-defined]
+        dep_meta_cache.update(
+            {
+                "dataset_id": None,
+                "rel_lookup": {},
+                "rel_columns": {},
+                "rownumber_cols": set(),
+            }
+        )
         # Clear any performance analysis produced for the previous model.
         widget.performance_findings = []
         widget.performance_summary = {}

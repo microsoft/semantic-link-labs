@@ -966,7 +966,8 @@ def test_vertipaq_output_sorts_numeric_columns_and_formats_numbers():
         )
     ]
 
-    assert "values.every(value => parseNumeric(value) !== null)" in renderer
+    assert "values.every(value => parseNumeric(value) !== null)" not in renderer
+    assert "if (parseNumeric(value) === null) return false;" in renderer
     assert "? compareNumeric(parseNumeric(a), parseNumeric(b))" in renderer
     assert 'localeCompare(String(b ?? ""), undefined, {' in renderer
     assert 'sortState.direction === "ascending" ? result : -result' in renderer
@@ -1694,13 +1695,31 @@ def test_vertipaq_bar_controls_and_delta_columns():
     assert "const keepScroll = vertipaqScrollSection === section.name;" in renderer
     # Numbers may arrive pre-grouped, and one odd value must not abort the
     # render (which would also strand the section tabs).
-    assert "if (/^[+-]?\\d{1,3}(,\\d{3})+(\\.\\d+)?$/.test(text)) {" in renderer
+    assert 'if (text.includes(",")' in renderer
     assert "if (!left || !right) return (left ? 1 : 0) - (right ? 1 : 0);" in renderer
     assert "const formatNumeric = parsed => {\n            if (!parsed) return \"\";" in renderer
     # Long-running panes show an indeterminate progress bar.
     assert 'loadingHtml("Running Vertipaq Analyzer\\u2026")' in source
     assert 'loadingHtml("Computing query dependencies\\u2026")' in source
     assert ".dtx .dtx-load-progress {{" in source
+    # The progress bar is driven by an optimistic flag so it appears on click
+    # rather than after the kernel reports back.
+    assert "if (dependenciesBusy()) {" in source
+    assert "if (vertipaqBusy()) {" in source
+    assert 'dependenciesPending || model.get("dependencies_loading") === true' in source
+    assert 'vertipaqPending || model.get("vertipaq_loading") === true' in source
+    assert "            dependenciesPending = true;" in source
+    assert "            vertipaqPending = true;" in source
+    # ...and is released once the kernel answers or reports a failure.
+    assert (
+        'model.on("change:dependencies_loading", () => {\n        dependenciesPending = false;'
+        in source
+    )
+    assert (
+        'model.on("change:vertipaq_loading", () => {\n        vertipaqPending = false;'
+        in source
+    )
+    assert 'if (String(model.get("error_message") || "").trim()) {' in source
     # The tabs are rendered before the body so a body failure cannot strand
     # the Vertipaq section toggle on the previous section.
     render_table = source[
