@@ -5584,9 +5584,8 @@ function render({ model, el }) {
         // (Re)load the workspace list so the picker is populated even when a
         // dataset was supplied directly to test().
         model.set("error_message", "");
-        model.set("load_workspaces_trigger",
-            (model.get("load_workspaces_trigger") || 0) + 1);
         model.save_changes();
+        requestWorkspaces();
         renderPicker();
     });
     function renderSubtitle() {
@@ -7515,6 +7514,39 @@ function render({ model, el }) {
     pickerScreen.appendChild(pickerPanel);
     container.insertBefore(pickerScreen, body);
 
+    // A picker request the kernel never answers (lost comm message, hung call,
+    // dead kernel) would otherwise leave the picker on "Loading..." with its
+    // controls disabled and no way back. The watchdog releases the loading
+    // state so the reload button can be used again.
+    let pickerStalled = false;
+    let pickerWatchdog = null;
+    function armPickerWatchdog(timeoutMs) {
+        if (pickerWatchdog !== null) window.clearTimeout(pickerWatchdog);
+        pickerStalled = false;
+        pickerWatchdog = window.setTimeout(() => {
+            pickerWatchdog = null;
+            if (model.get("picker_loading") !== true) return;
+            pickerStalled = true;
+            model.set("error_message", "The kernel did not respond. Use the "
+                + "reload button to try again.");
+            model.save_changes();
+            renderPicker();
+        }, timeoutMs || 120000);
+    }
+    function clearPickerWatchdog() {
+        if (pickerWatchdog !== null) {
+            window.clearTimeout(pickerWatchdog);
+            pickerWatchdog = null;
+        }
+        pickerStalled = false;
+    }
+    function requestWorkspaces() {
+        model.set("load_workspaces_trigger",
+            (model.get("load_workspaces_trigger") || 0) + 1);
+        model.save_changes();
+        armPickerWatchdog();
+    }
+
     function renderPicker() {
         const chosen = model.get("dataset_chosen") === true;
         const show = pickerOpen || (!chosen && !connectingToModel);
@@ -7522,7 +7554,7 @@ function render({ model, el }) {
         body.style.display = show ? "none" : "";
         // Allow canceling only when a model is already in use.
         pickerCancelBtn.style.display = chosen ? "" : "none";
-        const loading = model.get("picker_loading") === true;
+        const loading = model.get("picker_loading") === true && !pickerStalled;
         const curWs = model.get("selected_workspace_id") || "";
         const curDs = model.get("selected_dataset_id") || "";
         const wss = model.get("available_workspaces") || [];
@@ -7561,6 +7593,7 @@ function render({ model, el }) {
         model.set("select_workspace_trigger",
             (model.get("select_workspace_trigger") || 0) + 1);
         model.save_changes();
+        armPickerWatchdog();
         renderPicker();
     }
     function selectDataset(datasetId) {
@@ -7569,11 +7602,9 @@ function render({ model, el }) {
         renderPicker();
     }
     pickerReloadBtn.addEventListener("click", () => {
-        if (model.get("picker_loading") === true) return;
         model.set("error_message", "");
-        model.set("load_workspaces_trigger",
-            (model.get("load_workspaces_trigger") || 0) + 1);
         model.save_changes();
+        requestWorkspaces();
     });
     pickerBtn.addEventListener("click", () => {
         if (!model.get("selected_dataset_id")) return;
@@ -7585,6 +7616,8 @@ function render({ model, el }) {
         model.set("select_dataset_trigger",
             (model.get("select_dataset_trigger") || 0) + 1);
         model.save_changes();
+        // Loading a model's metadata can legitimately take minutes.
+        armPickerWatchdog(600000);
         renderPicker();
         renderSubtitle();
         renderTree();
@@ -10795,6 +10828,12 @@ function render({ model, el }) {
     });
     model.on("change:available_workspaces", renderPicker);
     model.on("change:available_datasets", renderPicker);
+    // The kernel acknowledges every picker request, so a response that carries
+    // no visible change (e.g. an empty list) still clears the loading state.
+    model.on("change:picker_ack", () => {
+        clearPickerWatchdog();
+        renderPicker();
+    });
     model.on("change:selected_workspace_id", renderPicker);
     model.on("change:selected_dataset_id", renderPicker);
     model.on("change:active_workspace_id", renderPicker);
@@ -10861,9 +10900,7 @@ function render({ model, el }) {
     if (model.get("dataset_chosen") !== true
         && (model.get("available_workspaces") || []).length === 0
         && model.get("picker_loading") !== true) {
-        model.set("load_workspaces_trigger",
-            (model.get("load_workspaces_trigger") || 0) + 1);
-        model.save_changes();
+        requestWorkspaces();
     }
 
     // Notify Python to tear down the long-running trace when this view is
@@ -11033,6 +11070,7 @@ export default { render };
         active_workspace_id = traitlets.Unicode("").tag(sync=True)
         active_dataset_id = traitlets.Unicode("").tag(sync=True)
         picker_loading = traitlets.Bool(False).tag(sync=True)
+        picker_ack = traitlets.Int(0).tag(sync=True)
         select_workspace_trigger = traitlets.Int(0).tag(sync=True)
         select_dataset_trigger = traitlets.Int(0).tag(sync=True)
         load_workspaces_trigger = traitlets.Int(0).tag(sync=True)
@@ -11165,6 +11203,7 @@ export default { render };
         active_workspace_id=str(workspace_id) if workspace_id else "",
         active_dataset_id=str(dataset_id) if dataset_id else "",
         picker_loading=False,
+        picker_ack=0,
         select_workspace_trigger=0,
         select_dataset_trigger=0,
         load_workspaces_trigger=0,
@@ -12805,45 +12844,50 @@ export default { render };
 
     widget.observe(_on_refresh_metadata, names="refresh_metadata_trigger")
 
-    def _load_datasets_for_selected_workspace() -> None:
-        ws_id = (widget.selected_workspace_id or "").strip()
-        if not ws_id:
-            widget.available_datasets = []
-            widget.picker_loading = False
-            return
-        try:
-            datasets = _list_datasets_for_picker(ws_id)
-        except Exception as exc:  # noqa: BLE001
-            widget.available_datasets = []
-            widget.picker_loading = False
-            widget.error_message = f"Failed to list semantic models: {exc}"
-            return
-        widget.available_datasets = datasets
+    def _picker_settled() -> None:
+        """Release the picker's loading state.
+
+        The acknowledgement counter always changes, so the front-end learns the
+        request finished even when the answer equals the value it already holds
+        (assigning ``[]`` over ``[]`` fires no change event on either side).
+        """
         widget.picker_loading = False
+        widget.picker_ack = int(widget.picker_ack or 0) + 1
+
+    def _load_datasets_for_selected_workspace() -> None:
+        try:
+            ws_id = (widget.selected_workspace_id or "").strip()
+            if not ws_id:
+                widget.available_datasets = []
+                return
+            try:
+                widget.available_datasets = _list_datasets_for_picker(ws_id)
+            except Exception as exc:  # noqa: BLE001
+                widget.available_datasets = []
+                widget.error_message = f"Failed to list semantic models: {exc}"
+        finally:
+            _picker_settled()
 
     def _on_select_workspace(change):
         if change["new"] == change["old"]:
             return
-        if widget.picker_loading:
-            return
         widget.picker_loading = True
-        threading.Thread(
-            target=_load_datasets_for_selected_workspace, daemon=True
-        ).start()
+        # Runs inline: see _on_load_workspaces.
+        _load_datasets_for_selected_workspace()
 
     widget.observe(_on_select_workspace, names="select_workspace_trigger")
 
     def _activate_selected_dataset() -> None:
         if widget.report_capture_loading:
             widget.metadata_loading = False
-            widget.picker_loading = False
+            _picker_settled()
             widget.error_message = "Wait for report query capture to finish first."
             return
         ws_id = (widget.selected_workspace_id or "").strip()
         ds_id = (widget.selected_dataset_id or "").strip()
         if not ws_id or not ds_id:
             widget.metadata_loading = False
-            widget.picker_loading = False
+            _picker_settled()
             return
         try:
             from sempy_labs._helper_functions import (
@@ -12860,7 +12904,7 @@ export default { render };
         except Exception as exc:  # noqa: BLE001
             widget.error_message = f"Failed to load semantic model: {exc}"
             widget.metadata_loading = False
-            widget.picker_loading = False
+            _picker_settled()
             return
         widget.dataset_name = str(ds_name) if ds_name else str(ds_id)
         widget.workspace_name = str(ws_name) if ws_name else ""
@@ -12907,14 +12951,12 @@ export default { render };
         widget.impersonation_value = ""
         widget.dataset_chosen = True
         widget.error_message = ""
-        widget.picker_loading = False
+        _picker_settled()
         # Rebind the long-running trace to the newly selected model.
         _ensure_trace(ds_id_resolved, ws_id_resolved)
 
     def _on_select_dataset(change):
         if change["new"] == change["old"]:
-            return
-        if widget.picker_loading:
             return
         widget.picker_loading = True
         threading.Thread(target=_activate_selected_dataset, daemon=True).start()
@@ -12923,28 +12965,32 @@ export default { render };
 
     def _load_workspaces() -> None:
         try:
-            workspaces = _list_workspaces_for_picker()
-        except Exception as exc:  # noqa: BLE001
-            widget.picker_loading = False
-            widget.error_message = f"Failed to list workspaces: {exc}"
-            return
-        widget.available_workspaces = workspaces
-        # Refresh the dataset list for the currently selected workspace too.
-        ws_id = (widget.selected_workspace_id or "").strip()
-        if ws_id:
             try:
-                widget.available_datasets = _list_datasets_for_picker(ws_id)
-            except Exception:
-                pass
-        widget.picker_loading = False
+                widget.available_workspaces = _list_workspaces_for_picker()
+            except Exception as exc:  # noqa: BLE001
+                widget.error_message = f"Failed to list workspaces: {exc}"
+                return
+            # Refresh the dataset list for the currently selected workspace too.
+            ws_id = (widget.selected_workspace_id or "").strip()
+            if ws_id:
+                try:
+                    widget.available_datasets = _list_datasets_for_picker(ws_id)
+                except Exception:
+                    pass
+        finally:
+            _picker_settled()
 
     def _on_load_workspaces(change):
         if change["new"] == change["old"]:
             return
-        if widget.picker_loading:
-            return
         widget.picker_loading = True
-        threading.Thread(target=_load_workspaces, daemon=True).start()
+        # Runs inline on the kernel thread rather than on a worker thread. When
+        # no dataset was supplied this is the first sempy call of the session,
+        # so it is the one that initializes the .NET runtime and acquires the
+        # Fabric token; in a PySpark notebook that initialization goes through
+        # the Spark gateway and blocks forever off the main thread, leaving the
+        # picker stuck on "Loading workspaces...".
+        _load_workspaces()
 
     widget.observe(_on_load_workspaces, names="load_workspaces_trigger")
 

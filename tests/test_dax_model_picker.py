@@ -180,7 +180,7 @@ def test_connect_does_not_reopen_picker_for_transient_active_model_state():
     error_assignment = activation.index(
         'widget.error_message = f"Failed to load semantic model: {exc}"'
     )
-    loading_finished = activation.index("widget.picker_loading = False", error_assignment)
+    loading_finished = activation.index("_picker_settled()", error_assignment)
     assert error_assignment < loading_finished
     assert activation.index("widget.active_dataset_id =") < activation.index(
         "widget.dataset_chosen = True"
@@ -208,7 +208,7 @@ def test_no_dataset_workspace_loading_uses_frontend_trigger_after_render():
     source = _source()
     initial_render_position = source.index("    renderBuilderZones();\n    renderBuildBtn();")
     frontend_trigger_position = source.index(
-        'model.set("load_workspaces_trigger",', initial_render_position
+        "requestWorkspaces();", initial_render_position
     )
     display_position = source.index("    display(widget)", frontend_trigger_position)
 
