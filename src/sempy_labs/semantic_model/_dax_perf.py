@@ -2206,6 +2206,33 @@ def _visualize_dax_test(
     from {{ transform: translateX(0); }}
     to {{ transform: translateX(390%); }}
 }}
+.dtx .dtx-loading {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 34px 24px;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+}}
+.dtx .dtx-load-progress {{
+    position: relative;
+    width: min(320px, 70%);
+    height: 3px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--ui-accent-soft);
+}}
+.dtx .dtx-load-progress::after {{
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: -35%;
+    width: 35%;
+    border-radius: inherit;
+    background: var(--ui-accent);
+    animation: dtx-run-progress 1s ease-in-out infinite;
+}}
 .dtx .dtx-query-titlegroup {{
     display: flex;
     align-items: center;
@@ -10241,9 +10268,17 @@ function render({ model, el }) {
             </table>`;
     }
 
+    function loadingHtml(label) {
+        return `<div class="dtx-loading">`
+            + `<div>${escapeHtml(label)}</div>`
+            + `<div class="dtx-load-progress" role="progressbar"`
+            + ` aria-label="${escapeHtml(label)}"></div>`
+            + `</div>`;
+    }
+
     function renderDependenciesTable() {
         if (model.get("dependencies_loading") === true) {
-            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Computing query dependencies&hellip;</div></div>`;
+            tableWrap.innerHTML = loadingHtml("Computing query dependencies\u2026");
             return;
         }
         const view = model.get("dependency_view") || "tree";
@@ -10372,7 +10407,7 @@ function render({ model, el }) {
 
     function renderVertipaqTable() {
         if (model.get("vertipaq_loading") === true) {
-            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
+            tableWrap.innerHTML = loadingHtml("Running Vertipaq Analyzer\u2026");
             return;
         }
         const section = vertipaqActiveSection();
@@ -10406,7 +10441,11 @@ function render({ model, el }) {
         const parseNumeric = value => {
             if (typeof value === "number" && !Number.isFinite(value)) return null;
             if (typeof value !== "number" && typeof value !== "string") return null;
-            const text = String(value).trim();
+            let text = String(value).trim();
+            // Stats can arrive pre-grouped (e.g. "1,234"); sort on magnitude.
+            if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(text)) {
+                text = text.replace(/,/g, "");
+            }
             const match = /^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
             if (!match || !(match[2] || match[3])) return null;
             const exponent = Number(match[4] || 0);
@@ -10421,6 +10460,7 @@ function render({ model, el }) {
             return { sign: match[1] === "-" ? -1 : 1, digits, scale };
         };
         const compareNumeric = (left, right) => {
+            if (!left || !right) return (left ? 1 : 0) - (right ? 1 : 0);
             if (left.sign !== right.sign) return left.sign - right.sign;
             if (left.sign === 0) return 0;
             const leftMagnitude = left.digits.length + left.scale;
@@ -10435,6 +10475,7 @@ function render({ model, el }) {
             return left.sign * result;
         };
         const formatNumeric = parsed => {
+            if (!parsed) return "";
             if (parsed.sign === 0) return "0";
             const point = parsed.digits.length + parsed.scale;
             const integer = point <= 0
@@ -10741,7 +10782,7 @@ function render({ model, el }) {
 
     function renderPerformance() {
         if (model.get("performance_loading") === true) {
-            tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Generating DAX performance analysis&hellip;</div></div>`;
+            tableWrap.innerHTML = loadingHtml("Generating DAX performance analysis\u2026");
             return;
         }
         const findings = model.get("performance_findings") || [];
@@ -10820,41 +10861,50 @@ function render({ model, el }) {
 
     function renderTable() {
         const mode = model.get("view_mode") || "trace";
+        // The tab chrome is rendered first so a failure while building the
+        // body cannot leave the tabs out of sync with the selected view.
+        renderSeg();
         // Default visibility — chart/table swap below.
         tableWrap.style.display = "";
         chartWrap.style.display = "none";
         chartControls.style.display = "none";
-        if (mode === "chart") {
-            tableWrap.style.display = "none";
-            chartWrap.style.display = "";
+        try {
+            if (mode === "chart") {
+                tableWrap.style.display = "none";
+                chartWrap.style.display = "";
+                resultMeta.style.display = "none";
+                renderChart();
+            } else if (mode === "result") {
+                renderResultTable();
+                resultMeta.style.display = (model.get("result_columns") || []).length ? "" : "none";
+            } else if (mode === "history") {
+                renderHistoryTable();
+                resultMeta.style.display = "none";
+            } else if (mode === "queryplan") {
+                renderQueryPlanTable();
+                resultMeta.style.display = "none";
+            } else if (mode === "dependencies") {
+                renderDependenciesTable();
+                resultMeta.style.display = "none";
+            } else if (mode === "vertipaq") {
+                renderVertipaqTable();
+                resultMeta.style.display = "none";
+            } else if (mode === "performance") {
+                renderPerformance();
+                resultMeta.style.display = "none";
+            } else if (mode === "execmetrics") {
+                renderExecMetricsTable();
+                resultMeta.style.display = "none";
+            } else {
+                renderTraceTable();
+                resultMeta.style.display = "none";
+            }
+        } catch (error) {
             resultMeta.style.display = "none";
-            renderChart();
-        } else if (mode === "result") {
-            renderResultTable();
-            resultMeta.style.display = (model.get("result_columns") || []).length ? "" : "none";
-        } else if (mode === "history") {
-            renderHistoryTable();
-            resultMeta.style.display = "none";
-        } else if (mode === "queryplan") {
-            renderQueryPlanTable();
-            resultMeta.style.display = "none";
-        } else if (mode === "dependencies") {
-            renderDependenciesTable();
-            resultMeta.style.display = "none";
-        } else if (mode === "vertipaq") {
-            renderVertipaqTable();
-            resultMeta.style.display = "none";
-        } else if (mode === "performance") {
-            renderPerformance();
-            resultMeta.style.display = "none";
-        } else if (mode === "execmetrics") {
-            renderExecMetricsTable();
-            resultMeta.style.display = "none";
-        } else {
-            renderTraceTable();
-            resultMeta.style.display = "none";
+            tableWrap.innerHTML = `<div class="dtx-loading">`
+                + `${escapeHtml(`Could not render this view: ${error && error.message ? error.message : error}`)}`
+                + `</div>`;
         }
-        renderSeg();
     }
 
     // ---------- Attribution ----------

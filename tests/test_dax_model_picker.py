@@ -1692,3 +1692,21 @@ def test_vertipaq_bar_controls_and_delta_columns():
     # Sorting a trailing (Delta Analyzer) column keeps it in view.
     assert "tableWrap.scrollLeft = scrollLeft;" in renderer
     assert "const keepScroll = vertipaqScrollSection === section.name;" in renderer
+    # Numbers may arrive pre-grouped, and one odd value must not abort the
+    # render (which would also strand the section tabs).
+    assert "if (/^[+-]?\\d{1,3}(,\\d{3})+(\\.\\d+)?$/.test(text)) {" in renderer
+    assert "if (!left || !right) return (left ? 1 : 0) - (right ? 1 : 0);" in renderer
+    assert "const formatNumeric = parsed => {\n            if (!parsed) return \"\";" in renderer
+    # Long-running panes show an indeterminate progress bar.
+    assert 'loadingHtml("Running Vertipaq Analyzer\\u2026")' in source
+    assert 'loadingHtml("Computing query dependencies\\u2026")' in source
+    assert ".dtx .dtx-load-progress {{" in source
+    # The tabs are rendered before the body so a body failure cannot strand
+    # the Vertipaq section toggle on the previous section.
+    render_table = source[
+        source.index("function renderTable() {") : source.index(
+            "// ---------- Attribution ----------"
+        )
+    ]
+    assert render_table.index("renderSeg();") < render_table.index("try {")
+    assert "} catch (error) {" in render_table
