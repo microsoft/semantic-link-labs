@@ -12810,37 +12810,36 @@ export default { render };
     widget.observe(_on_query_change, names="dax_query")
 
     def _load_metadata() -> None:
-        if model_ctx["dataset_id"] is None:
-            widget.metadata_loading = False
-            return
         try:
-            tree, roles = _collect_model_metadata(
-                model_ctx["dataset_id"], model_ctx["workspace_id"]
-            )
-        except Exception as exc:  # noqa: BLE001
+            if model_ctx["dataset_id"] is None:
+                return
+            try:
+                tree, roles = _collect_model_metadata(
+                    model_ctx["dataset_id"], model_ctx["workspace_id"]
+                )
+            except Exception as exc:  # noqa: BLE001
+                widget.error_message = f"Failed to load model metadata: {exc}"
+                return
+            widget.model_tree = tree
+            widget.model_roles = roles
+            try:
+                widget.available_reports = _list_reports_for_capture(
+                    model_ctx["dataset_id"], model_ctx["workspace_id"]
+                )
+            except Exception:
+                widget.available_reports = []
+            # Start (or keep) the long-running trace for this model now that
+            # its metadata has loaded.
+            _ensure_trace(model_ctx["dataset_id"], model_ctx["workspace_id"])
+        finally:
             widget.metadata_loading = False
-            widget.error_message = f"Failed to load model metadata: {exc}"
-            return
-        widget.model_tree = tree
-        widget.model_roles = roles
-        try:
-            widget.available_reports = _list_reports_for_capture(
-                model_ctx["dataset_id"], model_ctx["workspace_id"]
-            )
-        except Exception:
-            widget.available_reports = []
-        widget.metadata_loading = False
-        # Start (or keep) the long-running trace for this model now that its
-        # metadata has loaded.
-        _ensure_trace(model_ctx["dataset_id"], model_ctx["workspace_id"])
 
     def _on_refresh_metadata(change):
         if change["new"] == change["old"]:
             return
-        if widget.metadata_loading:
-            return
         widget.metadata_loading = True
-        threading.Thread(target=_load_metadata, daemon=True).start()
+        # Runs inline: see _on_load_workspaces.
+        _load_metadata()
 
     widget.observe(_on_refresh_metadata, names="refresh_metadata_trigger")
 
@@ -12878,16 +12877,21 @@ export default { render };
     widget.observe(_on_select_workspace, names="select_workspace_trigger")
 
     def _activate_selected_dataset() -> None:
-        if widget.report_capture_loading:
+        try:
+            _activate_selected_dataset_inner()
+        finally:
+            # The Model View spins on this flag, so it must clear even when the
+            # activation fails unexpectedly.
             widget.metadata_loading = False
             _picker_settled()
+
+    def _activate_selected_dataset_inner() -> None:
+        if widget.report_capture_loading:
             widget.error_message = "Wait for report query capture to finish first."
             return
         ws_id = (widget.selected_workspace_id or "").strip()
         ds_id = (widget.selected_dataset_id or "").strip()
         if not ws_id or not ds_id:
-            widget.metadata_loading = False
-            _picker_settled()
             return
         try:
             from sempy_labs._helper_functions import (
@@ -12903,8 +12907,6 @@ export default { render };
             tree, roles = _collect_model_metadata(ds_id_resolved, ws_id_resolved)
         except Exception as exc:  # noqa: BLE001
             widget.error_message = f"Failed to load semantic model: {exc}"
-            widget.metadata_loading = False
-            _picker_settled()
             return
         widget.dataset_name = str(ds_name) if ds_name else str(ds_id)
         widget.workspace_name = str(ws_name) if ws_name else ""
@@ -12918,7 +12920,6 @@ export default { render };
             )
         except Exception:
             widget.available_reports = []
-        widget.metadata_loading = False
         # Clear Vertipaq Analyzer results from any previously selected model so
         # stale stats aren't shown; they are recomputed on the next tab open.
         widget.vertipaq_sections = []
@@ -12959,7 +12960,10 @@ export default { render };
         if change["new"] == change["old"]:
             return
         widget.picker_loading = True
-        threading.Thread(target=_activate_selected_dataset, daemon=True).start()
+        # Runs inline: connecting reads the model through TOM, and that first
+        # .NET/XMLA call blocks forever off the main thread in a PySpark
+        # notebook (see _on_load_workspaces).
+        _activate_selected_dataset()
 
     widget.observe(_on_select_dataset, names="select_dataset_trigger")
 
