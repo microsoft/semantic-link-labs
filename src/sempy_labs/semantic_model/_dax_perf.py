@@ -6589,8 +6589,28 @@ function render({ model, el }) {
         });
     }
 
+    // Hovering a tree icon names the kind of object it stands for.
+    const TREE_KINDS = {
+        table: [TABLE_SVG, "Table"],
+        calculated_table: [CALCULATED_TABLE_SVG, "Calculated table"],
+        calculation_group: [CALC_GROUP_SVG, "Calculation group"],
+        field_parameter: [FIELD_PARAMETER_SVG, "Field parameter"],
+        date_table: [DATE_TABLE_SVG, "Date table"],
+        measure: [MEASURE_SVG, "Measure"],
+        column: [COLUMN_SVG, "Column"],
+        hierarchy: [HIERARCHY_SVG, "Hierarchy"],
+        level: [LEVEL_SVG, "Hierarchy level"],
+        calculation_item: [CALC_ITEM_SVG, "Calculation item"],
+        folder: [FOLDER_SVG, "Display folder"],
+    };
+    function treeIconHtml(kind) {
+        const [icon, label] = TREE_KINDS[kind] || TREE_KINDS.table;
+        return `<span class="dtx-tree-icon" title="${escapeHtml(label)}"`
+            + ` aria-label="${escapeHtml(label)}">${icon}</span>`;
+    }
+
     function makeLeaf(
-        iconSvg, name, hidden, dataType, dragText, description, pad, meta, contextMeta
+        kind, name, hidden, dataType, dragText, description, pad, meta, contextMeta
     ) {
         const leaf = document.createElement("div");
         leaf.className = "dtx-tree-leaf";
@@ -6600,7 +6620,7 @@ function render({ model, el }) {
             ? `<span class="dtx-tree-type" title="${escapeHtml(dataType)}">${escapeHtml(dataType)}</span>`
             : "";
         leaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`
-            + `<span class="dtx-tree-icon">${iconSvg}</span>`
+            + treeIconHtml(kind)
             + `<span class="dtx-tree-label${hidden ? " dtx-hidden" : ""}"`
             + ` title="${escapeHtml(tip)}">${escapeHtml(name)}</span>`
             + typeHtml;
@@ -6642,7 +6662,7 @@ function render({ model, el }) {
         header.className = "dtx-tree-folder-header";
         header.style.paddingLeft = pad + "px";
         header.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
-            + `<span class="dtx-tree-icon">${FOLDER_SVG}</span>`
+            + treeIconHtml("folder")
             + `<span class="dtx-tree-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
         const children = document.createElement("div");
         children.className = "dtx-tree-subtree";
@@ -6685,7 +6705,7 @@ function render({ model, el }) {
             node.innerHTML = (hasLevels
                     ? `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
                     : `<span class="dtx-tree-caret-spacer"></span>`)
-                + `<span class="dtx-tree-icon">${HIERARCHY_SVG}</span>`
+                + treeIconHtml("hierarchy")
                 + `<span class="dtx-tree-label${it.hidden ? " dtx-hidden" : ""}"`
                 + ` title="${escapeHtml(tip)}">${escapeHtml(it.name)}</span>`;
             makeDraggable(node, daxColumnRef(tableName, it.name));
@@ -6705,7 +6725,7 @@ function render({ model, el }) {
                     lleaf.style.paddingLeft = (pad + 14) + "px";
                     const ltip = lvl.description ? lvl.description : lvl.name;
                     lleaf.innerHTML = `<span class="dtx-tree-caret-spacer"></span>`
-                        + `<span class="dtx-tree-icon">${LEVEL_SVG}</span>`
+                        + treeIconHtml("level")
                         + `<span class="dtx-tree-label"`
                         + ` title="${escapeHtml(ltip)}">${escapeHtml(lvl.name)}</span>`;
                     lchildren.appendChild(lleaf);
@@ -6732,7 +6752,7 @@ function render({ model, el }) {
         const build = (it, pad) => {
             if (it._kind === "measure") {
                 return makeLeaf(
-                    MEASURE_SVG, it.name, !!it.hidden, it.data_type,
+                    "measure", it.name, !!it.hidden, it.data_type,
                     daxMeasureRef(it.name), it.description, pad,
                     {kind: "measure", table: table.name, name: it.name,
                         data_type: it.data_type, expression: it.expression,
@@ -6740,7 +6760,7 @@ function render({ model, el }) {
             }
             if (it._kind === "column") {
                 return makeLeaf(
-                    COLUMN_SVG, it.name, !!it.hidden, it.data_type,
+                    "column", it.name, !!it.hidden, it.data_type,
                     daxColumnRef(table.name, it.name), it.description, pad,
                     {kind: "column", table: table.name, name: it.name,
                         data_type: it.data_type,
@@ -6749,7 +6769,7 @@ function render({ model, el }) {
             }
             if (it._kind === "hierarchy") return hierarchyBuilder(it, pad);
             return makeLeaf(
-                CALC_ITEM_SVG, it.name, !!it.hidden, it.data_type,
+                "calculation_item", it.name, !!it.hidden, it.data_type,
                 daxColumnRef(table.name, it.name), it.description, pad, null,
                 {kind: "calculationItem", table: table.name, name: it.name,
                     label: daxColumnRef(table.name, it.name)});
@@ -6815,12 +6835,6 @@ function render({ model, el }) {
         for (const tbl of tree) {
             const node = document.createElement("div");
             node.className = "dtx-tree-node";
-            const tblIcon = ({
-                calculation_group: CALC_GROUP_SVG,
-                calculated_table: CALCULATED_TABLE_SVG,
-                field_parameter: FIELD_PARAMETER_SVG,
-                date_table: DATE_TABLE_SVG,
-            })[tbl.kind] || TABLE_SVG;
             const countParts = [
                 `${(tbl.columns || []).length}c`,
                 `${(tbl.measures || []).length}m`,
@@ -6832,7 +6846,7 @@ function render({ model, el }) {
                 `${(tbl.hierarchies || []).length} ${(tbl.hierarchies || []).length === 1 ? "hierarchy" : "hierarchies"}`,
             ];
             node.innerHTML = `<span class="dtx-tree-caret">${CHEVRON_DOWN_SVG}</span>`
-                + `<span class="dtx-tree-icon">${tblIcon}</span>`
+                + treeIconHtml(tbl.kind)
                 + `<span class="dtx-tree-label${tbl.hidden ? " dtx-hidden" : ""}"`
                 + ` title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}">${escapeHtml(tbl.name)}</span>`
                 + `<span class="dtx-tree-counts" title="${escapeHtml(countDescription.join(", "))}">${escapeHtml(countParts.join(" · "))}</span>`;

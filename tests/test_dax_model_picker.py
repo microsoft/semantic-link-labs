@@ -345,10 +345,29 @@ def test_model_tree_uses_specialized_table_kind_icons():
     assert 'return "calculated_table"' in metadata
     assert 'return "date_table"' in metadata
     assert '"kind": _model_tree_table_kind(tom, table)' in metadata
-    assert "calculation_group: CALC_GROUP_SVG" in renderer
-    assert "calculated_table: CALCULATED_TABLE_SVG" in renderer
-    assert "field_parameter: FIELD_PARAMETER_SVG" in renderer
-    assert "date_table: DATE_TABLE_SVG" in renderer
+    assert "calculation_group: [CALC_GROUP_SVG, \"Calculation group\"]" in source
+    assert "calculated_table: [CALCULATED_TABLE_SVG, \"Calculated table\"]" in source
+    assert "field_parameter: [FIELD_PARAMETER_SVG, \"Field parameter\"]" in source
+    assert "date_table: [DATE_TABLE_SVG, \"Date table\"]" in source
+    assert "treeIconHtml(tbl.kind)" in renderer
+    # Icons name their object kind on hover; labels show the description.
+    assert 'measure: [MEASURE_SVG, "Measure"]' in source
+    assert 'column: [COLUMN_SVG, "Column"]' in source
+    assert 'hierarchy: [HIERARCHY_SVG, "Hierarchy"]' in source
+    assert 'level: [LEVEL_SVG, "Hierarchy level"]' in source
+    assert 'calculation_item: [CALC_ITEM_SVG, "Calculation item"]' in source
+    assert 'table: [TABLE_SVG, "Table"]' in source
+    assert (
+        '<span class="dtx-tree-icon" title="${escapeHtml(label)}"' in source
+    )
+    assert "const tip = description ? description : name;" in source
+    assert "const tip = it.description ? it.description : it.name;" in source
+    assert "const ltip = lvl.description ? lvl.description : lvl.name;" in source
+    assert (
+        'title="${escapeHtml(tbl.description ? tbl.description : tbl.name)}"'
+        in renderer
+    )
+    assert '<span class="dtx-tree-icon">' not in source
     assert '_UI_ICONS["calculated_table"]' in source
     assert '_UI_ICONS["calculation_group"]' in source
     assert '_UI_ICONS["field_parameter"]' in source
@@ -1313,8 +1332,9 @@ def test_model_objects_open_bidirectional_dependency_tree_and_graph():
     assert 'kind: "hierarchy"' in model_tree
     assert 'kind: "calculationItem"' in model_tree
     calculation_item = model_tree[
-        model_tree.index("CALC_ITEM_SVG") : model_tree.index(
-            "renderFolderTree(parentEl", model_tree.index("CALC_ITEM_SVG")
+        model_tree.index('"calculation_item", it.name') : model_tree.index(
+            "renderFolderTree(parentEl",
+            model_tree.index('"calculation_item", it.name'),
         )
     ]
     assert "it.description, pad, null," in calculation_item
