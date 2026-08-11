@@ -1584,3 +1584,48 @@ def test_trace_history_dax_queries_use_query_pane_syntax_highlighting():
     assert ': escapeHtml(q);' in history_table
     assert '<pre>${queryHtml}</pre>' in history_table
     assert source.count('"dax_tokens": _monitoring_dax_spans(') == 3
+
+
+def test_vertipaq_bar_controls_and_delta_columns():
+    source = _source()
+    renderer = source[
+        source.index("const vertipaqSortBySection = new Map()") : source.index(
+            "function renderChart()"
+        )
+    ]
+    bar = source[
+        source.index("// ---------- Delta Analyzer ----------") : source.index(
+            "function buildVertipaqSeg()"
+        )
+    ]
+
+    # Icon-only button, described on hover, shown for any selected section.
+    assert 'vpDeltaBtn.className = "dtx-vp-icon-btn dtx-vp-delta-btn"' in bar
+    assert "dtx-vp-delta-text" not in source
+    assert "vpDeltaBtn.title = VP_DELTA_TITLE;" in bar
+    assert 'vpDeltaBtn.style.display = tables.length ? "" : "none";' in bar
+    assert 'section === "Tables" || section === "Columns"' not in bar
+
+    # Reload + full screen controls for the Vertipaq Analyzer.
+    assert "vpReloadBtn.innerHTML = REFRESH_SVG;" in bar
+    assert (
+        'model.set("vertipaq_trigger", (model.get("vertipaq_trigger") || 0) + 1);'
+        in bar
+    )
+    assert 'root.classList.toggle("dtx-vp-fs", on);' in bar
+    assert (
+        "vpFsBtn.innerHTML = vpFullscreen ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;"
+        in bar
+    )
+    assert "function clearVpFullscreenIfExited()" in bar
+    assert ".dtx.dtx-vp-fs .dtx-main > *:not(.dtx-view-toolbar)" in source
+
+    # Delta Analyzer columns are badged and sort like every other column.
+    assert "deltaCols: new Set(extraCols)" in renderer
+    assert "const isDelta = deltaCols.has(column);" in renderer
+    assert '<span class="dtx-vp-delta-colicon">${DELTA_STATS_SVG}</span>' in renderer
+    assert 'data-vertipaq-sort="${index}"' in renderer
+    head = renderer[
+        renderer.index("const head = cols.map(") : renderer.index("const displayValue")
+    ]
+    assert "${icon}${escapeHtml(String(column))}" in head

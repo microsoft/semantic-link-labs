@@ -2931,24 +2931,39 @@ def _visualize_dax_test(
     flex-wrap: wrap;
     margin: 0 24px 10px 24px;
 }}
-.dtx .dtx-vp-delta-btn {{
+.dtx .dtx-vp-icon-btn {{
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    border: 1px solid var(--ui-accent);
+    justify-content: center;
+    gap: 5px;
+    width: auto;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 7px;
+    border: 1px solid var(--ui-border-strong);
     border-radius: 8px;
-    background: transparent;
-    color: var(--ui-accent);
+    background: var(--ui-bg-secondary);
+    color: var(--ui-text-secondary);
     font-family: inherit;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 120ms ease;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}}
+.dtx .dtx-vp-icon-btn svg {{ width: 15px; height: 15px; display: block; }}
+.dtx .dtx-vp-icon-btn:hover:not(:disabled) {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}}
+.dtx .dtx-vp-icon-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+.dtx .dtx-vp-icon-btn.dtx-vp-spinning svg {{ animation: dtxVpDeltaSpin 1s linear infinite; }}
+.dtx .dtx-vp-delta-btn {{
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+    background: transparent;
 }}
 .dtx .dtx-vp-delta-btn:hover:not(:disabled) {{ background: var(--ui-accent-soft); }}
 .dtx .dtx-vp-delta-btn:disabled {{ opacity: 0.6; cursor: not-allowed; }}
-.dtx .dtx-vp-delta-btn svg {{ width: 13px; height: 13px; display: block; }}
 .dtx .dtx-vp-delta-btn.dtx-vp-delta-loaded {{ background: var(--ui-accent-soft); }}
 .dtx .dtx-vp-delta-btn.dtx-vp-delta-running {{
     border-color: var(--ui-danger);
@@ -2971,6 +2986,22 @@ def _visualize_dax_test(
 @keyframes dtxVpDeltaSpin {{ to {{ transform: rotate(360deg); }} }}
 .dtx .dtx-vp-delta-progress {{ font-variant-numeric: tabular-nums; }}
 .dtx .dtx-vp-delta-progress:empty {{ display: none; }}
+/* Columns merged in from the Delta Analyzer carry its badge. */
+.dtx .dtx-vp-delta-colicon {{
+    display: inline-flex;
+    vertical-align: -2px;
+    margin-right: 5px;
+    color: var(--ui-accent);
+}}
+.dtx .dtx-vp-delta-colicon svg {{ width: 11px; height: 11px; display: block; }}
+/* Vertipaq Analyzer full screen: only its toolbar and table remain. */
+.dtx.dtx-vp-fs .dtx-sidebar,
+.dtx.dtx-vp-fs .dtx-sidebar-resizer,
+.dtx.dtx-vp-fs .dtx-monitoring {{ display: none !important; }}
+.dtx.dtx-vp-fs .dtx-main > *:not(.dtx-view-toolbar):not(.dtx-vp-bar):not(.dtx-table-wrap) {{
+    display: none !important;
+}}
+.dtx.dtx-vp-fs .dtx-table-wrap {{ max-height: none; }}
 .dtx .dtx-vp-delta-status {{
     font-size: 12px;
     color: var(--ui-text-secondary);
@@ -5719,10 +5750,12 @@ function render({ model, el }) {
     fullscreenBtn.className = "sl-theme-btn";
     fullscreenBtn.addEventListener("click", () => {
         if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
+        clearVpFullscreenIfExited();
     });
     document.addEventListener("fullscreenchange", () => {
         // Keep the button in sync when the user exits via the Esc key.
         renderFullscreenBtn();
+        clearVpFullscreenIfExited();
     });
 
     let modelViewVisible = true;
@@ -9052,14 +9085,49 @@ function render({ model, el }) {
 
     const vpDeltaBtn = document.createElement("button");
     vpDeltaBtn.type = "button";
-    vpDeltaBtn.className = "dtx-vp-delta-btn";
+    vpDeltaBtn.className = "dtx-vp-icon-btn dtx-vp-delta-btn";
     vpDeltaBtn.title = VP_DELTA_TITLE;
+    vpDeltaBtn.setAttribute("aria-label", "Delta Analyzer");
     vpDeltaBtn.style.display = "none";
     vpDeltaBtn.innerHTML = `${DELTA_STATS_SVG}`
         + `<span class="dtx-vp-delta-spinner" aria-hidden="true"></span>`
-        + `<span class="dtx-vp-delta-text">Delta Analyzer</span>`
         + `<span class="dtx-vp-delta-progress"></span>`;
     vpBar.appendChild(vpDeltaBtn);
+
+    const vpReloadBtn = document.createElement("button");
+    vpReloadBtn.type = "button";
+    vpReloadBtn.className = "dtx-vp-icon-btn";
+    vpReloadBtn.innerHTML = REFRESH_SVG;
+    vpReloadBtn.title = "Reload the Vertipaq Analyzer statistics";
+    vpReloadBtn.setAttribute("aria-label", vpReloadBtn.title);
+    vpBar.appendChild(vpReloadBtn);
+    vpReloadBtn.addEventListener("click", () => {
+        if (model.get("vertipaq_loading") === true) return;
+        // The kernel owns vertipaq_loading; setting it here would make its
+        // observer treat the request as a duplicate and drop it.
+        model.set("vertipaq_trigger", (model.get("vertipaq_trigger") || 0) + 1);
+        model.save_changes();
+        renderVpBar();
+    });
+
+    let vpFullscreen = false;
+    const vpFsBtn = document.createElement("button");
+    vpFsBtn.type = "button";
+    vpFsBtn.className = "dtx-vp-icon-btn";
+    vpBar.appendChild(vpFsBtn);
+    function setVpFullscreen(on) {
+        vpFullscreen = on;
+        root.classList.toggle("dtx-vp-fs", on);
+        if (on) { enterFullscreen(); } else { exitFullscreen(); }
+        renderVpBar();
+    }
+    function clearVpFullscreenIfExited() {
+        if (!vpFullscreen || isFullscreen()) return;
+        vpFullscreen = false;
+        root.classList.remove("dtx-vp-fs");
+        renderVpBar();
+    }
+    vpFsBtn.addEventListener("click", () => setVpFullscreen(!vpFullscreen));
 
     const vpDeltaStatus = document.createElement("span");
     vpDeltaStatus.className = "dtx-vp-delta-status";
@@ -9163,11 +9231,11 @@ function render({ model, el }) {
         vpDeltaRunning = running;
         vpDeltaBtn.disabled = false;
         vpDeltaBtn.classList.toggle("dtx-vp-delta-running", running);
-        const label = vpDeltaBtn.querySelector(".dtx-vp-delta-text");
-        if (label) label.textContent = running ? "Cancel" : "Delta Analyzer";
-        vpDeltaBtn.title = running
+        const label = running
             ? "Cancel the Delta Analyzer run (stops after the table currently being analyzed)"
             : VP_DELTA_TITLE;
+        vpDeltaBtn.title = label;
+        vpDeltaBtn.setAttribute("aria-label", running ? "Cancel Delta Analyzer" : "Delta Analyzer");
         if (!running) setVpDeltaProgress(null);
     }
     function renderVpDeltaStatus() {
@@ -9195,13 +9263,21 @@ function render({ model, el }) {
     }
     function renderVpDeltaBtn() {
         const tables = model.get("vertipaq_delta_tables") || [];
-        const section = model.get("vertipaq_section") || "";
         const merged = model.get("vertipaq_delta_results") || {};
-        vpDeltaBtn.style.display =
-            (tables.length && (section === "Tables" || section === "Columns"))
-                ? "" : "none";
+        vpDeltaBtn.style.display = tables.length ? "" : "none";
         vpDeltaBtn.classList.toggle("dtx-vp-delta-loaded",
             Object.keys(merged.tables || {}).length > 0);
+    }
+    function renderVpBar() {
+        renderVpDeltaBtn();
+        const loading = model.get("vertipaq_loading") === true;
+        vpReloadBtn.disabled = loading;
+        vpReloadBtn.classList.toggle("dtx-vp-spinning", loading);
+        vpFsBtn.innerHTML = vpFullscreen ? FULLSCREEN_EXIT_SVG : FULLSCREEN_SVG;
+        const fsLabel = vpFullscreen
+            ? "Exit full screen" : "Show the Vertipaq Analyzer full screen";
+        vpFsBtn.title = fsLabel;
+        vpFsBtn.setAttribute("aria-label", fsLabel);
     }
 
     function buildVertipaqSeg() {
@@ -9437,7 +9513,9 @@ function render({ model, el }) {
         vpBar.style.display = vpVisible ? "" : "none";
         if (vpVisible) {
             buildVertipaqSeg();
-            renderVpDeltaBtn();
+            renderVpBar();
+        } else if (vpFullscreen) {
+            setVpFullscreen(false);
         }
     }
 
@@ -10145,8 +10223,9 @@ function render({ model, el }) {
         const cols = (section.columns || []).slice();
         const rows = (section.rows || []).map(row => row.slice());
         const results = model.get("vertipaq_delta_results") || {};
+        const plain = { cols, rows, deltaCols: new Set() };
         const tableIdx = cols.indexOf("Table Name");
-        if (tableIdx < 0) return { cols, rows };
+        if (tableIdx < 0) return plain;
         let extraCols = [];
         let store = null;
         let keyOf = null;
@@ -10156,14 +10235,14 @@ function render({ model, el }) {
             keyOf = row => String(row[tableIdx] ?? "");
         } else if (section.name === "Columns") {
             const colIdx = cols.indexOf("Column Name");
-            if (colIdx < 0) return { cols, rows };
+            if (colIdx < 0) return plain;
             extraCols = results.column_columns || [];
             store = results.columns || {};
             keyOf = row => `${String(row[tableIdx] ?? "")}\u0000${String(row[colIdx] ?? "")}`;
         } else {
-            return { cols, rows };
+            return plain;
         }
-        if (!extraCols.length || !Object.keys(store).length) return { cols, rows };
+        if (!extraCols.length || !Object.keys(store).length) return plain;
         rows.forEach(row => {
             const stat = store[keyOf(row)] || {};
             extraCols.forEach(name => {
@@ -10171,7 +10250,11 @@ function render({ model, el }) {
                 row.push(value === undefined ? null : value);
             });
         });
-        return { cols: cols.concat(extraCols), rows };
+        return {
+            cols: cols.concat(extraCols),
+            rows,
+            deltaCols: new Set(extraCols),
+        };
     }
 
     function renderVertipaqTable() {
@@ -10189,6 +10272,7 @@ function render({ model, el }) {
         const merged = vertipaqDeltaMerge(section);
         const cols = merged.cols;
         const rows = merged.rows;
+        const deltaCols = merged.deltaCols;
         const frozenNames = {
             Tables: ["Table Name"],
             Partitions: ["Table Name", "Partition Name"],
@@ -10273,7 +10357,11 @@ function render({ model, el }) {
         }
         const head = cols.map((column, index) => {
             const direction = sortState?.index === index ? sortState.direction : "none";
-            return `<th class="${frozenClasses(index).trim()}" scope="col" data-vertipaq-sort="${index}" tabindex="0" aria-sort="${direction}">${escapeHtml(String(column))}</th>`;
+            const isDelta = deltaCols.has(column);
+            const cls = `${frozenClasses(index)}${isDelta ? " dtx-vp-delta-col" : ""}`.trim();
+            const icon = isDelta
+                ? `<span class="dtx-vp-delta-colicon">${DELTA_STATS_SVG}</span>` : "";
+            return `<th class="${cls}" scope="col" data-vertipaq-sort="${index}" tabindex="0" aria-sort="${direction}">${icon}${escapeHtml(String(column))}</th>`;
         }).join("");
         const displayValue = (value, index) => {
             if (isBlank(value)) return "";
@@ -10708,13 +10796,13 @@ function render({ model, el }) {
         vertipaqSortBySection.clear();
         renderTable();
     });
-    model.on("change:vertipaq_section", () => { renderVpDeltaBtn(); renderTable(); });
-    model.on("change:vertipaq_loading", renderTable);
+    model.on("change:vertipaq_section", () => { renderVpBar(); renderTable(); });
+    model.on("change:vertipaq_loading", () => { renderVpBar(); renderTable(); });
     model.on("change:vertipaq_delta_tables", () => {
         vertipaqSortBySection.clear();
-        renderVpDeltaBtn();
+        renderVpBar();
     });
-    model.on("change:vertipaq_delta_results", () => { renderVpDeltaBtn(); renderTable(); });
+    model.on("change:vertipaq_delta_results", () => { renderVpBar(); renderTable(); });
     model.on("change:vertipaq_delta_status", renderVpDeltaStatus);
     model.on("change:performance_findings", renderTable);
     model.on("change:performance_summary", renderTable);

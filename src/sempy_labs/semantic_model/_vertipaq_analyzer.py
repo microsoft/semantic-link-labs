@@ -3269,12 +3269,11 @@ def visualize_vertipaq(
             f"</div>"
         )
         html_parts.append('<div class="vpx-toolbar-controls">')
-        # Delta Analyzer button — placed to the left of the Bars button. Only
-        # on the Tables/Columns tabs (the tabs whose rows receive merged Delta
-        # Analyzer stats) and only when the model has Direct-Lake-over-Lakehouse
-        # source tables. Wired in the anywidget frontend (it must call back into
+        # Delta Analyzer button — placed to the left of the Bars button, on
+        # every tab, whenever the model has Direct-Lake-over-Lakehouse source
+        # tables. Wired in the anywidget frontend (it must call back into
         # Python to run Spark).
-        if has_delta and title in ("Tables", "Columns"):
+        if has_delta:
             delta_btn_title = (
                 "Run Delta Analyzer stats \u2014 pick which Direct Lake source "
                 "tables to analyze on Spark, then merge the results into the "
