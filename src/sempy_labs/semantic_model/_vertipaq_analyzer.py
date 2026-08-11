@@ -683,15 +683,91 @@ def _get_delta_table_metadata(entity, lakehouse, workspace, schema):
     return zorder, clustering, deletion_vectors, auto_compact
 
 
-def _compute_table_delta_stats(info, skip_cardinality=True):
-    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
-    table and return the pre-formatted stats to merge into the Vertipaq
-    Analyzer widget.
+_DELTA_TABLE_STAT_COLUMNS = [
+    "Delta Total Size",
+    "Delta Row Count",
+    "Row Groups",
+    "Parquet Files",
+    "V-Order",
+    "Z-Order",
+    "Liquid Clustering",
+    "Deletion Vectors",
+    "Auto-compaction",
+]
 
-    Returns a tuple ``(table_stats, column_stats_by_source_column)`` where
-    ``table_stats`` is a dict of formatted table-level values and
-    ``column_stats_by_source_column`` maps each source (delta) column name to a
-    dict of formatted per-column values.
+_DELTA_COLUMN_STAT_COLUMNS = [
+    "Delta Cardinality",
+    "Compressed Size",
+    "Uncompressed Size",
+]
+
+
+def _row_text(value):
+    """Normalize a dataframe/dict cell to a non-empty string, or None. Missing
+    values (``None``, ``NaN``, ``pd.NA``) are never strings, so they map to
+    None without triggering pandas' ambiguous-truth-value errors."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _direct_lake_delta_tables(partition_rows) -> list:
+    """Direct-Lake-over-Lakehouse source tables that the Delta Analyzer can run
+    on (it needs the source lakehouse + workspace + entity).
+
+    ``partition_rows`` is an iterable of partition mappings (e.g. the rows of
+    the Vertipaq Analyzer 'Partitions' dataframe).
+    """
+    delta_tables: list = []
+    seen = set()
+    for row in partition_rows:
+        if _row_text(row.get("Mode")) != "DirectLake":
+            continue
+        if _row_text(row.get("Source Type")) != "Lakehouse":
+            continue
+        table_name = _row_text(row.get("Table Name"))
+        lakehouse = _row_text(row.get("Source Name"))
+        entity = _row_text(row.get("Source Table Name"))
+        if not table_name or not lakehouse or not entity or table_name in seen:
+            continue
+        seen.add(table_name)
+        schema = _row_text(row.get("Source Schema Name"))
+        delta_tables.append(
+            {
+                "tableName": table_name,
+                "lakehouse": lakehouse,
+                "workspace": _row_text(row.get("Source Workspace")),
+                "entity": entity,
+                "schema": schema,
+                "deltaTableName": f"{schema}.{entity}" if schema else entity,
+            }
+        )
+    return delta_tables
+
+
+def _column_source_map(column_rows) -> dict:
+    """Map each model column to its source (delta) column name so the Delta
+    Analyzer per-column stats can be matched back to the model columns."""
+    mapping: dict = {}
+    for row in column_rows:
+        table_name = _row_text(row.get("Table Name"))
+        column_name = _row_text(row.get("Column Name"))
+        if not table_name or not column_name:
+            continue
+        mapping.setdefault(table_name, {})[column_name] = (
+            _row_text(row.get("Source Column")) or column_name
+        )
+    return mapping
+
+
+def _compute_table_delta_stats_raw(info, skip_cardinality=True):
+    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
+    table and return its raw (unformatted) stats keyed by display label.
+
+    Returns a tuple ``(table_stats, column_stats_by_source_column)`` keyed by
+    the labels in :data:`_DELTA_TABLE_STAT_COLUMNS` and
+    :data:`_DELTA_COLUMN_STAT_COLUMNS`.
     """
     from sempy_labs._delta_analyzer import delta_analyzer
 
@@ -735,18 +811,15 @@ def _compute_table_delta_stats(info, skip_cardinality=True):
     )
 
     table_stats = {
-        "deltaTotalSize": format_bytes(total_size),
-        # Raw byte counts travel alongside the human-readable values so the
-        # frontend can sort these columns numerically ("9 KB" vs "1.2 MB").
-        "deltaTotalSizeRaw": total_size,
-        "deltaRowCount": f"{row_count:,}",
-        "deltaRowGroups": f"{row_groups:,}",
-        "deltaParquetFiles": f"{parquet_files:,}",
-        "deltaVorder": "Yes" if vorder else "No",
-        "deltaZOrder": ", ".join(zorder) if zorder else "No",
-        "deltaClustering": ", ".join(clustering) if clustering else "No",
-        "deltaDeletionVectors": "Yes" if deletion_vectors else "No",
-        "deltaAutoCompact": "Yes" if auto_compact else "No",
+        "Delta Total Size": total_size,
+        "Delta Row Count": row_count,
+        "Row Groups": row_groups,
+        "Parquet Files": parquet_files,
+        "V-Order": "Yes" if vorder else "No",
+        "Z-Order": ", ".join(zorder) if zorder else "No",
+        "Liquid Clustering": ", ".join(clustering) if clustering else "No",
+        "Deletion Vectors": "Yes" if deletion_vectors else "No",
+        "Auto-compaction": "Yes" if auto_compact else "No",
     }
 
     column_stats: dict = {}
@@ -757,18 +830,60 @@ def _compute_table_delta_stats(info, skip_cardinality=True):
             name = cr.get("Column Name")
             if name is None:
                 continue
-            entry = {
-                "compressedSize": format_bytes(_to_int(cr.get("Compressed Size", 0))),
-                "compressedSizeRaw": _to_int(cr.get("Compressed Size", 0)),
-                "uncompressedSize": format_bytes(
-                    _to_int(cr.get("Uncompressed Size", 0))
+            column_stats[name] = {
+                "Delta Cardinality": (
+                    _to_int(cr.get("Cardinality", 0)) if has_card else None
                 ),
-                "uncompressedSizeRaw": _to_int(cr.get("Uncompressed Size", 0)),
-                "cardinality": (
-                    f"{_to_int(cr.get('Cardinality', 0)):,}" if has_card else ""
-                ),
+                "Compressed Size": _to_int(cr.get("Compressed Size", 0)),
+                "Uncompressed Size": _to_int(cr.get("Uncompressed Size", 0)),
             }
-            column_stats[name] = entry
+
+    return table_stats, column_stats
+
+
+def _compute_table_delta_stats(info, skip_cardinality=True):
+    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
+    table and return the pre-formatted stats to merge into the Vertipaq
+    Analyzer widget.
+
+    Returns a tuple ``(table_stats, column_stats_by_source_column)`` where
+    ``table_stats`` is a dict of formatted table-level values and
+    ``column_stats_by_source_column`` maps each source (delta) column name to a
+    dict of formatted per-column values. Numeric values are accompanied by a
+    ``...Raw`` entry carrying the underlying number so the frontend can sort on
+    magnitude instead of on the formatted text.
+    """
+    raw_table, raw_columns = _compute_table_delta_stats_raw(
+        info, skip_cardinality=skip_cardinality
+    )
+
+    table_stats = {
+        "deltaTotalSize": format_bytes(raw_table["Delta Total Size"]),
+        "deltaTotalSizeRaw": raw_table["Delta Total Size"],
+        "deltaRowCount": f"{raw_table['Delta Row Count']:,}",
+        "deltaRowCountRaw": raw_table["Delta Row Count"],
+        "deltaRowGroups": f"{raw_table['Row Groups']:,}",
+        "deltaRowGroupsRaw": raw_table["Row Groups"],
+        "deltaParquetFiles": f"{raw_table['Parquet Files']:,}",
+        "deltaParquetFilesRaw": raw_table["Parquet Files"],
+        "deltaVorder": raw_table["V-Order"],
+        "deltaZOrder": raw_table["Z-Order"],
+        "deltaClustering": raw_table["Liquid Clustering"],
+        "deltaDeletionVectors": raw_table["Deletion Vectors"],
+        "deltaAutoCompact": raw_table["Auto-compaction"],
+    }
+
+    column_stats: dict = {}
+    for name, raw in raw_columns.items():
+        cardinality = raw["Delta Cardinality"]
+        column_stats[name] = {
+            "compressedSize": format_bytes(raw["Compressed Size"]),
+            "compressedSizeRaw": raw["Compressed Size"],
+            "uncompressedSize": format_bytes(raw["Uncompressed Size"]),
+            "uncompressedSizeRaw": raw["Uncompressed Size"],
+            "cardinality": "" if cardinality is None else f"{cardinality:,}",
+            "cardinalityRaw": cardinality,
+        }
 
     return table_stats, column_stats
 
@@ -1668,41 +1783,10 @@ def vertipaq_analyzer(
         }
 
         # Direct-Lake-over-Lakehouse source tables that the Delta Analyzer can
-        # run on (needs the source lakehouse + workspace + entity). Only these
-        # tables enable the "Delta Analyzer" button in the widget.
-        delta_tables = []
-        _seen_dl = set()
-        for _p in partitions:
-            if (
-                _p.get("Mode") == "DirectLake"
-                and _p.get("Source Type") == "Lakehouse"
-                and _p.get("Source Name")
-                and _p.get("Source Table Name")
-                and _p.get("Table Name") not in _seen_dl
-            ):
-                _seen_dl.add(_p.get("Table Name"))
-                _schema = _p.get("Source Schema Name")
-                _entity = _p.get("Source Table Name")
-                delta_tables.append(
-                    {
-                        "tableName": _p.get("Table Name"),
-                        "lakehouse": _p.get("Source Name"),
-                        "workspace": _p.get("Source Workspace"),
-                        "entity": _entity,
-                        "schema": _schema,
-                        "deltaTableName": (
-                            f"{_schema}.{_entity}" if _schema else _entity
-                        ),
-                    }
-                )
-
-        # Map each model column to its source (delta) column name so the Delta
-        # Analyzer per-column stats can be matched back to the model columns.
-        column_source_map: dict = {}
-        for _c in columns:
-            column_source_map.setdefault(_c["Table Name"], {})[_c["Column Name"]] = (
-                _c.get("Source Column") or _c["Column Name"]
-            )
+        # run on. Only these tables enable the "Delta Analyzer" button in the
+        # widget.
+        delta_tables = _direct_lake_delta_tables(partitions)
+        column_source_map = _column_source_map(columns)
 
         visualize_vertipaq(
             dfs,

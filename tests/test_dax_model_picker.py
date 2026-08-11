@@ -981,7 +981,8 @@ def test_embedded_vertipaq_layout_filters_and_freezes_identifier_columns():
         )
     ]
 
-    assert "main.appendChild(vpSeg);" in source
+    assert "main.appendChild(vpBar);" in source
+    assert "vpBar.appendChild(vpSeg);" in source
     assert "viewToolbar.insertBefore(vpSeg, seg);" not in source
     assert 'Tables: ["Table Name"]' in renderer
     assert 'Partitions: ["Table Name", "Partition Name"]' in renderer

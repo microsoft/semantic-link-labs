@@ -46,6 +46,11 @@ def dax_perf_optimizer(
     Formula Engine Duration, Storage Engine Duration, and CPU time) using
     the same conventions as `DAX Studio <https://github.com/DaxStudio/DaxStudio>`_.
 
+    The widget's Vertipaq Analyzer tab shows a "Delta Analyzer" button when the
+    semantic model has tables in Direct Lake mode which source from a lakehouse.
+    Clicking it lets you pick which Direct-Lake-over-Lakehouse source tables to
+    analyze on Spark and then merges the resulting `Delta Analyzer <https://github.com/microsoft/Analysis-Services/tree/master/DeltaAnalyzer>`_ statistics (e.g. delta table size, row groups, parquet files, V-Order, Z-Order, liquid clustering, deletion vectors, auto-compaction, and per-column compressed/uncompressed sizes and cardinality) into the Tables and Columns sections.
+
     Parameters
     ----------
     dataset : str | uuid.UUID, default=None
@@ -2916,8 +2921,122 @@ def _visualize_dax_test(
     padding: 4px 24px 10px 24px;
 }}
 .dtx .dtx-vp-seg {{
-    margin: 0 24px 10px 24px;
+    margin: 0;
     width: fit-content;
+}}
+.dtx .dtx-vp-bar {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 24px 10px 24px;
+}}
+.dtx .dtx-vp-delta-btn {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--ui-accent);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ui-accent);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 120ms ease;
+}}
+.dtx .dtx-vp-delta-btn:hover:not(:disabled) {{ background: var(--ui-accent-soft); }}
+.dtx .dtx-vp-delta-btn:disabled {{ opacity: 0.6; cursor: not-allowed; }}
+.dtx .dtx-vp-delta-btn svg {{ width: 13px; height: 13px; display: block; }}
+.dtx .dtx-vp-delta-btn.dtx-vp-delta-loaded {{ background: var(--ui-accent-soft); }}
+.dtx .dtx-vp-delta-btn.dtx-vp-delta-running {{
+    border-color: var(--ui-danger);
+    color: var(--ui-danger);
+    background: transparent;
+}}
+.dtx .dtx-vp-delta-btn.dtx-vp-delta-running svg {{ display: none; }}
+.dtx .dtx-vp-delta-spinner {{
+    display: none;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+}}
+.dtx .dtx-vp-delta-btn.dtx-vp-delta-running .dtx-vp-delta-spinner {{
+    display: inline-block;
+    animation: dtxVpDeltaSpin 0.8s linear infinite;
+}}
+@keyframes dtxVpDeltaSpin {{ to {{ transform: rotate(360deg); }} }}
+.dtx .dtx-vp-delta-progress {{ font-variant-numeric: tabular-nums; }}
+.dtx .dtx-vp-delta-progress:empty {{ display: none; }}
+.dtx .dtx-vp-delta-status {{
+    font-size: 12px;
+    color: var(--ui-text-secondary);
+}}
+.dtx .dtx-vp-delta-status.dtx-vp-delta-status-error {{ color: var(--ui-danger); }}
+.dtx .dtx-vp-delta-status.dtx-vp-delta-status-success {{ color: var(--ui-accent); }}
+.dtx .dtx-vpdelta-dialog {{ width: 460px; }}
+.dtx .dtx-vpdelta-listhead {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 14px 0 4px;
+    color: var(--ui-text-tertiary);
+    font-size: 12px;
+}}
+.dtx .dtx-vpdelta-listhead button {{
+    border: none;
+    background: none;
+    color: var(--ui-accent);
+    font: inherit;
+    font-size: 12px;
+    padding: 0 4px;
+    cursor: pointer;
+}}
+.dtx .dtx-vpdelta-list {{
+    max-height: 240px;
+    overflow: auto;
+}}
+.dtx .dtx-vpdelta-row {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--ui-text);
+    font-size: 13px;
+    cursor: pointer;
+}}
+.dtx .dtx-vpdelta-row:hover {{ background: var(--ui-accent-soft); }}
+.dtx .dtx-vpdelta-name {{
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}}
+.dtx .dtx-vpdelta-src {{ color: var(--ui-text-tertiary); font-size: 12px; }}
+.dtx .dtx-vpdelta-skiprow {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 6px 0;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+}}
+.dtx .dtx-vpdelta-skiprow span {{ flex: 1; }}
+.dtx .dtx-vpdelta-row input,
+.dtx .dtx-vpdelta-skiprow input {{ accent-color: var(--ui-accent); }}
+.dtx .dtx-vpdelta-run {{
+    border-color: var(--ui-accent) !important;
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+}}
+.dtx .dtx-vpdelta-run:hover {{
+    border-color: var(--ui-accent-hover) !important;
+    background: var(--ui-accent-hover);
 }}
 .dtx .dtx-view-title {{
     font-size: 11px;
@@ -5052,6 +5171,7 @@ def _visualize_dax_test(
     cpu_icon = _UI_ICONS["cpu"].replace("`", "\\`")
     database_icon = _UI_ICONS["database"].replace("`", "\\`")
     vertipaq_icon = _UI_ICONS["vertipaq"].replace("`", "\\`")
+    delta_stats_icon = _UI_ICONS["delta_stats"].replace("`", "\\`")
     zap_icon = _UI_ICONS["zap"].replace("`", "\\`")
     # The DAX Formatter logo mark (the orange "formatted lines" glyph from
     # https://www.daxformatter.com/). Uses the SQLBI brand orange so it is
@@ -5329,6 +5449,7 @@ function render({ model, el }) {
     const CPU_SVG = `__DTX_CPU__`;
     const DATABASE_SVG = `__DTX_DATABASE__`;
     const VERTIPAQ_SVG = `__DTX_VERTIPAQ__`;
+    const DELTA_STATS_SVG = `__DTX_DELTA_STATS__`;
     const ZAP_SVG = `__DTX_ZAP__`;
 
     const root = document.createElement("div");
@@ -8874,10 +8995,178 @@ function render({ model, el }) {
     // Tables, Partitions, Columns, Relationships, Hierarchies). This
     // segmented control (built dynamically from the returned sections) lets
     // the user switch between them. It is shown only on the Vertipaq tab.
+    const vpBar = document.createElement("div");
+    vpBar.className = "dtx-vp-bar";
+    vpBar.style.display = "none";
+    main.appendChild(vpBar);
+
     const vpSeg = document.createElement("div");
     vpSeg.className = "dtx-seg dtx-vp-seg";
-    vpSeg.style.display = "none";
-    main.appendChild(vpSeg);
+    vpBar.appendChild(vpSeg);
+
+    // ---------- Delta Analyzer ----------
+    // Models with Direct Lake tables sourced from a lakehouse can run the
+    // Delta Analyzer on Spark; its stats are merged into the Tables and
+    // Columns sections.
+    const VP_DELTA_TITLE = "Run Delta Analyzer stats \u2014 pick which Direct "
+        + "Lake source tables to analyze on Spark, then merge the results into "
+        + "the Tables and Columns sections";
+    let vpDeltaRunning = false;
+    let vpDeltaStatusTimer = null;
+
+    const vpDeltaBtn = document.createElement("button");
+    vpDeltaBtn.type = "button";
+    vpDeltaBtn.className = "dtx-vp-delta-btn";
+    vpDeltaBtn.title = VP_DELTA_TITLE;
+    vpDeltaBtn.style.display = "none";
+    vpDeltaBtn.innerHTML = `${DELTA_STATS_SVG}`
+        + `<span class="dtx-vp-delta-spinner" aria-hidden="true"></span>`
+        + `<span class="dtx-vp-delta-text">Delta Analyzer</span>`
+        + `<span class="dtx-vp-delta-progress"></span>`;
+    vpBar.appendChild(vpDeltaBtn);
+
+    const vpDeltaStatus = document.createElement("span");
+    vpDeltaStatus.className = "dtx-vp-delta-status";
+    vpDeltaStatus.style.display = "none";
+    vpBar.appendChild(vpDeltaStatus);
+
+    const vpDeltaOverlay = document.createElement("div");
+    vpDeltaOverlay.className = "dtx-confirm-overlay";
+    vpDeltaOverlay.innerHTML = `
+        <div class="dtx-confirm-dialog dtx-vpdelta-dialog" role="dialog" aria-modal="true" aria-label="Run Delta Analyzer stats">
+            <h2 class="dtx-confirm-title">Run Delta Analyzer stats</h2>
+            <p class="dtx-confirm-message">Choose the Direct Lake source tables to analyze on Spark.</p>
+            <div class="dtx-vpdelta-listhead">
+                <span>Tables</span>
+                <span>
+                    <button type="button" class="dtx-vpdelta-selectall">Select all</button>
+                    <button type="button" class="dtx-vpdelta-clearall">Clear</button>
+                </span>
+            </div>
+            <div class="dtx-vpdelta-list"></div>
+            <label class="dtx-vpdelta-skiprow">
+                <span>Skip cardinality (faster; skips per-column distinct counts)</span>
+                <input type="checkbox" class="dtx-vpdelta-skip" checked />
+            </label>
+            <div class="dtx-confirm-actions">
+                <button type="button" class="dtx-confirm-cancel">Cancel</button>
+                <button type="button" class="dtx-vpdelta-run">Run</button>
+            </div>
+        </div>`;
+    root.appendChild(vpDeltaOverlay);
+    const vpDeltaList = vpDeltaOverlay.querySelector(".dtx-vpdelta-list");
+    const vpDeltaCancelBtn = vpDeltaOverlay.querySelector(".dtx-confirm-cancel");
+    const vpDeltaRunBtn = vpDeltaOverlay.querySelector(".dtx-vpdelta-run");
+    const vpDeltaSkip = vpDeltaOverlay.querySelector(".dtx-vpdelta-skip");
+
+    function closeVpDeltaDialog() {
+        vpDeltaOverlay.classList.remove("dtx-open");
+        vpDeltaBtn.focus();
+    }
+    function openVpDeltaDialog() {
+        const tables = model.get("vertipaq_delta_tables") || [];
+        if (!tables.length) return;
+        vpDeltaList.innerHTML = tables.map(t => `
+            <label class="dtx-vpdelta-row">
+                <span class="dtx-vpdelta-name">${escapeHtml(t.tableName)}</span>
+                <span class="dtx-vpdelta-src">${escapeHtml(t.deltaTableName || "")}</span>
+                <input type="checkbox" class="dtx-vpdelta-cb" data-table="${escapeHtml(t.tableName)}" checked />
+            </label>`).join("");
+        vpDeltaOverlay.classList.add("dtx-open");
+        window.setTimeout(() => vpDeltaCancelBtn.focus(), 0);
+    }
+    vpDeltaOverlay.addEventListener("click", event => {
+        if (event.target === vpDeltaOverlay) closeVpDeltaDialog();
+    });
+    vpDeltaOverlay.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeVpDeltaDialog();
+        }
+    });
+    vpDeltaCancelBtn.addEventListener("click", closeVpDeltaDialog);
+    vpDeltaOverlay.querySelector(".dtx-vpdelta-selectall").addEventListener("click", () => {
+        vpDeltaList.querySelectorAll(".dtx-vpdelta-cb").forEach(cb => { cb.checked = true; });
+    });
+    vpDeltaOverlay.querySelector(".dtx-vpdelta-clearall").addEventListener("click", () => {
+        vpDeltaList.querySelectorAll(".dtx-vpdelta-cb").forEach(cb => { cb.checked = false; });
+    });
+    vpDeltaRunBtn.addEventListener("click", () => {
+        const selected = Array.from(vpDeltaList.querySelectorAll(".dtx-vpdelta-cb"))
+            .filter(cb => cb.checked)
+            .map(cb => cb.getAttribute("data-table"));
+        if (!selected.length) return;
+        closeVpDeltaDialog();
+        setVpDeltaRunning(true);
+        model.set("vertipaq_delta_request", {
+            tables: selected,
+            skip_cardinality: !!vpDeltaSkip.checked,
+        });
+        model.set("vertipaq_delta_trigger", (model.get("vertipaq_delta_trigger") || 0) + 1);
+        model.save_changes();
+    });
+    vpDeltaBtn.addEventListener("click", () => {
+        if (vpDeltaRunning) {
+            // While running the button acts as a cancel button; the run stops
+            // after the table currently being analyzed.
+            vpDeltaBtn.disabled = true;
+            model.set("vertipaq_delta_cancel_trigger",
+                (model.get("vertipaq_delta_cancel_trigger") || 0) + 1);
+            model.save_changes();
+            return;
+        }
+        openVpDeltaDialog();
+    });
+
+    function setVpDeltaProgress(progress) {
+        const el = vpDeltaBtn.querySelector(".dtx-vp-delta-progress");
+        if (el) el.textContent = progress && progress.total
+            ? `${progress.done}/${progress.total}` : "";
+    }
+    function setVpDeltaRunning(running) {
+        vpDeltaRunning = running;
+        vpDeltaBtn.disabled = false;
+        vpDeltaBtn.classList.toggle("dtx-vp-delta-running", running);
+        const label = vpDeltaBtn.querySelector(".dtx-vp-delta-text");
+        if (label) label.textContent = running ? "Cancel" : "Delta Analyzer";
+        vpDeltaBtn.title = running
+            ? "Cancel the Delta Analyzer run (stops after the table currently being analyzed)"
+            : VP_DELTA_TITLE;
+        if (!running) setVpDeltaProgress(null);
+    }
+    function renderVpDeltaStatus() {
+        const status = model.get("vertipaq_delta_status") || {};
+        if (vpDeltaStatusTimer) {
+            window.clearTimeout(vpDeltaStatusTimer);
+            vpDeltaStatusTimer = null;
+        }
+        if (status.message) {
+            vpDeltaStatus.textContent = status.message;
+            vpDeltaStatus.className =
+                `dtx-vp-delta-status dtx-vp-delta-status-${status.kind || "info"}`;
+            vpDeltaStatus.style.display = "";
+            if (status.auto_hide) {
+                vpDeltaStatusTimer = window.setTimeout(() => {
+                    vpDeltaStatus.style.display = "none";
+                    vpDeltaStatusTimer = null;
+                }, 6000);
+            }
+        } else {
+            vpDeltaStatus.style.display = "none";
+        }
+        if (status.progress) setVpDeltaProgress(status.progress);
+        if (status.done) setVpDeltaRunning(false);
+    }
+    function renderVpDeltaBtn() {
+        const tables = model.get("vertipaq_delta_tables") || [];
+        const section = model.get("vertipaq_section") || "";
+        const merged = model.get("vertipaq_delta_results") || {};
+        vpDeltaBtn.style.display =
+            (tables.length && (section === "Tables" || section === "Columns"))
+                ? "" : "none";
+        vpDeltaBtn.classList.toggle("dtx-vp-delta-loaded",
+            Object.keys(merged.tables || {}).length > 0);
+    }
 
     function buildVertipaqSeg() {
         const sections = model.get("vertipaq_sections") || [];
@@ -9109,8 +9398,11 @@ function render({ model, el }) {
         depColumnsBtn.classList.toggle("dtx-seg-btn-on", depView === "columns");
         // Section toggle is only relevant on the Vertipaq Analyzer tab.
         const vpVisible = (mode === "vertipaq");
-        vpSeg.style.display = vpVisible ? "" : "none";
-        if (vpVisible) buildVertipaqSeg();
+        vpBar.style.display = vpVisible ? "" : "none";
+        if (vpVisible) {
+            buildVertipaqSeg();
+            renderVpDeltaBtn();
+        }
     }
 
     const resultMeta = document.createElement("div");
@@ -9811,6 +10103,41 @@ function render({ model, el }) {
         });
     }
 
+    // Merge the Delta Analyzer stats (once they have been run) into the Tables
+    // and Columns sections as extra trailing columns.
+    function vertipaqDeltaMerge(section) {
+        const cols = (section.columns || []).slice();
+        const rows = (section.rows || []).map(row => row.slice());
+        const results = model.get("vertipaq_delta_results") || {};
+        const tableIdx = cols.indexOf("Table Name");
+        if (tableIdx < 0) return { cols, rows };
+        let extraCols = [];
+        let store = null;
+        let keyOf = null;
+        if (section.name === "Tables") {
+            extraCols = results.table_columns || [];
+            store = results.tables || {};
+            keyOf = row => String(row[tableIdx] ?? "");
+        } else if (section.name === "Columns") {
+            const colIdx = cols.indexOf("Column Name");
+            if (colIdx < 0) return { cols, rows };
+            extraCols = results.column_columns || [];
+            store = results.columns || {};
+            keyOf = row => `${String(row[tableIdx] ?? "")}\u0000${String(row[colIdx] ?? "")}`;
+        } else {
+            return { cols, rows };
+        }
+        if (!extraCols.length || !Object.keys(store).length) return { cols, rows };
+        rows.forEach(row => {
+            const stat = store[keyOf(row)] || {};
+            extraCols.forEach(name => {
+                const value = stat[name];
+                row.push(value === undefined ? null : value);
+            });
+        });
+        return { cols: cols.concat(extraCols), rows };
+    }
+
     function renderVertipaqTable() {
         if (model.get("vertipaq_loading") === true) {
             tableWrap.innerHTML = `<div class="dtx-dep-tree"><div class="dtx-empty">Running Vertipaq Analyzer&hellip;</div></div>`;
@@ -9823,8 +10150,9 @@ function render({ model, el }) {
         }
         let section = sections.find(s => s.name === (model.get("vertipaq_section") || ""));
         if (!section) section = sections[0];
-        const cols = section.columns || [];
-        const rows = section.rows || [];
+        const merged = vertipaqDeltaMerge(section);
+        const cols = merged.cols;
+        const rows = merged.rows;
         const frozenNames = {
             Tables: ["Table Name"],
             Partitions: ["Table Name", "Partition Name"],
@@ -10344,8 +10672,14 @@ function render({ model, el }) {
         vertipaqSortBySection.clear();
         renderTable();
     });
-    model.on("change:vertipaq_section", renderTable);
+    model.on("change:vertipaq_section", () => { renderVpDeltaBtn(); renderTable(); });
     model.on("change:vertipaq_loading", renderTable);
+    model.on("change:vertipaq_delta_tables", () => {
+        vertipaqSortBySection.clear();
+        renderVpDeltaBtn();
+    });
+    model.on("change:vertipaq_delta_results", () => { renderVpDeltaBtn(); renderTable(); });
+    model.on("change:vertipaq_delta_status", renderVpDeltaStatus);
     model.on("change:performance_findings", renderTable);
     model.on("change:performance_summary", renderTable);
     model.on("change:performance_loading", () => { renderAnalyzeBtn(); renderTable(); });
@@ -10607,6 +10941,7 @@ export default { render };
         .replace("__DTX_CPU__", cpu_icon)
         .replace("__DTX_DATABASE__", database_icon)
         .replace("__DTX_VERTIPAQ__", vertipaq_icon)
+        .replace("__DTX_DELTA_STATS__", delta_stats_icon)
         .replace("__DTX_ZAP__", zap_icon)
     )
 
@@ -10662,6 +10997,12 @@ export default { render };
         vertipaq_section = traitlets.Unicode("").tag(sync=True)
         vertipaq_loading = traitlets.Bool(False).tag(sync=True)
         vertipaq_trigger = traitlets.Int(0).tag(sync=True)
+        vertipaq_delta_tables = traitlets.List([]).tag(sync=True)
+        vertipaq_delta_results = traitlets.Dict({}).tag(sync=True)
+        vertipaq_delta_status = traitlets.Dict({}).tag(sync=True)
+        vertipaq_delta_request = traitlets.Dict({}).tag(sync=True)
+        vertipaq_delta_trigger = traitlets.Int(0).tag(sync=True)
+        vertipaq_delta_cancel_trigger = traitlets.Int(0).tag(sync=True)
         performance_findings = traitlets.List([]).tag(sync=True)
         performance_summary = traitlets.Dict({}).tag(sync=True)
         performance_loading = traitlets.Bool(False).tag(sync=True)
@@ -10802,6 +11143,12 @@ export default { render };
         vertipaq_section="",
         vertipaq_loading=False,
         vertipaq_trigger=0,
+        vertipaq_delta_tables=[],
+        vertipaq_delta_results={},
+        vertipaq_delta_status={},
+        vertipaq_delta_request={},
+        vertipaq_delta_trigger=0,
+        vertipaq_delta_cancel_trigger=0,
         performance_findings=[],
         performance_summary={},
         performance_loading=False,
@@ -10862,6 +11209,10 @@ export default { render };
     # Most recent Vertipaq Analyzer result (dict of dataframes), populated
     # when the user opens the Vertipaq Analyzer tab. Stored for later use.
     widget.last_vertipaq = {}  # type: ignore[attr-defined]
+    # Delta Analyzer metadata for the Direct-Lake-over-Lakehouse tables of the
+    # model the Vertipaq Analyzer results belong to.
+    widget._vp_delta_info = {}  # type: ignore[attr-defined]
+    widget._vp_col_src = {}  # type: ignore[attr-defined]
 
     # State shared between the run/cancel observers.
     import threading
@@ -11712,7 +12063,10 @@ export default { render };
                 return
             from sempy_labs.semantic_model._vertipaq_analyzer import (
                 vertipaq_analyzer,
+                _direct_lake_delta_tables,
+                _column_source_map,
             )
+            from sempy_labs._helper_functions import _pure_python_notebook
             from IPython.utils.capture import capture_output
 
             # vertipaq_analyzer renders its own HTML visualization via
@@ -11738,11 +12092,43 @@ export default { render };
                     }
                 )
             widget.vertipaq_sections = sections
+            # Direct-Lake-over-Lakehouse source tables enable the "Delta
+            # Analyzer" button on the Vertipaq Analyzer tab.
+            partitions_df = (result or {}).get("Partitions")
+            columns_df = (result or {}).get("Columns")
+            delta_tables = (
+                _direct_lake_delta_tables(partitions_df.to_dict("records"))
+                if partitions_df is not None and not partitions_df.empty
+                else []
+            )
+            widget._vp_delta_info = {  # type: ignore[attr-defined]
+                t["tableName"]: t for t in delta_tables
+            }
+            widget._vp_col_src = (  # type: ignore[attr-defined]
+                _column_source_map(columns_df.to_dict("records"))
+                if columns_df is not None and not columns_df.empty
+                else {}
+            )
+            widget.vertipaq_delta_results = {}
+            # In a pure-Python (non-Spark) notebook the Delta Analyzer cannot
+            # run, so surface an upfront hint next to the button.
+            if delta_tables and _pure_python_notebook():
+                widget.vertipaq_delta_status = {
+                    "message": (
+                        "The Delta Analyzer requires Spark. Run this in a "
+                        "PySpark notebook to get the Delta Analyzer stats."
+                    ),
+                    "kind": "info",
+                }
+            else:
+                widget.vertipaq_delta_status = {}
+            widget.vertipaq_delta_tables = delta_tables
             if sections and not (widget.vertipaq_section or "").strip():
                 widget.vertipaq_section = sections[0]["name"]
             widget.error_message = ""
         except Exception as exc:  # noqa: BLE001
             widget.vertipaq_sections = []
+            widget.vertipaq_delta_tables = []
             widget.error_message = f"Failed to run Vertipaq Analyzer: {exc}"
         finally:
             widget.vertipaq_loading = False
@@ -11758,6 +12144,144 @@ export default { render };
             return
         widget.vertipaq_loading = True
         threading.Thread(target=_compute_vertipaq, daemon=True).start()
+
+    # Delta Analyzer runs (merged into the Vertipaq Analyzer Tables/Columns
+    # sections) execute inline on the kernel thread: Spark/OneLake calls (e.g.
+    # mounting the lakehouse) are not reliable from a background thread in
+    # Fabric notebooks.
+    vp_delta_state = {"active": False}
+    vp_delta_cancel = threading.Event()
+
+    def _run_vertipaq_delta(selected, skip_cardinality) -> None:
+        from sempy_labs.semantic_model._vertipaq_analyzer import (
+            _compute_table_delta_stats_raw,
+            _DELTA_TABLE_STAT_COLUMNS,
+            _DELTA_COLUMN_STAT_COLUMNS,
+        )
+
+        total = len(selected)
+        prior = widget.vertipaq_delta_results or {}
+        results_tables = dict(prior.get("tables", {}))
+        results_columns = dict(prior.get("columns", {}))
+        col_src = getattr(widget, "_vp_col_src", {}) or {}
+        completed = 0
+
+        def _publish() -> None:
+            # Reassign (new object) so the traitlet change fires and the
+            # frontend merges progressively after each table.
+            widget.vertipaq_delta_results = {
+                "tables": dict(results_tables),
+                "columns": dict(results_columns),
+                "table_columns": list(_DELTA_TABLE_STAT_COLUMNS),
+                "column_columns": list(_DELTA_COLUMN_STAT_COLUMNS),
+            }
+
+        try:
+            for index, info in enumerate(selected, start=1):
+                if vp_delta_cancel.is_set():
+                    break
+                table_name = info.get("tableName")
+                widget.vertipaq_delta_status = {
+                    "message": (
+                        f"Running Delta Analyzer on '{table_name}' "
+                        f"({index}/{total})\u2026 a cold Spark session can take "
+                        f"a few minutes."
+                    ),
+                    "kind": "info",
+                    "progress": {"done": completed, "total": total},
+                }
+                table_stats, column_stats = _compute_table_delta_stats_raw(
+                    info, skip_cardinality=skip_cardinality
+                )
+                results_tables[table_name] = table_stats
+                for model_col, source_col in (col_src.get(table_name) or {}).items():
+                    stat = column_stats.get(source_col) or column_stats.get(model_col)
+                    if stat:
+                        results_columns[f"{table_name}\u0000{model_col}"] = stat
+                completed += 1
+                _publish()
+            if vp_delta_cancel.is_set():
+                widget.vertipaq_delta_status = {
+                    "message": (
+                        f"Delta Analyzer cancelled after {completed} "
+                        f"table{'s' if completed != 1 else ''}."
+                    ),
+                    "kind": "info",
+                    "done": True,
+                    "auto_hide": True,
+                }
+            else:
+                widget.vertipaq_delta_status = {
+                    "message": (
+                        f"Delta Analyzer complete for {total} "
+                        f"table{'s' if total != 1 else ''}."
+                    ),
+                    "kind": "success",
+                    "done": True,
+                    "auto_hide": True,
+                }
+        except Exception as exc:  # noqa: BLE001
+            widget.vertipaq_delta_status = {
+                "message": f"Delta Analyzer error: {exc}",
+                "kind": "error",
+                "done": True,
+            }
+
+    def _on_vertipaq_delta(change):
+        if change["new"] == change["old"]:
+            return
+        if vp_delta_state["active"]:
+            return
+
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        if _pure_python_notebook():
+            widget.vertipaq_delta_status = {
+                "message": (
+                    "The Delta Analyzer requires Spark. Run this in a PySpark "
+                    "notebook to get the Delta Analyzer stats."
+                ),
+                "kind": "error",
+                "done": True,
+            }
+            return
+
+        request = dict(widget.vertipaq_delta_request or {})
+        # The Python-side descriptors (built from the Direct Lake partitions)
+        # are authoritative; the frontend only sends the table names.
+        delta_info = getattr(widget, "_vp_delta_info", {}) or {}
+        selected = [
+            delta_info[name]
+            for name in (request.get("tables") or [])
+            if name in delta_info
+        ]
+        if not selected:
+            widget.vertipaq_delta_status = {"message": "", "kind": "info", "done": True}
+            return
+
+        vp_delta_cancel.clear()
+        vp_delta_state["active"] = True
+        try:
+            _run_vertipaq_delta(selected, bool(request.get("skip_cardinality", True)))
+        finally:
+            vp_delta_state["active"] = False
+
+    def _on_vertipaq_delta_cancel(change):
+        if change["new"] == change["old"]:
+            return
+        if not vp_delta_state["active"]:
+            # The run already finished (the kernel only reaches this handler
+            # once it is free again), so just clear the spinner/status.
+            widget.vertipaq_delta_status = {"message": "", "kind": "info", "done": True}
+            return
+        vp_delta_cancel.set()
+        widget.vertipaq_delta_status = {
+            "message": (
+                "Cancelling the Delta Analyzer\u2026 the table currently being "
+                "analyzed will finish first."
+            ),
+            "kind": "info",
+        }
 
     def _ensure_trace_captured(query: str) -> None:
         """Ensure the trace artifacts for ``query`` are populated before a
@@ -12104,6 +12628,8 @@ export default { render };
     widget.observe(_on_dependencies, names="dependencies_trigger")
     widget.observe(_on_object_dependencies, names="object_dependency_trigger")
     widget.observe(_on_vertipaq, names="vertipaq_trigger")
+    widget.observe(_on_vertipaq_delta, names="vertipaq_delta_trigger")
+    widget.observe(_on_vertipaq_delta_cancel, names="vertipaq_delta_cancel_trigger")
     widget.observe(_on_performance, names="performance_trigger")
     widget.observe(_on_workspace_monitoring, names="workspace_monitoring_trigger")
     widget.observe(
@@ -12354,6 +12880,11 @@ export default { render };
         widget.vertipaq_sections = []
         widget.vertipaq_section = ""
         widget.last_vertipaq = {}  # type: ignore[attr-defined]
+        widget.vertipaq_delta_tables = []
+        widget.vertipaq_delta_results = {}
+        widget.vertipaq_delta_status = {}
+        widget._vp_delta_info = {}  # type: ignore[attr-defined]
+        widget._vp_col_src = {}  # type: ignore[attr-defined]
         # Clear any performance analysis produced for the previous model.
         widget.performance_findings = []
         widget.performance_summary = {}
