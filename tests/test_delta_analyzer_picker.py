@@ -55,7 +55,7 @@ def test_delta_visualization_adapter_and_builder_are_defined():
     source = SOURCE_PATH.read_text(encoding="utf-8")
 
     assert "def _visualize_delta_analyzer(" in source
-    assert "def _list_delta_picker_workspaces()" in source
+    assert "def _list_delta_picker_workspaces(" in source
     assert "def _list_delta_picker_lakehouses(" in source
     assert "def _list_delta_picker_tables(" in source
     builder_start = source.index("def _build_delta_analyzer_html(")

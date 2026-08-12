@@ -1492,38 +1492,19 @@ def _collect_perspective_editor_state(
 
 
 def _list_perspective_workspaces() -> list:
-    import sempy.fabric as fabric
+    """Return workspace options for the interactive picker."""
 
-    try:
-        workspaces = fabric.list_workspaces()
-    except Exception:
-        return []
-    return sorted(
-        [
-            {"id": str(row["Id"]), "name": str(row["Name"])}
-            for _, row in workspaces.iterrows()
-        ],
-        key=lambda item: item["name"].lower(),
-    )
+    from sempy_labs._ui_components import list_picker_workspaces
+
+    return list_picker_workspaces()
 
 
 def _list_perspective_datasets(workspace_id: str) -> list:
-    import sempy.fabric as fabric
+    """Return semantic model options for a workspace."""
 
-    try:
-        datasets = fabric.list_datasets(workspace=workspace_id, mode="rest")
-    except Exception:
-        return []
-    return sorted(
-        [
-            {
-                "id": str(row["Dataset Id"]),
-                "name": str(row["Dataset Name"]),
-            }
-            for _, row in datasets.iterrows()
-        ],
-        key=lambda item: item["name"].lower(),
-    )
+    from sempy_labs._ui_components import list_picker_datasets
+
+    return list_picker_datasets(workspace_id)
 
 
 @log

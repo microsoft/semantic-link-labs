@@ -755,7 +755,6 @@ def _render_find_unused_objects(
         ) from e
 
     from IPython.display import display
-    import sempy.fabric as fabric
 
     # Captured workspace-monitoring queries (fetched on "Count queries", scored
     # on "Analyze") so the two-step flow does not re-query the monitoring db.
@@ -770,41 +769,11 @@ def _render_find_unused_objects(
             ctx_cache["context"] = _build_usage_context(dataset_id, workspace_id)
         return ctx_cache["context"]
 
-    def _pick_columns(df, preferred_id, preferred_name):
-        cols = list(df.columns)
-        if not cols:
-            return None, None
-        id_col = next((c for c in preferred_id if c in cols), cols[0])
-        name_col = next((c for c in preferred_name if c in cols), cols[-1])
-        return id_col, name_col
-
     def _list_workspaces_payload():
-        try:
-            df = fabric.list_workspaces()
-        except Exception:
-            return [{"id": workspace_id, "name": str(workspace_name or "")}]
-        id_col, name_col = _pick_columns(df, ["Id"], ["Name"])
-        if id_col is None or name_col is None:
-            return [{"id": workspace_id, "name": str(workspace_name or "")}]
-        rows = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
-        ]
-        return sorted(rows, key=lambda x: x["name"].lower())
+        return _list_picker_workspaces(workspace_id, workspace_name)
 
     def _list_datasets_payload(target_workspace_id):
-        try:
-            df = fabric.list_datasets(workspace=target_workspace_id, mode="rest")
-        except Exception:
-            return []
-        id_col, name_col = _pick_columns(
-            df, ["Dataset Id", "Dataset ID", "Id"], ["Dataset Name", "Name"]
-        )
-        if id_col is None or name_col is None:
-            return []
-        rows = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
-        ]
-        return sorted(rows, key=lambda x: x["name"].lower())
+        return _list_picker_datasets(target_workspace_id)
 
     # Nothing is fetched before the widget is displayed: with no semantic model
     # the picker requests its workspace / model lists after the first render (via
@@ -1954,6 +1923,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,

@@ -7,6 +7,8 @@ from sempy_labs._ui_components import (
     ICONS as _UI_ICONS,
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     DARK_THEME_VARS as _UI_DARK_VARS,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
     run_widget_task as _run_widget_task,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
@@ -3791,70 +3793,11 @@ def bpa(
         initial_ds_name = str(resolved_name)
         initial_ds_id = str(resolved_id)
 
-    def _pick_columns(df, preferred_id, preferred_name):
-        cols = list(df.columns)
-        if not cols:
-            return None, None
-        id_col = next((c for c in preferred_id if c in cols), cols[0])
-        name_col = next((c for c in preferred_name if c in cols), cols[-1])
-        return id_col, name_col
-
-    def _api_items(request):
-        """Collects ``{id, name}`` entries from a paginated Fabric list endpoint.
-
-        These endpoints only return the item identity, which makes them
-        considerably faster than the equivalent semantic-link dataframes.
-        """
-
-        from sempy_labs._helper_functions import _base_api
-
-        responses = _base_api(request=request, uses_pagination=True, client="fabric_sp")
-        return [
-            {"id": str(v.get("id")), "name": str(v.get("displayName"))}
-            for r in responses
-            for v in r.get("value", [])
-            if v.get("id")
-        ]
-
-    def _df_items(df, id_names, name_names):
-        id_col, name_col = _pick_columns(df, id_names, name_names)
-        if id_col is None or name_col is None:
-            return []
-        return [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
-        ]
-
     def _list_workspaces_payload():
-        try:
-            rows = _api_items("/v1/workspaces")
-        except Exception:
-            rows = []
-        if not rows:
-            try:
-                rows = _df_items(fabric.list_workspaces(), ["Id", "ID"], ["Name"])
-            except Exception:
-                rows = []
-        if not rows:
-            return [{"id": initial_ws_id, "name": str(initial_ws_name or "")}]
-        return sorted(rows, key=lambda x: x["name"].lower())
+        return _list_picker_workspaces(initial_ws_id, initial_ws_name)
 
     def _list_datasets_payload(workspace_id):
-        if not workspace_id:
-            return []
-        try:
-            rows = _api_items(f"/v1/workspaces/{workspace_id}/semanticModels")
-        except Exception:
-            rows = []
-        if not rows:
-            try:
-                rows = _df_items(
-                    fabric.list_datasets(workspace=workspace_id, mode="rest"),
-                    ["Dataset Id", "Dataset ID", "Id"],
-                    ["Dataset Name", "Name"],
-                )
-            except Exception:
-                rows = []
-        return sorted(rows, key=lambda x: x["name"].lower())
+        return _list_picker_datasets(workspace_id)
 
     # The active ruleset. A dataframe is used as-is; JSON entries are matched to the
     # built-in rules (which supply the logic) each time the defaults are rebuilt.

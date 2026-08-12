@@ -1577,18 +1577,7 @@ def migrate_to_direct_lake(
         return id_col, name_col
 
     def _list_workspaces_payload():
-        try:
-            dfW = fabric.list_workspaces()
-        except Exception:
-            return [{"id": workspace_id, "name": str(workspace_name or "")}]
-        id_col, name_col = _pick_columns(dfW, ["Id"], ["Name"])
-        if id_col is None or name_col is None:
-            return [{"id": workspace_id, "name": str(workspace_name or "")}]
-        rows = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfW.iterrows()
-        ]
-        rows.sort(key=lambda x: x["name"].lower())
-        return rows
+        return _list_picker_workspaces(workspace_id, workspace_name)
 
     def _list_source_items_payload(ws_id, source_type):
         try:
@@ -1605,20 +1594,7 @@ def migrate_to_direct_lake(
         return rows
 
     def _list_datasets_payload(ws_id):
-        try:
-            dfD = fabric.list_datasets(workspace=ws_id)
-        except Exception:
-            return []
-        id_col, name_col = _pick_columns(
-            dfD, ["Dataset Id", "Dataset ID", "Id"], ["Dataset Name", "Name"]
-        )
-        if id_col is None or name_col is None:
-            return []
-        rows = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfD.iterrows()
-        ]
-        rows.sort(key=lambda x: x["name"].lower())
-        return rows
+        return _list_picker_datasets(ws_id)
 
     def _model_exists(name, ws_id):
         """True if a semantic model with ``name`` already exists in ``ws_id``
@@ -2808,6 +2784,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
     scoped_button_press_css as _ui_scoped_button_press_css,
 )
 

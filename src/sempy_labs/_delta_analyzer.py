@@ -1279,40 +1279,22 @@ def _build_delta_analyzer_html(
     return full_html + theme_script
 
 
-def _list_delta_picker_workspaces() -> list:
+def _list_delta_picker_workspaces(
+    fallback_id: Optional[str] = None, fallback_name: Optional[str] = None
+) -> list:
     """Return workspace options for the interactive Delta Analyzer picker."""
 
-    import sempy.fabric as fabric
+    from sempy_labs._ui_components import list_picker_workspaces
 
-    try:
-        df = fabric.list_workspaces()
-    except Exception:
-        return []
-    return sorted(
-        [
-            {"id": str(row["Id"]), "name": str(row["Name"])}
-            for _, row in df.iterrows()
-        ],
-        key=lambda item: item["name"].lower(),
-    )
+    return list_picker_workspaces(fallback_id, fallback_name)
 
 
 def _list_delta_picker_lakehouses(workspace_id: str) -> list:
     """Return lakehouse options for a workspace."""
 
-    from sempy_labs._list_functions import list_lakehouses
+    from sempy_labs._ui_components import list_picker_lakehouses
 
-    try:
-        df = list_lakehouses(workspace=workspace_id)
-    except Exception:
-        return []
-    return sorted(
-        [
-            {"id": str(row["Lakehouse ID"]), "name": str(row["Lakehouse Name"])}
-            for _, row in df.iterrows()
-        ],
-        key=lambda item: item["name"].lower(),
-    )
+    return list_picker_lakehouses(workspace_id)
 
 
 def _list_delta_picker_tables(workspace_id: str, lakehouse_id: str) -> list:
@@ -1505,6 +1487,7 @@ function render({ model, el }) {
         const message = model.get("error_message") || "";
         if (message && analysisRequested && !analyzing) { analysisRequested = false; pickerOpen = true; }
         const workspaces = model.get("available_workspaces") || [], lakehouses = model.get("available_lakehouses") || [], tables = model.get("available_tables") || [];
+        ws.setEmptyLabel(loading ? "Loading workspaces…" : "No workspaces");
         ws.setOptions(workspaces.map(x => ({ value: x.id, label: x.name })), model.get("selected_workspace_id") || "");
         lh.setEmptyLabel(!model.get("selected_workspace_id") ? "Select a workspace first…" : (loading ? "Loading lakehouses…" : "No lakehouses"));
         lh.setOptions(lakehouses.map(x => ({ value: x.id, label: x.name })), model.get("selected_lakehouse_id") || "");
@@ -1599,7 +1582,7 @@ def _visualize_delta_analyzer(
     except Exception:
         pass
 
-    workspaces = _list_delta_picker_workspaces()
+    workspaces = _list_delta_picker_workspaces(initial_workspace_id)
     lakehouses = (
         _list_delta_picker_lakehouses(initial_workspace_id)
         if initial_workspace_id

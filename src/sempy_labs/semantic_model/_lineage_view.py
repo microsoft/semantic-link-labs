@@ -1527,6 +1527,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
 )
@@ -2164,38 +2166,10 @@ def lineage_view(
         return reports
 
     def _list_workspaces_payload():
-        try:
-            dfW = fabric.list_workspaces()
-        except Exception:
-            return [{"id": ws_id, "name": str(ws_name or "")}]
-        cols = list(dfW.columns)
-        id_col = "Id" if "Id" in cols else cols[0]
-        name_col = "Name" if "Name" in cols else cols[-1]
-        out = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfW.iterrows()
-        ]
-        return sorted(out, key=lambda x: x["name"].lower())
+        return _list_picker_workspaces(ws_id, ws_name)
 
     def _list_datasets_payload(target_ws_id):
-        try:
-            dfD = fabric.list_datasets(workspace=target_ws_id)
-        except Exception:
-            return []
-        cols = list(dfD.columns)
-        id_col = next(
-            (c for c in ["Dataset Id", "Dataset ID", "Id"] if c in cols),
-            cols[0] if cols else None,
-        )
-        name_col = next(
-            (c for c in ["Dataset Name", "Name"] if c in cols),
-            cols[-1] if cols else None,
-        )
-        if id_col is None or name_col is None:
-            return []
-        out = [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in dfD.iterrows()
-        ]
-        return sorted(out, key=lambda x: x["name"].lower())
+        return _list_picker_datasets(target_ws_id)
 
     # Initial load (downstream reports only, no analysis). When no model is
     # connected yet the graph is not built; the picker is shown instead.

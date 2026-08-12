@@ -10,6 +10,8 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
     run_widget_task as _run_widget_task,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
@@ -504,55 +506,19 @@ def refresh_manager(
         dataset_name, dataset_id = "", ""
 
     def list_workspaces() -> list[dict[str, str]]:
-        try:
-            dataframe = fabric.list_workspaces()
-        except Exception:
-            return [{"id": workspace_id, "name": str(workspace_name or "")}]
-        id_column = "Id" if "Id" in dataframe.columns else dataframe.columns[0]
-        name_column = "Name" if "Name" in dataframe.columns else dataframe.columns[-1]
-        return sorted(
-            [
-                {"id": str(row[id_column]), "name": str(row[name_column])}
-                for _, row in dataframe.iterrows()
-            ],
-            key=lambda item: item["name"].lower(),
-        )
+        return _list_picker_workspaces(workspace_id, workspace_name)
 
     def list_datasets(target_workspace_id: str) -> list[dict[str, str]]:
-        try:
-            dataframe = fabric.list_datasets(
-                workspace=target_workspace_id, mode="rest"
-            )
-        except Exception:
-            return []
-        id_column = next(
-            (
-                column
-                for column in ["Dataset Id", "Dataset ID", "Id"]
-                if column in dataframe.columns
-            ),
-            dataframe.columns[0] if len(dataframe.columns) else None,
-        )
-        name_column = next(
-            (
-                column
-                for column in ["Dataset Name", "Name"]
-                if column in dataframe.columns
-            ),
-            dataframe.columns[-1] if len(dataframe.columns) else None,
-        )
-        if id_column is None or name_column is None:
-            return []
-        return sorted(
-            [
-                {"id": str(row[id_column]), "name": str(row[name_column])}
-                for _, row in dataframe.iterrows()
-            ],
-            key=lambda item: item["name"].lower(),
-        )
+        return _list_picker_datasets(target_workspace_id)
 
-    initial_workspaces = [{"id": workspace_id, "name": workspace_name}]
-    initial_datasets = {}
+    # Seeded before the widget is constructed: a trait assigned straight after
+    # display() races the comm handshake and never reaches the browser.
+    initial_workspaces = (
+        [{"id": workspace_id, "name": workspace_name}]
+        if connected
+        else list_workspaces()
+    )
+    initial_datasets = {} if connected else {workspace_id: list_datasets(workspace_id)}
 
     class _RefreshManagerWidget(anywidget.AnyWidget):
         _esm = _WIDGET_JS
@@ -919,16 +885,3 @@ def refresh_manager(
 
     widget.observe(on_run, names=["run"])
     display(widget)
-
-    if not connected:
-
-        def load_initial_workspaces() -> None:
-            widget.workspaces = list_workspaces()
-
-        def load_initial_datasets() -> None:
-            datasets = dict(widget.datasets)
-            datasets[workspace_id] = list_datasets(workspace_id)
-            widget.datasets = datasets
-
-        _run_widget_task(load_initial_workspaces)
-        _run_widget_task(load_initial_datasets)

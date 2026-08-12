@@ -107,19 +107,26 @@ def test_picker_matches_lineage_view_design():
     assert ".slls-rm-picker-grid { display:flex;align-items:flex-end;" in widget_css
 
 
-def test_no_dataset_picker_renders_before_discovery():
+def test_picker_lists_are_seeded_before_the_widget_is_displayed():
+    """A trait set after ``display()`` races the comm handshake.
+
+    In Fabric PySpark notebooks that update never reaches the browser, so the
+    picker lists have to be part of the widget's initial state instead.
+    """
+
     source = getsource(refresh_manager_module.refresh_manager)
 
-    assert 'fabric.list_datasets(' in source
-    assert 'workspace=target_workspace_id, mode="rest"' in source
-    assert 'initial_workspaces = [{"id": workspace_id, "name": workspace_name}]' in source
-    assert "initial_datasets = {}" in source
+    assert "_list_picker_workspaces(workspace_id, workspace_name)" in source
+    assert "_list_picker_datasets(target_workspace_id)" in source
+    seed_index = source.index("initial_workspaces = (")
     display_index = source.index("display(widget)")
-    discovery_index = source.index(
-        "threading.Thread(target=load_initial_workspaces, daemon=True).start()"
-    )
-    assert display_index < discovery_index
-    assert "threading.Thread(target=load_initial_datasets, daemon=True).start()" in source
+    assert seed_index < display_index
+    assert "else list_workspaces()" in source
+    assert "{workspace_id: list_datasets(workspace_id)}" in source
+    # The old post-display discovery must not come back.
+    assert "load_initial_workspaces" not in source
+    assert "load_initial_datasets" not in source
+    assert "threading.Thread" not in source
 
 
 def test_fullscreen_and_theme_buttons_use_neutral_icon_style():

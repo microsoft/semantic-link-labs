@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
     resolve_workspace_capacity,
-    _base_api,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
@@ -37,6 +36,8 @@ from sempy_labs._ui_components import (
     theme_toggle_script as _ui_theme_toggle_script,
     fullscreen_css as _ui_fullscreen_css,
     fullscreen_toggle_script as _ui_fullscreen_toggle_script,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
 )
@@ -3950,61 +3951,11 @@ def visualize_vertipaq(
                 "done": True,
             }
 
-    def _api_items(request):
-        """Collect ``{id, name}`` entries from a paginated Fabric list API."""
-        responses = _base_api(request=request, uses_pagination=True, client="fabric_sp")
-        return [
-            {"id": str(v.get("id")), "name": str(v.get("displayName"))}
-            for r in responses
-            for v in r.get("value", [])
-            if v.get("id")
-        ]
-
-    def _df_items(df, id_names, name_names):
-        """Collect ``{id, name}`` entries from a sempy dataframe, tolerating the
-        different column spellings across semantic-link versions."""
-        cols = list(df.columns)
-        id_col = next((c for c in id_names if c in cols), None)
-        name_col = next((c for c in name_names if c in cols), None)
-        if id_col is None or name_col is None:
-            return []
-        return [
-            {"id": str(r[id_col]), "name": str(r[name_col])} for _, r in df.iterrows()
-        ]
-
     def _list_workspaces_payload():
-        out = []
-        try:
-            out = _api_items("/v1/workspaces")
-        except Exception:
-            out = []
-        if not out:
-            try:
-                out = _df_items(fabric.list_workspaces(), ["Id", "ID"], ["Name"])
-            except Exception:
-                out = []
-        if not out:
-            if workspace_id:
-                return [{"id": str(workspace_id), "name": str(workspace_name or "")}]
-            return []
-        return sorted(out, key=lambda x: x["name"].lower())
+        return _list_picker_workspaces(workspace_id, workspace_name)
 
     def _list_datasets_payload(target_workspace_id):
-        out = []
-        try:
-            out = _api_items(f"/v1/workspaces/{target_workspace_id}/semanticModels")
-        except Exception:
-            out = []
-        if not out:
-            try:
-                out = _df_items(
-                    fabric.list_datasets(workspace=target_workspace_id),
-                    ["Dataset Id", "Dataset ID", "Id"],
-                    ["Dataset Name", "Name"],
-                )
-            except Exception:
-                out = []
-        return sorted(out, key=lambda x: x["name"].lower())
+        return _list_picker_datasets(target_workspace_id)
 
     def _connect(target_workspace_id, target_dataset_id, target_names=None):
         """Show the semantic model chosen in the picker: restored from the cache

@@ -2116,6 +2116,10 @@ export default { render };
 # Inject SVG icons from the shared UI components module so they stay in
 # sync with the other widgets (e.g. ``perspective_editor``).
 from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
+from sempy_labs._ui_components import (  # noqa: E402
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
+)
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])
@@ -2229,7 +2233,6 @@ def mini_model_manager(
             "Install it with: pip install anywidget"
         ) from e
 
-    import sempy.fabric as fabric
     from IPython.display import display
     from sempy_labs._helper_functions import (
         _pure_python_notebook,
@@ -2251,49 +2254,11 @@ def mini_model_manager(
     else:
         dataset_name, dataset_id = "", ""
 
-    def _pick_columns(df, preferred_ids, preferred_names):
-        columns = list(df.columns)
-        if not columns:
-            return None, None
-        id_column = next((c for c in preferred_ids if c in columns), columns[0])
-        name_column = next((c for c in preferred_names if c in columns), columns[-1])
-        return id_column, name_column
-
     def _list_workspaces_payload():
-        try:
-            dfW = fabric.list_workspaces()
-        except Exception:
-            return [{"id": workspace_id, "name": workspace_name}]
-        id_column, name_column = _pick_columns(
-            dfW,
-            ["Id", "ID", "Workspace Id", "Workspace ID"],
-            ["Name", "Workspace Name"],
-        )
-        if id_column is None or name_column is None:
-            return [{"id": workspace_id, "name": workspace_name}]
-        rows = [
-            {"id": str(row[id_column]), "name": str(row[name_column])}
-            for _, row in dfW.iterrows()
-        ]
-        return sorted(rows, key=lambda item: item["name"].lower())
+        return _list_picker_workspaces(workspace_id, workspace_name)
 
     def _list_datasets_payload(target_workspace_id):
-        try:
-            dfD = fabric.list_datasets(workspace=target_workspace_id)
-        except Exception:
-            return []
-        id_column, name_column = _pick_columns(
-            dfD,
-            ["Dataset Id", "Dataset ID", "Id"],
-            ["Dataset Name", "Name"],
-        )
-        if id_column is None or name_column is None:
-            return []
-        rows = [
-            {"id": str(row[id_column]), "name": str(row[name_column])}
-            for _, row in dfD.iterrows()
-        ]
-        return sorted(rows, key=lambda item: item["name"].lower())
+        return _list_picker_datasets(target_workspace_id)
 
     def _read_model(target_dataset_id, target_workspace_id):
         with connect_semantic_model(
