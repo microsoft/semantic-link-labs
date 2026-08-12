@@ -615,6 +615,16 @@ _WIDGET_CSS = """
     font-size: 12.5px;
 }
 .slls-mmm-updateprogress.show { display: flex; }
+.slls-mmm-pickerprogress {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    color: var(--slls-text-secondary);
+    font-size: 12.5px;
+}
+.slls-mmm-pickerprogress.show { display: flex; }
+.slls-mmm-pickerprogress b { color: var(--slls-text); font-weight: 600; }
 .slls-mmm-verifytrack {
     position: relative;
     flex: 1 1 auto;
@@ -816,6 +826,9 @@ function render({ model, el }) {
     let metadataOnly = false;
     let verifyingFilters = false;
     let updatingFromMaster = false;
+    // Mirrors the kernel's connect state locally: the busy trait only arrives
+    // after a comm round trip, by which time the connect has already run.
+    let connectingModel = false;
     let fsMode = false;
     let objectsFsMode = false;
     let pickWs = model.get("workspace_id") || "";
@@ -1093,6 +1106,10 @@ function render({ model, el }) {
         if (!pickWs) pickWs = model.get("workspace_id") || "";
         const workspaces = model.get("workspaces") || [];
         const datasets = (model.get("datasets") || {})[pickWs] || null;
+        const connectingName = ((datasets || []).find((d) => d.id === pickDs) || {}).name;
+        const connectingLabel = connectingName
+            ? `<b>${escapeHtml(connectingName)}</b>`
+            : "the semantic model";
 
         pickerPage.innerHTML =
             `<div class="slls-mmm-picker">` +
@@ -1105,10 +1122,15 @@ function render({ model, el }) {
                         `<div data-picker="dataset"></div></div>` +
                 `</div>` +
                 `<div class="slls-mmm-picker-actions">` +
-                    `<button class="slls-mmm-btn slls-mmm-btn-primary" data-picker="connect" ${(!pickDs || isBusy()) ? "disabled" : ""}>Connect</button>` +
+                    `<button class="slls-mmm-btn slls-mmm-btn-primary" data-picker="connect" ${(!pickDs || isBusy() || connectingModel) ? "disabled" : ""}>Connect</button>` +
                     (isConnected()
-                        ? `<button class="slls-mmm-btn" data-picker="cancel">Cancel</button>`
+                        ? `<button class="slls-mmm-btn" data-picker="cancel" ${connectingModel ? "disabled" : ""}>Cancel</button>`
                         : "") +
+                `</div>` +
+                `<div class="slls-mmm-pickerprogress${connectingModel ? " show" : ""}" role="progressbar"
+                    aria-label="Connecting to the semantic model" aria-hidden="${connectingModel ? "false" : "true"}">` +
+                    `<span>Connecting to ${connectingLabel}\u2026</span>` +
+                    `<div class="slls-mmm-verifytrack"></div>` +
                 `</div>` +
             `</div>`;
 
@@ -1162,6 +1184,7 @@ function render({ model, el }) {
             if (!pickWs || !pickDs) return;
             const workspace = workspaces.find((w) => w.id === pickWs) || {};
             const dataset = (datasets || []).find((d) => d.id === pickDs) || {};
+            connectingModel = true;
             send({
                 action: "connect",
                 workspace_id: pickWs,
@@ -1169,6 +1192,7 @@ function render({ model, el }) {
                 workspace_name: workspace.name || "",
                 dataset_name: dataset.name || "",
             });
+            renderPicker();
         };
     }
 
@@ -2092,14 +2116,17 @@ function render({ model, el }) {
         const s = model.get("status") || {};
         verifyingFilters = false;
         updatingFromMaster = false;
+        connectingModel = false;
         setBusy(false);
         setStatus(s.message || "", s.kind || "info");
         renderFooter();
+        renderPicker();
         renderVerifyBar();
     });
     model.on("change:busy", () => {
         if (!isBusy()) verifyingFilters = false;
         if (!isBusy()) updatingFromMaster = false;
+        if (!isBusy()) connectingModel = false;
         setBusy(isBusy());
         renderFooter();
         renderPicker();
@@ -2115,6 +2142,7 @@ function render({ model, el }) {
     model.on("change:datasets", renderPicker);
     model.on("change:connected", reloadFromModel);
     model.on("change:connect_done", () => {
+        connectingModel = false;
         pickerReopen = false;
         pickDs = "";
         reloadFromModel();

@@ -250,3 +250,40 @@ def test_perspective_editor_lists_measures_before_columns():
     )
     summary = tree[tree.index("summary.textContent =") :]
     assert summary.index("measures") < summary.index("cols")
+
+
+def test_fullscreen_tree_grows_into_the_unused_vertical_space():
+    source = _source()
+    fullscreen = source[
+        source.index(".slls-pe.slls-pe-fs {") : source.index(".slls-pe-header {")
+    ]
+
+    assert "display: flex;" in fullscreen
+    assert "flex-direction: column;" in fullscreen
+    assert "flex: 1 1 auto;" in fullscreen
+    assert "max-height: none;" in fullscreen
+    # A fixed cap would leave dead space below the tree when full screen.
+    assert "calc(100vh - 320px)" not in fullscreen
+
+
+def test_connecting_shows_a_progress_bar_without_waiting_for_the_kernel():
+    source = _source()
+
+    assert ".slls-pe-picker-progress { display: none;" in source
+    assert ".slls-pe-picker-progress.show { display: flex; }" in source
+    assert ".slls-pe-picker-track::after {" in source
+    assert "@keyframes slls-pe-progress {" in source
+
+    # The flag is set on the click itself; waiting for picker_loading to come
+    # back from the kernel would delay the bar by a full comm round trip.
+    connect = source[
+        source.index("pickerScreen.querySelector('[data-picker=\"connect\"]')") :
+    ]
+    connect = connect[: connect.index("// ============== Renderers")]
+    assert "connecting = true;" in connect
+    assert connect.index("connecting = true;") < connect.index("sendPicker({")
+    assert "renderPicker();" in connect
+
+    assert 'class="slls-pe-picker-progress${connecting ? " show" : ""}"' in source
+    assert 'if (model.get("picker_loading") !== true) connecting = false;' in source
+    assert "connecting = false;\n        pickerOpen = false;" in source
