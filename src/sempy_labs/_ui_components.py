@@ -583,6 +583,18 @@ ICONS: dict[str, str] = {
         '<rect x="9.5" y="9" width="4.5" height="4.5" rx="1"/>'
         '<path d="M4.25 7v2.25a1.5 1.5 0 0 0 1.5 1.5h3.75"/></svg>'
     ),
+    # A model grid seen through an eye: a perspective is a curated view of the
+    # semantic model's objects.
+    "perspective": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M20.5 11V6a2 2 0 0 0-2-2H5.5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2H10"/>'
+        '<path d="M3.5 9h17"/>'
+        '<path d="M8.5 9v11"/>'
+        '<path d="M22 17.2s-1.9 3-4.6 3-4.6-3-4.6-3 1.9-3 4.6-3 4.6 3 4.6 3z"/>'
+        '<circle cx="17.4" cy="17.2" r="1.2"/></svg>'
+    ),
     "mini_model_manager": (
         '<svg width="40" height="40" viewBox="0 0 72 72" fill="none" '
         'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'

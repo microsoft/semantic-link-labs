@@ -104,6 +104,19 @@ _WIDGET_CSS = """
     margin-bottom: 18px;
     flex-wrap: wrap;
 }
+.slls-pe-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border: 1px solid var(--slls-border);
+    border-radius: 10px;
+    background: var(--slls-surface-2);
+    color: var(--slls-accent);
+}
+.slls-pe-title-icon svg { display: block; width: 27px; height: 27px; }
 .slls-pe-title {
     font-size: 22px;
     font-weight: 600;
@@ -227,7 +240,9 @@ _WIDGET_CSS = """
     border-radius: 50%;
     font-size: 18px;
     line-height: 1;
+    flex: 0 0 auto;
 }
+.slls-pe-btn-icon svg { display: block; }
 
 .slls-pe.slls-pe-picker-open > :not(.slls-pe-header):not(.slls-pe-picker-screen):not(.slls-pe-attribution) { display: none !important; }
 .slls-pe-picker-screen { display: none; align-items: flex-start; justify-content: stretch; min-height: 430px; }
@@ -501,6 +516,9 @@ function render({ model, el }) {
         date_table: `__SLLS_ICON_DATE_TABLE__`,
         field_parameter: `__SLLS_ICON_FIELD_PARAMETER__`,
         swap: `__SLLS_ICON_SWAP__`,
+        perspective: `__SLLS_ICON_PERSPECTIVE__`,
+        expand: `__SLLS_ICON_EXPAND__`,
+        collapse: `__SLLS_ICON_COLLAPSE__`,
     };
     const CARET = `__SLLS_ICON_CARET__`;
 
@@ -522,6 +540,11 @@ function render({ model, el }) {
     const header = document.createElement("div");
     header.className = "slls-pe-header";
     root.appendChild(header);
+
+    const titleIcon = document.createElement("span");
+    titleIcon.className = "slls-pe-title-icon";
+    titleIcon.innerHTML = ICON_SVG.perspective;
+    header.appendChild(titleIcon);
 
     const titleWrap = document.createElement("div");
     titleWrap.className = "slls-pe-titlewrap";
@@ -674,13 +697,19 @@ function render({ model, el }) {
     toolbar.appendChild(search);
 
     const expandAllBtn = document.createElement("button");
-    expandAllBtn.className = "slls-pe-btn";
-    expandAllBtn.textContent = "Expand All";
+    expandAllBtn.type = "button";
+    expandAllBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    expandAllBtn.innerHTML = ICON_SVG.expand;
+    expandAllBtn.title = "Expand all";
+    expandAllBtn.setAttribute("aria-label", expandAllBtn.title);
     toolbar.appendChild(expandAllBtn);
 
     const collapseAllBtn = document.createElement("button");
-    collapseAllBtn.className = "slls-pe-btn";
-    collapseAllBtn.textContent = "Collapse All";
+    collapseAllBtn.type = "button";
+    collapseAllBtn.className = "slls-pe-btn slls-pe-btn-icon";
+    collapseAllBtn.innerHTML = ICON_SVG.collapse;
+    collapseAllBtn.title = "Collapse all";
+    collapseAllBtn.setAttribute("aria-label", collapseAllBtn.title);
     toolbar.appendChild(collapseAllBtn);
 
     const summaryEl = document.createElement("div");
@@ -1390,6 +1419,9 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_DATE_TABLE__", _UI_ICONS["date_table"])
     .replace("__SLLS_ICON_FIELD_PARAMETER__", _UI_ICONS["field_parameter"])
     .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
+    .replace("__SLLS_ICON_PERSPECTIVE__", _UI_ICONS["perspective"])
+    .replace("__SLLS_ICON_EXPAND__", _UI_ICONS["expand_rows"])
+    .replace("__SLLS_ICON_COLLAPSE__", _UI_ICONS["collapse_rows"])
     .replace("__SLLS_ICON_REFRESH__", _UI_ICONS["refresh"])
     .replace("__SLLS_ICON_CARET__", _UI_ICONS["caret_right"])
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])

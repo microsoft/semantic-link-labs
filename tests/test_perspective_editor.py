@@ -96,6 +96,45 @@ def test_perspective_editor_uses_table_kind_icons():
     assert '"kind": _perspective_table_kind(tom, table)' in source
 
 
+def test_perspective_editor_header_shows_a_tool_icon():
+    source = _source()
+
+    assert "perspective: `__SLLS_ICON_PERSPECTIVE__`," in source
+    assert '.replace("__SLLS_ICON_PERSPECTIVE__", _UI_ICONS["perspective"])' in source
+    assert 'titleIcon.className = "slls-pe-title-icon";' in source
+    assert "titleIcon.innerHTML = ICON_SVG.perspective;" in source
+    # Sits ahead of the title block in the header.
+    assert source.index("header.appendChild(titleIcon);") < source.index(
+        "header.appendChild(titleWrap);"
+    )
+    assert ".slls-pe-title-icon {" in source
+    assert ".slls-pe-title-icon svg { display: block; width: 27px; height: 27px; }" in (
+        source
+    )
+
+
+def test_expand_and_collapse_all_are_icon_buttons():
+    source = _source()
+
+    assert "expand: `__SLLS_ICON_EXPAND__`," in source
+    assert "collapse: `__SLLS_ICON_COLLAPSE__`," in source
+    # Reuses the shared chevron pair already used by the other tools.
+    assert '.replace("__SLLS_ICON_EXPAND__", _UI_ICONS["expand_rows"])' in source
+    assert '.replace("__SLLS_ICON_COLLAPSE__", _UI_ICONS["collapse_rows"])' in source
+    assert 'expandAllBtn.className = "slls-pe-btn slls-pe-btn-icon";' in source
+    assert "expandAllBtn.innerHTML = ICON_SVG.expand;" in source
+    assert 'collapseAllBtn.className = "slls-pe-btn slls-pe-btn-icon";' in source
+    assert "collapseAllBtn.innerHTML = ICON_SVG.collapse;" in source
+    # The label moves to a tooltip so the buttons stay accessible.
+    assert 'expandAllBtn.title = "Expand all";' in source
+    assert 'collapseAllBtn.title = "Collapse all";' in source
+    assert 'expandAllBtn.setAttribute("aria-label", expandAllBtn.title);' in source
+    assert 'collapseAllBtn.setAttribute("aria-label", collapseAllBtn.title);' in source
+    assert 'textContent = "Expand All"' not in source
+    assert 'textContent = "Collapse All"' not in source
+    assert ".slls-pe-btn-icon svg { display: block; }" in source
+
+
 def test_perspective_editor_sorts_tables_alphabetically():
     source = _source()
     tree = source[source.index("function renderTree()") : source.index("function deepClone")]

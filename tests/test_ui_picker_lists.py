@@ -237,3 +237,16 @@ def test_df_items_tolerates_column_spellings(ui):
     ) == [{"id": "d1", "name": "Sales"}]
     # An unrecognised shape yields nothing rather than raising.
     assert ui._picker_items_from_df(pd.DataFrame({"X": [1]}), ["Id"], ["Name"]) == []
+
+
+def test_perspective_icon_is_a_valid_standalone_svg(ui):
+    """The tool icon must inherit the theme color like every other icon."""
+
+    icon = ui.ICONS["perspective"]
+
+    assert icon.startswith("<svg ") and icon.endswith("</svg>")
+    assert 'viewBox="0 0 24 24"' in icon
+    assert 'stroke="currentColor"' in icon
+    # No hard-coded size on the <svg> itself, so it takes the header's box.
+    opening_tag = icon[: icon.index(">") + 1]
+    assert " width=" not in opening_tag and " height=" not in opening_tag

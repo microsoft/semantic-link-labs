@@ -1042,7 +1042,8 @@ _WIDGET_CSS = """
 .fuo-badge.fuo-badge-sm { width: 32px; height: 32px; border-radius: 9px; }
 .fuo-badge.fuo-badge-sm svg { width: 17px; height: 17px; }
 .fuo-cfg-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
-.fuo-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; color: var(--ui-text); }
+.fuo-title-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fuo-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; color: var(--ui-text); }
 .fuo-desc { font-size: 13px; line-height: 1.5; color: var(--ui-text-secondary); margin-top: 5px; }
 .fuo-desc b { color: var(--ui-text); font-weight: 600; }
 .fuo-section-label {
@@ -1161,7 +1162,7 @@ __SEARCH_SELECT_CSS__
     padding: 16px 18px; border-bottom: 1px solid var(--ui-border);
 }
 .fuo-res-titlewrap { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
-.fuo-res-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--ui-text); }
+.fuo-res-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; color: var(--ui-text); }
 .fuo-res-sub { font-size: 12px; color: var(--ui-text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fuo-res-sub b { color: var(--ui-text); font-weight: 600; }
 .fuo-res-sub .fuo-sep { color: var(--ui-text-tertiary); margin: 0 6px; }
@@ -1637,10 +1638,13 @@ function render({ model, el }) {
                 <div class="fuo-cfg-head">
                     <div class="fuo-badge">${IC.scan}</div>
                     <div class="fuo-cfg-titlewrap">
-                        <div class="fuo-title">Find unused objects</div>
+                        <div class="fuo-title-row">
+                            <div class="fuo-title">Find unused objects</div>
+                            ${swapBtnHtml()}
+                        </div>
                         <div class="fuo-desc">${desc}</div>
                     </div>
-                    <div class="fuo-hdr-ctrls">${swapBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
+                    <div class="fuo-hdr-ctrls">${fsBtnHtml()}${themeBtnHtml()}</div>
                 </div>
                 <div class="fuo-section-label">Analyze by</div>
                 <div class="fuo-seg" data-r="method">
@@ -1739,17 +1743,20 @@ function render({ model, el }) {
                 <div class="fuo-res-head">
                     <div class="fuo-badge fuo-badge-sm">${IC.scan}</div>
                     <div class="fuo-res-titlewrap">
-                        <div class="fuo-res-title">Find unused objects</div>
+                        <div class="fuo-title-row">
+                            <div class="fuo-res-title">Find unused objects</div>
+                            ${swapBtnHtml()}
+                        </div>
                         <div class="fuo-res-sub" data-r="subtitle"></div>
                     </div>
-                    <div class="fuo-hdr-ctrls">${rerunBtnHtml()}${swapBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
+                    <div class="fuo-hdr-ctrls">${rerunBtnHtml()}${fsBtnHtml()}${themeBtnHtml()}</div>
                 </div>
                 <div class="fuo-res-toolbar">
+                    <div class="fuo-toggle-wrap" data-r="toggle"></div>
                     <div class="fuo-tools">
                         <button class="fuo-icon-btn fuo-sm" data-r="expand" type="button" title="Expand all">${IC.expand}</button>
                         <button class="fuo-icon-btn fuo-sm" data-r="collapse" type="button" title="Collapse all">${IC.collapse}</button>
                     </div>
-                    <div class="fuo-toggle-wrap" data-r="toggle"></div>
                 </div>
                 <div class="fuo-search-wrap fuo-res-search">${IC.search}<input type="text" class="fuo-search" data-r="search" placeholder="Filter objects…" /></div>
                 <div class="fuo-tree" data-r="tree"></div>

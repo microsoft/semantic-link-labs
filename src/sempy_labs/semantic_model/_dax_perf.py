@@ -3168,6 +3168,16 @@ def _visualize_dax_test(
     cursor: not-allowed;
 }}
 .dtx .dtx-seg-btn[disabled]:hover {{ color: var(--ui-text-secondary); }}
+.dtx .dtx-vp-seg .dtx-seg-btn {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}}
+.dtx .dtx-seg-icon {{
+    display: inline-flex;
+    flex: 0 0 auto;
+}}
+.dtx .dtx-seg-icon svg {{ width: 14px; height: 14px; display: block; }}
 .dtx .dtx-chart-wrap {{
     padding: 12px 24px 20px 24px;
     overflow-x: auto;
@@ -5219,6 +5229,8 @@ def _visualize_dax_test(
     column_icon = _UI_ICONS["column"].replace("`", "\\`")
     measure_icon = _UI_ICONS["measure"].replace("`", "\\`")
     hierarchy_icon = _UI_ICONS["hierarchy"].replace("`", "\\`")
+    partition_icon = _UI_ICONS["partition"].replace("`", "\\`")
+    relationship_icon = _UI_ICONS["relationship"].replace("`", "\\`")
     caret_icon = _UI_ICONS["caret_right"].replace("`", "\\`")
     folder_icon = _UI_ICONS["folder"].replace("`", "\\`")
     level_icon = _UI_ICONS["level"].replace("`", "\\`")
@@ -5504,6 +5516,8 @@ function render({ model, el }) {
     const COLUMN_SVG = `__DTX_COLUMN__`;
     const MEASURE_SVG = `__DTX_MEASURE__`;
     const HIERARCHY_SVG = `__DTX_HIERARCHY__`;
+    const PARTITION_SVG = `__DTX_PARTITION__`;
+    const RELATIONSHIP_SVG = `__DTX_RELATIONSHIP__`;
     const CARET_SVG = `__DTX_CARET__`;
     const FOLDER_SVG = `__DTX_FOLDER__`;
     const LEVEL_SVG = `__DTX_LEVEL__`;
@@ -9400,6 +9414,16 @@ function render({ model, el }) {
         vpFsBtn.setAttribute("aria-label", fsLabel);
     }
 
+    // Mirrors the tab icons of the standalone vertipaq_analyzer visualization.
+    const VP_SECTION_ICONS = {
+        "Model Summary": DATABASE_SVG,
+        "Tables": TABLE_SVG,
+        "Partitions": PARTITION_SVG,
+        "Columns": COLUMN_SVG,
+        "Relationships": RELATIONSHIP_SVG,
+        "Hierarchies": HIERARCHY_SVG,
+    };
+
     function buildVertipaqSeg() {
         const sections = model.get("vertipaq_sections") || [];
         let active = model.get("vertipaq_section") || "";
@@ -9413,7 +9437,9 @@ function render({ model, el }) {
             const b = document.createElement("button");
             b.type = "button";
             b.className = "dtx-seg-btn";
-            b.textContent = s.name;
+            const icon = VP_SECTION_ICONS[s.name] || "";
+            b.innerHTML = (icon ? `<span class="dtx-seg-icon">${icon}</span>` : "")
+                + `<span>${escapeHtml(s.name)}</span>`;
             b.classList.toggle("dtx-seg-btn-on", s.name === active);
             b.addEventListener("click", () => {
                 model.set("vertipaq_section", s.name);
@@ -11249,6 +11275,8 @@ export default { render };
         .replace("__DTX_COLUMN__", column_icon)
         .replace("__DTX_MEASURE__", measure_icon)
         .replace("__DTX_HIERARCHY__", hierarchy_icon)
+        .replace("__DTX_PARTITION__", partition_icon)
+        .replace("__DTX_RELATIONSHIP__", relationship_icon)
         .replace("__DTX_CARET__", caret_icon)
         .replace("__DTX_FOLDER__", folder_icon)
         .replace("__DTX_LEVEL__", level_icon)

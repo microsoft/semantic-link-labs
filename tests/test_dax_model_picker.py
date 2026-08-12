@@ -1657,6 +1657,27 @@ def test_vertipaq_bar_controls_and_delta_columns():
     # An empty section toggle would paint as a stray pill while loading.
     assert 'vpSeg.style.display = sections.length ? "" : "none";' in source
 
+    # The section tabs carry the same icons as the standalone
+    # vertipaq_analyzer visualization.
+    assert '"Model Summary": DATABASE_SVG,' in source
+    assert '"Tables": TABLE_SVG,' in source
+    assert '"Partitions": PARTITION_SVG,' in source
+    assert '"Columns": COLUMN_SVG,' in source
+    assert '"Relationships": RELATIONSHIP_SVG,' in source
+    assert '"Hierarchies": HIERARCHY_SVG,' in source
+    assert 'const icon = VP_SECTION_ICONS[s.name] || "";' in source
+    assert '<span class="dtx-seg-icon">${icon}</span>' in source
+    assert "`<span>${escapeHtml(s.name)}</span>`" in source
+    assert ".dtx .dtx-vp-seg .dtx-seg-btn {{" in source
+    assert (
+        ".dtx .dtx-seg-icon svg {{ width: 14px; height: 14px; display: block; }}"
+        in source
+    )
+    assert '.replace("__DTX_PARTITION__", partition_icon)' in source
+    assert '.replace("__DTX_RELATIONSHIP__", relationship_icon)' in source
+    assert '_UI_ICONS["partition"]' in source
+    assert '_UI_ICONS["relationship"]' in source
+
     # Search bar filters the rows of the selected section.
     assert 'vpSearchInput.className = "dtx-vp-search"' in bar
     assert 'vpSearchInput.style.display = hasResults ? "" : "none";' in bar
