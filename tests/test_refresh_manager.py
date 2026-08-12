@@ -103,7 +103,9 @@ def test_picker_matches_lineage_view_design():
         "border-radius:14px;background:var(--ui-surface);padding:16px; }" in widget_css
     )
     assert ".sl-reload-btn {" in widget_css
-    assert "width:32px;height:32px;" in widget_css
+    reload_btn_rule = widget_css.split(".sl-reload-btn {", 1)[1].split("}", 1)[0]
+    assert "width: 32px;" in reload_btn_rule
+    assert "height: 32px;" in reload_btn_rule
     assert ".slls-rm-picker-grid { display:flex;align-items:flex-end;" in widget_css
 
 
@@ -149,9 +151,10 @@ def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert "background:var(--ui-bg);color:var(--ui-text);display:inline-flex" in (
         refresh_manager_module._WIDGET_CSS
     )
-    assert "color:var(--ui-text-secondary);display:inline-flex" not in (
-        refresh_manager_module._WIDGET_CSS
-    )
+    iconbtn_rule = refresh_manager_module._WIDGET_CSS.split(
+        ".slls-rm-iconbtn {", 1
+    )[1].split("}", 1)[0]
+    assert "--ui-text-secondary" not in iconbtn_rule
     assert "data-picker-ws" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
@@ -279,7 +282,7 @@ def test_widget_has_tools_style_schedule_controls():
     assert "node.scrollHeight>node.clientHeight" in refresh_manager_module._WIDGET_JS
     assert "node.parentNode||(node.host||null)" in refresh_manager_module._WIDGET_JS
     assert "document.scrollingElement" in refresh_manager_module._WIDGET_JS
-    assert "node.scrollTo(left,top)" in refresh_manager_module._WIDGET_JS
+    assert "if(target)target.scrollTo(left,top)" in refresh_manager_module._WIDGET_JS
     assert "requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);})" in (
         refresh_manager_module._WIDGET_JS
     )
@@ -394,7 +397,7 @@ def test_refresh_options_have_hover_descriptions():
     assert "const annotateOptionDescriptions=" in widget_js
     assert 'control.closest(".slls-rm-field,.slls-rm-toggle-row")' in widget_js
     assert "field.title=description" in widget_js
-    assert "new MutationObserver(annotateOptionDescriptions)" in widget_js
+    assert "new MutationObserver(()=>{annotateOptionDescriptions();" in widget_js
 
 
 def test_visualized_refresh_suppresses_empty_trace_warning():
@@ -437,7 +440,8 @@ def test_visualized_refresh_updates_live_regions_without_full_redraw():
     assert "data-live-status" in widget_js
     assert "data-live-gantt" in widget_js
     assert 'model.on("change:refresh_status",()=>updateLive(' in widget_js
-    assert 'model.on("change:gantt_events",()=>updateLive(' in widget_js
+    assert 'model.on("change:gantt_events",updateGantt)' in widget_js
+    assert 'updateLive("[data-live-gantt]",gantt)' in widget_js
     draw_observers = widget_js.split(
         'const updateLive=(selector,render)=>', 1
     )[1].split('model.on("change:refresh_status"', 1)[0]
