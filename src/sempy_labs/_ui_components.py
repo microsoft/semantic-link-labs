@@ -594,6 +594,15 @@ ICONS: dict[str, str] = {
         '<rect x="9.5" y="9" width="4.5" height="4.5" rx="1"/>'
         '<path d="M4.25 7v2.25a1.5 1.5 0 0 0 1.5 1.5h3.75"/></svg>'
     ),
+    "mini_model_manager": (
+        '<svg width="40" height="40" viewBox="0 0 72 72" fill="none" '
+        'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        '<rect width="72" height="72" rx="17" fill="var(--slls-accent-soft)"/>'
+        '<path d="M43 22H23a4 4 0 0 0-4 4v20" stroke="currentColor" '
+        'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+        '<rect x="31" y="31" width="25" height="25" rx="4" '
+        'stroke="currentColor" stroke-width="3"/></svg>'
+    ),
     "expand_rows": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -604,7 +613,8 @@ ICONS: dict[str, str] = {
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
         'stroke-linejoin="round" aria-hidden="true">'
-        '<path d="M5 4l3 3 3-3"/><path d="M5 12l3-3 3 3"/></svg>'
+        '<path d="M5 3.5l3 2.75 3-2.75"/>'
+        '<path d="M5 12.5l3-2.75 3 2.75"/></svg>'
     ),
     "scan": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
@@ -652,6 +662,20 @@ ICONS: dict[str, str] = {
         '<path d="M13.5 6H11a1 1 0 0 1-1-1V2.5"/>'
         '<path d="M10 13.5V11a1 1 0 0 1 1-1h2.5"/>'
         '<path d="M2.5 10H5a1 1 0 0 1 1 1v2.5"/></svg>'
+    ),
+    "expand_diagonal": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M9.5 2.5h4v4M13.5 2.5 9 7"/>'
+        '<path d="M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg>'
+    ),
+    "collapse_diagonal": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M13.5 2.5 9 7M9 3v4h4"/>'
+        '<path d="M2.5 13.5 7 9M7 13V9H3"/></svg>'
     ),
     "save": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
@@ -811,6 +835,22 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M2.5 4.5h11M6 2.5h4M4.5 4.5l.6 9h5.8l.6-9"/>'
         '<path d="M6.5 7v4M9.5 7v4"/></svg>'
+    ),
+    "minus": (
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        'aria-hidden="true"><path d="M3.5 8h9"/></svg>'
+    ),
+    # Two branches with opposing arrows: the "compare these two things" mark.
+    "git_compare": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="4" cy="12.2" r="1.7"/><circle cx="12" cy="3.8" r="1.7"/>'
+        '<path d="M4 10.5V6.2a2 2 0 0 1 2-2h3.4"/>'
+        '<path d="M8.1 2.6 9.9 4.2 8.1 5.8"/>'
+        '<path d="M12 5.5v4.3a2 2 0 0 1-2 2H6.6"/>'
+        '<path d="M7.9 10.2 6.1 11.8l1.8 1.6"/></svg>'
     ),
 }
 

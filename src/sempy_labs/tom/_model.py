@@ -6190,15 +6190,14 @@ class TOMWrapper:
 
         return sources
 
-    def _create_mlvs_based_on_filters(
+    def _generate_mlv_queries(
         self,
         filters: dict,
         schema: str,
     ):
-        """Create materialized lake views for a filtered subset of a Direct Lake semantic model.
+        """Generates the SQL used by the materialized lake views which back a filtered subset of a Direct Lake semantic model.
 
-        For each table listed in ``filters`` a materialized lake view is
-        created (or replaced) in the ``schema`` schema with the
+        For each table listed in ``filters`` a query is generated with the
         supplied filter applied. In addition, filters are propagated through
         the model's many-to-one single-direction relationships: any table on
         the "many" side of such a relationship will have the filters of its
@@ -6209,35 +6208,32 @@ class TOMWrapper:
         ----------
         filters : dict
             A mapping of table name to filter expression.
-
-            Example
-            -------
-                filters = {
-                    "Customer": "City = 'San Isidro'",
-                    "Sales":    "SaleKey > 100",
-                }
-
-            If ``Sales`` has a many-to-one OneDirection relationship to
-            ``Customer``, the resulting ``Sales`` materialized view will include
-            both the ``SaleKey > 100`` predicate and a join to ``Customer``
-            constrained to ``City = 'San Isidro'``.
         schema : str
-            The name of the schema in which to create the materialized lake views.
+            The name of the schema in which the materialized lake views are to be created.
+
+        Returns
+        -------
+        tuple
+            A tuple of the generated queries (a mapping of table name to a dictionary containing the
+            'sql', 'entityName' and 'schema' values), the lakehouse Id and the lakehouse's workspace Id.
+            Returns (None, None, None) if the semantic model is not supported.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
-        from sempy_labs.lakehouse._schemas import create_schema
-        from sempy_labs.lakehouse._materialized_lake_views import (
-            create_materialized_lake_view,
-        )
 
         queries = {}
 
         # Validation
-        if any(p for p in self.all_partitions() if p.Mode != TOM.ModeType.DirectLake):
+        data_partitions = [
+            p
+            for p in self.all_partitions()
+            if p.Parent.CalculationGroup is None
+            and p.SourceType != TOM.PartitionSourceType.Calculated
+        ]
+        if any(p.Mode != TOM.ModeType.DirectLake for p in data_partitions):
             print(
-                f"{icons.red_dot} This function only supports semantic models where all tables are in Direct Lake mode."
+                f"{icons.red_dot} This function only supports semantic models where all data tables are in Direct Lake mode."
             )
-            return
+            return None, None, None
 
         all_tables = {t.Name for t in self.model.Tables}
         for table_name in filters:
@@ -6252,7 +6248,7 @@ class TOMWrapper:
             print(
                 f"{icons.warning} This function only supports single-sourced Direct Lake semantic models."
             )
-            return
+            return None, None, None
         item_id, item_name, item_type, item_workspace_id, item_workspace_name = next(
             (
                 s.get("itemId"),
@@ -6265,13 +6261,15 @@ class TOMWrapper:
         )
         if item_type != "Lakehouse":
             print(f"{icons.warning} This function only supports lakehouse sources.")
-            return
+            return None, None, None
 
         from_location = f"`{item_workspace_name}`.`{item_name}`"
 
         # Map of table_name -> (schema_name, entity_name)
         table_sources = {}
-        for p in self.all_partitions():
+        for p in data_partitions:
+            if p.SourceType != TOM.PartitionSourceType.Entity:
+                continue
             tn = p.Parent.Name
             if tn not in table_sources:
                 table_sources[tn] = (p.Source.SchemaName, p.Source.EntityName)
@@ -6381,6 +6379,54 @@ class TOMWrapper:
                 "entityName": to_delta_table_name(base_table),
                 "schema": schema,
             }
+
+        return queries, item_id, item_workspace_id
+
+    def _create_mlvs_based_on_filters(
+        self,
+        filters: dict,
+        schema: str,
+    ):
+        """Create materialized lake views for a filtered subset of a Direct Lake semantic model.
+
+        For each table listed in ``filters`` a materialized lake view is
+        created (or replaced) in the ``schema`` schema with the
+        supplied filter applied. In addition, filters are propagated through
+        the model's many-to-one single-direction relationships: any table on
+        the "many" side of such a relationship will have the filters of its
+        related "one" side tables applied via the appropriate joins. This
+        propagation follows relationship chains transitively.
+
+        Parameters
+        ----------
+        filters : dict
+            A mapping of table name to filter expression.
+
+            Example
+            -------
+                filters = {
+                    "Customer": "City = 'San Isidro'",
+                    "Sales":    "SaleKey > 100",
+                }
+
+            If ``Sales`` has a many-to-one OneDirection relationship to
+            ``Customer``, the resulting ``Sales`` materialized view will include
+            both the ``SaleKey > 100`` predicate and a join to ``Customer``
+            constrained to ``City = 'San Isidro'``.
+        schema : str
+            The name of the schema in which to create the materialized lake views.
+        """
+        from sempy_labs.lakehouse._schemas import create_schema
+        from sempy_labs.lakehouse._materialized_lake_views import (
+            create_materialized_lake_view,
+        )
+
+        queries, item_id, item_workspace_id = self._generate_mlv_queries(
+            filters=filters, schema=schema
+        )
+
+        if queries is None:
+            return
 
         # Build materialized views for the filtered (and propagated) tables
         create_schema(name=schema, lakehouse=item_id, workspace=item_workspace_id)
