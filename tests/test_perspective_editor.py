@@ -234,3 +234,19 @@ def test_perspective_editor_connect_replaces_state_and_writes_active_model():
     assert 'dataset=model_ctx["dataset_id"]' in observer
     assert 'workspace=model_ctx["workspace_id"]' in observer
     assert "current_metadata = dict(widget.metadata or {})" in source
+
+
+def test_perspective_editor_lists_measures_before_columns():
+    source = _source()
+    tree = source[
+        source.index("function renderTree()") : source.index("function deepClone")
+    ]
+
+    # Only the loop feeding the child rows drives display order; the other
+    # type loops are order-agnostic aggregations.
+    render_loop = tree[: tree.index("for (const n of (data[t] || []))")]
+    assert render_loop.rstrip().endswith(
+        'for (const t of ["measures", "columns", "hierarchies"]) {'
+    )
+    summary = tree[tree.index("summary.textContent =") :]
+    assert summary.index("measures") < summary.index("cols")

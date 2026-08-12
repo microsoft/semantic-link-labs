@@ -1063,7 +1063,7 @@ function render({ model, el }) {
             childWrap.className = "slls-pe-children";
             block.appendChild(childWrap);
 
-            for (const t of ["columns", "measures", "hierarchies"]) {
+            for (const t of ["measures", "columns", "hierarchies"]) {
                 for (const n of (data[t] || [])) {
                     const lockedColumn = data.kind === "calculation_group" && t === "columns";
                     const objHidden = (data[`hidden_${t}`] || []).indexOf(n) >= 0
@@ -1129,7 +1129,7 @@ function render({ model, el }) {
                 check.dataset.state = st;
                 const c = tableCounts(tblName);
                 summary.textContent =
-                    ` ${c.columns[0]}/${c.columns[1]} cols · ${c.measures[0]}/${c.measures[1]} measures · ${c.hierarchies[0]}/${c.hierarchies[1]} hierarchies`;
+                    ` ${c.measures[0]}/${c.measures[1]} measures · ${c.columns[0]}/${c.columns[1]} cols · ${c.hierarchies[0]}/${c.hierarchies[1]} hierarchies`;
                 tblDirty.style.display = isTableDirty(tblName) ? "inline-block" : "none";
                 for (const cr of childWrap.querySelectorAll(".slls-pe-child")) {
                     const tt = cr.dataset.type;

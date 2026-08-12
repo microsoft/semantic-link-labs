@@ -392,10 +392,22 @@ _WIDGET_CSS = """
     overflow-y: auto;
 }
 .slls-mmm-broken-list li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     font-size: 12px;
     color: var(--slls-danger);
 }
+.slls-mmm-broken-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+}
+.slls-mmm-broken-icon svg { display: block; width: 14px; height: 14px; }
 
 /* ---------------- Toolbar / tree ---------------- */
 .slls-mmm-toolbar {
@@ -757,7 +769,13 @@ _WIDGET_CSS = """
 
 _WIDGET_JS = r"""
 function render({ model, el }) {
-    const TYPES = ["columns", "measures", "hierarchies"];
+    const TYPES = ["measures", "columns", "hierarchies"];
+    const TYPE_LABEL = {
+        columns: "Column",
+        measures: "Measure",
+        hierarchies: "Hierarchy",
+        table: "Table",
+    };
 
     const ICON_SVG = {
         columns: `__SLLS_ICON_COLUMN__`,
@@ -1268,8 +1286,12 @@ function render({ model, el }) {
         if (broken.length > 0) {
             const items = broken
                 .map((b) => {
+                    const kind = b.name ? (b.type || "") : "table";
+                    const icon = ICON_SVG[kind === "table" ? "table" : kind] || "";
                     const label = b.name ? `${b.table}[${b.name}]` : `${b.table} (whole table)`;
-                    return `<li>${escapeHtml(label)}</li>`;
+                    const kindLabel = TYPE_LABEL[kind] || "Object";
+                    return `<li><span class="slls-mmm-broken-icon" title="${kindLabel}" `
+                        + `aria-label="${kindLabel}">${icon}</span>${escapeHtml(label)}</li>`;
                 })
                 .join("");
             html +=
@@ -1835,7 +1857,7 @@ function render({ model, el }) {
                 check.dataset.state = tableState(tblName);
                 const c = tableCounts(tblName);
                 summary.textContent =
-                    ` ${c.columns[0]}/${c.columns[1]} cols · ${c.measures[0]}/${c.measures[1]} measures · ${c.hierarchies[0]}/${c.hierarchies[1]} hierarchies`;
+                    ` ${c.measures[0]}/${c.measures[1]} measures · ${c.columns[0]}/${c.columns[1]} cols · ${c.hierarchies[0]}/${c.hierarchies[1]} hierarchies`;
                 tblDirty.style.display = isTableDirty(tblName) ? "inline-block" : "none";
                 for (const cr of childWrap.querySelectorAll(".slls-mmm-child")) {
                     const tt = cr.dataset.type;
