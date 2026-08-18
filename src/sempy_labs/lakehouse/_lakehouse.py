@@ -226,6 +226,12 @@ def vacuum_lakehouse_tables(
 
     df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
 
+    if retain_n_hours is None:
+        retention_period = None
+    else:
+        days, hours = divmod(retain_n_hours, 24)
+        retention_period = f"{days}:{hours:02d}:00:00"
+
     total = len(df_tables)
     for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
@@ -237,7 +243,7 @@ def vacuum_lakehouse_tables(
         run_table_maintenance(
             table_name=table_name,
             vacuum=True,
-            retention_period=f"{retain_n_hours // 24}:{retain_n_hours % 24:02d}:00:00",
+            retention_period=retention_period,
             schema=schema_name,
             lakehouse=lakehouse,
             workspace=workspace,

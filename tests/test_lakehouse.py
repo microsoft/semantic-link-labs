@@ -14,7 +14,7 @@ class _TqdmMock:
         return None
 
 
-def test_vacuum_lakehouse_tables_zero_pads_retention_hours(monkeypatch):
+def _patch_lakehouse(monkeypatch):
     monkeypatch.setattr(
         lakehouse,
         "_collect_tables",
@@ -35,6 +35,20 @@ def test_vacuum_lakehouse_tables_zero_pads_retention_hours(monkeypatch):
 
     monkeypatch.setattr(lakehouse, "run_table_maintenance", _mock_run_table_maintenance)
 
+    return captured
+
+
+def test_vacuum_lakehouse_tables_zero_pads_retention_hours(monkeypatch):
+    captured = _patch_lakehouse(monkeypatch)
+
     lakehouse.vacuum_lakehouse_tables(retain_n_hours=49)
 
     assert captured["retention_period"] == "2:01:00:00"
+
+
+def test_vacuum_lakehouse_tables_default_retention_hours(monkeypatch):
+    captured = _patch_lakehouse(monkeypatch)
+
+    lakehouse.vacuum_lakehouse_tables()
+
+    assert captured["retention_period"] is None
