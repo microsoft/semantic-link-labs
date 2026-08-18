@@ -37,6 +37,7 @@ from ._semantic_models import (
 from ._graphQL import (
     list_graphql_apis,
     create_graphql_api,
+    delete_graphql_api,
 )
 from ._job_scheduler import (
     list_item_job_instances,
@@ -570,6 +571,7 @@ __all__ = [
     "list_synonyms",
     "list_graphql_apis",
     "create_graphql_api",
+    "delete_graphql_api",
     "delta_analyzer",
     # "dax_perf_test",
     # "dax_perf_test_bulk",

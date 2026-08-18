@@ -52,3 +52,25 @@ def create_graphql_api(
     """
 
     graphql.create_graphql_api(name=name, description=description, workspace=workspace)
+
+
+@log
+def delete_graphql_api(graphql_api: str | UUID, workspace: Optional[str | UUID] = None):
+    """
+    Deletes a GraphQL API.
+
+    This is a wrapper function for the following API: `Items - Delete GraphQLApi <https://learn.microsoft.com/rest/api/fabric/graphqlapi/items/delete-graphqlapi>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    graphql_api : str | uuid.UUID
+        Name or ID of the GraphQL API.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    graphql.delete_graphql_api(graphql_api=graphql_api, workspace=workspace)
