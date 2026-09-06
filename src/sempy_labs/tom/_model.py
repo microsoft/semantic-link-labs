@@ -149,7 +149,10 @@ class TOMWrapper:
             self._tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](
                 get_access_token
             )
-            workspace_url = f"powerbi://api.powerbi.com/v1.0/myorg/{workspace}"
+            # The XMLA endpoint only accepts the workspace name, not the workspace id.
+            workspace_url = (
+                f"powerbi://api.powerbi.com/v1.0/myorg/{self._workspace_name}"
+            )
             connection_str = _build_adomd_connection_string(
                 workspace_url, readonly=readonly
             )
