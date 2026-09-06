@@ -21,6 +21,25 @@ def _mig_key(table_name: str, object_name: str) -> str:
     return f"{table_name}|{object_name}"
 
 
+def _default_entity_name(table_name: str) -> str:
+    """Name of the delta table a model table maps to when no override is given."""
+    import sempy_labs._icons as icons
+
+    name = table_name
+    for char in icons.special_characters:
+        name = name.replace(char, "")
+    return name
+
+
+def _table_mapping(table_mappings, table_name, default_schema, default_entity):
+    """Resolve the (schema, entity) a model table maps to, applying any
+    per-table override captured on the wizard's Configure screen."""
+    override = (table_mappings or {}).get(table_name) or {}
+    schema = (override.get("schema") or "").strip() or default_schema
+    entity = (override.get("table") or "").strip() or default_entity
+    return schema, entity
+
+
 def _split_top_level(text: str):
     """Split a string on commas that sit at the top level (outside any
     parentheses, braces, brackets, or string literal)."""
@@ -519,6 +538,18 @@ _WIDGET_CSS = """
 .slls-mdl-cat > summary::-webkit-details-marker { display: none; }
 .slls-mdl-cat > summary::before { content: "\\25B6"; font-size: 9px; color: var(--slls-text-tertiary); }
 .slls-mdl-cat[open] > summary::before { content: "\\25BC"; }
+.slls-mdl-cat-sub { font-weight: 400; font-size: 12px; color: var(--slls-text-tertiary); margin-left: auto; }
+
+/* Per-table source schema / table mapping */
+.slls-mdl-map { padding: 12px 14px; }
+.slls-mdl-map-note { font-size: 12.5px; color: var(--slls-text-secondary); line-height: 1.45; margin-bottom: 10px; }
+.slls-mdl-map-head, .slls-mdl-map-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; align-items: center; }
+.slls-mdl-map-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slls-text-tertiary); font-weight: 600; }
+.slls-mdl-map-head { padding-bottom: 6px; border-bottom: 1px solid var(--slls-border); margin-bottom: 8px; }
+.slls-mdl-map-row + .slls-mdl-map-row { margin-top: 6px; }
+.slls-mdl-map-name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-mdl-map .slls-mdl-input { font-size: 12.5px; padding: 5px 8px; }
+.slls-mdl-map-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
 
 /* Copy-to-clipboard code block */
 .slls-mdl-copywrap { position: relative; }
@@ -682,6 +713,8 @@ function render({ model, el }) {
     let pickerReopen = false;
     let pickWs = "";
     let pickDs = "";
+    // Kept outside the model so re-renders don't collapse the mapping panel.
+    let mapOpen = false;
     const showPicker = () => !connected() || pickerReopen;
 
     function openPicker() {
@@ -856,9 +889,15 @@ function render({ model, el }) {
         return out;
     }
 
-    function optionsHtml(list, selected, placeholder) {
+    function optionsHtml(list, selected, placeholder, lockPlaceholder) {
         let out = "";
-        if (placeholder) out += `<option value="">${esc(placeholder)}</option>`;
+        if (placeholder) {
+            // A locked placeholder is a prompt, not a value: it shows until
+            // something is picked but is kept out of the dropdown list.
+            const hasSelection = (list || []).some((it) => it.id === selected);
+            const attrs = lockPlaceholder ? ` disabled hidden${hasSelection ? "" : " selected"}` : "";
+            out += `<option value=""${attrs}>${esc(placeholder)}</option>`;
+        }
         (list || []).forEach((it) => {
             out += `<option value="${esc(it.id)}"${it.id === selected ? " selected" : ""}>${esc(it.name)}</option>`;
         });
@@ -884,6 +923,98 @@ function render({ model, el }) {
 
     function isInPlace() {
         return canConvertInPlace() && model.get("conversion_mode") === "in_place";
+    }
+
+    // Per-table source schema / table overrides are only meaningful for a
+    // Warehouse or a schema-enabled Lakehouse.
+    function schemaSupported() {
+        const type = model.get("source_type") || "Lakehouse";
+        return !(type === "Lakehouse" && model.get("lakehouse_schema_enabled") === false);
+    }
+
+    function entityTables() {
+        return (model.get("analysis") || {}).entityTables || [];
+    }
+
+    function tableMappings() {
+        return model.get("table_mappings") || {};
+    }
+
+    function mappingsPayload() {
+        return schemaSupported() ? tableMappings() : {};
+    }
+
+    function defaultSchema() {
+        return (model.get("schema") || "").trim();
+    }
+
+    // A row counts as customized only when its effective schema/table differs
+    // from the default, so changing the schema above doesn't mark every row.
+    function mappingOverrideCount() {
+        const maps = tableMappings();
+        const defSchema = defaultSchema();
+        return entityTables().filter((t) => {
+            const m = maps[t.name] || {};
+            const s = (m.schema || "").trim();
+            const tbl = (m.table || "").trim();
+            return (s && s !== defSchema) || (tbl && tbl !== t.entity);
+        }).length;
+    }
+
+    function tableMappingHtml() {
+        const rows = entityTables();
+        if (!schemaSupported() || rows.length === 0) return "";
+        const maps = tableMappings();
+        const defSchema = defaultSchema();
+        const overrides = mappingOverrideCount();
+
+        let out = `<details class="slls-mdl-cat" data-r="map-details"${mapOpen ? " open" : ""} style="margin-top:8px;">`;
+        out += `<summary>Table mapping (optional)<span class="slls-mdl-cat-sub" data-r="map-sub">${mappingSubText(overrides, rows.length)}</span></summary>`;
+        out += `<div class="slls-mdl-map">`;
+        out += `<div class="slls-mdl-map-note">Every row is pre-filled with the schema above and the model table's default source table name.`;
+        out += ` Edit a row to point that table at a different schema or source table.</div>`;
+        out += `<div class="slls-mdl-map-head"><span>Model table</span><span>Source schema</span><span>Source table</span></div>`;
+        rows.forEach((t, i) => {
+            const m = maps[t.name] || {};
+            const s = (m.schema || "").trim() || defSchema;
+            const tbl = (m.table || "").trim() || t.entity;
+            out += `<div class="slls-mdl-map-row">
+                <span class="slls-mdl-map-name" title="${esc(t.name)}">${esc(t.name)}</span>
+                <input class="slls-mdl-input" data-map-idx="${i}" data-map-kind="schema" value="${esc(s)}" placeholder="${esc(defSchema || "dbo")}" />
+                <input class="slls-mdl-input" data-map-idx="${i}" data-map-kind="table" value="${esc(tbl)}" placeholder="${esc(t.entity)}" />
+            </div>`;
+        });
+        out += `<div class="slls-mdl-map-actions"><button class="slls-mdl-btn" data-r="map-reset"${overrides === 0 ? " disabled" : ""}>Reset to defaults</button></div>`;
+        out += `</div></details>`;
+        return out;
+    }
+
+    function mappingSubText(overrides, total) {
+        return overrides === 0 ? "Using defaults" : `${overrides} of ${total} customized`;
+    }
+
+    // The mapping inputs deliberately don't re-render (that would steal focus),
+    // so the summary and Reset button are refreshed in place instead.
+    function refreshMappingChrome() {
+        const overrides = mappingOverrideCount();
+        const sub = root.querySelector('[data-r="map-sub"]');
+        if (sub) sub.textContent = mappingSubText(overrides, entityTables().length);
+        const btn = root.querySelector('[data-r="map-reset"]');
+        if (btn) btn.disabled = overrides === 0;
+    }
+
+    // Rows without a schema override follow the schema box above as it's typed.
+    function syncMappingSchemas() {
+        const rows = entityTables();
+        const maps = tableMappings();
+        const defSchema = defaultSchema();
+        root.querySelectorAll('[data-map-kind="schema"]').forEach((node) => {
+            const row = rows[Number(node.getAttribute("data-map-idx"))];
+            if (!row) return;
+            if (!((maps[row.name] || {}).schema || "").trim()) node.value = defSchema;
+            node.placeholder = defSchema || "dbo";
+        });
+        refreshMappingChrome();
     }
 
     function configureHtml() {
@@ -939,22 +1070,31 @@ function render({ model, el }) {
             </div>
         </div>`;
 
-        const itemsPlaceholder = srcItems === undefined ? "Loading…" : `No ${typeLower}s`;
+        const itemsPlaceholder = srcItems === undefined
+            ? "Loading…"
+            : (srcItems.length === 0 ? `No ${typeLower}s found` : `Select a ${typeLower}…`);
+        const srcOptions = optionsHtml(srcItems || [], model.get("source_item_id"), itemsPlaceholder, true);
         out += `<div class="slls-mdl-grid">
             <div class="slls-mdl-field">
                 <span class="slls-mdl-label">${esc(type)}</span>
-                <select class="slls-mdl-select" data-r="src_item"${srcItems === undefined ? " disabled" : ""}>${optionsHtml(srcItems || [], model.get("source_item_id"), itemsPlaceholder)}</select>
+                <select class="slls-mdl-select" data-r="src_item"${srcItems === undefined ? " disabled" : ""}>${srcOptions}</select>
             </div>
             <div class="slls-mdl-field">
                 <span class="slls-mdl-label">Schema ${schemaDisabled ? "(not used)" : "(required)"}</span>
                 <input class="slls-mdl-input" data-r="schema" value="${esc(schemaDisabled ? "" : schema)}"${schemaDisabled ? " disabled" : ""} placeholder="${schemaDisabled ? "Not a schema-enabled lakehouse" : "dbo"}" />
+                ${schemaDisabled ? "" : `<span class="slls-mdl-radio-desc">Applied to every table, unless a table is given its own schema in the table mapping below.</span>`}
             </div>
         </div>`;
+
+        out += tableMappingHtml();
 
         // Backup destination for the in-place conversion.
         if (inPlace) {
             const backupItems = currentBackupItems();
-            const backupPlaceholder = backupItems === undefined ? "Loading…" : "No lakehouses";
+            const backupPlaceholder = backupItems === undefined
+                ? "Loading…"
+                : (backupItems.length === 0 ? "No lakehouses found" : "Select a lakehouse…");
+            const backupOptions = optionsHtml(backupItems || [], model.get("backup_lakehouse_id"), backupPlaceholder, true);
             out += `<div class="slls-mdl-sec-title" style="margin-top:8px;">Backup of the existing model</div>`;
             out += `<div class="slls-mdl-grid">
                 <div class="slls-mdl-field">
@@ -963,7 +1103,7 @@ function render({ model, el }) {
                 </div>
                 <div class="slls-mdl-field">
                     <span class="slls-mdl-label">Backup lakehouse</span>
-                    <select class="slls-mdl-select" data-r="backup_lh"${backupItems === undefined ? " disabled" : ""}>${optionsHtml(backupItems || [], model.get("backup_lakehouse_id"), backupPlaceholder)}</select>
+                    <select class="slls-mdl-select" data-r="backup_lh"${backupItems === undefined ? " disabled" : ""}>${backupOptions}</select>
                 </div>
             </div>`;
             out += `<div class="slls-mdl-field">
@@ -1160,9 +1300,13 @@ function render({ model, el }) {
             </div>`;
         }
         if (screen === "configure") {
+            const noSource = !model.get("source_item_id");
+            const srcLabel = (model.get("source_type") || "Lakehouse").toLowerCase();
+            const previewAttrs = (b || noSource ? " disabled" : "")
+                + (noSource ? ` title="Select a ${esc(srcLabel)} first"` : "");
             return `<div class="slls-mdl-footer">
                 <button class="slls-mdl-btn" data-r="to-analyze">${IC.back} Back</button>
-                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="to-preview"${b ? " disabled" : ""}>${b ? spin : ""} Preview model</button>
+                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="to-preview"${previewAttrs}>${b ? spin : ""} Preview model</button>
             </div>`;
         }
         if (screen === "preview") {
@@ -1389,7 +1533,30 @@ function render({ model, el }) {
                 route();
             }
         });
-        on('[data-r="schema"]', "input", (e) => { model.set("schema", e.target.value); model.save_changes(); });
+        on('[data-r="schema"]', "input", (e) => { model.set("schema", e.target.value); model.save_changes(); syncMappingSchemas(); });
+        on('[data-r="map-details"]', "toggle", (e) => { mapOpen = e.target.open; });
+        on('[data-r="map-reset"]', "click", () => { model.set("table_mappings", {}); model.save_changes(); route(); });
+        root.querySelectorAll("[data-map-idx]").forEach((node) => {
+            node.addEventListener("input", (e) => {
+                const rows = entityTables();
+                const row = rows[Number(e.target.getAttribute("data-map-idx"))];
+                if (!row) return;
+                const kind = e.target.getAttribute("data-map-kind");
+                const value = e.target.value.trim();
+                const isDefault = kind === "schema" ? value === defaultSchema() : value === row.entity;
+                const maps = Object.assign({}, model.get("table_mappings") || {});
+                const entry = Object.assign({}, maps[row.name] || {});
+                // Only deviations from the default are stored, so an empty or
+                // default-valued box falls back to the schema box above.
+                if (!value || isDefault) delete entry[kind];
+                else entry[kind] = value;
+                if (!entry.schema && !entry.table) delete maps[row.name];
+                else maps[row.name] = entry;
+                model.set("table_mappings", maps);
+                model.save_changes();
+                refreshMappingChrome();
+            });
+        });
         on('[data-r="mv-manual"]', "change", () => { model.set("data_movement", "manual"); model.save_changes(); route(); });
         on('[data-r="mv-pqt"]', "change", () => { model.set("data_movement", "pqt"); model.save_changes(); route(); });
         on('[data-r="template"]', "input", (e) => { model.set("template_name", e.target.value); model.save_changes(); });
@@ -1435,6 +1602,7 @@ function render({ model, el }) {
                 source_workspace_id: model.get("source_workspace_id"),
                 source_item_id: item,
                 schema: model.get("schema") || "",
+                table_mappings: mappingsPayload(),
                 data_movement: model.get("data_movement") || "manual",
                 backup_workspace_id: model.get("backup_workspace_id"),
                 backup_lakehouse_id: model.get("backup_lakehouse_id"),
@@ -1451,6 +1619,7 @@ function render({ model, el }) {
                 source_workspace_id: model.get("source_workspace_id"),
                 source_item_id: model.get("source_item_id"),
                 schema: model.get("schema") || "",
+                table_mappings: mappingsPayload(),
                 data_movement: model.get("data_movement") || "manual",
                 backup_workspace_id: model.get("backup_workspace_id"),
                 backup_lakehouse_id: model.get("backup_lakehouse_id"),
@@ -1948,6 +2117,16 @@ def migrate_to_direct_lake(
         ) as tom:
             is_dl = tom.is_direct_lake()
             plan = _compute_migration_plan(tom)
+            # Tables that become Direct Lake entity partitions — the only ones
+            # that map to a source schema/table.
+            _calc_groups = set(plan["calcGroups"])
+            entity_tables = [
+                {"name": t.Name, "entity": _default_entity_name(t.Name)}
+                for t in tom.model.Tables
+                if t.Name not in plan["removedTables"]
+                and t.Name not in plan["fieldParameters"]
+                and t.Name not in _calc_groups
+            ]
 
         # Group the unsupported objects by category (in a stable order).
         order = [
@@ -2001,6 +2180,7 @@ def migrate_to_direct_lake(
             "canConvertInPlace": can_in_place,
             "changes": plan["changes"],
             "unsupportedGroups": groups,
+            "entityTables": entity_tables,
             "reports": _list_bindable_reports(),
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
         }
@@ -2211,6 +2391,7 @@ def migrate_to_direct_lake(
         src_id = data.get("source_item_id")
         movement = data.get("data_movement") or "manual"
         schema = (data.get("schema") or "").strip()
+        table_mappings = data.get("table_mappings") or {}
         template_name = (
             data.get("template_name") or ""
         ).strip() or "PowerQueryTemplate"
@@ -2305,9 +2486,9 @@ def migrate_to_direct_lake(
                 ):
                     continue
 
-                ent_name = tname
-                for char in icons.special_characters:
-                    ent_name = ent_name.replace(char, "")
+                tbl_schema, ent_name = _table_mapping(
+                    table_mappings, tname, schema, _default_entity_name(tname)
+                )
 
                 # An incremental-refresh policy references the import partitions;
                 # remove it before converting to a Direct Lake entity partition.
@@ -2334,7 +2515,7 @@ def migrate_to_direct_lake(
                 tom.add_entity_partition(
                     table_name=tname,
                     entity_name=ent_name,
-                    schema_name=schema or None,
+                    schema_name=tbl_schema or None,
                 )
                 converted += 1
 
@@ -2388,6 +2569,7 @@ def migrate_to_direct_lake(
         src_id = data.get("source_item_id")
         movement = data.get("data_movement") or "manual"
         schema = (data.get("schema") or "").strip()
+        table_mappings = data.get("table_mappings") or {}
         template_name = (
             data.get("template_name") or ""
         ).strip() or "PowerQueryTemplate"
@@ -2492,11 +2674,18 @@ def migrate_to_direct_lake(
                     for mname in [m.Name for m in t.Measures]:
                         if _mig_key(t.Name, mname) in removed_measures:
                             t.Measures.Remove(t.Measures[mname])
-                # Stamp the schema onto each Direct Lake entity partition.
+                # Stamp the schema/entity onto each Direct Lake entity partition.
                 for t in new_tom.model.Tables:
                     for p in t.Partitions:
                         if p.SourceType == TOM.PartitionSourceType.Entity:
-                            p.Source.SchemaName = schema
+                            tbl_schema, ent_name = _table_mapping(
+                                table_mappings,
+                                t.Name,
+                                schema,
+                                p.Source.EntityName or _default_entity_name(t.Name),
+                            )
+                            p.Source.SchemaName = tbl_schema
+                            p.Source.EntityName = ent_name
         except Exception as e:
             warnings.append(f"Post-migration cleanup: {e}")
 
@@ -2571,6 +2760,7 @@ def migrate_to_direct_lake(
         source_item_id = traitlets.Unicode("").tag(sync=True)
         schema = traitlets.Unicode("").tag(sync=True)
         lakehouse_schema_enabled = traitlets.Bool(True).tag(sync=True)
+        table_mappings = traitlets.Dict().tag(sync=True)
         data_movement = traitlets.Unicode("manual").tag(sync=True)
         template_name = traitlets.Unicode("").tag(sync=True)
         workspaces = traitlets.List().tag(sync=True)
@@ -2607,6 +2797,7 @@ def migrate_to_direct_lake(
         source_item_id="",
         schema="",
         lakehouse_schema_enabled=True,
+        table_mappings={},
         data_movement="manual",
         template_name=f"{dataset_name} data load",
         workspaces=workspaces_payload,
@@ -2689,6 +2880,7 @@ def migrate_to_direct_lake(
                 widget.source_workspace_id = workspace_id
                 widget.backup_workspace_id = workspace_id
                 widget.source_item_id = ""
+                widget.table_mappings = {}
                 widget.conversion_mode = "new"
                 widget.preview = {}
                 widget.result = {}
