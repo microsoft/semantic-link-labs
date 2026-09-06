@@ -26,6 +26,7 @@ def model_map():
                             "pbiFormat": None,
                             "description": "",
                             "expression": "",
+                            "synonyms": ["revenue", "sales"],
                             "isCalculated": False,
                             "isKey": False,
                             "isHidden": False,
@@ -40,6 +41,19 @@ def model_map():
                             "description": "",
                             "expression": "sales_amount - discount",
                             "isCalculated": True,
+                            "isKey": False,
+                            "isHidden": False,
+                        },
+                        {
+                            "name": "Discount",
+                            "sourceColumn": "DISCOUNT",
+                            "sourceDataType": "NUMBER",
+                            "pbiDataType": "Decimal",
+                            "sourceFormat": None,
+                            "pbiFormat": None,
+                            "description": "",
+                            "expression": "",
+                            "isCalculated": False,
                             "isKey": False,
                             "isHidden": False,
                         },
@@ -78,6 +92,7 @@ def model_map():
                             "sourceFormat": "#,##0",
                             "pbiFormat": "#,##0",
                             "description": "Total sales.",
+                            "synonyms": ["total revenue"],
                         }
                     ],
                 },
@@ -166,11 +181,16 @@ def test_column_annotations_and_data_types(model_map):
     assert sales_amount["annotations"] == [
         {"name": "SourceDataType", "value": "NUMBER(10,2)"},
         {"name": "SourceFormat", "value": "#,##0.00"},
+        {"name": "Synonyms", "value": "revenue, sales"},
     ]
 
-    # Calculated columns retain their source expression as an annotation.
+    # Columns with an expression become calculated columns and retain their
+    # source expression as an annotation.
     net_amount = columns["Net Amount"]
-    assert net_amount["sourceColumn"] == "Net Amount"
+    assert net_amount["type"] == "calculated"
+    assert "sourceColumn" not in net_amount
+    assert net_amount["isDataTypeInferred"] is False
+    assert net_amount["expression"] == "'Sales'[Sales Amount] - 'Sales'[Discount]"
     assert {
         "name": "SourceExpression",
         "value": "sales_amount - discount",
@@ -191,6 +211,7 @@ def test_measure_annotations(model_map):
     assert measure["annotations"] == [
         {"name": "SourceExpression", "value": "SUM(sales.sales_amount)"},
         {"name": "SourceFormat", "value": "#,##0"},
+        {"name": "Synonyms", "value": "total revenue"},
     ]
 
 

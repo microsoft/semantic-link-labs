@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 from sempy._utils._log import log
+from sempy_labs.semantic_model._helper import convert_sql_to_dax
 import sempy_labs._icons as icons
 
 # Maps the model_map 'pbiDataType' values to their TMSL (.bim) equivalent.
@@ -36,6 +37,47 @@ def _build_annotations(values: Dict[str, Any]) -> List[Dict[str, str]]:
     return [{"name": name, "value": str(v)} for name, v in values.items() if v]
 
 
+def _format_synonyms(synonyms: Any) -> str:
+    """Format a list of synonyms as a comma-separated annotation value."""
+
+    if not synonyms:
+        return ""
+    if isinstance(synonyms, str):
+        return synonyms
+    return ", ".join(str(s) for s in synonyms if s)
+
+
+def _build_column_maps(
+    model_tables: List[Dict[str, Any]],
+) -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
+    """Build the column maps used to convert SQL column expressions to DAX.
+
+    Returns the global map (``table.column`` and bare ``column`` references) and
+    a per-table overlay which biases bare references toward the table owning the
+    expression.
+    """
+
+    column_map: Dict[str, str] = {}
+    per_table: Dict[str, Dict[str, str]] = {}
+    for t in model_tables:
+        table_name = t.get("tableName") or ""
+        bare: Dict[str, str] = {}
+        for c in t.get("columns", []) or []:
+            column_name = c.get("name") or ""
+            if not column_name:
+                continue
+            dax_ref = f"'{table_name}'[{column_name}]"
+            for key in (column_name, c.get("sourceColumn") or ""):
+                if not key:
+                    continue
+                column_map[f"{table_name}.{key}"] = dax_ref
+                column_map.setdefault(key, dax_ref)
+                bare[key] = dax_ref
+        per_table[table_name] = bare
+
+    return column_map, per_table
+
+
 def _summarize_by(column_name: str, data_type: str) -> str:
     if data_type not in ["int64", "double", "decimal"]:
         return "none"
@@ -54,12 +96,14 @@ def convert_model_map_to_bim(
 
     Each table's 'sourceWorkspaceId' and 'sourceItemId' are used to generate a Direct Lake on OneLake
     expression. Tables which share the same source item share the same expression. The 'sourceDataType',
-    'sourceExpression' and 'sourceFormat' properties of the model_map are retained as annotations on the
-    corresponding semantic model object.
+    'sourceExpression', 'sourceFormat' and 'synonyms' properties of the model_map are retained as
+    annotations on the corresponding semantic model object.
+
+    Columns which have an 'expression' are created as calculated columns; the expression is translated
+    from SQL to DAX and the original SQL expression is retained as an annotation.
 
     Limitations:
         * Columns with a 'Binary' data type are not supported in Direct Lake and are skipped.
-        * Calculated columns are added as data columns since calculated columns are not supported in Direct Lake. Their source expression is retained as an annotation.
 
     Parameters
     ----------
@@ -106,7 +150,15 @@ def convert_model_map_to_bim(
     # which are defined based on source columns, can be resolved to the column names.
     column_lookup: Dict[str, Dict[str, str]] = {}
 
-    for t in model.get("tables", []) or []:
+    model_tables = model.get("tables", []) or []
+    column_map, per_table_columns = _build_column_maps(model_tables)
+    # Table pairs are used by the SQL -> DAX conversion to add RELATED() where needed.
+    relationship_hints = [
+        {"fromTable": r.get("fromTable") or "", "toTable": r.get("toTable") or ""}
+        for r in model.get("relationships", []) or []
+    ]
+
+    for t in model_tables:
         table_name = t.get("tableName") or ""
         source_workspace_id = t.get("sourceWorkspaceId")
         source_item_id = t.get("sourceItemId")
@@ -116,6 +168,7 @@ def convert_model_map_to_bim(
             )
         expression_name = _resolve_expression_name(source_workspace_id, source_item_id)
         schema_name, entity_name = _split_source_name(t.get("sourceName"))
+        table_column_map = {**column_map, **per_table_columns.get(table_name, {})}
 
         columns: List[Dict[str, Any]] = []
         lookup: Dict[str, str] = {}
@@ -127,13 +180,25 @@ def convert_model_map_to_bim(
                     f"{icons.warning} The '{column_name}' column in the '{table_name}' table has the 'Binary' data type which is not supported in Direct Lake semantic models. This column is skipped."
                 )
                 continue
-            source_column = c.get("sourceColumn") or column_name
+            source_column = c.get("sourceColumn") or ""
+            expression = c.get("expression") or ""
             column: Dict[str, Any] = {
                 "name": column_name,
                 "dataType": data_type,
-                "sourceColumn": source_column,
                 "summarizeBy": _summarize_by(column_name, data_type),
             }
+            if expression:
+                column["type"] = "calculated"
+                column["expression"] = convert_sql_to_dax(
+                    expression,
+                    column_map=table_column_map,
+                    default_table=table_name,
+                    relationships=relationship_hints,
+                )
+                column["isDataTypeInferred"] = False
+            else:
+                source_column = source_column or column_name
+                column["sourceColumn"] = source_column
             if c.get("description"):
                 column["description"] = c.get("description")
             if c.get("pbiFormat"):
@@ -145,14 +210,16 @@ def convert_model_map_to_bim(
             annotations = _build_annotations(
                 {
                     "SourceDataType": c.get("sourceDataType"),
-                    "SourceExpression": c.get("expression"),
+                    "SourceExpression": expression,
                     "SourceFormat": c.get("sourceFormat"),
+                    "Synonyms": _format_synonyms(c.get("synonyms")),
                 }
             )
             if annotations:
                 column["annotations"] = annotations
             columns.append(column)
-            lookup[source_column] = column_name
+            if source_column:
+                lookup[source_column] = column_name
             lookup.setdefault(column_name, column_name)
         column_lookup[table_name] = lookup
 
@@ -172,6 +239,7 @@ def convert_model_map_to_bim(
                 {
                     "SourceExpression": m.get("sourceExpression"),
                     "SourceFormat": m.get("sourceFormat"),
+                    "Synonyms": _format_synonyms(m.get("synonyms")),
                 }
             )
             if annotations:
@@ -201,6 +269,11 @@ def convert_model_map_to_bim(
             table["description"] = t.get("description")
         if measures:
             table["measures"] = measures
+        table_annotations = _build_annotations(
+            {"Synonyms": _format_synonyms(t.get("synonyms"))}
+        )
+        if table_annotations:
+            table["annotations"] = table_annotations
         tables.append(table)
 
     relationships: List[Dict[str, Any]] = []
