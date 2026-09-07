@@ -91,9 +91,52 @@ def test_hosted_tools_are_marked_while_the_shell_is_full_screen():
     assert "function syncToolFullscreenClass()" in _app._WIDGET_JS
     assert 'child.classList.toggle("slls-app-fs-tool", on);' in _app._WIDGET_JS
     assert (
-        'document.addEventListener("fullscreenchange", syncToolFullscreenClass);'
+        'document.addEventListener("fullscreenchange", syncHostedTool);'
         in _app._WIDGET_JS
     )
+
+
+def test_the_open_tools_toggle_shows_the_shells_full_screen_state():
+    # Re-labelled rather than clicked: clicking opens the tool's own overlay.
+    js = _app._WIDGET_JS
+
+    assert "const fullscreen = toolFullscreenBtn(node);" in js
+    assert "fullscreen.innerHTML = on ? FS_EXIT_SVG : FS_ENTER_SVG;" in js
+    assert 'fullscreen.setAttribute("aria-label", text);' in js
+
+
+def test_only_the_header_toggle_is_treated_as_full_screen():
+    # Tools also ship panel controls such as "Expand DAX editor to full screen"
+    # and "Show the Vertipaq Analyzer full screen", which must keep their own
+    # icon and behavior.
+    js = _app._WIDGET_JS
+
+    assert (
+        'FS_TOGGLE_LABELS = ["full screen", "exit full screen", "toggle full screen"]'
+        in js
+    )
+    assert "FS_TOGGLE_LABELS.indexOf(label.trim()) >= 0" in js
+    assert "function toolFullscreenBtn(node)" in js
+    assert "btn === toolFullscreenBtn(node)" in js
+
+
+def test_every_tool_labels_its_full_screen_toggle_recognizably():
+    import importlib
+    from pathlib import Path
+
+    recognized = ("Full screen", "Exit full screen", "Toggle full screen")
+    shared_helpers = (
+        "SetupFullscreen",
+        "fullscreen_toggle_script",
+        "fullscreen_setup_js",
+    )
+
+    for tool in _app._TOOLS:
+        module = importlib.import_module(tool["module"])
+        source = Path(module.__file__).read_text(encoding="utf-8")
+        assert any(label in source for label in recognized) or any(
+            helper in source for helper in shared_helpers
+        ), tool["key"]
 
 
 def test_a_hosted_tool_fills_the_shell_while_full_screen():

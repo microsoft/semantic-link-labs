@@ -608,6 +608,8 @@ _WIDGET_JS = r"""
 function render({ model, el }) {
     const root = document.createElement("div");
     root.className = "slls-app";
+    const FS_ENTER_SVG = `__SLLS_ICON_FULLSCREEN__`;
+    const FS_EXIT_SVG = `__SLLS_ICON_FULLSCREEN_EXIT__`;
     // Full screen and the theme apply to the shell (launcher + open tools) so
     // that opening a tool never drops out of full screen.
     let shellEl = null;
@@ -673,13 +675,12 @@ function render({ model, el }) {
     fsBtn.className = "slls-app-btn slls-app-btn-icon";
     actions.appendChild(fsBtn);
     applyTheme();
-    sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs",
-        `__SLLS_ICON_FULLSCREEN__`, `__SLLS_ICON_FULLSCREEN_EXIT__`);
+    sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs", FS_ENTER_SVG, FS_EXIT_SVG);
     new MutationObserver(placeBack).observe(shell(),
         { childList: true, subtree: true });
     shell().addEventListener("click", interceptToolChrome, true);
-    document.addEventListener("fullscreenchange", syncToolFullscreenClass);
-    fsBtn.addEventListener("click", () => setTimeout(syncToolFullscreenClass));
+    document.addEventListener("fullscreenchange", syncHostedTool);
+    fsBtn.addEventListener("click", () => setTimeout(syncHostedTool));
 
     const themeGroup = document.createElement("div");
     themeGroup.className = "slls-app-seg";
@@ -820,7 +821,21 @@ function render({ model, el }) {
     const ctlLabel = (btn) =>
         (btn.getAttribute("aria-label") || btn.title || "").toLowerCase();
     const isThemeCtl = (label) => label.includes("light mode") || label.includes("dark mode");
-    const isFullscreenCtl = (label) => label.includes("full screen") || label.includes("fullscreen");
+    // Exact labels only: tools also ship panel-level expand controls whose
+    // labels merely contain "full screen" (e.g. "Expand DAX editor to full
+    // screen"), which must keep their own behavior and icon.
+    const FS_TOGGLE_LABELS = ["full screen", "exit full screen", "toggle full screen"];
+    const isFullscreenCtl = (label) => FS_TOGGLE_LABELS.indexOf(label.trim()) >= 0;
+
+    // The tool's header toggle is the first such control in document order;
+    // panel toggles deeper in the body can share its labels.
+    function toolFullscreenBtn(node) {
+        for (const btn of node.querySelectorAll("button")) {
+            if (btn === backBtn) continue;
+            if (isFullscreenCtl(ctlLabel(btn))) return btn;
+        }
+        return null;
+    }
 
     let syntheticClick = false;
 
@@ -841,6 +856,11 @@ function render({ model, el }) {
         }
     }
 
+    function syncHostedTool() {
+        syncToolFullscreenClass();
+        syncToolChrome();
+    }
+
     // Remembers the state each tool control was last driven to, so a pending
     // toggle (anywidget tools round-trip through the kernel) is not repeated.
     const driven = new WeakMap();
@@ -852,9 +872,10 @@ function render({ model, el }) {
         click(btn);
     }
 
-    // Only the theme is mirrored onto a tool. A tool's own full screen is a
-    // fixed, full-viewport overlay; stacking one inside the already full-screen
-    // shell hides the tool, so the shell keeps sole ownership of full screen.
+    // Only the theme is mirrored onto a tool by clicking. A tool's own full
+    // screen is a fixed, full-viewport overlay; stacking one inside the already
+    // full-screen shell hides the tool, so its toggle is only re-labelled to
+    // show the shell's state.
     function syncToolChrome() {
         const node = activeToolNode();
         if (!node) return;
@@ -866,6 +887,15 @@ function render({ model, el }) {
         drive(theme, model.get("dark_mode") === true,
             (btn) => ctlLabel(btn).includes("light mode"),
             (btn) => { syntheticClick = true; try { btn.click(); } finally { syntheticClick = false; } });
+
+        const fullscreen = toolFullscreenBtn(node);
+        if (!fullscreen) return;
+        const on = shellFullscreen();
+        if (ctlLabel(fullscreen).includes("exit") === on) return;
+        const text = on ? "Exit full screen" : "Full screen";
+        fullscreen.innerHTML = on ? FS_EXIT_SVG : FS_ENTER_SVG;
+        fullscreen.title = text;
+        fullscreen.setAttribute("aria-label", text);
     }
 
     function interceptToolChrome(event) {
@@ -877,7 +907,7 @@ function render({ model, el }) {
         if (isThemeCtl(label)) {
             model.set("dark_mode", !(model.get("dark_mode") === true));
             model.save_changes();
-        } else if (isFullscreenCtl(label)) {
+        } else if (btn === toolFullscreenBtn(node)) {
             fsBtn.click();
         } else {
             return;
@@ -894,8 +924,7 @@ function render({ model, el }) {
         setTimeout(() => {
             placeQueued = false;
             applyBack();
-            syncToolChrome();
-            syncToolFullscreenClass();
+            syncHostedTool();
         });
     }
 
