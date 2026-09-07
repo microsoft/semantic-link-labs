@@ -410,7 +410,7 @@ function render({ model, el }) {
                     `title="Reload both models' metadata" aria-label="Reload both models' metadata" ` +
                     `${working() ? "disabled" : ""}>${ICON.refresh}</button>`
                 : "") +
-            `<button class="sl-theme-btn" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
+            `<button class="sl-theme-btn" data-act="fullscreen" title="${isFullscreen() ? "Exit full screen" : "Full screen"}" aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="sl-theme-btn" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
         const rl = h.querySelector('[data-act="reload"]');

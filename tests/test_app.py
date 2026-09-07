@@ -61,11 +61,21 @@ def test_home_render_does_not_use_back_state_before_initialization():
 
 def test_an_opened_tools_own_chrome_drives_the_app():
     # A tool's full-screen / theme buttons are re-pointed at the app, and the
-    # app mirrors the resulting state back onto them.
+    # app mirrors the theme back onto them. Programmatic clicks used by tools to
+    # restore state after rendering must remain local to the tool.
     assert "function interceptToolChrome(event)" in _app._WIDGET_JS
+    assert "if (syntheticClick || !event.isTrusted) return;" in _app._WIDGET_JS
     assert "fsBtn.click();" in _app._WIDGET_JS
     assert 'model.set("dark_mode", !(model.get("dark_mode")' in _app._WIDGET_JS
-    assert "clickWithoutNativeFullscreen" in _app._WIDGET_JS
+
+
+def test_the_shell_is_the_only_owner_of_full_screen():
+    # A tool's own full screen is a fixed, full-viewport overlay. Driving it
+    # while the shell is already full screen stacks a second overlay inside the
+    # notebook's widget wrappers and hides the tool, so the app never does it.
+    assert "driveFullscreen" not in _app._WIDGET_JS
+    assert "clickWithoutNativeFullscreen" not in _app._WIDGET_JS
+    assert "shellFullscreen" not in _app._WIDGET_JS
 
 
 def test_the_dark_theme_matches_the_tools_background():

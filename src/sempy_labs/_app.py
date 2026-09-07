@@ -676,9 +676,6 @@ function render({ model, el }) {
     new MutationObserver(placeBack).observe(shell(),
         { childList: true, subtree: true });
     shell().addEventListener("click", interceptToolChrome, true);
-    document.addEventListener("fullscreenchange", syncToolChrome);
-    // Runs after the toggle's own handler, so the new state is readable.
-    fsBtn.addEventListener("click", () => setTimeout(syncToolChrome));
 
     const themeGroup = document.createElement("div");
     themeGroup.className = "slls-app-seg";
@@ -821,38 +818,7 @@ function render({ model, el }) {
     const isThemeCtl = (label) => label.includes("light mode") || label.includes("dark mode");
     const isFullscreenCtl = (label) => label.includes("full screen") || label.includes("fullscreen");
 
-    function shellFullscreen() {
-        return document.fullscreenElement === shell()
-            || shell().classList.contains("slls-app-fs");
-    }
-
-    // A promise-like that never settles, so a tool's `.then()` / `.catch()`
-    // continuation (which would undo its own overlay) never runs.
-    const NEVER = { then: () => NEVER, catch: () => NEVER, finally: () => NEVER };
     let syntheticClick = false;
-
-    // Drives a tool's own toggle without letting it take (or release) native
-    // full screen: only one element can hold it, and that is the shell.
-    function clickWithoutNativeFullscreen(btn) {
-        const proto = Element.prototype;
-        const saved = [
-            [proto, "requestFullscreen"], [proto, "webkitRequestFullscreen"],
-            [proto, "mozRequestFullScreen"], [proto, "msRequestFullscreen"],
-            [document, "exitFullscreen"], [document, "webkitExitFullscreen"],
-        ].map(([target, name]) => [target, name, target[name]]);
-        for (const [target, name, original] of saved) {
-            if (original) target[name] = () => NEVER;
-        }
-        syntheticClick = true;
-        try {
-            btn.click();
-        } finally {
-            syntheticClick = false;
-            for (const [target, name, original] of saved) {
-                if (original) target[name] = original;
-            }
-        }
-    }
 
     // Remembers the state each tool control was last driven to, so a pending
     // toggle (anywidget tools round-trip through the kernel) is not repeated.
@@ -865,27 +831,24 @@ function render({ model, el }) {
         click(btn);
     }
 
+    // Only the theme is mirrored onto a tool. A tool's own full screen is a
+    // fixed, full-viewport overlay; stacking one inside the already full-screen
+    // shell hides the tool, so the shell keeps sole ownership of full screen.
     function syncToolChrome() {
         const node = activeToolNode();
         if (!node) return;
         let theme = null;
-        let fullscreen = null;
         for (const btn of node.querySelectorAll("button")) {
             if (btn === backBtn) continue;
-            const label = ctlLabel(btn);
-            if (!theme && isThemeCtl(label)) theme = btn;
-            else if (!fullscreen && isFullscreenCtl(label)) fullscreen = btn;
+            if (isThemeCtl(ctlLabel(btn))) { theme = btn; break; }
         }
         drive(theme, model.get("dark_mode") === true,
             (btn) => ctlLabel(btn).includes("light mode"),
             (btn) => { syntheticClick = true; try { btn.click(); } finally { syntheticClick = false; } });
-        drive(fullscreen, shellFullscreen(),
-            (btn) => ctlLabel(btn).includes("exit"),
-            clickWithoutNativeFullscreen);
     }
 
     function interceptToolChrome(event) {
-        if (syntheticClick) return;
+        if (syntheticClick || !event.isTrusted) return;
         const node = activeToolNode();
         const btn = event.target.closest && event.target.closest("button");
         if (!btn || btn === backBtn || !node || !node.contains(btn)) return;
