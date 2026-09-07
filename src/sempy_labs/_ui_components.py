@@ -873,6 +873,21 @@ ICONS: dict[str, str] = {
         '2.25-.85z"/>'
         '<path d="m5.6 15.3.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>'
     ),
+    # The Semantic Link Labs mark: an infinity symbol held in a lab flask.
+    "semantic_link_labs": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M9.2 2.8h5.6"/>'
+        '<path d="M10.4 2.8v6.5L5.5 17.5a2.1 2.1 0 0 0 1.8 3.2h9.4a2.1 2.1 0 0 '
+        '0 1.8-3.2l-4.9-8.2V2.8"/>'
+        '<g transform="translate(6.24 9.84) scale(0.48)" stroke-width="2.92">'
+        '<path d="M12 12c-1.9-2.6-3.8-3.9-5.8-3.9a3.9 3.9 0 1 0 0 7.8c2 0 '
+        '3.9-1.3 5.8-3.9z"/>'
+        '<path d="M12 12c1.9 2.6 3.8 3.9 5.8 3.9a3.9 3.9 0 0 0 0-7.8c-2 0-3.9 '
+        '1.3-5.8 3.9z"/>'
+        "</g></svg>"
+    ),
     "book": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '

@@ -30,10 +30,18 @@ def test_categories_start_with_all_and_cover_every_tag():
 
 def test_widget_assets_are_fully_substituted():
     assert "__SLLS_" not in _app._WIDGET_JS
-    # The Fluent palette of the Fabric Tools app, on the shared --ui-* tokens.
-    assert "--ui-accent: #0f6cbd;" in _app._WIDGET_CSS
-    assert "--ui-accent: #115ea3;" in _app._WIDGET_CSS
+    # The Fluent palette of the launcher, on the shared --ui-* tokens.
+    assert "--ui-accent: #0078d4;" in _app._WIDGET_CSS
     assert "'Segoe UI'" in _app._WIDGET_CSS
+
+
+def test_the_launcher_is_branded_as_semantic_link_labs():
+    from sempy_labs._ui_components import ICONS
+
+    assert 'brandName.textContent = "Semantic Link Labs";' in _app._WIDGET_JS
+    assert "Fabric Tools" not in _app._WIDGET_JS
+    # A lab flask holding an infinity symbol.
+    assert ICONS["semantic_link_labs"] in _app._WIDGET_JS
 
 
 def test_tools_open_inside_the_full_screen_shell():

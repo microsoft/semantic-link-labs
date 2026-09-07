@@ -1,8 +1,8 @@
 """An app-style launcher for the interactive tools in Semantic Link Labs.
 
-The look and feel mirrors the Fabric Tools app: a Fluent palette, a splash
-screen of tool cards filtered by Fabric item type, and a shell which keeps every
-opened tool mounted so switching between tools (and back home) is instant.
+A Fluent palette, a splash screen of tool cards filtered by Fabric item type,
+and a shell which keeps every opened tool mounted so switching between tools
+(and back home) is instant.
 """
 
 from contextlib import contextmanager
@@ -198,8 +198,8 @@ def _capture_displayed_widgets(collected: list):
             setattr(module, name, original)
 
 
-# The Fluent palette of the Fabric Tools app, mapped onto the --ui-* tokens the
-# shared UI components read.
+# The Fluent palette, mapped onto the --ui-* tokens the shared UI components
+# read.
 _LIGHT_VARS = """\
 --ui-bg: #ffffff;
 --ui-bg-solid: #ffffff;
@@ -214,9 +214,9 @@ _LIGHT_VARS = """\
 --ui-text: #242424;
 --ui-text-secondary: #616161;
 --ui-text-tertiary: #616161;
---ui-accent: #0f6cbd;
---ui-accent-hover: #115ea3;
---ui-accent-soft: rgba(15, 108, 189, 0.1);
+--ui-accent: #0078d4;
+--ui-accent-hover: #106ebe;
+--ui-accent-soft: rgba(0, 120, 212, 0.1);
 --ui-on-accent: #ffffff;
 --ui-danger: #c50f1f;
 --ui-danger-hover: #a80f1c;
@@ -242,9 +242,9 @@ _DARK_VARS = """\
 --ui-text: #ffffff;
 --ui-text-secondary: #adadad;
 --ui-text-tertiary: #adadad;
---ui-accent: #115ea3;
---ui-accent-hover: #479ef5;
---ui-accent-soft: rgba(71, 158, 245, 0.16);
+--ui-accent: #0078d4;
+--ui-accent-hover: #2b9bf4;
+--ui-accent-soft: rgba(0, 120, 212, 0.18);
 --ui-on-accent: #ffffff;
 --ui-danger: #c50f1f;
 --ui-danger-hover: #a80f1c;
@@ -639,12 +639,12 @@ function render({ model, el }) {
 
     const brand = document.createElement("span");
     brand.className = "slls-app-brand";
-    brand.innerHTML = `__SLLS_ICON_SPARKLES__`;
+    brand.innerHTML = `__SLLS_ICON_BRAND__`;
     left.appendChild(brand);
 
     const brandName = document.createElement("span");
     brandName.className = "slls-app-brand-name";
-    brandName.textContent = "Fabric Tools";
+    brandName.textContent = "Semantic Link Labs";
     left.appendChild(brandName);
 
     const backBtn = document.createElement("button");
@@ -728,7 +728,7 @@ function render({ model, el }) {
     const heroSub = document.createElement("p");
     heroSub.className = "slls-app-hero-sub";
     heroSub.textContent =
-        "A growing toolbox for working with Microsoft Fabric. Pick a tool to get started.";
+        "A growing set of tools for working with Microsoft Fabric. Pick a tool to get started.";
     hero.appendChild(heroSub);
 
     const links = document.createElement("div");
@@ -1038,7 +1038,7 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
     .replace("__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
     .replace("__SLLS_ICON_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
-    .replace("__SLLS_ICON_SPARKLES__", _UI_ICONS["sparkles"])
+    .replace("__SLLS_ICON_BRAND__", _UI_ICONS["semantic_link_labs"])
     .replace("__SLLS_ICON_BOOK__", _UI_ICONS["book"])
     .replace("__SLLS_ICON_ARROW_LEFT__", _UI_ICONS["arrow_left"])
     .replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
