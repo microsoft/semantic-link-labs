@@ -154,6 +154,26 @@ def _run_tool(tool: dict, dark_mode: bool) -> None:
     getattr(module, tool["function"])(dark_mode=dark_mode)
 
 
+def _prefetch_tool_modules() -> None:
+    """Import the tool modules off the click path.
+
+    Importing a tool is most of the delay on its first open. Failures are
+    ignored here; the import is repeated (and reported) when the tool is opened.
+    """
+
+    import importlib
+    import threading
+
+    def _load():
+        for tool in _TOOLS:
+            try:
+                importlib.import_module(tool["module"])
+            except Exception:
+                pass
+
+    threading.Thread(target=_load, daemon=True).start()
+
+
 @contextmanager
 def _capture_displayed_widgets(collected: list):
     """Intercept ``display`` so a tool's widget can be hosted by the launcher.
@@ -561,8 +581,6 @@ _WIDGET_CSS = (
     color: var(--ui-danger-text);
 }
 .slls-app-banner-text { flex: 1 1 auto; min-width: 0; }
-.slls-app.slls-app-busy .slls-app-grid,
-.slls-app.slls-app-busy .slls-app-filters { pointer-events: none; }
 
 /* A tool is open: the launcher gets out of the way entirely — Back is moved
    into the tool's own header, next to its title. */
@@ -657,7 +675,11 @@ function render({ model, el }) {
     backBtn.innerHTML = `__SLLS_ICON_ARROW_LEFT__`;
     backBtn.title = "Back to all tools";
     backBtn.setAttribute("aria-label", backBtn.title);
-    backBtn.addEventListener("click", () => send({ action: "home" }));
+    backBtn.addEventListener("click", () => {
+        pendingKey = "";
+        renderView();
+        send({ action: "home" });
+    });
     left.appendChild(backBtn);
 
     const actions = document.createElement("div");
@@ -676,7 +698,8 @@ function render({ model, el }) {
     actions.appendChild(fsBtn);
     applyTheme();
     sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs", FS_ENTER_SVG, FS_EXIT_SVG);
-    new MutationObserver(placeBack).observe(shell(),
+    // Runs as a microtask, so the tool and its Back button land in one paint.
+    new MutationObserver(() => { applyView(); placeBack(); }).observe(shell(),
         { childList: true, subtree: true });
     shell().addEventListener("click", interceptToolChrome, true);
     document.addEventListener("fullscreenchange", syncHostedTool);
@@ -778,9 +801,28 @@ function render({ model, el }) {
         model.save_changes();
     }
 
+    // Navigation is applied in the browser first so it feels immediate; the
+    // kernel round trip (and, on first open, importing and starting the tool)
+    // catches up afterwards.
+    let pendingKey = null;
+    function currentKey() {
+        return pendingKey === null ? (model.get("active_tool") || "") : pendingKey;
+    }
+
     function activeTool() {
-        const key = model.get("active_tool") || "";
+        const key = currentKey();
         return (model.get("tools") || []).find((tool) => tool.key === key) || null;
+    }
+
+    function toolNode(key) {
+        return key ? shell().querySelector(".slls-app-tool-" + key) : null;
+    }
+
+    function applyToolVisibility(key) {
+        for (const node of shell().querySelectorAll(".slls-app-tool")) {
+            node.style.display =
+                key && node.classList.contains("slls-app-tool-" + key) ? "" : "none";
+        }
     }
 
     // The Back button is moved into the open tool's own header, so it sits next
@@ -923,6 +965,7 @@ function render({ model, el }) {
         placeQueued = true;
         setTimeout(() => {
             placeQueued = false;
+            applyView();
             applyBack();
             syncHostedTool();
         });
@@ -946,9 +989,28 @@ function render({ model, el }) {
         header.insertBefore(backBtn, header.firstChild);
     }
 
+    // A tool is revealed only once its own DOM has arrived, so it appears in
+    // one piece rather than as an empty frame holding just the Back button.
+    let lastOpenKey = null;
+    function applyView() {
+        if (pendingKey !== null && pendingKey === (model.get("active_tool") || "")) {
+            pendingKey = null;
+        }
+        const key = currentKey();
+        const open = !!activeTool() && !!toolNode(key);
+        root.classList.toggle("slls-app-tool-open", open);
+        applyToolVisibility(open ? key : "");
+        const openKey = open ? key : "";
+        if (openKey !== lastOpenKey) {
+            lastOpenKey = openKey;
+            // Same tick as the reveal, so the tool and its Back button paint together.
+            applyBack();
+        }
+    }
+
     function renderView() {
-        root.classList.toggle("slls-app-tool-open", !!activeTool());
         links.classList.remove("show");
+        applyView();
         placeBack();
     }
 
@@ -1008,7 +1070,8 @@ function render({ model, el }) {
             card.appendChild(tags);
 
             card.addEventListener("click", () => {
-                root.classList.add("slls-app-busy");
+                pendingKey = tool.key;
+                renderView();
                 send({ action: "launch", tool: tool.key });
             });
             grid.appendChild(card);
@@ -1026,11 +1089,13 @@ function render({ model, el }) {
     }
 
     model.on("change:status", () => {
-        root.classList.remove("slls-app-busy");
+        // A failed launch never changes active_tool, so drop the optimistic view.
+        if ((model.get("status") || {}).kind === "error") pendingKey = null;
+        renderView();
         renderBanner();
     });
     model.on("change:active_tool", () => {
-        root.classList.remove("slls-app-busy");
+        pendingKey = null;
         renderView();
         renderBanner();
         shell().scrollTop = 0;
@@ -1209,6 +1274,7 @@ def app(dark_mode: bool = False):
 
         for new_widget in captured:
             new_widget.add_class("slls-app-tool")
+            new_widget.add_class(f"slls-app-tool-{tool['key']}")
         mounted[tool["key"]] = captured
         shell.children = (
             widget,
@@ -1222,3 +1288,4 @@ def app(dark_mode: bool = False):
     # The widget reference is kept alive by this closure so the observer keeps
     # firing; the widget is intentionally not returned to avoid a second render.
     display(shell)
+    _prefetch_tool_modules()

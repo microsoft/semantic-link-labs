@@ -62,9 +62,17 @@ def test_home_fullscreen_button_is_wired_before_first_click():
 
 
 def test_home_render_does_not_use_back_state_before_initialization():
-    state_index = _app._WIDGET_JS.index("let placeQueued = false;")
+    # The original bug: placeBack() ran synchronously while rendering, before
+    # `placeQueued` existed, which threw and left the home screen empty. Calls
+    # inside deferred callbacks are fine — they run after render() returns.
+    import re
 
-    assert _app._WIDGET_JS.rfind("placeBack();", 0, state_index) == -1
+    js = _app._WIDGET_JS
+    before = js[: js.index("let placeQueued = false;")]
+
+    for match in re.finditer(r"placeBack\(\);", before):
+        line = before[before.rfind("\n", 0, match.start()) + 1 : match.end()]
+        assert "=>" in line, f"placeBack() runs during render: {line.strip()}"
 
 
 def test_an_opened_tools_own_chrome_drives_the_app():
@@ -137,6 +145,65 @@ def test_every_tool_labels_its_full_screen_toggle_recognizably():
         assert any(label in source for label in recognized) or any(
             helper in source for helper in shared_helpers
         ), tool["key"]
+
+
+def test_opening_a_mounted_tool_is_applied_before_notifying_the_kernel():
+    # An already-open tool is just a DOM toggle, so it needs no kernel wait.
+    js = _app._WIDGET_JS
+    start = js.index('card.addEventListener("click"')
+    block = js[start : start + 200]
+
+    assert "pendingKey = tool.key;" in block
+    assert block.index("renderView();") < block.index('send({ action: "launch"')
+
+
+def test_a_tool_is_revealed_only_once_its_own_dom_exists():
+    # Otherwise the launcher hides first and the tool arrives in pieces, showing
+    # an empty frame holding just the Back button.
+    js = _app._WIDGET_JS
+
+    assert "const open = !!activeTool() && !!toolNode(key);" in js
+    assert 'root.classList.toggle("slls-app-tool-open", open);' in js
+    assert "new MutationObserver(() => { applyView(); placeBack(); })" in js
+
+
+def test_the_tool_and_its_back_button_are_revealed_together():
+    js = _app._WIDGET_JS
+    block = js[js.index("function applyView()") : js.index("function renderView()")]
+
+    assert "if (openKey !== lastOpenKey)" in block
+    assert "applyBack();" in block
+
+
+def test_going_home_switches_the_view_before_notifying_the_kernel():
+    js = _app._WIDGET_JS
+    start = js.index('backBtn.addEventListener("click"')
+    block = js[start : start + 200]
+
+    assert 'pendingKey = "";' in block
+    assert block.index("renderView();") < block.index('send({ action: "home" })')
+
+
+def test_a_failed_launch_clears_the_optimistic_view():
+    # A failed launch leaves active_tool unchanged, so it fires no change event.
+    assert (
+        '(model.get("status") || {}).kind === "error") pendingKey = null;'
+        in _app._WIDGET_JS
+    )
+
+
+def test_mounted_tools_are_addressable_by_key():
+    from inspect import getsource
+
+    assert "function applyToolVisibility(key)" in _app._WIDGET_JS
+    assert "slls-app-tool-{tool['key']}" in getsource(_app.app)
+
+
+def test_tool_modules_are_imported_off_the_click_path():
+    from inspect import getsource
+
+    assert "daemon=True" in getsource(_app._prefetch_tool_modules)
+    assert "_prefetch_tool_modules()" in getsource(_app.app)
 
 
 def test_a_hosted_tool_fills_the_shell_while_full_screen():
