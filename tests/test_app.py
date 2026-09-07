@@ -31,7 +31,7 @@ def test_categories_start_with_all_and_cover_every_tag():
 def test_widget_assets_are_fully_substituted():
     assert "__SLLS_" not in _app._WIDGET_JS
     # The Fluent palette of the launcher, on the shared --ui-* tokens.
-    assert "--ui-accent: #0078d4;" in _app._WIDGET_CSS
+    assert "--ui-accent: #4883f7;" in _app._WIDGET_CSS
     assert "'Segoe UI'" in _app._WIDGET_CSS
 
 
@@ -99,8 +99,8 @@ def test_a_hosted_tool_fills_the_shell_while_full_screen():
 def test_the_dark_theme_matches_the_tools_background():
     from sempy_labs._ui_components import DARK_THEME_VARS
 
-    assert "--ui-bg: #1e1e22;" in DARK_THEME_VARS
-    assert "--ui-bg: #1e1e22;" in _app._WIDGET_CSS
+    assert "--ui-bg: #0e1116;" in DARK_THEME_VARS
+    assert "--ui-bg: #0e1116;" in _app._WIDGET_CSS
 
 
 def test_displayed_widgets_are_captured_for_the_shell():

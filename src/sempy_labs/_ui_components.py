@@ -1070,8 +1070,8 @@ LIGHT_THEME_VARS: str = """\
 """
 
 DARK_THEME_VARS: str = """\
---ui-bg-solid: #1e1e22;
---ui-bg: #1e1e22;
+--ui-bg-solid: #0e1116;
+--ui-bg: #0e1116;
 --ui-bg-secondary: #2a2a30;
 --ui-bg-tertiary: #26262b;
 --ui-bg-hover: #2c2c33;

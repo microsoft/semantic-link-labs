@@ -210,13 +210,13 @@ _LIGHT_VARS = """\
 --ui-surface-2: #f0f0f0;
 --ui-border: #e0e0e0;
 --ui-border-strong: #e0e0e0;
---ui-border-hover: rgba(15, 108, 189, 0.4);
+--ui-border-hover: rgba(72, 131, 247, 0.4);
 --ui-text: #242424;
 --ui-text-secondary: #616161;
 --ui-text-tertiary: #616161;
---ui-accent: #0078d4;
---ui-accent-hover: #106ebe;
---ui-accent-soft: rgba(0, 120, 212, 0.1);
+--ui-accent: #4883f7;
+--ui-accent-hover: #3a72e2;
+--ui-accent-soft: rgba(72, 131, 247, 0.1);
 --ui-on-accent: #ffffff;
 --ui-danger: #c50f1f;
 --ui-danger-hover: #a80f1c;
@@ -229,22 +229,22 @@ _LIGHT_VARS = """\
 """
 
 _DARK_VARS = """\
---ui-bg: #1e1e22;
---ui-bg-solid: #1e1e22;
+--ui-bg: #0e1116;
+--ui-bg-solid: #0e1116;
 --ui-bg-secondary: #1f1f1f;
 --ui-bg-tertiary: #1f1f1f;
 --ui-bg-hover: #3d3d3d;
---ui-surface: #292929;
+--ui-surface: #171b22;
 --ui-surface-2: #141414;
---ui-border: #525252;
---ui-border-strong: #525252;
---ui-border-hover: rgba(71, 158, 245, 0.5);
+--ui-border: #3f444c;
+--ui-border-strong: #3f444c;
+--ui-border-hover: rgba(72, 131, 247, 0.5);
 --ui-text: #ffffff;
 --ui-text-secondary: #adadad;
 --ui-text-tertiary: #adadad;
---ui-accent: #0078d4;
---ui-accent-hover: #2b9bf4;
---ui-accent-soft: rgba(0, 120, 212, 0.18);
+--ui-accent: #4883f7;
+--ui-accent-hover: #639af9;
+--ui-accent-soft: rgba(72, 131, 247, 0.18);
 --ui-on-accent: #ffffff;
 --ui-danger: #c50f1f;
 --ui-danger-hover: #a80f1c;
@@ -339,8 +339,10 @@ _WIDGET_CSS = (
     height: 36px;
     flex: 0 0 auto;
     border-radius: 8px;
-    background: var(--ui-accent);
-    color: var(--ui-on-accent);
+    /* Tint over the card surface, so the mark resolves to the same color as the
+       tool icons even though the topbar behind it is darker. */
+    background: linear-gradient(var(--ui-accent-soft), var(--ui-accent-soft)) var(--ui-surface);
+    color: var(--ui-accent);
 }
 .slls-app-brand svg { display: block; width: 20px; height: 20px; }
 .slls-app-brand-name {

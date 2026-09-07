@@ -60,7 +60,7 @@ _WIDGET_CSS = """
 }
 @media (prefers-color-scheme: dark) {
     .slls-mc.slls-mc-auto {
-        --slls-bg-solid: #1e1e22; --slls-bg-secondary: #2a2a30;
+        --slls-bg-solid: #0e1116; --slls-bg-secondary: #2a2a30;
         --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03);
         --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16);
         --slls-text: #f5f5f7; --slls-text-secondary: #b8b8bf; --slls-text-tertiary: #8e8e94;
@@ -72,7 +72,7 @@ _WIDGET_CSS = """
     }
 }
 .slls-mc.slls-mc-dark {
-    --slls-bg-solid: #1e1e22; --slls-bg-secondary: #2a2a30;
+    --slls-bg-solid: #0e1116; --slls-bg-secondary: #2a2a30;
     --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03);
     --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16);
     --slls-text: #f5f5f7; --slls-text-secondary: #b8b8bf; --slls-text-tertiary: #8e8e94;
