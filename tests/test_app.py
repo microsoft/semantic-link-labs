@@ -45,6 +45,36 @@ def test_tools_open_inside_the_full_screen_shell():
     assert ".slls-app-shell.slls-app-fs {" in _app._WIDGET_CSS
 
 
+def test_home_fullscreen_button_is_wired_before_first_click():
+    setup = 'sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs"'
+    setup_index = _app._WIDGET_JS.index(setup)
+    preceding_frame = _app._WIDGET_JS.rfind("requestAnimationFrame", 0, setup_index)
+
+    assert preceding_frame == -1
+
+
+def test_home_render_does_not_use_back_state_before_initialization():
+    state_index = _app._WIDGET_JS.index("let placeQueued = false;")
+
+    assert _app._WIDGET_JS.rfind("placeBack();", 0, state_index) == -1
+
+
+def test_an_opened_tools_own_chrome_drives_the_app():
+    # A tool's full-screen / theme buttons are re-pointed at the app, and the
+    # app mirrors the resulting state back onto them.
+    assert "function interceptToolChrome(event)" in _app._WIDGET_JS
+    assert "fsBtn.click();" in _app._WIDGET_JS
+    assert 'model.set("dark_mode", !(model.get("dark_mode")' in _app._WIDGET_JS
+    assert "clickWithoutNativeFullscreen" in _app._WIDGET_JS
+
+
+def test_the_dark_theme_matches_the_tools_background():
+    from sempy_labs._ui_components import DARK_THEME_VARS
+
+    assert "--ui-bg: #1e1e22;" in DARK_THEME_VARS
+    assert "--ui-bg: #1e1e22;" in _app._WIDGET_CSS
+
+
 def test_displayed_widgets_are_captured_for_the_shell():
     import builtins
 

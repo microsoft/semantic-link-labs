@@ -229,8 +229,8 @@ _LIGHT_VARS = """\
 """
 
 _DARK_VARS = """\
---ui-bg: #292929;
---ui-bg-solid: #292929;
+--ui-bg: #1e1e22;
+--ui-bg-solid: #1e1e22;
 --ui-bg-secondary: #1f1f1f;
 --ui-bg-tertiary: #1f1f1f;
 --ui-bg-hover: #3d3d3d;
@@ -623,6 +623,7 @@ function render({ model, el }) {
     }
     applyTheme();
     model.on("change:dark_mode", applyTheme);
+    model.on("change:dark_mode", () => syncToolChrome());
     el.appendChild(root);
 
     let activeCategory = "All";
@@ -669,15 +670,15 @@ function render({ model, el }) {
     fsBtn.type = "button";
     fsBtn.className = "slls-app-btn slls-app-btn-icon";
     actions.appendChild(fsBtn);
-    // Deferred so the shell is attached and can be resolved by closest().
-    requestAnimationFrame(() => {
-        applyTheme();
-        sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs",
-            `__SLLS_ICON_FULLSCREEN__`, `__SLLS_ICON_FULLSCREEN_EXIT__`);
-        new MutationObserver(placeBack).observe(shell(),
-            { childList: true, subtree: true });
-        placeBack();
-    });
+    applyTheme();
+    sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs",
+        `__SLLS_ICON_FULLSCREEN__`, `__SLLS_ICON_FULLSCREEN_EXIT__`);
+    new MutationObserver(placeBack).observe(shell(),
+        { childList: true, subtree: true });
+    shell().addEventListener("click", interceptToolChrome, true);
+    document.addEventListener("fullscreenchange", syncToolChrome);
+    // Runs after the toggle's own handler, so the new state is readable.
+    fsBtn.addEventListener("click", () => setTimeout(syncToolChrome));
 
     const themeGroup = document.createElement("div");
     themeGroup.className = "slls-app-seg";
@@ -797,13 +798,109 @@ function render({ model, el }) {
                 && el.getClientRects().length > 0);
         const isHeader = (el) => el.tagName === "HEADER"
             || [...el.classList].some((name) => name.endsWith("-header"));
-        return candidates.find(isHeader)
-            || candidates.find((el) => [...el.classList].some((n) => n.endsWith("-head")))
-            || null;
+        // Some tools wrap their header in an outer element that matches too
+        // (e.g. .vpx-header > .sl-header). The innermost match is the flex row
+        // holding the title, so Back lands to the left of the tool's icon.
+        const innermost = (list) => list.find((el) =>
+            !list.some((other) => other !== el && el.contains(other))) || null;
+        return innermost(candidates.filter(isHeader))
+            || innermost(candidates.filter((el) =>
+                [...el.classList].some((n) => n.endsWith("-head"))));
     }
 
     function park() {
         if (backBtn.parentElement !== left) left.appendChild(backBtn);
+    }
+
+    // ---- The open tool's own full-screen / theme buttons drive the app ----
+    // Every tool ships those two controls in its header. While the tool is
+    // hosted here they are re-pointed at the app, so full screen belongs to the
+    // shell (launcher + tools) and the theme stays consistent across tools.
+    const ctlLabel = (btn) =>
+        (btn.getAttribute("aria-label") || btn.title || "").toLowerCase();
+    const isThemeCtl = (label) => label.includes("light mode") || label.includes("dark mode");
+    const isFullscreenCtl = (label) => label.includes("full screen") || label.includes("fullscreen");
+
+    function shellFullscreen() {
+        return document.fullscreenElement === shell()
+            || shell().classList.contains("slls-app-fs");
+    }
+
+    // A promise-like that never settles, so a tool's `.then()` / `.catch()`
+    // continuation (which would undo its own overlay) never runs.
+    const NEVER = { then: () => NEVER, catch: () => NEVER, finally: () => NEVER };
+    let syntheticClick = false;
+
+    // Drives a tool's own toggle without letting it take (or release) native
+    // full screen: only one element can hold it, and that is the shell.
+    function clickWithoutNativeFullscreen(btn) {
+        const proto = Element.prototype;
+        const saved = [
+            [proto, "requestFullscreen"], [proto, "webkitRequestFullscreen"],
+            [proto, "mozRequestFullScreen"], [proto, "msRequestFullscreen"],
+            [document, "exitFullscreen"], [document, "webkitExitFullscreen"],
+        ].map(([target, name]) => [target, name, target[name]]);
+        for (const [target, name, original] of saved) {
+            if (original) target[name] = () => NEVER;
+        }
+        syntheticClick = true;
+        try {
+            btn.click();
+        } finally {
+            syntheticClick = false;
+            for (const [target, name, original] of saved) {
+                if (original) target[name] = original;
+            }
+        }
+    }
+
+    // Remembers the state each tool control was last driven to, so a pending
+    // toggle (anywidget tools round-trip through the kernel) is not repeated.
+    const driven = new WeakMap();
+    function drive(btn, want, isOn, click) {
+        if (!btn) return;
+        if (isOn(btn) === want) { driven.set(btn, want); return; }
+        if (driven.get(btn) === want) return;
+        driven.set(btn, want);
+        click(btn);
+    }
+
+    function syncToolChrome() {
+        const node = activeToolNode();
+        if (!node) return;
+        let theme = null;
+        let fullscreen = null;
+        for (const btn of node.querySelectorAll("button")) {
+            if (btn === backBtn) continue;
+            const label = ctlLabel(btn);
+            if (!theme && isThemeCtl(label)) theme = btn;
+            else if (!fullscreen && isFullscreenCtl(label)) fullscreen = btn;
+        }
+        drive(theme, model.get("dark_mode") === true,
+            (btn) => ctlLabel(btn).includes("light mode"),
+            (btn) => { syntheticClick = true; try { btn.click(); } finally { syntheticClick = false; } });
+        drive(fullscreen, shellFullscreen(),
+            (btn) => ctlLabel(btn).includes("exit"),
+            clickWithoutNativeFullscreen);
+    }
+
+    function interceptToolChrome(event) {
+        if (syntheticClick) return;
+        const node = activeToolNode();
+        const btn = event.target.closest && event.target.closest("button");
+        if (!btn || btn === backBtn || !node || !node.contains(btn)) return;
+        const label = ctlLabel(btn);
+        if (isThemeCtl(label)) {
+            model.set("dark_mode", !(model.get("dark_mode") === true));
+            model.save_changes();
+        } else if (isFullscreenCtl(label)) {
+            fsBtn.click();
+        } else {
+            return;
+        }
+        // The app now owns the state and mirrors it back onto this button.
+        event.preventDefault();
+        event.stopPropagation();
     }
 
     let placeQueued = false;
@@ -812,22 +909,27 @@ function render({ model, el }) {
         placeQueued = true;
         setTimeout(() => {
             placeQueued = false;
-            if (!activeTool()) {
-                park();
-                root.classList.remove("slls-app-back-parked");
-                return;
-            }
-            const node = activeToolNode();
-            if (!node || node.contains(backBtn)) return;
-            const header = toolHeader(node);
-            if (!header) {
-                park();
-                root.classList.add("slls-app-back-parked");
-                return;
-            }
-            root.classList.remove("slls-app-back-parked");
-            header.insertBefore(backBtn, header.firstChild);
+            applyBack();
+            syncToolChrome();
         });
+    }
+
+    function applyBack() {
+        if (!activeTool()) {
+            park();
+            root.classList.remove("slls-app-back-parked");
+            return;
+        }
+        const node = activeToolNode();
+        if (!node || node.contains(backBtn)) return;
+        const header = toolHeader(node);
+        if (!header) {
+            park();
+            root.classList.add("slls-app-back-parked");
+            return;
+        }
+        root.classList.remove("slls-app-back-parked");
+        header.insertBefore(backBtn, header.firstChild);
     }
 
     function renderView() {

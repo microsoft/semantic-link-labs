@@ -671,7 +671,7 @@ function render({ model, el }) {
                 ? `<button class="sl-reload-btn" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
                     `${working() ? spinner() : ICON.refresh}</button>`
                 : "") +
-            `<button class="sl-theme-btn" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
+            `<button class="sl-theme-btn" data-act="fullscreen" title="${isFullscreen() ? "Exit full screen" : "Full screen"}" aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="sl-theme-btn" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
         const rf = h.querySelector('[data-act="refresh"]');
