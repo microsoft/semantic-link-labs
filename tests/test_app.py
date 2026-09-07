@@ -83,7 +83,17 @@ def test_the_shell_is_the_only_owner_of_full_screen():
     # notebook's widget wrappers and hides the tool, so the app never does it.
     assert "driveFullscreen" not in _app._WIDGET_JS
     assert "clickWithoutNativeFullscreen" not in _app._WIDGET_JS
-    assert "shellFullscreen" not in _app._WIDGET_JS
+
+
+def test_hosted_tools_are_marked_while_the_shell_is_full_screen():
+    # Tools scope their full-height layout to their own :fullscreen rules, which
+    # cannot match when the shell is the element in full screen.
+    assert "function syncToolFullscreenClass()" in _app._WIDGET_JS
+    assert 'child.classList.toggle("slls-app-fs-tool", on);' in _app._WIDGET_JS
+    assert (
+        'document.addEventListener("fullscreenchange", syncToolFullscreenClass);'
+        in _app._WIDGET_JS
+    )
 
 
 def test_a_hosted_tool_fills_the_shell_while_full_screen():

@@ -678,6 +678,8 @@ function render({ model, el }) {
     new MutationObserver(placeBack).observe(shell(),
         { childList: true, subtree: true });
     shell().addEventListener("click", interceptToolChrome, true);
+    document.addEventListener("fullscreenchange", syncToolFullscreenClass);
+    fsBtn.addEventListener("click", () => setTimeout(syncToolFullscreenClass));
 
     const themeGroup = document.createElement("div");
     themeGroup.className = "slls-app-seg";
@@ -822,6 +824,23 @@ function render({ model, el }) {
 
     let syntheticClick = false;
 
+    function shellFullscreen() {
+        return document.fullscreenElement === shell()
+            || shell().classList.contains("slls-app-fs");
+    }
+
+    // Tools scope their full-height layout to their own :fullscreen rules, which
+    // cannot match while the shell owns full screen. This marks the hosted tool
+    // so those tools can key the same layout (without their own overlay) on it.
+    function syncToolFullscreenClass() {
+        const on = shellFullscreen();
+        for (const node of shell().querySelectorAll(".slls-app-tool")) {
+            for (const child of node.children) {
+                child.classList.toggle("slls-app-fs-tool", on);
+            }
+        }
+    }
+
     // Remembers the state each tool control was last driven to, so a pending
     // toggle (anywidget tools round-trip through the kernel) is not repeated.
     const driven = new WeakMap();
@@ -876,6 +895,7 @@ function render({ model, el }) {
             placeQueued = false;
             applyBack();
             syncToolChrome();
+            syncToolFullscreenClass();
         });
     }
 
