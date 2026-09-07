@@ -1019,6 +1019,19 @@ _WIDGET_CSS += "\n" + _ui_fullscreen_css(
     ".slls-app", "slls-app-fs", bg_var="var(--ui-bg)"
 )
 
+# A hosted tool renders as a centered card. While the shell is full screen it
+# stretches to fill it instead, without the fixed overlay its own full-screen
+# mode would use (stacking that inside the shell hides the tool).
+_TOOL_FILL_CSS = (
+    "max-width: none; width: 100%; margin: 0; border: none; "
+    "border-radius: 0; box-shadow: none; min-height: 100vh;"
+)
+for _fs_shell in (".slls-app-shell.slls-app-fs", ".slls-app-shell:fullscreen"):
+    _WIDGET_CSS += (
+        f"\n{_fs_shell} .slls-app-tool {{ padding: 0; }}"
+        f"\n{_fs_shell} .slls-app-tool > * {{ {_TOOL_FILL_CSS} }}"
+    )
+
 _WIDGET_JS = _ui_fullscreen_setup_js() + _WIDGET_JS
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])

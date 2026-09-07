@@ -78,6 +78,16 @@ def test_the_shell_is_the_only_owner_of_full_screen():
     assert "shellFullscreen" not in _app._WIDGET_JS
 
 
+def test_a_hosted_tool_fills_the_shell_while_full_screen():
+    # Tools render as a centered card, which would leave the rest of the screen
+    # empty once the shell goes full screen.
+    for shell in (".slls-app-shell.slls-app-fs", ".slls-app-shell:fullscreen"):
+        assert f"{shell} .slls-app-tool {{ padding: 0; }}" in _app._WIDGET_CSS
+        assert f"{shell} .slls-app-tool > * {{" in _app._WIDGET_CSS
+    assert "max-width: none; width: 100%;" in _app._WIDGET_CSS
+    assert "min-height: 100vh;" in _app._WIDGET_CSS
+
+
 def test_the_dark_theme_matches_the_tools_background():
     from sempy_labs._ui_components import DARK_THEME_VARS
 
