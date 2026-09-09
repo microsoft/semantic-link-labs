@@ -120,8 +120,15 @@ _WIDGET_CSS = (
 .slls-bpa-titlewrap { display: flex; flex-direction: column; min-width: 0; }
 .slls-bpa-head-spacer { flex: 1 1 auto; }
 .slls-bpa-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 10px; }
-.slls-bpa-title .slls-bpa-title-icon { color: var(--ui-accent); display: inline-flex; flex-shrink: 0; }
-.slls-bpa-title .slls-bpa-title-icon svg { width: 27px; height: 27px; stroke-width: 1.5; }
+.slls-bpa-title-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; flex: 0 0 auto;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: var(--ui-surface-2);
+    color: var(--ui-accent);
+}
+.slls-bpa-title-icon svg { display: block; width: 27px; height: 27px; stroke-width: 1.5; }
 .slls-bpa-subtitle { font-size: 12.5px; color: var(--ui-text-secondary); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 640px; }
 .slls-bpa-subtitle b { color: var(--ui-text); font-weight: 500; }
 .slls-bpa-subtitle .slls-bpa-sep { color: var(--ui-text-tertiary); margin: 0 6px; }
@@ -1081,13 +1088,14 @@ function render({ model, el }) {
     header.className = "slls-bpa-header";
     root.appendChild(header);
 
+    header.appendChild(iconSpan(ICON.shield, "slls-bpa-title-icon"));
+
     const titleWrap = document.createElement("div");
     titleWrap.className = "slls-bpa-titlewrap";
     header.appendChild(titleWrap);
 
     const title = document.createElement("div");
     title.className = "slls-bpa-title";
-    title.appendChild(iconSpan(ICON.shield, "slls-bpa-title-icon"));
     const titleText = document.createElement("span");
     titleText.textContent = "Best Practice Analyzer";
     title.appendChild(titleText);

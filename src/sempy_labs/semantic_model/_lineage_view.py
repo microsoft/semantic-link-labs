@@ -62,7 +62,7 @@ _WIDGET_CSS = """
 }
 @media (prefers-color-scheme: dark) {
     .slls-lv.slls-lv-auto {
-        --slls-bg-solid: #1e1e22; --slls-bg-secondary: #2a2a30;
+        --slls-bg-solid: #0e1116; --slls-bg-secondary: #2a2a30;
         --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03);
         --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16);
         --slls-text: #f5f5f7; --slls-text-secondary: #b8b8bf; --slls-text-tertiary: #8e8e94;
@@ -73,7 +73,7 @@ _WIDGET_CSS = """
     }
 }
 .slls-lv.slls-lv-dark {
-    --slls-bg-solid: #1e1e22; --slls-bg-secondary: #2a2a30;
+    --slls-bg-solid: #0e1116; --slls-bg-secondary: #2a2a30;
     --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03);
     --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16);
     --slls-text: #f5f5f7; --slls-text-secondary: #b8b8bf; --slls-text-tertiary: #8e8e94;
@@ -671,7 +671,7 @@ function render({ model, el }) {
                 ? `<button class="sl-reload-btn" data-act="refresh" title="Reload downstream reports" ${working() ? "disabled" : ""}>` +
                     `${working() ? spinner() : ICON.refresh}</button>`
                 : "") +
-            `<button class="sl-theme-btn" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
+            `<button class="sl-theme-btn" data-act="fullscreen" title="${isFullscreen() ? "Exit full screen" : "Full screen"}" aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="sl-theme-btn" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
         const rf = h.querySelector('[data-act="refresh"]');

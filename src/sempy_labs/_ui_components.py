@@ -864,6 +864,60 @@ ICONS: dict[str, str] = {
         '<path d="M12 5.5v4.3a2 2 0 0 1-2 2H6.6"/>'
         '<path d="M7.9 10.2 6.1 11.8l1.8 1.6"/></svg>'
     ),
+    "sparkles": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M11.5 3.2 13 7.5l4.3 1.5-4.3 1.5-1.5 4.3L10 10.5 5.7 9 10 7.5z"/>'
+        '<path d="m18.4 14.2.85 2.25 2.25.85-2.25.85-.85 2.25-.85-2.25-2.25-.85 '
+        '2.25-.85z"/>'
+        '<path d="m5.6 15.3.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>'
+    ),
+    # The Semantic Link Labs mark: an infinity symbol held in a lab flask.
+    "semantic_link_labs": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M9.2 2.8h5.6"/>'
+        '<path d="M10.4 2.8v6.5L5.5 17.5a2.1 2.1 0 0 0 1.8 3.2h9.4a2.1 2.1 0 0 '
+        '0 1.8-3.2l-4.9-8.2V2.8"/>'
+        '<g transform="translate(7.44 11.74) scale(0.38)" stroke-width="3.68">'
+        '<path d="M12 12c-1.9-2.6-3.8-3.9-5.8-3.9a3.9 3.9 0 1 0 0 7.8c2 0 '
+        '3.9-1.3 5.8-3.9z"/>'
+        '<path d="M12 12c1.9 2.6 3.8 3.9 5.8 3.9a3.9 3.9 0 0 0 0-7.8c-2 0-3.9 '
+        '1.3-5.8 3.9z"/>'
+        "</g></svg>"
+    ),
+    "book": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M12 7.4C10.7 6.1 8.9 5.4 7 5.4H3.6v13.2H7c1.9 0 3.7.7 5 2 '
+        '1.3-1.3 3.1-2 5-2h3.4V5.4H17c-1.9 0-3.7.7-5 2z"/>'
+        '<path d="M12 7.4v13.2"/></svg>'
+    ),
+    # A small model nested inside a larger one: the "mini model" mark.
+    "mini_model": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M15 5.5H7a2 2 0 0 0-2 2V16"/>'
+        '<rect x="10" y="10" width="9.5" height="9.5" rx="2"/></svg>'
+    ),
+    "home": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M3.5 10.4 12 3.6l8.5 6.8V19a1.6 1.6 0 0 1-1.6 1.6H5.1'
+        'A1.6 1.6 0 0 1 3.5 19z"/>'
+        '<path d="M9.6 20.6v-6.2h4.8v6.2"/></svg>'
+    ),
+    "arrow_left": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M19.5 12H4.5"/><path d="m11 19-7-7 7-7"/></svg>'
+    ),
 }
 
 
@@ -1016,8 +1070,8 @@ LIGHT_THEME_VARS: str = """\
 """
 
 DARK_THEME_VARS: str = """\
---ui-bg-solid: #1e1e22;
---ui-bg: #1e1e22;
+--ui-bg-solid: #0e1116;
+--ui-bg: #0e1116;
 --ui-bg-secondary: #2a2a30;
 --ui-bg-tertiary: #26262b;
 --ui-bg-hover: #2c2c33;

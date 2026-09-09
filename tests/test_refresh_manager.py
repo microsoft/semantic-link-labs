@@ -158,6 +158,12 @@ def test_fullscreen_and_theme_buttons_use_neutral_icon_style():
     assert "data-picker-ws" in refresh_manager_module._WIDGET_JS
     assert "data-change-model" in refresh_manager_module._WIDGET_JS
     assert "data-fullscreen" in refresh_manager_module._WIDGET_JS
+    assert 'fullscreenLabel=fsMode?"Exit full screen":"Full screen"' in (
+        refresh_manager_module._WIDGET_JS
+    )
+    assert 'title="${fullscreenLabel}" aria-label="${fullscreenLabel}"' in (
+        refresh_manager_module._WIDGET_JS
+    )
     assert 'class="sl-reload-btn' in refresh_manager_module._WIDGET_JS
     assert "slls-rm-picker-reload" not in refresh_manager_module._WIDGET_JS
     assert 'title="Reload workspaces and semantic models"' in (

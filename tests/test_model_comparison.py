@@ -16,6 +16,13 @@ def _source() -> str:
     return SOURCE_PATH.read_text(encoding="utf-8")
 
 
+def test_fullscreen_button_exposes_its_current_state():
+    source = _source()
+
+    assert 'title="${isFullscreen() ? "Exit full screen" : "Full screen"}"' in source
+    assert 'aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}"' in source
+
+
 def _module():
     """Load the module in isolation.
 

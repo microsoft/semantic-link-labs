@@ -2060,6 +2060,38 @@ def _visualize_dax_test(
 }}
 .dtx:fullscreen .dtx-main > * {{ flex-shrink: 0; }}
 .dtx:fullscreen .dtx-query {{ min-height: 300px; max-height: 60vh; }}
+/* Hosted in the Semantic Link Labs app, which owns full screen itself, so the
+   rules above never match. Layout only: the shell already provides the frame. */
+.dtx.slls-app-fs-tool {{
+    overflow: hidden;
+    background: var(--ui-bg);
+}}
+.dtx.slls-app-fs-tool .dtx-container {{
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}}
+.dtx.slls-app-fs-tool .dtx-body {{
+    flex: 1 1 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}}
+.dtx.slls-app-fs-tool .dtx-main {{
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}}
+.dtx.slls-app-fs-tool .dtx-main > * {{ flex-shrink: 0; }}
+.dtx.slls-app-fs-tool .dtx-query {{ min-height: 300px; max-height: 60vh; }}
 .dtx *, .dtx *::before, .dtx *::after {{ box-sizing: border-box; }}
 .dtx button.dtx-button-pressed:not(:disabled) {{
     transform: scale(0.95);
