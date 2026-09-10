@@ -85,15 +85,6 @@ def update_direct_lake_model_connection(
         The name(s) of the table(s) to update in the Direct Lake semantic model.
         If None, all tables will be updated (if there is only one expression).
         If multiple tables are specified, they must be provided as a list.
-    expression_name : str
-        Optional explicit expression name containing the Lakehouse or Warehouse name, for the multi-source models. 
-        Example:        
-            update_direct_lake_model_connection(
-            ...
-            source=source_name,
-            ...
-            expression_name=f"DirectLake - {source_name}"
-            )
     """
     from sempy_labs.tom import connect_semantic_model
 
@@ -180,21 +171,18 @@ def update_direct_lake_model_connection(
                     if candidate not in existing_names:
                         return candidate
                     i += 1
-					
+                    
             expr_list = tom._extract_expression_list(shared_expression)
-			  
+              
             if expression_name:
                 expr_name = expression_name
-				
+                
             else:	
-                expr_name = next(
-					(name for name, exp in expression_dict.items() if exp == expr_list),
-					None,
-				)
-				
+                expr_name = next((name for name, exp in expression_dict.items() if exp == expr_list),None,)
+                
             if not expr_name: 
                 expr_name = generate_unique_name(expressions)
-				
+                
             if expr_name in expressions:
                 tom.model.Expressions[expr_name].Expression = shared_expression
             else:
