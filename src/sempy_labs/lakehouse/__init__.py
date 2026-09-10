@@ -12,7 +12,7 @@ from ._lakehouse import (
     list_lakehouses,
 )
 from ._shortcuts import (
-    # create_shortcut,
+    create_shortcut,
     create_shortcut_onelake,
     delete_shortcut,
     reset_shortcut_cache,
@@ -47,7 +47,7 @@ __all__ = [
     "get_lakehouse_tables",
     "lakehouse_attached",
     "optimize_lakehouse_tables",
-    # create_shortcut,
+    "create_shortcut",
     "create_shortcut_onelake",
     "delete_shortcut",
     "vacuum_lakehouse_tables",
