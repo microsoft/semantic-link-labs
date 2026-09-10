@@ -12,7 +12,10 @@ from sempy_labs._snowflake import (
 )
 from sempy._utils._log import log
 from sempy_labs.semantic_model._convert_model_map import convert_model_map_to_bim
-
+from sempy_labs._generate_semantic_model import (
+    create_blank_semantic_model,
+    create_semantic_model_from_bim,
+)
 
 def _get_synonyms(node: Optional[dict]) -> List[str]:
     """Extract synonyms from a Snowflake semantic view node."""
@@ -117,28 +120,43 @@ def convert_from_snowflake(
     token: str,
     source_item: str | UUID,
     source_type: Literal["Lakehouse", "Warehouse"] = "Lakehouse",
-    workspace: Optional[str | UUID] = None,
+    source_workspace: Optional[str | UUID] = None,
+    semantic_model_workspace: Optional[str | UUID] = None,
+    semantic_model_name: Optional[str] = None,
+    test_run: bool = True,
 ) -> dict:
     """
-    Convert a Snowflake semantic view YAML definition into the model_map format.
+    Converts a Snowflake semantic view YAML definition into the a Power BI semantic model in Direct Lake mode.
 
     Parameters
     ----------
     yaml_file : str
-        A YAML string containing a Snowflake semantic view definition (see
-        ``sempy_labs.semantic_model._snowflake_schema.yaml``).
+        A YAML string containing a Snowflake semantic view definition (see here `<https://docs.snowflake.com/en/user-guide/views-semantic/semantic-view-yaml-spec>`_ for the specification).
+    account : str
+        The Snowflake account identifier. For example: XXXXXXX-XXX00000.snowflakecomputing.com
+    token : str
+        The authentication token for the Snowflake account.
     source_item : str | uuid.UUID
-        The source item ID or name.
+        The Fabric source item ID or name. 
     source_type : typing.Literal["Lakehouse", "Warehouse"], default="Lakehouse"
         The type of the source item.
-    workspace : str | uuid.UUID, default=None
-        The workspace name or ID.
+    source_workspace : str | uuid.UUID, default=None
+        The source workspace name or ID. If not provided, defaults to the workspace of the attached lakehouse or the workspace of the notebook.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    semantic_model_workspace : str | uuid.UUID, default=None
+        The workspace name or ID for the Power BI semantic model. If not provided, defaults to the workspace of the attached lakehouse or the workspace of the notebook.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    semantic_model_name : typing.Optional[str], default=None
+        The name of the Power BI semantic model. If not provided, defaults to the name specified in the YAML file.
+    test_run : bool, default=True
+        If True, the conversion will be performed in test mode without making any changes to the actual Power BI semantic model.
+    
     Returns
     -------
     dict
-        A dictionary structure of a Power BI semantic model.
+        The model.bim file of the Power BI semantic model.
     """
 
     if hasattr(yaml_file, "read"):
@@ -148,10 +166,13 @@ def convert_from_snowflake(
 
     data = data or {}
 
-    source_workspace_id = resolve_workspace_id(workspace)
+    source_workspace_id = resolve_workspace_id(source_workspace)
+    semantic_model_workspace_id = resolve_workspace_id(semantic_model_workspace)
     source_item_id = resolve_item_id(item=source_item, type=source_type, workspace=source_workspace_id)
 
-    model_name = data.get("name", "") or ""
+    model_name = semantic_model_name or data.get("name", "")
+    if model_name is None:
+        raise ValueError("Semantic model name must be provided either as an argument or in the YAML file.")
     model_description = data.get("description", "") or ""
 
     sf_tables = data.get("tables") or []
@@ -488,4 +509,10 @@ def convert_from_snowflake(
         }
     }
 
-    return convert_model_map_to_bim(model_map=model_map)
+    bim = convert_model_map_to_bim(model_map=model_map)
+
+    if not test_run:
+        #create_blank_semantic_model(dataset=model_name, workspace=semantic_model_workspace_id)
+        create_semantic_model_from_bim(dataset=model_name, bim_file=bim, workspace=semantic_model_workspace_id)
+
+    return bim
