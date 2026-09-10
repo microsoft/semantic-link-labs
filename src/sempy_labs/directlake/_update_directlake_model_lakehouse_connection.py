@@ -56,7 +56,7 @@ def update_direct_lake_model_connection(
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
     tables: Optional[str | List[str]] = None,
-	expression_name: Optional[str] = None,
+    expression_name: Optional[str] = None,
 ):
     """
     Remaps a Direct Lake semantic model's SQL Endpoint connection to a new lakehouse/warehouse.
