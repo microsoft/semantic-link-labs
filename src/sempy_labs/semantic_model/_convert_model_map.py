@@ -97,7 +97,8 @@ def convert_model_map_to_bim(
     Each table's 'sourceWorkspaceId' and 'sourceItemId' are used to generate a Direct Lake on OneLake
     expression. Tables which share the same source item share the same expression. The 'sourceDataType',
     'sourceExpression', 'sourceFormat' and 'synonyms' properties of the model_map are retained as
-    annotations on the corresponding semantic model object.
+    annotations on the corresponding semantic model object. A table's 'annotations' (a list of
+    name/value pairs) are added as-is to the table.
 
     Columns which have an 'expression' are created as calculated columns; the expression is translated
     from SQL to DAX and the original SQL expression is retained as an annotation.
@@ -270,7 +271,14 @@ def convert_model_map_to_bim(
         if measures:
             table["measures"] = measures
         table_annotations = _build_annotations(
-            {"Synonyms": _format_synonyms(t.get("synonyms"))}
+            {
+                "Synonyms": _format_synonyms(t.get("synonyms")),
+                **{
+                    a.get("name"): a.get("value")
+                    for a in t.get("annotations", []) or []
+                    if a.get("name")
+                },
+            }
         )
         if table_annotations:
             table["annotations"] = table_annotations

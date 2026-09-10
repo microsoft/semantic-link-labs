@@ -1,3 +1,4 @@
+import json
 import re
 import yaml
 from uuid import UUID
@@ -16,6 +17,7 @@ from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
     create_semantic_model_from_bim,
 )
+
 
 def _get_synonyms(node: Optional[dict]) -> List[str]:
     """Extract synonyms from a Snowflake semantic view node."""
@@ -100,6 +102,14 @@ _SNOWFLAKE_TO_PBI_DATA_TYPE: Dict[str, str] = {
 }
 
 
+# Note added to measures which cannot be converted because they reference a
+# calculated column (calculated columns are not supported by the conversion).
+_CALCULATED_DEPENDENCY_NOTE = (
+    "This measure could not be converted because it depends on the following "
+    "calculated column(s) which are not supported: {columns}."
+)
+
+
 def _convert_snowflake_data_type(data_type: Optional[str]) -> str:
     """Convert a Snowflake data type string to its Power BI equivalent.
 
@@ -128,6 +138,12 @@ def convert_from_snowflake(
     """
     Converts a Snowflake semantic view YAML definition into the a Power BI semantic model in Direct Lake mode.
 
+    Limitations:
+        * Calculated columns (fields whose 'expr' is not a plain column reference) are not supported. They are
+          excluded from the semantic model and are instead documented as annotations on their table.
+        * Metrics which reference a calculated column cannot be converted. Such measures are created with an
+          expression of ``BLANK()`` and a note explaining why the conversion was not possible.
+
     Parameters
     ----------
     yaml_file : str
@@ -137,7 +153,7 @@ def convert_from_snowflake(
     token : str
         The authentication token for the Snowflake account.
     source_item : str | uuid.UUID
-        The Fabric source item ID or name. 
+        The Fabric source item ID or name.
     source_type : typing.Literal["Lakehouse", "Warehouse"], default="Lakehouse"
         The type of the source item.
     source_workspace : str | uuid.UUID, default=None
@@ -152,7 +168,7 @@ def convert_from_snowflake(
         The name of the Power BI semantic model. If not provided, defaults to the name specified in the YAML file.
     test_run : bool, default=True
         If True, the conversion will be performed in test mode without making any changes to the actual Power BI semantic model.
-    
+
     Returns
     -------
     dict
@@ -168,11 +184,15 @@ def convert_from_snowflake(
 
     source_workspace_id = resolve_workspace_id(source_workspace)
     semantic_model_workspace_id = resolve_workspace_id(semantic_model_workspace)
-    source_item_id = resolve_item_id(item=source_item, type=source_type, workspace=source_workspace_id)
+    source_item_id = resolve_item_id(
+        item=source_item, type=source_type, workspace=source_workspace_id
+    )
 
     model_name = semantic_model_name or data.get("name", "")
     if model_name is None:
-        raise ValueError("Semantic model name must be provided either as an argument or in the YAML file.")
+        raise ValueError(
+            "Semantic model name must be provided either as an argument or in the YAML file."
+        )
     model_description = data.get("description", "") or ""
 
     sf_tables = data.get("tables") or []
@@ -213,6 +233,22 @@ def convert_from_snowflake(
             return s.strip('"').strip("`")
         return None
 
+    # Calculated columns are not supported and are excluded from the model, so
+    # they must not be registered in the column maps.
+    calculated_column_names: Dict[str, set] = {}
+    for t in sf_tables:
+        tbl = t.get("name", "") or ""
+        if not tbl:
+            continue
+        calc_names = set()
+        for kind in ("dimensions", "time_dimensions", "facts"):
+            for field in t.get(kind, []) or []:
+                col = field.get("name", "") or ""
+                expr = field.get("expr", "") or ""
+                if col and expr and _bare_identifier(expr) is None:
+                    calc_names.add(col.lower())
+        calculated_column_names[tbl] = calc_names
+
     for t in sf_tables:
         tbl = t.get("name", "") or ""
         if not tbl:
@@ -221,7 +257,7 @@ def convert_from_snowflake(
         for kind in ("dimensions", "time_dimensions", "facts"):
             for field in t.get(kind, []) or []:
                 col = field.get("name", "") or ""
-                if not col:
+                if not col or col.lower() in calculated_column_names.get(tbl, set()):
                     continue
                 dax_ref = f"'{tbl}'[{col}]"
                 # Logical/field name references.
@@ -279,6 +315,8 @@ def convert_from_snowflake(
             key = f"{tbl_ref}.{col_ref}"
             if key in column_map:
                 continue
+            if col_ref.lower() in calculated_column_names.get(tbl, set()):
+                continue
             dax_ref = f"'{tbl}'[{col_ref}]"
             column_map[key] = dax_ref
             column_map.setdefault(col_ref, dax_ref)
@@ -297,6 +335,42 @@ def convert_from_snowflake(
         if not table_name or table_name not in per_table_bare:
             return column_map
         return {**column_map, **per_table_bare[table_name]}
+
+    def _calculated_dependencies(
+        expression: str, owning_table: Optional[str]
+    ) -> List[str]:
+        """Return the calculated columns referenced by a SQL expression."""
+        if not expression:
+            return []
+        deps = set()
+        for m in qualified_ref_re.finditer(expression):
+            tbl = table_names_lower.get(m.group(1).lower())
+            if tbl and m.group(2).lower() in calculated_column_names.get(tbl, set()):
+                deps.add(f"{tbl}.{m.group(2)}")
+        bare_calc = calculated_column_names.get(owning_table or "", set())
+        if bare_calc:
+            # Qualified references are removed first so they are not counted twice.
+            unqualified = qualified_ref_re.sub(" ", expression)
+            for token in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", unqualified):
+                if token.lower() in bare_calc:
+                    deps.add(f"{owning_table}.{token}")
+        return sorted(deps)
+
+    def _metric_dax(expression: str, table_name: str) -> str:
+        """Convert a metric expression to DAX, returning ``BLANK()`` with a note
+        when the metric depends on an unsupported calculated column."""
+        if not expression:
+            return ""
+        deps = _calculated_dependencies(expression, table_name)
+        if deps:
+            note = _CALCULATED_DEPENDENCY_NOTE.format(columns=", ".join(deps))
+            return f"// {note}\nBLANK()"
+        return convert_sql_to_dax(
+            expression,
+            column_map=_column_map_for_table(table_name),
+            default_table=table_name,
+            relationships=rel_hints,
+        )
 
     def _build_column(field: dict, table_name: str, pk_columns: set) -> Dict[str, Any]:
         col_name = field.get("name", "") or ""
@@ -351,9 +425,16 @@ def convert_from_snowflake(
         pk_columns = set(pk_block.get("columns") or [])
 
         columns: List[Dict[str, Any]] = []
+        calculated_columns: List[Dict[str, Any]] = []
         for kind in ("dimensions", "time_dimensions", "facts"):
             for field in t.get(kind, []) or []:
-                columns.append(_build_column(field, table_name, pk_columns))
+                column = _build_column(field, table_name, pk_columns)
+                # Calculated columns are not supported; they are documented as
+                # table annotations instead of being added to the model.
+                if column["isCalculated"]:
+                    calculated_columns.append(column)
+                else:
+                    columns.append(column)
 
         # Augment with all base-table columns from Snowflake. Columns already
         # declared in the YAML keep ``isHidden=False``; columns added solely
@@ -406,16 +487,7 @@ def convert_from_snowflake(
                 {
                     "name": metric_name,
                     "sourceExpression": expression,
-                    "daxExpression": (
-                        convert_sql_to_dax(
-                            expression,
-                            column_map=_column_map_for_table(table_name),
-                            default_table=table_name,
-                            relationships=rel_hints,
-                        )
-                        if expression
-                        else ""
-                    ),
+                    "daxExpression": _metric_dax(expression, table_name),
                     "sourceFormat": None,
                     "pbiFormat": None,
                     "description": metric.get("description", "") or "",
@@ -423,17 +495,37 @@ def convert_from_snowflake(
                 }
             )
 
-        tables.append(
-            {
-                "tableName": table_name,
-                "description": t.get("description", "") or "",
-                "sourceName": source_name,
-                "sourceItemId": source_item_id,
-                "sourceWorkspaceId": source_workspace_id,
-                "columns": columns,
-                "measures": measures,
-            }
-        )
+        table_entry: Dict[str, Any] = {
+            "tableName": table_name,
+            "description": t.get("description", "") or "",
+            "sourceName": source_name,
+            "sourceItemId": source_item_id,
+            "sourceWorkspaceId": source_workspace_id,
+            "columns": columns,
+            "measures": measures,
+        }
+        if calculated_columns:
+            table_entry["annotations"] = [
+                {
+                    "name": f"CalculatedColumn_{c['name']}",
+                    "value": json.dumps(
+                        {
+                            k: c[k]
+                            for k in (
+                                "name",
+                                "expression",
+                                "sourceDataType",
+                                "pbiDataType",
+                                "description",
+                                "synonyms",
+                                "isKey",
+                            )
+                        }
+                    ),
+                }
+                for c in calculated_columns
+            ]
+        tables.append(table_entry)
 
     # Map view-level (derived) metrics onto the table they reference.
     table_lookup = {t["tableName"]: t for t in tables}
@@ -450,16 +542,7 @@ def convert_from_snowflake(
             {
                 "name": metric_name,
                 "sourceExpression": expression,
-                "daxExpression": (
-                    convert_sql_to_dax(
-                        expression,
-                        column_map=_column_map_for_table(target_table),
-                        default_table=target_table,
-                        relationships=rel_hints,
-                    )
-                    if expression
-                    else ""
-                ),
+                "daxExpression": _metric_dax(expression, target_table),
                 "sourceFormat": None,
                 "pbiFormat": None,
                 "description": metric.get("description", "") or "",
@@ -512,7 +595,9 @@ def convert_from_snowflake(
     bim = convert_model_map_to_bim(model_map=model_map)
 
     if not test_run:
-        #create_blank_semantic_model(dataset=model_name, workspace=semantic_model_workspace_id)
-        create_semantic_model_from_bim(dataset=model_name, bim_file=bim, workspace=semantic_model_workspace_id)
+        # create_blank_semantic_model(dataset=model_name, workspace=semantic_model_workspace_id)
+        create_semantic_model_from_bim(
+            dataset=model_name, bim_file=bim, workspace=semantic_model_workspace_id
+        )
 
     return bim
