@@ -14,7 +14,6 @@ from sempy_labs._snowflake import (
 from sempy._utils._log import log
 from sempy_labs.semantic_model._convert_model_map import convert_model_map_to_bim
 from sempy_labs._generate_semantic_model import (
-    create_blank_semantic_model,
     create_semantic_model_from_bim,
 )
 
@@ -595,7 +594,6 @@ def convert_from_snowflake(
     bim = convert_model_map_to_bim(model_map=model_map)
 
     if not test_run:
-        # create_blank_semantic_model(dataset=model_name, workspace=semantic_model_workspace_id)
         create_semantic_model_from_bim(
             dataset=model_name, bim_file=bim, workspace=semantic_model_workspace_id
         )
