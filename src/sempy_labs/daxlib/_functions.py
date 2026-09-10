@@ -214,14 +214,6 @@ def add_remove_update_package_to_semantic_model(
             )
             return
 
-        if method != "add" and not exists:
-            print(
-                f"{icons.info} The '{package_name}' package is not detected in the "
-                f"semantic model. Please use the 'add_package_to_semantic_model' "
-                f"function to add it first."
-            )
-            return
-
         # add / update logic (shared); First remove existing functions from the package if they exist
         for f in tom.model.Functions:
             if f.Name.lower().startswith(f"{package_name.lower()}."):
@@ -311,7 +303,7 @@ def remove_package_from_semantic_model(
 
 
 @log
-def update_package_in_semantic_model(
+def add_or_update_package_in_semantic_model(
     dataset: str | UUID,
     package_name: str,
     version: str = None,
