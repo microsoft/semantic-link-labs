@@ -10,14 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4.9.1
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.10"
 
       - name: Setup dotnet
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: | 
             8.0.x
@@ -28,7 +28,7 @@ jobs:
         shell: bash
 
       - name: Cache conda
-        uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # v3.5.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         env:
           # Increase this value to reset cache if environment.yml has not changed
           CACHE_NUMBER: 0
@@ -37,7 +37,7 @@ jobs:
           key:
             ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ steps.get-date.outputs.today }}-${{ hashFiles('environment.yml') }}
 
-      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3.3.0
+      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
         with:
           auto-update-conda: true
           activate-environment: fabric
