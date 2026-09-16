@@ -6166,6 +6166,7 @@ class TOMWrapper:
         sql = "SqlAnalyticsEndpoint"
         sources = []
         expr = self._get_direct_lake_expressions()
+        workspace_items = None
         for name, items in expr.items():
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
@@ -6174,20 +6175,28 @@ class TOMWrapper:
                 # The M expression may reference the item by its friendly name (e.g. when
                 # connected via a SQL Analytics Endpoint that was set up manually) rather
                 # than by its ID. In that case, resolve the ID from the name before calling
-                # the artifacts API.
-                resolved_id = resolve_item_id(
-                    item=artifact_id,
-                    type="Lakehouse",
-                    workspace=self._workspace_id,
-                    error_out=False,
-                )
-                if resolved_id is None:
-                    resolved_id = resolve_item_id(
-                        item=artifact_id,
-                        type="Warehouse",
-                        workspace=self._workspace_id,
-                        error_out=False,
+                # the artifacts API. The list of workspace items is fetched once and cached
+                # since multiple expressions may need to be resolved by name.
+                if workspace_items is None:
+                    responses = _base_api(
+                        request=f"/v1/workspaces/{self._workspace_id}/items",
+                        client="fabric_sp",
+                        uses_pagination=True,
                     )
+                    workspace_items = [
+                        v
+                        for r in responses
+                        for v in r.get("value", [])
+                        if v.get("type") in ("Lakehouse", "Warehouse")
+                    ]
+                resolved_id = next(
+                    (
+                        v.get("id")
+                        for v in workspace_items
+                        if v.get("displayName") == artifact_id
+                    ),
+                    None,
+                )
                 if resolved_id is None:
                     print(
                         f"{icons.warning} The '{artifact_id}' item referenced by the "
