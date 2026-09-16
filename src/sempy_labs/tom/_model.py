@@ -6189,23 +6189,24 @@ class TOMWrapper:
                         for v in r.get("value", [])
                         if v.get("type") in ("Lakehouse", "Warehouse")
                     ]
-                resolved_id = next(
-                    (
-                        v.get("id")
-                        for v in workspace_items
-                        if v.get("displayName") == artifact_id
-                    ),
-                    None,
-                )
-                if resolved_id is None:
+                matching_items = [
+                    v
+                    for v in workspace_items
+                    if v.get("displayName") == artifact_id
+                ]
+                if len(matching_items) != 1:
+                    reason = (
+                        "could not be resolved to a Lakehouse or Warehouse"
+                        if not matching_items
+                        else "matched multiple Lakehouses/Warehouses and is ambiguous"
+                    )
                     print(
                         f"{icons.warning} The '{artifact_id}' item referenced by the "
-                        f"'{name}' expression could not be resolved to a Lakehouse or "
-                        f"Warehouse in the '{self._workspace_name}' workspace and will "
-                        "be skipped."
+                        f"'{name}' expression {reason} in the '{self._workspace_name}' "
+                        "workspace and will be skipped."
                     )
                     continue
-                artifact_id = resolved_id
+                artifact_id = matching_items[0].get("id")
 
             result = _base_api(
                 request=f"metadata/artifacts/{artifact_id}", client="internal"
