@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_item_id,
     resolve_lakehouse_id,
+    _is_valid_uuid,
     _validate_weight,
     _create_dataframe,
     normalize_filter,
@@ -6168,6 +6169,29 @@ class TOMWrapper:
         for name, items in expr.items():
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
+
+            if not _is_valid_uuid(artifact_id):
+                # The M expression may reference the item by its friendly name (e.g. when
+                # connected via a SQL Analytics Endpoint that was set up manually) rather
+                # than by its ID. In that case, resolve the ID from the name before calling
+                # the artifacts API.
+                resolved_id = resolve_item_id(
+                    item=artifact_id,
+                    type="Lakehouse",
+                    workspace=self._workspace_id,
+                    error_out=False,
+                )
+                if resolved_id is None:
+                    resolved_id = resolve_item_id(
+                        item=artifact_id,
+                        type="Warehouse",
+                        workspace=self._workspace_id,
+                        error_out=False,
+                    )
+                if resolved_id is None:
+                    continue
+                artifact_id = resolved_id
+
             result = _base_api(
                 request=f"metadata/artifacts/{artifact_id}", client="internal"
             ).json()
