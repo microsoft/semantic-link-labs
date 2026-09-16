@@ -6189,6 +6189,12 @@ class TOMWrapper:
                         error_out=False,
                     )
                 if resolved_id is None:
+                    print(
+                        f"{icons.warning} The '{artifact_id}' item referenced by the "
+                        f"'{name}' expression could not be resolved to a Lakehouse or "
+                        f"Warehouse in the '{self._workspace_name}' workspace and will "
+                        "be skipped."
+                    )
                     continue
                 artifact_id = resolved_id
 
