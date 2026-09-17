@@ -20,7 +20,7 @@ def create_eventhouse(
     definition: Optional[dict],
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
-):
+) -> str:
     """
     Creates a Fabric eventhouse.
 
@@ -40,6 +40,11 @@ def create_eventhouse(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The ID of the created eventhouse.
     """
 
     if definition is not None and not isinstance(definition, dict):
@@ -59,7 +64,7 @@ def create_eventhouse(
         else None
     )
 
-    create_item(
+    return create_item(
         name=name,
         type="Eventhouse",
         workspace=workspace,
