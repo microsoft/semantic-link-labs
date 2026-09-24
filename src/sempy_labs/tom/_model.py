@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_item_id,
     resolve_lakehouse_id,
+    _is_valid_uuid,
     _validate_weight,
     _create_dataframe,
     normalize_filter,
@@ -6165,9 +6166,47 @@ class TOMWrapper:
         sql = "SqlAnalyticsEndpoint"
         sources = []
         expr = self._get_direct_lake_expressions()
+        workspace_items = None
         for name, items in expr.items():
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
+
+            if not _is_valid_uuid(artifact_id):
+                # The M expression may reference the item by its friendly name (e.g. when
+                # connected via a SQL Analytics Endpoint that was set up manually) rather
+                # than by its ID. In that case, resolve the ID from the name before calling
+                # the artifacts API. The list of workspace items is fetched once and cached
+                # since multiple expressions may need to be resolved by name.
+                if workspace_items is None:
+                    responses = _base_api(
+                        request=f"/v1/workspaces/{self._workspace_id}/items",
+                        client="fabric_sp",
+                        uses_pagination=True,
+                    )
+                    workspace_items = [
+                        v
+                        for r in responses
+                        for v in r.get("value", [])
+                        if v.get("type") in ("Lakehouse", "Warehouse")
+                    ]
+                matching_items = [
+                    v
+                    for v in workspace_items
+                    if v.get("displayName") == artifact_id
+                ]
+                if len(matching_items) != 1:
+                    reason = (
+                        "could not be resolved to a Lakehouse or Warehouse"
+                        if not matching_items
+                        else "matched multiple Lakehouses/Warehouses and is ambiguous"
+                    )
+                    raise ValueError(
+                        f"{icons.red_dot} The '{artifact_id}' item referenced by the "
+                        f"'{name}' expression {reason} in the '{self._workspace_name}' "
+                        "workspace."
+                    )
+                artifact_id = matching_items[0].get("id")
+
             result = _base_api(
                 request=f"metadata/artifacts/{artifact_id}", client="internal"
             ).json()
