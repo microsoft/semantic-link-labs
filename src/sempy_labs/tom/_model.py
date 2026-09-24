@@ -6200,12 +6200,11 @@ class TOMWrapper:
                         if not matching_items
                         else "matched multiple Lakehouses/Warehouses and is ambiguous"
                     )
-                    print(
-                        f"{icons.warning} The '{artifact_id}' item referenced by the "
+                    raise ValueError(
+                        f"{icons.red_dot} The '{artifact_id}' item referenced by the "
                         f"'{name}' expression {reason} in the '{self._workspace_name}' "
-                        "workspace and will be skipped."
+                        "workspace."
                     )
-                    continue
                 artifact_id = matching_items[0].get("id")
 
             result = _base_api(
