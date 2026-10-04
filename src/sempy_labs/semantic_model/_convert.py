@@ -684,7 +684,7 @@ __SEARCH_SELECT_CSS__
 .slls-cv-input::placeholder, .slls-cv-textarea::placeholder { color: var(--ui-text-tertiary); }
 .slls-cv-input[aria-invalid="true"] { border-color: var(--ui-danger-border); }
 .slls-cv-textarea {
-    min-height: 190px; resize: vertical; white-space: pre; tab-size: 2;
+    min-height: 190px; resize: vertical; white-space: pre; tab-size: 2; padding: 14px 18px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12.5px; line-height: 1.5;
 }
@@ -693,7 +693,7 @@ __SEARCH_SELECT_CSS__
 /* ---- Highlighted code editor (transparent textarea over a colored <pre>) ---- */
 .slls-cv-code { position: relative; border-radius: 10px; background: var(--ui-bg); }
 .slls-cv-code-hl, .slls-cv-textarea.slls-cv-code-input {
-    margin: 0; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px;
+    margin: 0; padding: 14px 18px; border: 1px solid transparent; border-radius: 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12.5px; line-height: 1.5; letter-spacing: normal;
     white-space: pre; word-wrap: normal; tab-size: 2;
