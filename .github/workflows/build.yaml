@@ -3,7 +3,7 @@ name: Semantic Link Labs
 on: [push]
 
 permissions:
-  contents: write          # This is required for actions/checkout@v1
+  contents: read
 
 jobs:
   build:
