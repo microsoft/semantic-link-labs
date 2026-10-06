@@ -56,6 +56,7 @@ def update_direct_lake_model_connection(
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
     tables: Optional[str | List[str]] = None,
+    expression_name: Optional[str] = None,
 ):
     """
     Remaps a Direct Lake semantic model's SQL Endpoint connection to a new lakehouse/warehouse.
@@ -162,14 +163,7 @@ def update_direct_lake_model_connection(
             sempy.fabric._client._utils._init_analysis_services()
             import Microsoft.AnalysisServices.Tabular as TOM
 
-            expr_list = tom._extract_expression_list(shared_expression)
 
-            expr_name = next(
-                (name for name, exp in expression_dict.items() if exp == expr_list),
-                None,
-            )
-
-            # If the expression does not already exist, create it
             def generate_unique_name(existing_names):
                 i = 1
                 while True:
@@ -177,9 +171,21 @@ def update_direct_lake_model_connection(
                     if candidate not in existing_names:
                         return candidate
                     i += 1
-
-            if not expr_name:
+                    
+            expr_list = tom._extract_expression_list(shared_expression)
+              
+            if expression_name:
+                expr_name = expression_name
+                
+            else:	
+                expr_name = next((name for name, exp in expression_dict.items() if exp == expr_list),None,)
+                
+            if not expr_name: 
                 expr_name = generate_unique_name(expressions)
+                
+            if expr_name in expressions:
+                tom.model.Expressions[expr_name].Expression = shared_expression
+            else:
                 tom.add_expression(name=expr_name, expression=shared_expression)
 
             all_tables = [t.Name for t in tom.model.Tables]
