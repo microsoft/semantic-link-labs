@@ -9,7 +9,7 @@ from sempy_labs._helper_functions import (
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List, Tuple
 from sempy._utils._log import log
-from uuid import UUID
+from uuid import UUID, uuid4
 from sempy_labs.directlake._warm_cache import _put_columns_into_memory
 import sempy_labs._icons as icons
 import time
@@ -254,6 +254,291 @@ def get_dax_query_memory_size(
     )
 
     return df["Total Size"].sum()
+
+
+@log
+def capture_dax_query_timings(
+    dataset: str | UUID,
+    dax_query: str,
+    workspace: Optional[str | UUID] = None,
+    clear_cache: bool = True,
+    post_wait_seconds: float = 1.2,
+) -> pd.DataFrame:
+    """
+    Runs a DAX query with an SSAS trace and returns a one-row summary dataframe.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    dax_query : str
+        The DAX query to execute.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    clear_cache : bool, default=True
+        If True, clears semantic model cache before query execution.
+    post_wait_seconds : float, default=1.2
+        Wait time after query execution before stopping trace.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A single-row summary containing total, storage engine, and formula engine timings.
+    """
+
+    from sempy_labs._clear_cache import clear_cache as _clear_cache
+
+    event_schema = {
+        "QueryBegin": [
+            "EventClass",
+            "CurrentTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+        "QueryEnd": [
+            "EventClass",
+            "CurrentTime",
+            "Duration",
+            "CpuTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+        "VertiPaqSEQueryBegin": [
+            "EventClass",
+            "CurrentTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+        "VertiPaqSEQueryEnd": [
+            "EventClass",
+            "CurrentTime",
+            "Duration",
+            "CpuTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+        "VertiPaqSEQueryCacheMatch": [
+            "EventClass",
+            "CurrentTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+        "DirectQueryBegin": [
+            "EventClass",
+            "CurrentTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+        "DirectQueryEnd": [
+            "EventClass",
+            "CurrentTime",
+            "Duration",
+            "CpuTime",
+            "SessionID",
+            "ActivityID",
+            "RequestID",
+            "TextData",
+        ],
+    }
+
+    if clear_cache:
+        _clear_cache(dataset=dataset, workspace=workspace)
+
+    run_id = uuid4().hex
+    run_marker = f"-- RUNID:{run_id}"
+    tagged_query = f"{run_marker}\n{dax_query}"
+
+    t0 = time.perf_counter()
+    eval_t1 = t0
+    with fabric.create_trace_connection(dataset=dataset, workspace=workspace) as trace_connection:
+        with trace_connection.create_trace(event_schema) as trace:
+            trace.start()
+            _ = fabric.evaluate_dax(
+                dataset=dataset,
+                workspace=workspace,
+                dax_string=tagged_query,
+            )
+            eval_t1 = time.perf_counter()
+            time.sleep(post_wait_seconds)
+            df = trace.stop()
+
+    if df is None or df.empty:
+        elapsed = round((eval_t1 - t0) * 1000.0, 3)
+        summary = {
+            "Dataset": dataset,
+            "Workspace": workspace,
+            "Total Elapsed (ms)": elapsed,
+            "Storage Engine (ms)": 0.0,
+            "Formula Engine (ms)": elapsed,
+            "Trace Event Count": 0,
+            "Note": "No trace events returned.",
+        }
+        return pd.DataFrame([summary])
+
+    event_class_col = None
+    for c in ["Event Class", "EventClass"]:
+        if c in df.columns:
+            event_class_col = c
+            break
+
+    text_col = None
+    for c in ["Text Data", "TextData"]:
+        if c in df.columns:
+            text_col = c
+            break
+
+    duration_col = "Duration" if "Duration" in df.columns else None
+
+    current_time_col = None
+    for c in ["Current Time", "CurrentTime"]:
+        if c in df.columns:
+            current_time_col = c
+            break
+
+    session_col = None
+    for c in ["Session ID", "SessionID"]:
+        if c in df.columns:
+            session_col = c
+            break
+
+    activity_col = None
+    for c in ["Activity ID", "ActivityID"]:
+        if c in df.columns:
+            activity_col = c
+            break
+
+    request_col = None
+    for c in ["Request ID", "RequestID"]:
+        if c in df.columns:
+            request_col = c
+            break
+
+    if event_class_col is None:
+        raise ValueError(
+            f"{icons.red_dot} Trace output does not contain event class column. "
+            f"Columns: {list(df.columns)}"
+        )
+
+    if current_time_col is not None:
+        df[current_time_col] = pd.to_datetime(df[current_time_col], errors="coerce")
+
+    query_end_mask = df[event_class_col].astype(str).eq("QueryEnd")
+    if text_col is not None:
+        query_end_mask = query_end_mask & df[text_col].astype(str).str.contains(
+            run_marker, regex=False, na=False
+        )
+
+    target = df.loc[query_end_mask].tail(1)
+    if target.empty:
+        target = df.loc[df[event_class_col].astype(str).eq("QueryEnd")].tail(1)
+
+    corr = pd.Series(True, index=df.index)
+    if not target.empty:
+        target_row = target.iloc[0]
+
+        target_session = (
+            str(target_row[session_col])
+            if session_col and pd.notna(target_row[session_col])
+            else ""
+        )
+        target_request = (
+            str(target_row[request_col])
+            if request_col and pd.notna(target_row[request_col])
+            else ""
+        )
+        target_activity = (
+            str(target_row[activity_col])
+            if activity_col and pd.notna(target_row[activity_col])
+            else ""
+        )
+
+        if target_request and request_col is not None:
+            corr = corr & (df[request_col].astype(str).eq(target_request))
+            if session_col is not None and target_session:
+                corr = corr & (df[session_col].astype(str).eq(target_session))
+        elif target_activity and activity_col is not None:
+            corr = corr & (df[activity_col].astype(str).eq(target_activity))
+            if session_col is not None and target_session:
+                corr = corr & (df[session_col].astype(str).eq(target_session))
+        elif target_session and session_col is not None:
+            corr = corr & (df[session_col].astype(str).eq(target_session))
+
+    trace_df = df.loc[corr].copy()
+
+    if duration_col is not None:
+        trace_df[duration_col] = pd.to_numeric(trace_df[duration_col], errors="coerce")
+
+    total_ms = round((eval_t1 - t0) * 1000.0, 3)
+    if not target.empty and duration_col is not None:
+        qe_duration = pd.to_numeric(target[duration_col], errors="coerce").iloc[-1]
+        if pd.notna(qe_duration) and float(qe_duration) > 0:
+            total_ms = round(float(qe_duration), 3)
+
+    se_end_classes = {"VertiPaqSEQueryEnd", "DirectQueryEnd"}
+    se_df = trace_df.loc[
+        trace_df[event_class_col].astype(str).isin(se_end_classes)
+    ].copy()
+
+    intervals: List[Tuple[pd.Timestamp, pd.Timestamp]] = []
+    if current_time_col is not None and duration_col is not None and not se_df.empty:
+        for _, row in se_df.iterrows():
+            end_ts = row[current_time_col]
+            dur = row[duration_col]
+            if pd.isna(end_ts):
+                continue
+            if pd.notna(dur) and float(dur) > 0:
+                start_ts = end_ts - pd.to_timedelta(float(dur), unit="ms")
+            else:
+                start_ts = end_ts
+            if end_ts >= start_ts:
+                intervals.append((start_ts, end_ts))
+
+    se_ms = 0.0
+    if intervals:
+        ordered = sorted(intervals, key=lambda x: (x[0], x[1]))
+        se_total_ms = 0.0
+        cur_start, cur_end = ordered[0]
+        for start, end in ordered[1:]:
+            if start <= cur_end:
+                if end > cur_end:
+                    cur_end = end
+            else:
+                se_total_ms += (cur_end - cur_start).total_seconds() * 1000.0
+                cur_start, cur_end = start, end
+        se_total_ms += (cur_end - cur_start).total_seconds() * 1000.0
+        se_ms = round(se_total_ms, 3)
+    elif duration_col is not None and not se_df.empty:
+        se_total_ms = pd.to_numeric(se_df[duration_col], errors="coerce").fillna(0.0).clip(lower=0.0).sum()
+        if se_total_ms > 0:
+            se_ms = round(min(float(se_total_ms), total_ms), 3)
+
+    fe_ms = round(max(0.0, total_ms - se_ms), 3)
+
+    summary = {
+        "Dataset": dataset,
+        "Workspace": workspace,
+        "Total Elapsed (ms)": total_ms,
+        "Storage Engine (ms)": se_ms,
+        "Formula Engine (ms)": fe_ms,
+        "Trace Event Count": int(len(trace_df)),
+        "Note": "Timings are derived from QueryEnd + SE end events (VertiPaq/DirectQuery).",
+    }
+
+    return pd.DataFrame([summary])
 
 
 @log
