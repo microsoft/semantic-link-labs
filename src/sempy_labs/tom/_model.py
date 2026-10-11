@@ -6129,6 +6129,111 @@ class TOMWrapper:
 
         return result
 
+    @staticmethod
+    def _workspace_ids_from_sql_server(server: str) -> List[str]:
+        """
+        Best-effort decoding of the workspace ID embedded (base32) in the first
+        segment of a Fabric SQL endpoint host name. Returns candidate IDs which
+        must be verified against the API before being used.
+        """
+        import base64
+
+        prefix = server.split(".")[0].split("-")[0].upper()
+        if len(prefix) < 26:
+            return []
+        try:
+            raw = base64.b32decode(prefix[:26] + "======")[:16]
+        except (ValueError, TypeError):
+            return []
+        return list(dict.fromkeys([str(UUID(bytes=raw)), str(UUID(bytes_le=raw))]))
+
+    def _resolve_direct_lake_source(
+        self, source: str, artifact_id: str, uses_sql_endpoint: bool
+    ) -> tuple:
+        """
+        Resolves a Direct Lake source to its (item ID, item name, item type, workspace ID).
+
+        Uses public Fabric APIs (which support Service Principal authentication)
+        and only falls back to the internal metadata API (which does not) when
+        the source's workspace cannot be determined otherwise.
+        """
+        from sempy.fabric.exceptions import FabricHTTPException
+
+        def _get_item(workspace_id):
+            try:
+                return _base_api(
+                    request=f"/v1/workspaces/{workspace_id}/items/{artifact_id}",
+                    client="fabric_sp",
+                ).json()
+            except FabricHTTPException:
+                return None
+
+        if uses_sql_endpoint:
+            # Sql.Database("<server>", "<id>") does not carry the workspace ID.
+            candidates = [self._workspace_id] + self._workspace_ids_from_sql_server(
+                source
+            )
+        else:
+            # AzureStorage.DataLake(".../<workspace id>/<item id>")
+            candidates = [source]
+
+        item = None
+        for ws in dict.fromkeys(str(c) for c in candidates if c):
+            item = _get_item(ws)
+            if item:
+                break
+
+        if item is None:
+            try:
+                result = _base_api(
+                    request=f"metadata/artifacts/{artifact_id}", client="internal"
+                ).json()
+            except FabricHTTPException as e:
+                raise ValueError(
+                    f"{icons.red_dot} Unable to resolve the '{artifact_id}' Direct Lake source. "
+                    "If running as a service principal, ensure it has access to the source's workspace."
+                ) from e
+            item_type = result.get("artifactType")
+            if item_type == "SqlAnalyticsEndpoint":
+                return (
+                    result.get("parentArtifactObjectId"),
+                    result.get("displayName"),
+                    "Lakehouse",
+                    result.get("folderObjectId"),
+                )
+            return (
+                artifact_id,
+                result.get("displayName"),
+                item_type,
+                result.get("folderObjectId"),
+            )
+
+        item_type = item.get("type")
+        item_name = item.get("displayName")
+        item_workspace_id = item.get("workspaceId")
+
+        if item_type == "SQLEndpoint":
+            # Report the lakehouse which owns the SQL analytics endpoint.
+            responses = _base_api(
+                request=f"/v1/workspaces/{item_workspace_id}/lakehouses",
+                uses_pagination=True,
+                client="fabric_sp",
+            )
+            for r in responses:
+                for lh in r.get("value", []):
+                    sql_props = (lh.get("properties") or {}).get(
+                        "sqlEndpointProperties"
+                    ) or {}
+                    if str(sql_props.get("id", "")).lower() == artifact_id.lower():
+                        return (
+                            lh.get("id"),
+                            lh.get("displayName"),
+                            "Lakehouse",
+                            item_workspace_id,
+                        )
+
+        return artifact_id, item_name, item_type, item_workspace_id
+
     def get_direct_lake_sources(self) -> List[dict]:
         """
         Retrieves a list of the Direct Lake sources used in a semantic model, including their type, workspace, and whether they use a SQL endpoint.
@@ -6162,22 +6267,18 @@ class TOMWrapper:
 
         """
 
-        sql = "SqlAnalyticsEndpoint"
         sources = []
         expr = self._get_direct_lake_expressions()
         for name, items in expr.items():
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
-            result = _base_api(
-                request=f"metadata/artifacts/{artifact_id}", client="internal"
-            ).json()
-            item_type = result.get("artifactType")
-            item_name = result.get("displayName")
-            item_workspace_id = result.get("folderObjectId")
-            parent_artifact_id = result.get("parentArtifactObjectId")
-
-            type = "Lakehouse" if item_type == sql else item_type
-            item_id = parent_artifact_id if item_type == sql else artifact_id
+            item_id, item_name, type, item_workspace_id = (
+                self._resolve_direct_lake_source(
+                    source=items[0],
+                    artifact_id=artifact_id,
+                    uses_sql_endpoint=uses_sql_endpoint,
+                )
+            )
 
             sources.append(
                 {
