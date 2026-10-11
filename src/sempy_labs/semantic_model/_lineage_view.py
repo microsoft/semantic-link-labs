@@ -2561,7 +2561,9 @@ def lineage_view(
     Displays an interactive lineage view for a semantic model.
 
     Shows a node graph placing the semantic model at the center with each downstream report
-    (i.e. the reports in the model's workspace that consume it) arranged around
+    (i.e. the reports in any workspace that consume it, as returned by the
+    `Items - Get Downstream Relations <https://learn.microsoft.com/rest/api/fabric/core/items/get-downstream-relations(beta)>`_
+    API) arranged around
     it. Each report can be analyzed for broken elements — references to columns,
     measures or hierarchies that no longer exist in the semantic model — with a
     side panel summarizing the results per report. Selecting a broken report
@@ -2610,9 +2612,9 @@ def lineage_view(
         resolve_workspace_name_and_id,
         resolve_dataset_name_and_id,
         format_dax_object_name,
+        get_downstream_relations,
         _base_api,
     )
-    from sempy_labs._list_functions import list_reports_using_semantic_model
     from sempy_labs.report._report_rebind import report_rebind
 
     ws_name, ws_id = resolve_workspace_name_and_id(workspace)
@@ -2626,10 +2628,18 @@ def lineage_view(
     else:
         ds_name, ds_id = "", ""
 
-    def _web_url_map():
+    # Report Id -> workspace Id of that report. Downstream reports may live in
+    # any workspace, so every per-report operation must use this mapping
+    # rather than the semantic model's workspace.
+    report_ws = {}
+
+    def _report_ws(report_id):
+        return report_ws.get(str(report_id), ws_id)
+
+    def _web_url_map(target_ws_id):
         """Report Id -> Web Url, best effort."""
         try:
-            dfAll = fabric.list_reports(workspace=ws_id)
+            dfAll = fabric.list_reports(workspace=target_ws_id)
         except Exception:
             return {}
         cols = list(dfAll.columns)
@@ -2701,7 +2711,9 @@ def lineage_view(
     # ------------------------------------------------------------------
     def _get_report_definition(report_id):
         result = _base_api(
-            request=(f"/v1/workspaces/{ws_id}/items/{report_id}/getDefinition"),
+            request=(
+                f"/v1/workspaces/{_report_ws(report_id)}/items/{report_id}/getDefinition"
+            ),
             method="post",
             status_codes=None,
             lro_return_json=True,
@@ -3073,7 +3085,9 @@ def lineage_view(
                 {"path": path, "payload": out_payload, "payloadType": "InlineBase64"}
             )
         _base_api(
-            request=(f"/v1/workspaces/{ws_id}/reports/{report_id}/updateDefinition"),
+            request=(
+                f"/v1/workspaces/{_report_ws(report_id)}/reports/{report_id}/updateDefinition"
+            ),
             method="post",
             payload={"definition": {"parts": out_parts}},
             status_codes=None,
@@ -3082,17 +3096,44 @@ def lineage_view(
         )
 
     def _build_reports(analyze):
-        """Return the list of downstream-report payload dicts."""
-        dfR = list_reports_using_semantic_model(dataset=ds_id, workspace=ws_id)
-        url_map = _web_url_map()
+        """Return the list of downstream-report payload dicts.
+
+        Uses the Get Downstream Relations API so reports in any workspace
+        (not only the semantic model's workspace) are included.
+        """
+        relations = get_downstream_relations(item=ds_id, workspace=ws_id) or {}
+        ws_names = {
+            str(w.get("id")): w.get("displayName") or ""
+            for w in relations.get("workspaces", [])
+        }
+        # Only reports bound directly to this model (not transitive dependents).
+        direct_ids = {
+            str(rel.get("itemId"))
+            for rel in relations.get("relations", [])
+            if str(rel.get("dependentOnItemId", "")).lower() == ds_id.lower()
+        }
+        report_items = [
+            i
+            for i in relations.get("items", [])
+            if i.get("type") == "Report" and str(i.get("id")) in direct_ids
+        ]
+
+        report_ws.clear()
+        url_maps = {}
         reports = []
-        for _, r in dfR.iterrows():
+        for item in report_items:
+            rid = str(item.get("id"))
+            rws = str(item.get("workspaceId") or ws_id)
+            report_ws[rid] = rws
+            if rws not in url_maps:
+                url_maps[rws] = _web_url_map(rws)
             reports.append(
                 {
-                    "id": str(r["Report Id"]),
-                    "name": str(r["Report Name"]),
-                    "workspaceName": str(r["Report Workspace Name"]),
-                    "webUrl": url_map.get(str(r["Report Id"])),
+                    "id": rid,
+                    "name": str(item.get("displayName") or ""),
+                    "workspaceId": rws,
+                    "workspaceName": ws_names.get(rws, ""),
+                    "webUrl": url_maps[rws].get(rid),
                     "objectCount": 0,
                     "invalidCount": 0,
                     "analyzed": False,
@@ -3299,12 +3340,17 @@ def lineage_view(
                         "kind": "error",
                     }
                     return
-                report_rebind(
-                    report=[str(x) for x in report_ids],
-                    dataset=str(target_ds),
-                    report_workspace=ws_id,
-                    dataset_workspace=str(target_ds_ws),
-                )
+                # Reports may span workspaces; rebind each workspace's batch.
+                by_ws = {}
+                for rid in report_ids:
+                    by_ws.setdefault(_report_ws(rid), []).append(str(rid))
+                for rep_ws, rep_ids in by_ws.items():
+                    report_rebind(
+                        report=rep_ids,
+                        dataset=str(target_ds),
+                        report_workspace=rep_ws,
+                        dataset_workspace=str(target_ds_ws),
+                    )
                 # Rebound reports drop out of this model's lineage; reload.
                 keep = widget.analyzed
                 widget.reports = _build_reports(analyze=keep)
