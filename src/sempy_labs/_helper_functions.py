@@ -2354,16 +2354,23 @@ def _base_api(
     if client in ["fabric", "fabric_sp"]:
         token = auth.token_provider.get() or FabricDefaultCredential()
         c = fabric.FabricRestClient(credential=token)
+        header_kwargs = {"headers": headers} if headers else {}
+        content_type = (headers or {}).get("Content-Type", "application/json")
+        # Non-JSON bodies (e.g. text/plain) must be sent as-is rather than JSON-encoded.
+        if "json" in content_type.lower():
+            body_kwargs = {"json": payload, **header_kwargs}
+        else:
+            body_kwargs = {"data": payload, **header_kwargs}
         if method == "get":
-            response = c.get(request)
+            response = c.get(request, **header_kwargs)
         elif method == "delete":
-            response = c.delete(request)
+            response = c.delete(request, **header_kwargs)
         elif method == "post":
-            response = c.post(request, json=payload)
+            response = c.post(request, **body_kwargs)
         elif method == "patch":
-            response = c.patch(request, json=payload)
+            response = c.patch(request, **body_kwargs)
         elif method == "put":
-            response = c.put(request, json=payload)
+            response = c.put(request, **body_kwargs)
         else:
             raise NotImplementedError
     elif client == "onelake":
