@@ -29,6 +29,7 @@ def migrate_calc_tables_to_lakehouse(
     """
     Creates delta tables in your lakehouse based on the DAX expression of a calculated table in an import/DirectQuery semantic model.
     The DAX expression encapsulating the calculated table logic is stored in the new Direct Lake semantic model as model annotations.
+    Calculated columns within calculated tables are not migrated.
 
     Parameters
     ----------
@@ -113,27 +114,10 @@ def migrate_calc_tables_to_lakehouse(
                     if str(p.SourceType) == "Calculated":
                         query = p.Source.Expression
                         if "NAMEOF" not in query:  # exclude field parameters
-                            daxQuery = ""
-                            if query.lower().startswith("calendar") and any(
-                                str(c.Type) == "Calculated" for c in t.Columns
-                            ):
-                                daxQuery = f"ADDCOLUMNS(\n{query},"
-                                for c in t.Columns:
-                                    if str(c.Type) == "Calculated":
-                                        expr = c.Expression
-                                        expr = expr.replace(f"'{t.Name}'", "").replace(
-                                            f"{t.Name}[Date]", "[Date]"
-                                        )
-                                        expr = expr.replace(
-                                            "[MonthNo]", "MONTH([Date])"
-                                        ).replace(
-                                            "[QuarterNo]",
-                                            "INT((MONTH([Date]) + 2) / 3)",
-                                        )
-                                        daxQuery = f'{daxQuery}\n"{c.Name}",{expr},'
-                                daxQuery = "EVALUATE\n" + daxQuery.rstrip(",") + "\n)"
-                            else:
-                                daxQuery = f"EVALUATE\n{query}"
+                            # Only the calculated table's own columns are
+                            # materialized; calculated columns within calculated
+                            # tables are not migrated.
+                            daxQuery = f"EVALUATE\n{query}"
                             daxQueryTopN = (
                                 daxQuery.replace("EVALUATE\n", "EVALUATE\nTOPN(1,")
                                 + ")"
@@ -246,6 +230,8 @@ def migrate_field_parameters(
     """
     Migrates field parameters from one semantic model to another.
 
+    References to calculated columns which do not exist in the new semantic model (i.e. were not migrated) are removed from the field parameters.
+
     Parameters
     ----------
     dataset : str
@@ -306,18 +292,28 @@ def migrate_field_parameters(
         dataset=new_dataset, workspace=new_dataset_workspace, readonly=False
     ) as tom:
 
+        # Calculated columns are supported in Direct Lake (with the 'UserContext'
+        # expression context), so only references to calculated columns which
+        # were not migrated to the new semantic model are removed.
+        new_columns = {
+            format_dax_object_name(c.Parent.Name, c.Name) for c in tom.all_columns()
+        }
+        missing_calc_columns = [
+            obj
+            for obj in dfC_CalcColumn["Column Object"].values
+            if obj not in new_columns
+        ]
+
         for i, r in dfP_filt.iterrows():
             tName = r["Table Name"]
             query = r["Query"]
 
-            # For field parameters, remove calc columns from the query
+            # For field parameters, remove non-migrated calc columns from the query
             rows = query.strip().split("\n")
             filtered_rows = [
                 row
                 for row in rows
-                if not any(
-                    value in row for value in dfC_CalcColumn["Column Object"].values
-                )
+                if not any(value in row for value in missing_calc_columns)
             ]
             updated_query_string = "\n".join(filtered_rows)
 
