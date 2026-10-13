@@ -1578,6 +1578,32 @@ def list_picker_lakehouses(
     return _picker_sorted(rows)
 
 
+def list_picker_warehouses(
+    workspace_id: Optional[str],
+) -> List[Dict[str, str]]:
+    """
+    Returns the warehouses to offer in an interactive tool's warehouse picker.
+
+    Parameters
+    ----------
+    workspace_id : str
+        The workspace whose warehouses are listed.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        A list of ``{"id": ..., "name": ...}`` dicts sorted by name.
+    """
+
+    if not workspace_id:
+        return []
+    try:
+        rows = _picker_items_from_api(f"/v1/workspaces/{workspace_id}/warehouses")
+    except Exception:
+        rows = []
+    return _picker_sorted(rows)
+
+
 # ---------------------------------------------------------------------------
 # Reusable header (title + dataset/workspace subtitle + theme toggle)
 # ---------------------------------------------------------------------------
