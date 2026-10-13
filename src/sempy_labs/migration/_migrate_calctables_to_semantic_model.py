@@ -23,6 +23,7 @@ def migrate_calc_tables_to_semantic_model(
 ):
     """
     Creates new tables in the Direct Lake semantic model based on the lakehouse tables created using the 'migrate_calc_tables_to_lakehouse' function.
+    Calculated columns within calculated tables are not migrated.
 
     Parameters
     ----------
@@ -63,10 +64,12 @@ def migrate_calc_tables_to_semantic_model(
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     lc = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
-    # Get all calc table columns of calc tables not including field parameters
+    # Get the columns of calc tables (not including field parameters). Calculated
+    # columns within calculated tables are not migrated.
     dfC_filt = dfC[
         (dfC["Table Name"].isin(dfP_filt["Table Name"]))
-    ]  # & (dfC['Type'] == 'CalculatedTableColumn')]
+        & (dfC["Type"] == "CalculatedTableColumn")
+    ]
     # dfA = fabric.list_annotations(new_dataset, new_dataset_workspace)
     # dfA_filt = dfA[(dfA['Object Type'] == 'Model') & ~ (dfA['Annotation Value'].str.contains('NAMEOF'))]
 

@@ -18,6 +18,10 @@ def show_unsupported_direct_lake_objects(
     Returns a list of a semantic model's objects which are not supported by Direct Lake based on
     `official documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations>`_.
 
+    Calculated columns are supported in Direct Lake on OneLake (preview) with the 'UserContext'
+    `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_ only.
+    As they are evaluated at query time (not materialized), relationships which use calculated columns are not supported.
+
     Parameters
     ----------
     dataset : str | uuid.UUID
@@ -30,7 +34,8 @@ def show_unsupported_direct_lake_objects(
     Returns
     -------
     typing.Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
-        3 pandas dataframes showing objects in a semantic model which are not supported by Direct Lake.
+        3 pandas dataframes showing objects in a semantic model which are not supported by Direct Lake:
+        calculated tables, columns of binary data type, and relationships which use columns of different data types or calculated columns.
     """
 
     pd.options.mode.chained_assignment = None
@@ -49,8 +54,8 @@ def show_unsupported_direct_lake_objects(
     dfT_filt.rename(columns={"Name": "Table Name"}, inplace=True)
     t = dfT_filt[["Table Name", "Type"]]
 
-    # Calc columns
-    dfC_filt = dfC[(dfC["Type"] == "Calculated") | (dfC["Data Type"] == "Binary")]
+    # Binary columns (calculated columns are supported with the 'UserContext' expression context)
+    dfC_filt = dfC[dfC["Data Type"] == "Binary"]
     c = dfC_filt[["Table Name", "Column Name", "Type", "Data Type", "Source"]]
 
     # Relationships
@@ -66,8 +71,17 @@ def show_unsupported_direct_lake_objects(
 
     dfR["From Column Data Type"] = merged_from["Data Type"]
     dfR["To Column Data Type"] = merged_to["Data Type"]
+    from_calc = merged_from["Type"] == "Calculated"
+    to_calc = merged_to["Type"] == "Calculated"
+    type_mismatch = dfR["From Column Data Type"] != dfR["To Column Data Type"]
 
-    dfR_filt = dfR[(dfR["From Column Data Type"] != dfR["To Column Data Type"])]
+    dfR["Reason"] = None
+    dfR.loc[type_mismatch, "Reason"] = "Columns have different data types"
+    dfR.loc[from_calc | to_calc, "Reason"] = (
+        "Uses a calculated column (calculated columns cannot be used in relationships in Direct Lake)"
+    )
+
+    dfR_filt = dfR[type_mismatch | from_calc | to_calc]
     r = dfR_filt[
         [
             "From Table",
@@ -76,13 +90,14 @@ def show_unsupported_direct_lake_objects(
             "To Column",
             "From Column Data Type",
             "To Column Data Type",
+            "Reason",
         ]
     ]
 
     # print('Calculated Tables are not supported...')
     # display(t)
     # print("Learn more about Direct Lake limitations here: https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations")
-    # print('Calculated columns are not supported. Columns of binary data type are not supported.')
+    # print('Columns of binary data type are not supported.')
     # display(c)
     # print('Columns used for relationship cannot be of data type datetime and they also must be of the same data type.')
     # display(r)

@@ -24,6 +24,10 @@ def migrate_model_objects_to_semantic_model(
     """
     Adds the rest of the model objects (besides tables/columns) and their properties to a Direct Lake semantic model based on an import/DirectQuery semantic model.
 
+    Relationships which use calculated columns are not created in Direct Lake semantic models as calculated columns in Direct Lake
+    use the 'UserContext' `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_
+    (they are evaluated at query time and not materialized).
+
     Parameters
     ----------
     dataset : str
@@ -335,6 +339,25 @@ def migrate_model_objects_to_semantic_model(
                     print(
                         f"{icons.warning} The {relName} relationship was not created as Direct Lake does not support relationships based on columns with different data types."
                     )
+                # Direct Lake calculated columns are evaluated at query time (not
+                # materialized) so they cannot be used in relationships.
+                elif isDirectLake and any(
+                    c.Type == TOM.ColumnType.Calculated
+                    and (
+                        (
+                            c.Name == r.FromColumn.Name
+                            and c.Parent.Name == r.FromTable.Name
+                        )
+                        or (
+                            c.Name == r.ToColumn.Name
+                            and c.Parent.Name == r.ToTable.Name
+                        )
+                    )
+                    for c in tom.all_columns()
+                ):
+                    print(
+                        f"{icons.red_dot} The {relName} relationship was not created as it uses a calculated column. Calculated columns in Direct Lake use the 'User Context' expression context, are not materialized, and cannot be used in relationships."
+                    )
                 # Columns do not exist in the new semantic model
                 elif not any(
                     c.Name == r.FromColumn.Name and c.Parent.Name == r.FromTable.Name
@@ -357,7 +380,7 @@ def migrate_model_objects_to_semantic_model(
                         )
                     ):
                         print(
-                            f"{icons.red_dot} The {relName} relationship was not created as the necssary column(s) do not exist. This is due to Direct Lake not supporting calculated columns."
+                            f"{icons.red_dot} The {relName} relationship was not created as the necessary calculated column(s) were not migrated. Calculated columns in Direct Lake also cannot be used in relationships."
                         )
                     elif not any(
                         c.Name == r.FromColumn.Name
