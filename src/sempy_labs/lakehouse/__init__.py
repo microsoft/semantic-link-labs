@@ -41,7 +41,9 @@ from ._schemas import (
     is_schema_enabled,
     create_schema,
 )
-
+from ._lakehouse_manager import (
+    lakehouse_manager,
+)
 
 __all__ = [
     "get_lakehouse_columns",
@@ -69,4 +71,5 @@ __all__ = [
     "is_schema_enabled",
     "create_materialized_lake_view",
     "create_schema",
+    "lakehouse_manager",
 ]

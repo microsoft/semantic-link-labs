@@ -1234,11 +1234,41 @@ function render({ model, el }) {
         }
     }
 
+    // While the guide is open the rest of the launcher is inert, so keyboard
+    // and assistive-technology users cannot reach controls behind the modal.
+    let guideReturnFocus = null;
+    const inertWhileGuideOpen = [];
+    function setBackgroundInert(on) {
+        if (on) {
+            for (const child of root.children) {
+                if (child !== modal && !child.inert) {
+                    child.inert = true;
+                    inertWhileGuideOpen.push(child);
+                }
+            }
+        } else {
+            while (inertWhileGuideOpen.length) inertWhileGuideOpen.pop().inert = false;
+        }
+    }
+    function guideFocusables() {
+        const selector = 'a[href], button:not([disabled]), input:not([disabled]), '
+            + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        return [...modal.querySelectorAll(selector)]
+            .filter((el) => el.getClientRects().length > 0);
+    }
     function setGuideOpen(open) {
+        if (open === modal.classList.contains("show")) return;
         modal.classList.toggle("show", open);
+        setBackgroundInert(open);
         if (open) {
+            guideReturnFocus = document.activeElement;
             dialogBody.scrollTop = 0;
             closeGuideBtn.focus();
+        } else {
+            const target = guideReturnFocus && guideReturnFocus.isConnected
+                ? guideReturnFocus : linksBtn;
+            guideReturnFocus = null;
+            target.focus();
         }
     }
     linksBtn.addEventListener("click", () =>
@@ -1246,6 +1276,20 @@ function render({ model, el }) {
     closeGuideBtn.addEventListener("click", () => setGuideOpen(false));
     modal.addEventListener("click", (event) => {
         if (event.target === modal) setGuideOpen(false);
+    });
+    // Keep Tab / Shift+Tab cycling within the dialog.
+    modal.addEventListener("keydown", (event) => {
+        if (event.key !== "Tab" || !modal.classList.contains("show")) return;
+        const focusables = guideFocusables();
+        if (!focusables.length) { event.preventDefault(); return; }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey && (active === first || !modal.contains(active))) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (active === last || !modal.contains(active))) {
+            event.preventDefault(); first.focus();
+        }
     });
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && modal.classList.contains("show")) {

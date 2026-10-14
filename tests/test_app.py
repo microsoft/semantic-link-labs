@@ -41,6 +41,19 @@ def test_getting_started_opens_a_modal_summarizing_every_tool():
     assert 'event.key === "Escape"' in js
 
 
+def test_getting_started_keeps_keyboard_focus_inside_the_modal():
+    js = _app._WIDGET_JS
+
+    # The launcher behind the modal is inert while it is open.
+    assert "child.inert = true;" in js
+    assert "setBackgroundInert(open);" in js
+    # Tab / Shift+Tab cycle within the dialog.
+    assert 'if (event.key !== "Tab" || !modal.classList.contains("show")) return;' in js
+    # Focus returns to the control which opened it.
+    assert "guideReturnFocus = document.activeElement;" in js
+    assert "target.focus();" in js
+
+
 def test_the_brand_flask_bubbles_on_hover():
     assert "slls-app-brand-bubble" in _app._BRAND_BUBBLES_HTML
     assert _app._BRAND_BUBBLES_HTML in _app._WIDGET_JS

@@ -132,7 +132,7 @@ def _summarize_blobs(
                 record["size"] += int(blob.get("Content Length") or 0)
             except (TypeError, ValueError):
                 pass
-        modified = str(blob.get("Creation Time") or "")
+        modified = str(blob.get("Last Modified") or blob.get("Creation Time") or "")
         if modified > record["modified"]:
             record["modified"] = modified
 
@@ -752,9 +752,12 @@ function render({ model, el }) {
             || model.get("picker_loading") === true;
     }
 
+    // Names seen in the pickers, so the loaded lakehouse stays labelled after
+    // the picker moves on to another workspace.
+    const knownNames = new Map();
     function nameOf(list, id) {
-        const match = (model.get(list) || []).find((item) => item.id === id);
-        return match ? match.name : "";
+        for (const item of model.get(list) || []) knownNames.set(item.id, item.name);
+        return knownNames.get(id) || "";
     }
 
     // Tree nodes which are open; both containers start expanded.
@@ -805,9 +808,10 @@ function render({ model, el }) {
         if (view === "Tree") renderTree(); else renderTable();
     }
 
-    // Selectable: everything the user can act on, so not the two containers.
+    // Selectable: everything the user can act on, so not the containers and
+    // schemas (groupings) nor the "+N more" placeholders.
     function selectable(node) {
-        return node.type !== "Container" && node.type !== "More";
+        return node.type !== "Container" && node.type !== "Schema" && node.type !== "More";
     }
 
     function selectedNodes() {
@@ -1023,7 +1027,10 @@ function render({ model, el }) {
         ws.setDisabled(working); lh.setDisabled(!workspaceId || working);
         openBtn.disabled = !lakehouseId || working;
 
-        const hasContents = Boolean(lakehouseId) && !pickerOpen;
+        // Contents and actions belong to the loaded lakehouse, not the picker selection.
+        const loadedWorkspaceId = model.get("loaded_workspace_id") || "";
+        const loadedLakehouseId = model.get("loaded_lakehouse_id") || "";
+        const hasContents = Boolean(loadedLakehouseId || lakehouseId) && !pickerOpen;
         backdrop.style.display = pickerOpen ? "flex" : "none";
         backdrop.classList.toggle("slls-lhm-modal", pickerOpen && Boolean((model.get("objects") || []).length));
         closePicker.style.display = (model.get("objects") || []).length ? "" : "none";
@@ -1034,8 +1041,8 @@ function render({ model, el }) {
         reloadBtn.classList.toggle("sl-spinning", model.get("loading") === true);
         progress.classList.toggle("slls-lhm-show", working);
 
-        const lakehouseName = nameOf("available_lakehouses", lakehouseId);
-        const workspaceName = nameOf("available_workspaces", workspaceId);
+        const lakehouseName = nameOf("available_lakehouses", loadedLakehouseId);
+        const workspaceName = nameOf("available_workspaces", loadedWorkspaceId);
         subtitle.innerHTML = "";
         if (hasContents && lakehouseName) {
             const b = document.createElement("b"); b.textContent = lakehouseName;
@@ -1086,6 +1093,13 @@ function render({ model, el }) {
         "schema_enabled", "status_message", "error_message", "tree"]) {
         model.on("change:" + name, () => { renderState(); renderRows(); });
     }
+    // A different lakehouse was loaded: selections made in the previous one
+    // must never carry over to it.
+    model.on("change:loaded_lakehouse_id", () => {
+        selected.clear();
+        expanded.clear(); expanded.add("Tables"); expanded.add("Files");
+        renderState(); renderRows();
+    });
     model.on("change:objects", () => {
         if ((model.get("objects") || []).length) pickerOpen = false;
         renderState(); renderRows();
@@ -1140,6 +1154,59 @@ def _action_paths(data: dict) -> List[str]:
     if single and single not in paths:
         paths.append(single)
     return [path for path in paths if path]
+
+
+def _is_safe_object_path(path: str) -> bool:
+    """Whether a path is confined beneath the lakehouse's Tables or Files.
+
+    Paths come from the browser, so any form which could escape the lakehouse
+    once appended to its ABFSS URI (``..`` segments, percent-encoding,
+    backslashes, query strings, fragments, control characters) is refused.
+    """
+
+    if not isinstance(path, str) or not path:
+        return False
+    if any(ch in path for ch in "\\?#%") or any(ord(ch) < 32 for ch in path):
+        return False
+    parts = path.split("/")
+    if len(parts) < 2 or parts[0] not in _CONTAINERS:
+        return False
+    return all(part not in ("", ".", "..") for part in parts)
+
+
+def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
+    """The paths of the loaded objects which recover / delete may target.
+
+    Containers and schemas are groupings and the "+N more" nodes are not
+    objects, so none of them can be targeted.
+    """
+
+    allowed = {str(row.get("path") or "") for row in objects}
+    groupings = set()
+
+    def _walk(nodes: List[dict]):
+        for node in nodes:
+            path = str(node.get("path") or "")
+            if node.get("type") in ("Container", "Schema", "More"):
+                groupings.add(path)
+            else:
+                allowed.add(path)
+            _walk(node.get("children") or [])
+
+    _walk(tree)
+    return {path for path in allowed - groupings if _is_safe_object_path(path)}
+
+
+def _authorized_paths(paths: List[str], allowed: set) -> Tuple[List[str], List[str]]:
+    """Split requested paths into those which may be acted on and the rest."""
+
+    accepted, rejected = [], []
+    for path in paths:
+        if _is_safe_object_path(path) and path in allowed:
+            accepted.append(path)
+        else:
+            rejected.append(path)
+    return accepted, rejected
 
 
 @log
@@ -1220,6 +1287,9 @@ def lakehouse_manager(
         available_lakehouses = traitlets.List([]).tag(sync=True)
         selected_workspace_id = traitlets.Unicode("").tag(sync=True)
         selected_lakehouse_id = traitlets.Unicode("").tag(sync=True)
+        # The lakehouse whose contents are shown (display only; see `loaded`).
+        loaded_workspace_id = traitlets.Unicode("").tag(sync=True)
+        loaded_lakehouse_id = traitlets.Unicode("").tag(sync=True)
         objects = traitlets.List([]).tag(sync=True)
         tree = traitlets.List([]).tag(sync=True)
         summary = traitlets.Dict({}).tag(sync=True)
@@ -1253,34 +1323,81 @@ def lakehouse_manager(
         finally:
             widget.picker_loading = False
 
-    def _load_objects(data: dict):
-        if not widget.selected_lakehouse_id:
-            return
+    # The lakehouse whose contents are shown. Every action targets it, never
+    # the picker selection, which can change without a Connect (the picker can
+    # be closed after choosing another lakehouse). Held on the kernel only, so
+    # the browser cannot redirect an action to another lakehouse.
+    loaded: Dict[str, Any] = {"workspace_id": "", "lakehouse_id": "", "paths": set()}
+
+    def _read_lakehouse(workspace_id: str, lakehouse_id: str) -> bool:
+        """Load a lakehouse's contents into the widget; True when it succeeded."""
+
         widget.loading = True
-        widget.error_message = ""
         try:
             objects, tree, schema_enabled = _lakehouse_objects(
-                widget.selected_workspace_id, widget.selected_lakehouse_id
+                workspace_id, lakehouse_id
             )
-            widget.schema_enabled = schema_enabled
-            widget.summary = _summarize_objects(objects)
-            widget.objects = _display_rows(objects)
-            widget.tree = tree
         except Exception as e:
-            widget.objects = []
-            widget.tree = []
-            widget.summary = {}
-            widget.error_message = f"Could not read the lakehouse: {e}"
+            message = f"Could not read the lakehouse: {e}"
+            widget.error_message = "; ".join(
+                part for part in (widget.error_message, message) if part
+            )
+            return False
         finally:
             widget.loading = False
+        loaded.update(
+            workspace_id=workspace_id,
+            lakehouse_id=lakehouse_id,
+            paths=_actionable_paths(objects, tree),
+        )
+        widget.schema_enabled = schema_enabled
+        widget.summary = _summarize_objects(objects)
+        widget.objects = _display_rows(objects)
+        widget.tree = tree
+        widget.loaded_workspace_id = workspace_id
+        widget.loaded_lakehouse_id = lakehouse_id
+        return True
+
+    def _load_objects(data: dict):
+        workspace_id = str(data.get("workspace") or widget.selected_workspace_id)
+        lakehouse_id = str(data.get("lakehouse") or widget.selected_lakehouse_id)
+        if not (workspace_id and lakehouse_id):
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        _read_lakehouse(workspace_id, lakehouse_id)
+
+    def _reload(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        _read_lakehouse(loaded["workspace_id"], loaded["lakehouse_id"])
+
+    def _refresh_after_action():
+        """Reload the contents, keeping the action's outcome messages."""
+
+        if loaded["lakehouse_id"]:
+            _read_lakehouse(loaded["workspace_id"], loaded["lakehouse_id"])
+
+    def _target_paths(data: dict, verb: str) -> List[str]:
+        """The requested paths which belong to the loaded lakehouse."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), loaded["paths"])
+        if rejected:
+            widget.error_message = (
+                f"Could not {verb} " + ", ".join(rejected) + ": not an object "
+                "of the loaded lakehouse."
+            )
+        return paths
 
     def _recover(data: dict):
-        paths = _action_paths(data)
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _target_paths(data, "recover")
         if not paths:
             return
         widget.busy = True
-        widget.error_message = ""
-        widget.status_message = ""
         failures = []
         try:
             from sempy_labs.lakehouse._blobs import recover_lakehouse_object
@@ -1289,8 +1406,8 @@ def lakehouse_manager(
                 try:
                     recover_lakehouse_object(
                         file_path=path,
-                        lakehouse=widget.selected_lakehouse_id,
-                        workspace=widget.selected_workspace_id,
+                        lakehouse=loaded["lakehouse_id"],
+                        workspace=loaded["workspace_id"],
                     )
                 except Exception as e:
                     failures.append(f"{path}: {e}")
@@ -1298,49 +1415,70 @@ def lakehouse_manager(
                 f"Recovery was requested for {len(paths) - len(failures)} object(s)."
             )
         except Exception as e:
-            widget.error_message = f"Could not recover the selected objects: {e}"
+            failures.append(f"the selected objects: {e}")
         finally:
             widget.busy = False
         if failures:
-            widget.error_message = "Could not recover " + "; ".join(failures)
-        _load_objects({})
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    "Could not recover " + "; ".join(failures),
+                )
+                if part
+            )
+        _refresh_after_action()
 
     def _delete(data: dict):
-        paths = _action_paths(data)
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _target_paths(data, "delete")
         if not paths:
             return
         widget.busy = True
-        widget.error_message = ""
-        widget.status_message = ""
         failures = []
+        deleted = 0
         try:
             import notebookutils
             from sempy_labs._helper_functions import create_abfss_path_from_path
 
             for path in paths:
                 try:
-                    notebookutils.fs.rm(
+                    removed = notebookutils.fs.rm(
                         create_abfss_path_from_path(
-                            widget.selected_lakehouse_id,
-                            widget.selected_workspace_id,
+                            loaded["lakehouse_id"],
+                            loaded["workspace_id"],
                             path,
                         ),
                         True,
                     )
                 except Exception as e:
                     failures.append(f"{path}: {e}")
-            widget.status_message = f"Deleted {len(paths) - len(failures)} object(s)."
+                    continue
+                # fs.rm reports some failures by returning False, not raising.
+                if removed is False:
+                    failures.append(f"{path}: the object was not deleted")
+                else:
+                    deleted += 1
+            widget.status_message = f"Deleted {deleted} object(s)."
         except Exception as e:
-            widget.error_message = f"Could not delete the selected objects: {e}"
+            failures.append(f"the selected objects: {e}")
         finally:
             widget.busy = False
         if failures:
-            widget.error_message = "Could not delete " + "; ".join(failures)
-        _load_objects({})
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    "Could not delete " + "; ".join(failures),
+                )
+                if part
+            )
+        _refresh_after_action()
 
     def _maintenance(data: dict):
         table = str(data.get("table") or "")
-        if not table:
+        if not table or not loaded["lakehouse_id"]:
             return
         optimize = bool(data.get("optimize"))
         v_order = bool(data.get("v_order"))
@@ -1362,20 +1500,20 @@ def lakehouse_manager(
                 vacuum=vacuum,
                 retention_period=retention if (vacuum and retention) else None,
                 schema=str(data.get("schema") or "") or None,
-                lakehouse=widget.selected_lakehouse_id,
-                workspace=widget.selected_workspace_id,
+                lakehouse=loaded["lakehouse_id"],
+                workspace=loaded["workspace_id"],
             )
             widget.status_message = f"Table maintenance finished for '{table}'."
         except Exception as e:
             widget.error_message = f"Table maintenance failed for '{table}': {e}"
         finally:
             widget.busy = False
-        _load_objects({})
+        _refresh_after_action()
 
     handlers = {
         "workspace": _load_lakehouses,
         "open": _load_objects,
-        "reload": _load_objects,
+        "reload": _reload,
         "recover": _recover,
         "delete": _delete,
         "maintenance": _maintenance,

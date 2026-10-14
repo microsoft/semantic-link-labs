@@ -1,5 +1,10 @@
 """The Lakehouse Manager rolls OneLake blobs up into lakehouse objects."""
 
+import sys
+import types
+
+import pytest
+
 from sempy_labs import _app
 from sempy_labs.lakehouse import _lakehouse_manager as lhm
 
@@ -180,8 +185,11 @@ def test_tree_objects_can_be_selected_and_acted_on_in_bulk():
     js = lhm._LHM_JS
 
     assert 'check.setAttribute("aria-label", "Select " + node.path);' in js
-    # Containers are groupings, not objects.
-    assert 'return node.type !== "Container" && node.type !== "More";' in js
+    # Containers and schemas are groupings, not objects.
+    assert (
+        'return node.type !== "Container" && node.type !== "Schema" && node.type !== "More";'
+        in js
+    )
     assert 'act("recover", { paths: paths })' in js
     assert 'act("delete", { paths: paths })' in js
     # Deleting is confirmed first.
@@ -222,3 +230,160 @@ def test_the_tool_is_offered_by_the_app_launcher():
     assert tool["module"] == "sempy_labs.lakehouse._lakehouse_manager"
     assert "Lakehouse" in tool["tags"]
     assert callable(lhm.lakehouse_manager)
+
+
+def test_the_last_modified_time_is_shown_rather_than_the_creation_time():
+    blob = _blob("Files/readme.txt", created="2026-01-01T00:00:00Z")
+    blob["Last Modified"] = "2026-03-01T00:00:00Z"
+
+    row = lhm._summarize_blobs([blob], LAKEHOUSE_ID)[0]
+
+    assert row["modified"] == "2026-03-01T00:00:00Z"
+
+
+def test_paths_which_could_escape_the_lakehouse_are_refused():
+    assert lhm._is_safe_object_path("Tables/sales")
+    assert lhm._is_safe_object_path("Files/raw/data.csv")
+    for path in [
+        "",
+        "Tables",
+        "Other/x",
+        "Tables/../../other-lakehouse/Files/x",
+        "Files/./x",
+        "Files//x",
+        "Files/%2e%2e/x",
+        "Files\\..\\x",
+        "Files/x?comp=undelete",
+        "Files/x#frag",
+        "Files/x\n",
+    ]:
+        assert not lhm._is_safe_object_path(path), path
+
+
+def test_only_loaded_objects_and_never_groupings_can_be_targeted():
+    blobs = [
+        _blob("Tables/dbo/sales/part-0.parquet"),
+        _blob("Files/raw/data.csv"),
+    ]
+    objects = lhm._summarize_blobs(blobs, LAKEHOUSE_ID, schema_enabled=True)
+    tree = lhm._build_tree(blobs, LAKEHOUSE_ID, schema_enabled=True)
+
+    allowed = lhm._actionable_paths(objects, tree)
+
+    assert "Tables/dbo/sales" in allowed
+    assert "Files/raw/data.csv" in allowed
+    assert "Tables/dbo" not in allowed
+    assert "Tables" not in allowed
+    accepted, rejected = lhm._authorized_paths(
+        ["Tables/dbo/sales", "Tables/dbo", "Files/other"], allowed
+    )
+    assert accepted == ["Tables/dbo/sales"]
+    assert rejected == ["Tables/dbo", "Files/other"]
+
+
+@pytest.fixture
+def manager(monkeypatch):
+    """A Lakehouse Manager widget wired to fake lakehouses and file system."""
+
+    import IPython.display
+    from sempy_labs import _helper_functions
+
+    contents = {
+        "lh-a": [_blob("Files/shared.csv"), _blob("Files/a-only.csv")],
+        "lh-b": [_blob("Files/shared.csv")],
+    }
+    removed = []
+    state = {"rm_result": True, "fail_read": False}
+
+    def fake_objects(workspace_id, lakehouse_id):
+        if state["fail_read"]:
+            raise RuntimeError("listing failed")
+        blobs = contents[lakehouse_id]
+        return (
+            lhm._summarize_blobs(blobs, lakehouse_id),
+            lhm._build_tree(blobs, lakehouse_id),
+            False,
+        )
+
+    def fake_rm(path, recurse=False):
+        removed.append(path)
+        return state["rm_result"]
+
+    monkeypatch.setattr(
+        _helper_functions,
+        "resolve_workspace_name_and_id",
+        lambda workspace=None: ("WS", "ws-1"),
+    )
+    monkeypatch.setattr(
+        _helper_functions,
+        "resolve_lakehouse_name_and_id",
+        lambda lakehouse=None, workspace=None: ("A", "lh-a"),
+    )
+    monkeypatch.setattr(
+        _helper_functions,
+        "create_abfss_path_from_path",
+        lambda lakehouse_id, workspace_id, path: f"{workspace_id}/{lakehouse_id}/{path}",
+    )
+    monkeypatch.setattr(lhm, "_ui_list_picker_workspaces", lambda *a: [])
+    monkeypatch.setattr(lhm, "_ui_list_picker_lakehouses", lambda *a: [])
+    monkeypatch.setattr(lhm, "_lakehouse_objects", fake_objects)
+    monkeypatch.setitem(
+        sys.modules,
+        "notebookutils",
+        types.SimpleNamespace(fs=types.SimpleNamespace(rm=fake_rm)),
+    )
+    shown = []
+    monkeypatch.setattr(IPython.display, "display", shown.append)
+
+    lhm.lakehouse_manager()
+    widget = shown[0]
+
+    def act(action, **data):
+        widget.pending_action = dict(action=action, **data)
+        widget.action_trigger += 1
+
+    act("open", workspace="ws-1", lakehouse="lh-a")
+    return widget, act, removed, state
+
+
+def test_actions_target_the_loaded_lakehouse_not_the_picker_selection(manager):
+    widget, act, removed, _ = manager
+
+    # Lakehouse B is picked, but the picker is closed without connecting.
+    widget.selected_lakehouse_id = "lh-b"
+    act("delete", paths=["Files/shared.csv"])
+
+    assert removed == ["ws-1/lh-a/Files/shared.csv"]
+    assert widget.loaded_lakehouse_id == "lh-a"
+
+
+def test_paths_outside_the_loaded_objects_are_never_deleted(manager):
+    widget, act, removed, _ = manager
+
+    act("delete", paths=["Files/../../lh-b/Files/x", "Files/unknown.csv"])
+
+    assert removed == []
+    assert "not an object of the loaded lakehouse" in widget.error_message
+
+
+def test_a_delete_reported_as_failed_is_not_counted(manager):
+    widget, act, removed, state = manager
+    state["rm_result"] = False
+
+    act("delete", paths=["Files/a-only.csv"])
+
+    assert removed == ["ws-1/lh-a/Files/a-only.csv"]
+    assert widget.status_message == "Deleted 0 object(s)."
+    # The refresh which follows the action keeps its error.
+    assert "Could not delete Files/a-only.csv" in widget.error_message
+
+
+def test_a_failed_refresh_keeps_the_action_error(manager):
+    widget, act, _, state = manager
+    state["rm_result"] = False
+    state["fail_read"] = True
+
+    act("delete", paths=["Files/a-only.csv"])
+
+    assert "Could not delete Files/a-only.csv" in widget.error_message
+    assert "Could not read the lakehouse: listing failed" in widget.error_message
