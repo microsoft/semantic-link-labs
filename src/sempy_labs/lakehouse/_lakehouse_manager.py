@@ -1480,6 +1480,20 @@ def lakehouse_manager(
         table = str(data.get("table") or "")
         if not table or not loaded["lakehouse_id"]:
             return
+        schema = str(data.get("schema") or "")
+        # The table comes from the browser: it must be a table of the loaded
+        # lakehouse, consistent with the path the action was requested for.
+        table_path = "/".join(part for part in ("Tables", schema, table) if part)
+        if (
+            str(data.get("path") or "").strip("/") != table_path
+            or not _authorized_paths([table_path], loaded["paths"])[0]
+        ):
+            widget.error_message = (
+                f"Could not run table maintenance on '{table_path}': not a "
+                "table of the loaded lakehouse."
+            )
+            widget.status_message = ""
+            return
         optimize = bool(data.get("optimize"))
         v_order = bool(data.get("v_order"))
         vacuum = bool(data.get("vacuum"))
@@ -1499,7 +1513,7 @@ def lakehouse_manager(
                 v_order=v_order,
                 vacuum=vacuum,
                 retention_period=retention if (vacuum and retention) else None,
-                schema=str(data.get("schema") or "") or None,
+                schema=schema or None,
                 lakehouse=loaded["lakehouse_id"],
                 workspace=loaded["workspace_id"],
             )

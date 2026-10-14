@@ -289,7 +289,11 @@ def manager(monkeypatch):
     from sempy_labs import _helper_functions
 
     contents = {
-        "lh-a": [_blob("Files/shared.csv"), _blob("Files/a-only.csv")],
+        "lh-a": [
+            _blob("Files/shared.csv"),
+            _blob("Files/a-only.csv"),
+            _blob("Tables/sales/part-0.parquet"),
+        ],
         "lh-b": [_blob("Files/shared.csv")],
     }
     removed = []
@@ -387,3 +391,24 @@ def test_a_failed_refresh_keeps_the_action_error(manager):
 
     assert "Could not delete Files/a-only.csv" in widget.error_message
     assert "Could not read the lakehouse: listing failed" in widget.error_message
+
+
+def test_maintenance_runs_only_on_a_table_of_the_loaded_lakehouse(manager, monkeypatch):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    calls = []
+    monkeypatch.setattr(
+        _lakehouse, "run_table_maintenance", lambda **kwargs: calls.append(kwargs)
+    )
+
+    act("maintenance", path="Tables/other", table="other", optimize=True)
+    act("maintenance", path="Tables/sales", table="../x", optimize=True)
+    assert calls == []
+    assert "not a table of the loaded lakehouse" in widget.error_message
+
+    act("maintenance", path="Tables/sales", table="sales", optimize=True)
+    assert len(calls) == 1
+    assert calls[0]["table_name"] == "sales"
+    assert calls[0]["lakehouse"] == "lh-a"
+    assert widget.error_message == ""
