@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_item_id,
     resolve_lakehouse_id,
+    _is_valid_uuid,
     _validate_weight,
     _create_dataframe,
     normalize_filter,
@@ -6166,8 +6167,32 @@ class TOMWrapper:
         sources = []
         expr = self._get_direct_lake_expressions()
         for name, items in expr.items():
+            server = items[0]
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
+
+            if not _is_valid_uuid(artifact_id):
+                # The M expression may reference the item by its friendly name (e.g. when
+                # connected via a SQL Analytics Endpoint that was set up manually) rather
+                # than by its ID. The SQL Analytics Endpoint's own ID is embedded in the
+                # connection string's hostname (e.g.
+                # "<sql-endpoint-id>.datawarehouse.fabric.microsoft.com"), so resolve it
+                # from there instead of searching by name. This also correctly handles
+                # sources that live in a different workspace than the semantic model,
+                # since the hostname identifies the specific item regardless of which
+                # workspace the model itself resides in.
+                match_endpoint_id = re.search(
+                    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+                    server,
+                )
+                if not match_endpoint_id:
+                    raise ValueError(
+                        f"{icons.red_dot} The '{artifact_id}' item referenced by the "
+                        f"'{name}' expression could not be resolved to a Lakehouse or "
+                        "Warehouse from its connection string."
+                    )
+                artifact_id = match_endpoint_id.group(0)
+
             result = _base_api(
                 request=f"metadata/artifacts/{artifact_id}", client="internal"
             ).json()
