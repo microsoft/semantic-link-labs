@@ -15,6 +15,11 @@ from sempy_labs._helper_functions import (
     resolve_capacity_id,
 )
 import sempy_labs._authentication as auth
+from sempy_labs._capacities import (
+    create_or_update_resource_group, 
+    get_resource_group,
+    list_resource_groups,
+)
 
 
 def _add_sll_tag(payload, tags):
