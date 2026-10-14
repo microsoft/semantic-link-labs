@@ -6138,9 +6138,10 @@ class TOMWrapper:
         """
         import base64
 
-        prefix = server.split(".")[0].split("-")[0].upper()
-        if len(prefix) < 26:
+        segments = re.findall(r"[A-Za-z2-7]{26}", server)
+        if len(segments) < 2:
             return []
+        prefix = segments[1].upper()
         try:
             raw = base64.b32decode(prefix[:26] + "======")[:16]
         except (ValueError, TypeError):
