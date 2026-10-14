@@ -8,6 +8,7 @@ from ._items import (
     modify_immutability_policy,
     get_onelake_settings,
     modify_default_tier,
+    modify_access_time_tracking,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "modify_immutability_policy",
     "get_onelake_settings",
     "modify_default_tier",
+    "modify_access_time_tracking",
 ]

@@ -105,6 +105,11 @@ from ._labels import (
     bulk_set_labels,
     bulk_remove_labels,
 )
+from ._policy_set import (
+    activate_policy_set,
+    deactivate_policy_set,
+    get_active_policy_set,
+)
 
 __all__ = [
     "list_items",
@@ -173,4 +178,7 @@ __all__ = [
     "bulk_remove_labels",
     "sync_role_assignments_to_subdomains",
     "enable_item_recovery",
+    "activate_policy_set",
+    "deactivate_policy_set",
+    "get_active_policy_set",
 ]
