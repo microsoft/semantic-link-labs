@@ -904,6 +904,24 @@ ICONS: dict[str, str] = {
         '<path d="M15 5.5H7a2 2 0 0 0-2 2V16"/>'
         '<rect x="10" y="10" width="9.5" height="9.5" rx="2"/></svg>'
     ),
+    "warehouse": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M18 21V10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v11"/>'
+        '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 '
+        '1.132-1.803l7.95-3.974a2 2 0 0 1 1.837 0l7.948 3.974A2 2 0 0 1 22 8z"/>'
+        '<path d="M6 13h12"/>'
+        '<path d="M6 17h12"/></svg>'
+    ),
+    "file": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 '
+        '2-2V7z"/>'
+        '<path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>'
+    ),
     "home": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
