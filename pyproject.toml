@@ -29,6 +29,7 @@ dependencies = [
     "jsonpath_ng",
     "anywidget",
     "sqlglot",
+    "powerbiclient",
 ]
 
 [tool.setuptools.packages.find]

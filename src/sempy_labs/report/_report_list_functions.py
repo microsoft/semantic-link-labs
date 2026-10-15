@@ -93,7 +93,7 @@ def _list_all_report_semantic_model_objects(
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
-        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
+        rpt = ReportWrapper(report=r["Report Id"], workspace=r["Report Workspace Id"])
 
         new_data = rpt._list_all_semantic_model_objects()
         new_data["Report Name"] = report_name
