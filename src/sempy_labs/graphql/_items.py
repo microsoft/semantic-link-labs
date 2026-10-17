@@ -227,7 +227,7 @@ def update_graphql_api(
     payload = {}
     if name:
         payload["displayName"] = name
-    if description:
+    if description is not None:
         payload["description"] = description
 
     if not payload:
