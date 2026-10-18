@@ -187,7 +187,7 @@ def _node_type(
     if container == "Tables":
         if schema_enabled:
             if depth == 1:
-                return "Schema" if has_children else "Table"
+                return "Schema"
             if depth == 2:
                 return "Table"
         elif depth == 1:
