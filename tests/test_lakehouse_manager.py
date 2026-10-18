@@ -3,6 +3,7 @@
 import sys
 import types
 
+import pandas as pd
 import pytest
 
 from sempy_labs import _app
@@ -398,12 +399,28 @@ def test_maintenance_runs_only_on_a_table_of_the_loaded_lakehouse(manager, monke
 
     widget, act, _, _ = manager
     calls = []
-    monkeypatch.setattr(
-        _lakehouse, "run_table_maintenance", lambda **kwargs: calls.append(kwargs)
-    )
+
+    def fake_maintenance(**kwargs):
+        calls.append(kwargs)
+        return pd.DataFrame([{"Status": "Completed", "Error Message": None}])
+
+    monkeypatch.setattr(_lakehouse, "run_table_maintenance", fake_maintenance)
 
     act("maintenance", path="Tables/other", table="other", optimize=True)
     act("maintenance", path="Tables/sales", table="../x", optimize=True)
+    act(
+        "maintenance",
+        path="Tables/sales/part-0.parquet",
+        table="sales/part-0.parquet",
+        optimize=True,
+    )
+    act(
+        "maintenance",
+        path="Tables/dbo/sales",
+        table="sales",
+        schema="dbo",
+        optimize=True,
+    )
     assert calls == []
     assert "not a table of the loaded lakehouse" in widget.error_message
 

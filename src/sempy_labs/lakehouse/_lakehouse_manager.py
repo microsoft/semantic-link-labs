@@ -1196,6 +1196,21 @@ def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
     return {path for path in allowed - groupings if _is_safe_object_path(path)}
 
 
+def _table_metadata(objects: List[dict]) -> Dict[str, Tuple[str, str]]:
+    """The loaded tables which maintenance may target: path -> (name, schema)."""
+
+    return {
+        str(row.get("path") or ""): (
+            str(row.get("name") or ""),
+            str(row.get("schema") or ""),
+        )
+        for row in objects
+        if row.get("type") == "Table"
+        and row.get("container") == "Tables"
+        and _is_safe_object_path(str(row.get("path") or ""))
+    }
+
+
 def _authorized_paths(paths: List[str], allowed: set) -> Tuple[List[str], List[str]]:
     """Split requested paths into those which may be acted on and the rest."""
 
@@ -1326,7 +1341,12 @@ def lakehouse_manager(
     # the picker selection, which can change without a Connect (the picker can
     # be closed after choosing another lakehouse). Held on the kernel only, so
     # the browser cannot redirect an action to another lakehouse.
-    loaded: Dict[str, Any] = {"workspace_id": "", "lakehouse_id": "", "paths": set()}
+    loaded: Dict[str, Any] = {
+        "workspace_id": "",
+        "lakehouse_id": "",
+        "paths": set(),
+        "tables": {},
+    }
 
     def _read_lakehouse(workspace_id: str, lakehouse_id: str) -> bool:
         """Load a lakehouse's contents into the widget; True when it succeeded."""
@@ -1348,6 +1368,7 @@ def lakehouse_manager(
             workspace_id=workspace_id,
             lakehouse_id=lakehouse_id,
             paths=_actionable_paths(objects, tree),
+            tables=_table_metadata(objects),
         )
         widget.schema_enabled = schema_enabled
         widget.summary = _summarize_objects(objects)
@@ -1481,12 +1502,13 @@ def lakehouse_manager(
         if not table or not loaded["lakehouse_id"]:
             return
         schema = str(data.get("schema") or "")
-        # The table comes from the browser: it must be a table of the loaded
-        # lakehouse, consistent with the path the action was requested for.
+        # The table comes from the browser: its path, name and schema must all
+        # match a table of the loaded lakehouse.
         table_path = "/".join(part for part in ("Tables", schema, table) if part)
-        if (
-            str(data.get("path") or "").strip("/") != table_path
-            or not _authorized_paths([table_path], loaded["paths"])[0]
+        requested_path = str(data.get("path") or "").strip("/")
+        if requested_path != table_path or loaded["tables"].get(requested_path) != (
+            table,
+            schema,
         ):
             widget.error_message = (
                 f"Could not run table maintenance on '{table_path}': not a "
