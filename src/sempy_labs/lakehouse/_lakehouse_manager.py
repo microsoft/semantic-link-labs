@@ -299,12 +299,9 @@ def _lakehouse_objects(
     from sempy_labs.lakehouse._blobs import list_blobs
     from sempy_labs.lakehouse._schemas import is_schema_enabled
 
-    try:
-        schema_enabled = bool(
-            is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
-        )
-    except Exception:
-        schema_enabled = False
+    schema_enabled = bool(
+        is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
+    )
 
     df = list_blobs(lakehouse=lakehouse_id, workspace=workspace_id)
     blobs = df.to_dict("records") if df is not None and not df.empty else []
