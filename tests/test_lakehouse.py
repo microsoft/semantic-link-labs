@@ -84,3 +84,41 @@ def test_list_blobs_handles_a_blob_without_properties(monkeypatch):
     )
 
     assert list(df["Blob Name"]) == ["Tables/sales/part-0.parquet"]
+
+
+def _recover_failing(monkeypatch, **kwargs):
+    import pytest
+    from sempy.fabric.exceptions import FabricHTTPException
+
+    import sempy_labs.lakehouse._blobs as blobs
+
+    class _Response:
+        status_code = 403
+        reason = "Forbidden"
+        text = ""
+        headers = {}
+        url = ""
+
+        def json(self):
+            return {}
+
+    def _fail(**_kwargs):
+        raise FabricHTTPException(_Response())
+
+    monkeypatch.setattr(blobs, "resolve_workspace_id", lambda *_a, **_k: "ws")
+    monkeypatch.setattr(blobs, "resolve_lakehouse_id", lambda *_a, **_k: "lh")
+    monkeypatch.setattr(blobs, "_request_blob_api", _fail)
+
+    if kwargs.get("raise_errors"):
+        with pytest.raises(FabricHTTPException):
+            blobs.recover_lakehouse_object("Tables/sales", **kwargs)
+    else:
+        blobs.recover_lakehouse_object("Tables/sales", **kwargs)
+
+
+def test_recover_lakehouse_object_prints_errors_by_default(monkeypatch):
+    _recover_failing(monkeypatch)
+
+
+def test_recover_lakehouse_object_can_raise_errors(monkeypatch):
+    _recover_failing(monkeypatch, raise_errors=True)

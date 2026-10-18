@@ -1407,6 +1407,7 @@ def lakehouse_manager(
                         file_path=path,
                         lakehouse=loaded["lakehouse_id"],
                         workspace=loaded["workspace_id"],
+                        raise_errors=True,
                     )
                 except Exception as e:
                     failures.append(f"{path}: {e}")
