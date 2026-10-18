@@ -78,7 +78,9 @@ def _object_of(path: str, schema_enabled: bool) -> Optional[Tuple[str, str, str,
     if len(parts) < 2 or parts[0] not in _CONTAINERS:
         return None
     container = parts[0]
-    if container == "Tables" and schema_enabled and len(parts) >= 3:
+    if container == "Tables" and schema_enabled:
+        if len(parts) < 3:
+            return None
         return (container, parts[2], parts[1], len(parts) == 3)
     return (container, parts[1], "", len(parts) == 2)
 
