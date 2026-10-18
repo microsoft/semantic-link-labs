@@ -1506,7 +1506,7 @@ def lakehouse_manager(
         try:
             from sempy_labs.lakehouse._lakehouse import run_table_maintenance
 
-            run_table_maintenance(
+            result = run_table_maintenance(
                 table_name=table,
                 optimize=optimize,
                 v_order=v_order,
@@ -1516,6 +1516,11 @@ def lakehouse_manager(
                 lakehouse=loaded["lakehouse_id"],
                 workspace=loaded["workspace_id"],
             )
+            job = result.iloc[0]
+            if job["Status"] != "Completed":
+                raise RuntimeError(
+                    f"Job status: {job['Status']}. {job.get('Error Message', '')}"
+                )
             widget.status_message = f"Table maintenance finished for '{table}'."
         except Exception as e:
             widget.error_message = f"Table maintenance failed for '{table}': {e}"
