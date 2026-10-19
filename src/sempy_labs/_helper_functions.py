@@ -3185,6 +3185,40 @@ def extract_descriptions_from_table_path(
 
 
 @log
+def get_downstream_relations(item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> dict:
+    """
+    Gets downstream relations for an item.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID. If specifying the item name, the item type is required.
+    type : str, default=None
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict
+        The API response as a dictionary.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/downstream?beta=True")
+
+    return response.json()
+
+
+@log
+def get_upstream_relations(item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> dict:
+
+    """
+    Gets upstream relations for an item.
 def update_item_logical_id(
     item: str | UUID,
     logical_id: UUID,
@@ -3205,6 +3239,25 @@ def update_item_logical_id(
     ----------
     item : str | uuid.UUID
         The item name or ID. If specifying the item name, the item type is required.
+    type : str, default=None
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict
+        The API response as a dictionary.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/upstream?beta=True")
+
+    return response.json()
     logical_id : uuid.UUID
         The new logical ID for the item. Must be a non-empty GUID which is unique within the workspace.
     type : str, default=None

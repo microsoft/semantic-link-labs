@@ -519,9 +519,9 @@ def _score_reports(
 
     When ``selected`` is provided (a set of ``(report name, report workspace)``
     tuples), only those reports are analyzed; otherwise every downstream report
-    is analyzed.
+    is analyzed. Downstream reports are discovered across all workspaces.
     """
-    from sempy_labs._list_functions import list_report_semantic_model_objects
+    from sempy_labs.report import ReportWrapper
 
     tables_lower = context[_CTX_TABLES]
     columns_by_table = context[_CTX_COLUMNS]
@@ -534,16 +534,17 @@ def _score_reports(
     # so the same object referenced by several visuals is counted several times.
     # The keys a reference expands to never change, so they are computed once.
     expanded: Dict[Tuple[str, str, str], Set[str]] = {}
-    df_reports = list_report_semantic_model_objects(
-        dataset=dataset_id, workspace=workspace_id
-    )
-    if not df_reports.empty:
-        grouped = df_reports.groupby(["Report Name", "Report Workspace Name"])
-        for (report_name, report_workspace), grp in grouped:
-            if selected is not None and (report_name, report_workspace) not in selected:
-                continue
-            report_count += 1
-            for _, r in grp.iterrows():
+    for report in _list_downstream_reports(dataset_id, workspace_id):
+        if (
+            selected is not None
+            and (report["name"], report["workspace"]) not in selected
+        ):
+            continue
+        rpt = ReportWrapper(report=report["id"], workspace=report["workspace_id"])
+        df_objects = rpt.list_semantic_model_objects()
+        report_count += 1
+        if not df_objects.empty:
+            for _, r in df_objects.iterrows():
                 reference = (
                     str(r["Table Name"]),
                     str(r["Object Name"]),
@@ -722,16 +723,40 @@ def find_unused_objects(
 
 
 def _list_downstream_reports(dataset_id: str, workspace_id: str) -> List[dict]:
-    """Returns the downstream reports (name + workspace) that consume the model."""
-    from sempy_labs._list_functions import list_reports_using_semantic_model
+    """Returns the downstream reports that consume the model, across all workspaces.
 
-    df = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
-    if df.empty:
-        return []
-    return [
-        {"name": r["Report Name"], "workspace": r["Report Workspace Name"]}
-        for _, r in df.iterrows()
-    ]
+    Uses the `Items - Get Downstream Relations <https://learn.microsoft.com/rest/api/fabric/core/items/get-downstream-relations(beta)>`_
+    API. Only reports bound directly to the model are returned (not transitive
+    dependents). Each entry has ``id``, ``name``, ``workspace`` (name) and
+    ``workspace_id`` keys.
+    """
+    from sempy_labs._helper_functions import get_downstream_relations
+
+    relations = get_downstream_relations(item=dataset_id, workspace=workspace_id) or {}
+    ws_names = {
+        str(w.get("id")): w.get("displayName") or ""
+        for w in relations.get("workspaces", [])
+    }
+    direct_ids = {
+        str(rel.get("itemId"))
+        for rel in relations.get("relations", [])
+        if str(rel.get("dependentOnItemId", "")).lower() == str(dataset_id).lower()
+    }
+    reports = []
+    for item in relations.get("items", []):
+        rid = str(item.get("id"))
+        if item.get("type") != "Report" or rid not in direct_ids:
+            continue
+        rws = str(item.get("workspaceId") or workspace_id)
+        reports.append(
+            {
+                "id": rid,
+                "name": str(item.get("displayName") or ""),
+                "workspace": ws_names.get(rws, ""),
+                "workspace_id": rws,
+            }
+        )
+    return reports
 
 
 def _render_find_unused_objects(

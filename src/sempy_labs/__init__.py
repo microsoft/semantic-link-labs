@@ -265,6 +265,8 @@ from ._list_functions import (
     list_user_defined_functions,
 )
 from ._helper_functions import (
+    get_downstream_relations,
+    get_upstream_relations,
     get_item_definition,
     copy_item,
     convert_to_friendly_case,
@@ -626,4 +628,6 @@ __all__ = [
     "takeover_item_ownership",
     "list_endorsements",
     "list_favorites",
+    "get_downstream_relations",
+    "get_upstream_relations",
 ]
