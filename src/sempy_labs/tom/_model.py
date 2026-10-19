@@ -5,7 +5,6 @@ import re
 import os
 import json
 import base64
-import binascii
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -6121,32 +6120,6 @@ class TOMWrapper:
 
         return result
 
-    @staticmethod
-    def _resolve_workspace_ids_from_sql_host(server: str) -> List[str]:
-        """
-        A Fabric SQL Analytics Endpoint connection string hostname has the form
-        "<cluster-segment>-<workspace-segment>.datawarehouse.<suffix>" (or sometimes
-        just "<workspace-segment>.datawarehouse.<suffix>" with no cluster segment).
-        Each hyphen-separated label is a lowercase, unpadded Base32 encoding of a
-        16-byte GUID (little-endian). This decodes every label that looks like a
-        Base32-encoded GUID and returns the resulting candidate workspace IDs so the
-        actual source workspace can be identified (and verified) without guessing
-        that the source lives in the semantic model's own workspace.
-        """
-
-        host_label = server.split(".")[0]
-        candidates = []
-        for part in host_label.split("-"):
-            if len(part) != 26:
-                continue
-            try:
-                decoded_bytes = base64.b32decode(part.upper() + "======")
-                candidates.append(str(uuid.UUID(bytes_le=decoded_bytes)))
-            except (ValueError, binascii.Error):
-                continue
-
-        return candidates
-
     def _get_direct_lake_expressions(self) -> dict:
         result = {}
 
@@ -6159,6 +6132,178 @@ class TOMWrapper:
                 result[expr_name] = list_values
 
         return result
+
+    @staticmethod
+    def _workspace_ids_from_sql_server(server: str) -> List[str]:
+        """
+        Best-effort decoding of the workspace ID embedded (base32) in the first
+        segment of a Fabric SQL endpoint host name. Returns candidate IDs which
+        must be verified against the API before being used.
+        """
+
+        segments = re.findall(r"[A-Za-z2-7]{26}", server)
+        if len(segments) < 2:
+            return []
+        prefix = segments[1].upper()
+        try:
+            raw = base64.b32decode(prefix[:26] + "======")[:16]
+        except (ValueError, TypeError):
+            return []
+        return list(dict.fromkeys([str(UUID(bytes=raw)), str(UUID(bytes_le=raw))]))
+
+    def _resolve_item_id_by_name(
+        self, display_name: str, workspace_ids: List[str], items_cache: dict
+    ) -> str:
+        """
+        Resolves a Lakehouse/Warehouse item's ID from its display name, searching
+        each of the given candidate workspace IDs in turn. Each workspace's items
+        are fetched once and cached so repeated lookups across multiple Direct
+        Lake expressions avoid redundant API calls. Raises a ValueError if no
+        candidate workspace yields exactly one match.
+        """
+
+        matching_items = []
+        for workspace_id in workspace_ids:
+            if workspace_id not in items_cache:
+                try:
+                    responses = _base_api(
+                        request=f"/v1/workspaces/{workspace_id}/items",
+                        client="fabric_sp",
+                        uses_pagination=True,
+                    )
+                except FabricHTTPException:
+                    items_cache[workspace_id] = None
+                else:
+                    items_cache[workspace_id] = [
+                        v
+                        for r in responses
+                        for v in r.get("value", [])
+                        if v.get("type") in ("Lakehouse", "Warehouse")
+                    ]
+
+            candidate_items = items_cache[workspace_id]
+            if candidate_items is None:
+                # The candidate didn't decode to a real, accessible workspace.
+                continue
+
+            matching_items.extend(
+                v for v in candidate_items if v.get("displayName") == display_name
+            )
+
+        if len(matching_items) != 1:
+            reason = (
+                "could not be resolved to a Lakehouse or Warehouse"
+                if not matching_items
+                else "matched multiple Lakehouses/Warehouses and is ambiguous"
+            )
+            raise ValueError(
+                f"{icons.red_dot} The '{display_name}' item referenced by a Direct "
+                f"Lake expression {reason}."
+            )
+
+        return matching_items[0].get("id")
+
+    def _resolve_direct_lake_source(
+        self,
+        source: str,
+        artifact_id: str,
+        uses_sql_endpoint: bool,
+        items_cache: Optional[dict] = None,
+    ) -> tuple:
+        """
+        Resolves a Direct Lake source to its (item ID, item name, item type, workspace ID).
+
+        Uses public Fabric APIs (which support Service Principal authentication)
+        and only falls back to the internal metadata API (which does not) when
+        the source's workspace cannot be determined otherwise.
+        """
+
+        def _get_item(workspace_id):
+            try:
+                return _base_api(
+                    request=f"/v1/workspaces/{workspace_id}/items/{artifact_id}",
+                    client="fabric_sp",
+                ).json()
+            except FabricHTTPException:
+                return None
+
+        if uses_sql_endpoint:
+            # Sql.Database("<server>", "<id>") does not carry the workspace ID.
+            candidates = [self._workspace_id] + self._workspace_ids_from_sql_server(
+                source
+            )
+        else:
+            # AzureStorage.DataLake(".../<workspace id>/<item id>")
+            candidates = [source]
+
+        candidate_workspace_ids = list(dict.fromkeys(str(c) for c in candidates if c))
+
+        if uses_sql_endpoint and not _is_valid_uuid(artifact_id):
+            # The M expression may reference the item by its friendly display name
+            # (e.g. a Lakehouse/Warehouse connected via a manually-created SQL
+            # Analytics Endpoint connection) rather than by its GUID.
+            artifact_id = self._resolve_item_id_by_name(
+                artifact_id,
+                candidate_workspace_ids,
+                items_cache if items_cache is not None else {},
+            )
+
+        item = None
+        for ws in candidate_workspace_ids:
+            item = _get_item(ws)
+            if item:
+                break
+
+        if item is None:
+            try:
+                result = _base_api(
+                    request=f"metadata/artifacts/{artifact_id}", client="internal"
+                ).json()
+            except FabricHTTPException as e:
+                raise ValueError(
+                    f"{icons.red_dot} Unable to resolve the '{artifact_id}' Direct Lake source. "
+                    "If running as a service principal, ensure it has access to the source's workspace."
+                ) from e
+            item_type = result.get("artifactType")
+            if item_type == "SqlAnalyticsEndpoint":
+                return (
+                    result.get("parentArtifactObjectId"),
+                    result.get("displayName"),
+                    "Lakehouse",
+                    result.get("folderObjectId"),
+                )
+            return (
+                artifact_id,
+                result.get("displayName"),
+                item_type,
+                result.get("folderObjectId"),
+            )
+
+        item_type = item.get("type")
+        item_name = item.get("displayName")
+        item_workspace_id = item.get("workspaceId")
+
+        if item_type == "SQLEndpoint":
+            # Report the lakehouse which owns the SQL analytics endpoint.
+            responses = _base_api(
+                request=f"/v1/workspaces/{item_workspace_id}/lakehouses",
+                uses_pagination=True,
+                client="fabric_sp",
+            )
+            for r in responses:
+                for lh in r.get("value", []):
+                    sql_props = (lh.get("properties") or {}).get(
+                        "sqlEndpointProperties"
+                    ) or {}
+                    if str(sql_props.get("id", "")).lower() == artifact_id.lower():
+                        return (
+                            lh.get("id"),
+                            lh.get("displayName"),
+                            "Lakehouse",
+                            item_workspace_id,
+                        )
+
+        return artifact_id, item_name, item_type, item_workspace_id
 
     def get_direct_lake_sources(self) -> List[dict]:
         """
@@ -6193,87 +6338,20 @@ class TOMWrapper:
 
         """
 
-        sql = "SqlAnalyticsEndpoint"
         sources = []
         expr = self._get_direct_lake_expressions()
         workspace_items_cache = {}
         for name, items in expr.items():
-            server = items[0]
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
-
-            if not _is_valid_uuid(artifact_id):
-                # The M expression may reference the item by its friendly name (e.g. when
-                # connected via a SQL Analytics Endpoint that was set up manually) rather
-                # than by its ID. The connection string's hostname encodes the actual
-                # source workspace ID (see _resolve_workspace_ids_from_sql_host), so that
-                # workspace is decoded and verified first instead of assuming the name
-                # refers to an item in the semantic model's own workspace. Every decoded
-                # candidate is checked (not just the first) since not every hyphen-
-                # separated label necessarily corresponds to a real workspace, and each
-                # resolved workspace's Lakehouses/Warehouses are fetched once and cached
-                # since multiple expressions may reference the same workspace.
-                matching_items = []
-                any_workspace_resolved = False
-                for candidate_workspace_id in self._resolve_workspace_ids_from_sql_host(
-                    server
-                ):
-                    if candidate_workspace_id not in workspace_items_cache:
-                        try:
-                            responses = _base_api(
-                                request=f"/v1/workspaces/{candidate_workspace_id}/items",
-                                client="fabric_sp",
-                                uses_pagination=True,
-                            )
-                        except FabricHTTPException:
-                            workspace_items_cache[candidate_workspace_id] = None
-                        else:
-                            workspace_items_cache[candidate_workspace_id] = [
-                                v
-                                for r in responses
-                                for v in r.get("value", [])
-                                if v.get("type") in ("Lakehouse", "Warehouse")
-                            ]
-
-                    candidate_items = workspace_items_cache[candidate_workspace_id]
-                    if candidate_items is None:
-                        # The candidate didn't decode to a real workspace; try the next one.
-                        continue
-
-                    any_workspace_resolved = True
-                    matching_items.extend(
-                        v
-                        for v in candidate_items
-                        if v.get("displayName") == artifact_id
-                    )
-
-                if not any_workspace_resolved or len(matching_items) != 1:
-                    reason = (
-                        "the source workspace could not be identified from its "
-                        "connection string"
-                        if not any_workspace_resolved
-                        else (
-                            "could not be resolved to a Lakehouse or Warehouse"
-                            if not matching_items
-                            else "matched multiple Lakehouses/Warehouses and is ambiguous"
-                        )
-                    )
-                    raise ValueError(
-                        f"{icons.red_dot} The '{artifact_id}' item referenced by the "
-                        f"'{name}' expression {reason}."
-                    )
-                artifact_id = matching_items[0].get("id")
-
-            result = _base_api(
-                request=f"metadata/artifacts/{artifact_id}", client="internal"
-            ).json()
-            item_type = result.get("artifactType")
-            item_name = result.get("displayName")
-            item_workspace_id = result.get("folderObjectId")
-            parent_artifact_id = result.get("parentArtifactObjectId")
-
-            type = "Lakehouse" if item_type == sql else item_type
-            item_id = parent_artifact_id if item_type == sql else artifact_id
+            item_id, item_name, type, item_workspace_id = (
+                self._resolve_direct_lake_source(
+                    source=items[0],
+                    artifact_id=artifact_id,
+                    uses_sql_endpoint=uses_sql_endpoint,
+                    items_cache=workspace_items_cache,
+                )
+            )
 
             sources.append(
                 {
