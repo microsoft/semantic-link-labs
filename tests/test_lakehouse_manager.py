@@ -185,16 +185,42 @@ def test_tree_objects_can_be_selected_and_acted_on_in_bulk():
     js = lhm._LHM_JS
 
     assert 'check.setAttribute("aria-label", "Select " + node.path);' in js
-    # Containers and schemas are groupings, not objects.
-    assert (
-        'return node.type !== "Container" && node.type !== "Schema" && node.type !== "More";'
-        in js
-    )
+    # Containers are groupings, not objects; a schema is picked as a whole, and
+    # a table only as a whole, never the files inside it.
+    assert 'if (node.type === "Container" || node.type === "More") return false;' in js
+    assert 'if (parent.type === "Table") return false;' in js
     assert 'act("recover", { paths: paths })' in js
     assert 'act("delete", { paths: paths })' in js
     # Deleting is confirmed first.
     assert 'confirmOverlay.style.display = "flex";' in js
     assert '"delete": _delete' in _source()
+
+
+def test_selecting_a_folder_selects_its_contents_and_partial_folders_show_it():
+    js = lhm._LHM_JS
+
+    # A picked folder stands for its contents; a partly picked one is shown so.
+    assert "check.checked = isChecked(node);" in js
+    assert "check.indeterminate = !check.checked && partial.has(node.path);" in js
+    assert "function setChecked(node, on)" in js
+    # A fully picked branch becomes picked as a whole, unless it lists only
+    # some of its objects (+N more).
+    assert (
+        "if (!children.every((child) => selectable(child) && selected.has(child.path))) break;"
+        in js
+    )
+
+
+def test_an_actions_outcome_is_shown_temporarily():
+    js = lhm._LHM_JS
+
+    assert "const STATUS_VISIBLE_MS = 5000;" in js
+    assert 'model.on("change:status_message", scheduleStatusHide);' in js
+    assert (
+        'const status = statusShown ? (model.get("status_message") || "") : "";' in js
+    )
+    # Errors are not hidden on a timer.
+    assert 'const error = model.get("error_message") || "";' in js
 
 
 def test_an_action_can_target_one_object_or_a_selection():
@@ -260,7 +286,7 @@ def test_paths_which_could_escape_the_lakehouse_are_refused():
         assert not lhm._is_safe_object_path(path), path
 
 
-def test_only_loaded_objects_and_never_groupings_can_be_targeted():
+def test_only_loaded_objects_schemas_and_never_containers_can_be_targeted():
     blobs = [
         _blob("Tables/dbo/sales/part-0.parquet"),
         _blob("Files/raw/data.csv"),
@@ -272,13 +298,15 @@ def test_only_loaded_objects_and_never_groupings_can_be_targeted():
 
     assert "Tables/dbo/sales" in allowed
     assert "Files/raw/data.csv" in allowed
-    assert "Tables/dbo" not in allowed
+    # A whole schema can be deleted or recovered.
+    assert "Tables/dbo" in allowed
     assert "Tables" not in allowed
+    assert "Files" not in allowed
     accepted, rejected = lhm._authorized_paths(
-        ["Tables/dbo/sales", "Tables/dbo", "Files/other"], allowed
+        ["Tables/dbo/sales", "Tables/dbo", "Tables", "Files/other"], allowed
     )
-    assert accepted == ["Tables/dbo/sales"]
-    assert rejected == ["Tables/dbo", "Files/other"]
+    assert accepted == ["Tables/dbo/sales", "Tables/dbo"]
+    assert rejected == ["Tables", "Files/other"]
 
 
 @pytest.fixture

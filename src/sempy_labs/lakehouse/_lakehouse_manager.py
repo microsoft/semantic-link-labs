@@ -808,10 +808,85 @@ function render({ model, el }) {
         if (view === "Tree") renderTree(); else renderTable();
     }
 
-    // Selectable: everything the user can act on, so not the containers and
-    // schemas (groupings) nor the "+N more" placeholders.
+    // Selectable: everything the user can act on, so not the containers
+    // (groupings) nor the "+N more" placeholders. A schema is picked as a
+    // whole; a table only as a whole, never the files inside it.
     function selectable(node) {
-        return node.type !== "Container" && node.type !== "Schema" && node.type !== "More";
+        if (node.type === "Container" || node.type === "More") return false;
+        indexTree();
+        for (let parent = parentOf.get(node.path); parent; parent = parentOf.get(parent.path)) {
+            if (parent.type === "Table") return false;
+        }
+        return true;
+    }
+
+    // `selected` holds only the topmost picked objects: a picked schema, folder
+    // or table stands for everything inside it, so its contents show as
+    // selected and an action targets it once rather than each object in it.
+    let indexedTree = null;
+    const parentOf = new Map();
+    function indexTree() {
+        const tree = model.get("tree") || [];
+        if (tree === indexedTree) return;
+        indexedTree = tree;
+        parentOf.clear();
+        const walk = (nodes, parent) => {
+            for (const node of nodes) { parentOf.set(node.path, parent); walk(node.children || [], node); }
+        };
+        walk(tree, null);
+    }
+
+    function selectedAncestor(node) {
+        indexTree();
+        for (let parent = parentOf.get(node.path); parent; parent = parentOf.get(parent.path)) {
+            if (selected.has(parent.path)) return parent;
+        }
+        return null;
+    }
+
+    function isChecked(node) {
+        return selected.has(node.path) || selectedAncestor(node) !== null;
+    }
+
+    // Paths holding some, but not all, selected objects.
+    function partialPaths() {
+        indexTree();
+        const partial = new Set();
+        for (const path of selected) {
+            for (let parent = parentOf.get(path); parent; parent = parentOf.get(parent.path)) partial.add(parent.path);
+        }
+        return partial;
+    }
+
+    function unselectWithin(node) {
+        for (const child of node.children || []) { selected.delete(child.path); unselectWithin(child); }
+    }
+
+    function setChecked(node, on) {
+        indexTree();
+        if (on) {
+            unselectWithin(node);
+            selected.add(node.path);
+            // A branch whose objects are now all selected becomes selected as a
+            // whole, unless it holds objects which are not listed (+N more).
+            for (let parent = parentOf.get(node.path); parent && selectable(parent); parent = parentOf.get(parent.path)) {
+                const children = parent.children || [];
+                if (!children.every((child) => selectable(child) && selected.has(child.path))) break;
+                for (const child of children) selected.delete(child.path);
+                selected.add(parent.path);
+            }
+            return;
+        }
+        if (selected.has(node.path)) { selected.delete(node.path); return; }
+        const ancestor = selectedAncestor(node);
+        if (!ancestor) return;
+        // Unpicking one object inside a picked branch keeps the rest of it.
+        selected.delete(ancestor.path);
+        for (let current = node; current.path !== ancestor.path; current = parentOf.get(current.path)) {
+            for (const sibling of parentOf.get(current.path).children || []) {
+                if (sibling.path !== current.path && selectable(sibling)) selected.add(sibling.path);
+            }
+        }
     }
 
     function selectedNodes() {
@@ -892,6 +967,7 @@ function render({ model, el }) {
         collectNodes(model.get("tree") || [], 0, rows, search.value.trim().toLowerCase());
         if (!rows.length) { listWrap.appendChild(emptyState("No objects match this search.")); return; }
         const largest = rows.reduce((max, row) => Math.max(max, row.node.size || 0), 0) || 1;
+        const partial = partialPaths();
         const wrap = document.createElement("div"); wrap.className = "slls-lhm-tree";
         for (const row of rows) {
             const node = row.node;
@@ -923,11 +999,17 @@ function render({ model, el }) {
 
             if (selectable(node)) {
                 const check = document.createElement("input"); check.type = "checkbox";
-                check.className = "slls-lhm-node-check"; check.checked = selected.has(node.path);
+                check.className = "slls-lhm-node-check"; check.checked = isChecked(node);
+                check.indeterminate = !check.checked && partial.has(node.path);
                 check.setAttribute("aria-label", "Select " + node.path);
+                check.dataset.path = node.path;
                 check.addEventListener("change", () => {
-                    if (check.checked) selected.add(node.path); else selected.delete(node.path);
-                    renderSelection();
+                    setChecked(node, check.checked);
+                    // Ticking a branch changes the boxes above and below it.
+                    renderRows();
+                    for (const box of listWrap.querySelectorAll(".slls-lhm-node-check")) {
+                        if (box.dataset.path === node.path) { box.focus(); break; }
+                    }
                 });
                 el.appendChild(check);
             } else {
@@ -1061,7 +1143,7 @@ function render({ model, el }) {
         }
 
         const error = model.get("error_message") || "";
-        const status = model.get("status_message") || "";
+        const status = statusShown ? (model.get("status_message") || "") : "";
         noteText.textContent = error || status;
         noteIcon.innerHTML = error ? `__ICON_ALERT__` : `__ICON_CHECK__`;
         noteIcon.style.display = (error || status) ? "" : "none";
@@ -1087,6 +1169,21 @@ function render({ model, el }) {
         else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
     });
     search.addEventListener("input", renderRows);
+
+    // An action's outcome is shown for a few seconds, then hidden; errors stay
+    // until the next action so they are not missed. Registered before the
+    // re-render below so a new message is never hidden by the previous timer.
+    const STATUS_VISIBLE_MS = 5000;
+    let statusShown = true;
+    let statusTimer = null;
+    function scheduleStatusHide() {
+        clearTimeout(statusTimer);
+        statusShown = true;
+        if (!model.get("status_message")) return;
+        statusTimer = setTimeout(() => { statusShown = false; renderState(); }, STATUS_VISIBLE_MS);
+    }
+    model.on("change:status_message", scheduleStatusHide);
+    scheduleStatusHide();
 
     for (const name of ["available_workspaces", "available_lakehouses", "selected_workspace_id",
         "selected_lakehouse_id", "picker_loading", "loading", "busy", "summary",
@@ -1177,8 +1274,8 @@ def _is_safe_object_path(path: str) -> bool:
 def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
     """The paths of the loaded objects which recover / delete may target.
 
-    Containers and schemas are groupings and the "+N more" nodes are not
-    objects, so none of them can be targeted.
+    Containers are groupings and the "+N more" nodes are not objects, so
+    neither can be targeted. A schema can, which acts on all of its tables.
     """
 
     allowed = {str(row.get("path") or "") for row in objects}
@@ -1187,7 +1284,7 @@ def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
     def _walk(nodes: List[dict]):
         for node in nodes:
             path = str(node.get("path") or "")
-            if node.get("type") in ("Container", "Schema", "More"):
+            if node.get("type") in ("Container", "More"):
                 groupings.add(path)
             else:
                 allowed.add(path)
