@@ -978,7 +978,10 @@ function sllsInstallColumnResizers(table, config) {
         let widest = minWidth;
         cells.forEach(cell => {
             const style = getComputedStyle(cell);
-            context.font = style.font;
+            // The `font` shorthand reads as "" when a longhand it cannot
+            // express is set (e.g. tabular-nums), so build it from its parts.
+            context.font = style.font
+                || `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
             const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
             const horizontalChrome =
                 (Number.parseFloat(style.paddingLeft) || 0)
@@ -1053,6 +1056,55 @@ function sllsInstallColumnResizers(table, config) {
 
 # Backward-compatible name used by older widget implementations.
 ICONS["builder"] = ICONS["hammer"]
+
+
+# Styles for the handles added by ``sllsInstallColumnResizers`` when it is
+# called with its default class names; inject via
+# :func:`scoped_table_column_resize_css`.
+TABLE_COLUMN_RESIZE_CSS: str = """\
+thead th.slls-resizable {
+    position: sticky;
+}
+.slls-column-resizer {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    /* Kept inside its own header: a sticky neighbour would paint over any overhang. */
+    right: 0;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+}
+.slls-column-resizer::after {
+    content: "";
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: 6px;
+    width: 1px;
+    background: transparent;
+}
+.slls-column-resizer:hover::after, .slls-column-resizer.slls-resizing::after {
+    background: var(--ui-accent);
+}
+"""
+
+
+def scoped_table_column_resize_css(root_selector: str) -> str:
+    """Return :data:`TABLE_COLUMN_RESIZE_CSS` with every rule prefixed by ``root_selector``.
+
+    Parameters
+    ----------
+    root_selector : str
+        A CSS selector for the widget's root container.
+
+    Returns
+    -------
+    str
+        The scoped CSS as a single string.
+    """
+    return _scope_css(root_selector, TABLE_COLUMN_RESIZE_CSS)
 
 
 # ---------------------------------------------------------------------------

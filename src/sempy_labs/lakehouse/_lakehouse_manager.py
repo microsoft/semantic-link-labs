@@ -17,6 +17,7 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    TABLE_COLUMN_RESIZE_JS as _UI_TABLE_COLUMN_RESIZE_JS,
     fullscreen_css as _ui_fullscreen_css,
     fullscreen_setup_js as _ui_fullscreen_setup_js,
     list_picker_lakehouses as _ui_list_picker_lakehouses,
@@ -26,6 +27,7 @@ from sempy_labs._ui_components import (
     scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
+    scoped_table_column_resize_css as _ui_scoped_table_column_resize_css,
 )
 
 # The two OneLake containers a lakehouse exposes; everything else (system
@@ -78,7 +80,11 @@ def _object_of(path: str, schema_enabled: bool) -> Optional[Tuple[str, str, str,
     if len(parts) < 2 or parts[0] not in _CONTAINERS:
         return None
     container = parts[0]
-    if container == "Tables" and schema_enabled and len(parts) >= 3:
+    if container == "Tables" and schema_enabled:
+        # Directly beneath Tables is a schema (its folder is listed as a blob
+        # too), never a table.
+        if len(parts) < 3:
+            return None
         return (container, parts[2], parts[1], len(parts) == 3)
     return (container, parts[1], "", len(parts) == 2)
 
@@ -184,8 +190,9 @@ def _node_type(
         return "Container"
     if container == "Tables":
         if schema_enabled:
+            # Even an empty schema is a schema, not a table.
             if depth == 1:
-                return "Schema" if has_children else "Table"
+                return "Schema"
             if depth == 2:
                 return "Table"
         elif depth == 1:
@@ -425,7 +432,16 @@ _LHM_CSS = (
 .slls-lhm-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slls-lhm-name svg { display: block; width: 15px; height: 15px; flex: 0 0 auto; color: var(--ui-text-tertiary); }
 .slls-lhm-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.slls-lhm-schema { color: var(--ui-text-tertiary); }
+.slls-lhm-table tr.slls-lhm-group td { padding-top: 7px; padding-bottom: 7px; background: var(--ui-bg-secondary); font-weight: 600; }
+.slls-lhm-group-count { color: var(--ui-text-tertiary); font-size: 12px; font-weight: 400; }
+.slls-lhm-table tr.slls-lhm-grouped td:first-child { padding-left: 34px; }
+.slls-lhm-table td { overflow: hidden; text-overflow: ellipsis; }
+.slls-lhm-table th.slls-lhm-num { text-align: right; }
+.slls-lhm-sort { all: unset; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; cursor: pointer; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
+.slls-lhm-sort:hover { color: var(--ui-text); }
+.slls-lhm-sort:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; border-radius: 3px; }
+.slls-lhm-table th[aria-sort="ascending"] .slls-lhm-sort, .slls-lhm-table th[aria-sort="descending"] .slls-lhm-sort { color: var(--ui-accent); }
+.slls-lhm-sort-icon svg { display: block; width: 12px; height: 12px; }
 .slls-lhm-badge {
     display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
     border: 1px solid var(--ui-border); border-radius: 999px;
@@ -517,6 +533,7 @@ __SEARCH_CSS__
 _LHM_CSS += _ui_scoped_header_css(".slls-lhm")
 _LHM_CSS += _ui_scoped_button_press_css(".slls-lhm")
 _LHM_CSS += _ui_scoped_attribution_css(".slls-lhm")
+_LHM_CSS += _ui_scoped_table_column_resize_css(".slls-lhm")
 _LHM_CSS += "\n" + _ui_fullscreen_css(
     ".slls-lhm", "slls-lhm-fullscreen", bg_var="var(--ui-bg)"
 )
@@ -524,6 +541,8 @@ _LHM_CSS += "\n" + _ui_fullscreen_css(
 
 _LHM_JS = (
     _UI_SEARCH_SELECT_JS
+    + "\n"
+    + _UI_TABLE_COLUMN_RESIZE_JS
     + "\n"
     + _ui_fullscreen_setup_js("sllsLhmSetupFullscreen")
     + r"""
@@ -623,7 +642,7 @@ function render({ model, el }) {
     const pills = document.createElement("div"); pills.className = "slls-lhm-pills"; pills.setAttribute("role", "group");
     pills.setAttribute("aria-label", "Filter objects");
     let filter = "All";
-    const pillButtons = ["All", "Tables", "Files", "Deleted"].map((name) => {
+    const pillButtons = ["All", "Deleted"].map((name) => {
         const pill = document.createElement("button"); pill.type = "button"; pill.className = "slls-lhm-pill"; pill.textContent = name;
         pill.addEventListener("click", () => { filter = name; renderRows(); });
         pills.appendChild(pill); return { name: name, el: pill };
@@ -797,7 +816,7 @@ function render({ model, el }) {
         // The tree already groups by container, so the pills only apply to the table.
         pills.style.display = view === "Tree" ? "none" : "";
         selection.style.display = view === "Tree" ? "flex" : "none";
-        search.placeholder = view === "Tree" ? "Search tree…" : "Search tables and files…";
+        search.placeholder = view === "Tree" ? "Search tree…" : "Search tables…";
         renderSelection();
         listWrap.innerHTML = "";
         if (!(model.get("objects") || []).length) {
@@ -1040,54 +1059,115 @@ function render({ model, el }) {
         listWrap.appendChild(wrap);
     }
 
+    // The table view lists the lakehouse's tables only, grouped by schema;
+    // files are browsed in the tree.
+    const TABLE_COLUMNS = [
+        { key: "name", label: "Name" },
+        { key: "size", label: "Size", num: true },
+        { key: "files", label: "Files", num: true },
+        { key: "modified", label: "Last modified" },
+        { key: "", label: "", num: true },
+    ];
+    let tableSort = { key: "name", dir: 1 };
+    // Column widths the user set, kept across re-renders.
+    const tableWidths = new Map();
+
+    function compareTables(a, b) {
+        const byText = (x, y) => String(x || "").toLowerCase().localeCompare(String(y || "").toLowerCase());
+        const key = tableSort.key;
+        const order = key === "size" || key === "files"
+            ? (a[key] || 0) - (b[key] || 0)
+            : byText(a[key], b[key]);
+        // Sorting applies within each schema; the schemas stay alphabetical.
+        return byText(a.schema, b.schema) || order * tableSort.dir || byText(a.name, b.name);
+    }
+
     function renderTable() {
         const term = search.value.trim().toLowerCase();
         const rows = (model.get("objects") || []).filter((row) => {
-            if (filter === "Tables" && row.container !== "Tables") return false;
-            if (filter === "Files" && row.container !== "Files") return false;
+            if (row.container !== "Tables") return false;
             if (filter === "Deleted" && !row.deleted && !row.deleted_files) return false;
             return !term || row.path.toLowerCase().indexOf(term) >= 0;
         });
-        if (!rows.length) { listWrap.appendChild(emptyState("No objects match this filter.")); return; }
+        if (!rows.length) {
+            const any = (model.get("objects") || []).some((row) => row.container === "Tables");
+            listWrap.appendChild(emptyState(any ? "No tables match this filter." : "This lakehouse has no tables."));
+            return;
+        }
+        rows.sort(compareTables);
+        const grouped = rows.some((row) => row.schema);
+        const tableCount = new Map();
+        for (const row of rows) tableCount.set(row.schema || "", (tableCount.get(row.schema || "") || 0) + 1);
         const table = document.createElement("table"); table.className = "slls-lhm-table";
         const thead = document.createElement("thead"); const headRow = document.createElement("tr");
-        for (const [label, cls] of [["Name", ""], ["Type", ""], ["Size", "slls-lhm-num"], ["Files", "slls-lhm-num"], ["Last modified", ""], ["Status", ""], ["", "slls-lhm-num"]]) {
-            const th = document.createElement("th"); th.textContent = label; if (cls) th.className = cls; headRow.appendChild(th);
+        for (const column of TABLE_COLUMNS) {
+            const th = document.createElement("th"); if (column.num) th.className = "slls-lhm-num";
+            if (column.key) {
+                const active = tableSort.key === column.key;
+                th.setAttribute("aria-sort", active ? (tableSort.dir > 0 ? "ascending" : "descending") : "none");
+                const sortBtn = document.createElement("button"); sortBtn.type = "button"; sortBtn.className = "slls-lhm-sort";
+                sortBtn.textContent = column.label;
+                sortBtn.title = "Sort by " + column.label.toLowerCase();
+                if (active) {
+                    const arrow = document.createElement("span"); arrow.className = "slls-lhm-sort-icon";
+                    arrow.innerHTML = tableSort.dir > 0 ? `__ICON_SORT_ASC__` : `__ICON_SORT_DESC__`;
+                    sortBtn.appendChild(arrow);
+                }
+                sortBtn.addEventListener("click", () => {
+                    // Text starts A to Z; sizes, counts and dates start with the largest.
+                    if (active) tableSort = { key: column.key, dir: -tableSort.dir };
+                    else tableSort = { key: column.key, dir: column.key === "name" ? 1 : -1 };
+                    renderRows();
+                });
+                th.appendChild(sortBtn);
+            }
+            headRow.appendChild(th);
         }
         thead.appendChild(headRow); table.appendChild(thead);
         const tbody = document.createElement("tbody");
+        let currentSchema = null;
         for (const row of rows) {
+            const schemaName = row.schema || "";
+            if (grouped && schemaName !== currentSchema) {
+                currentSchema = schemaName;
+                const groupRow = document.createElement("tr"); groupRow.className = "slls-lhm-group";
+                const groupCell = document.createElement("td"); groupCell.colSpan = TABLE_COLUMNS.length;
+                const groupName = document.createElement("div"); groupName.className = "slls-lhm-name";
+                const groupIcon = document.createElement("span"); groupIcon.innerHTML = `__ICON_SCHEMA__`;
+                const groupLabel = document.createElement("span"); groupLabel.className = "slls-lhm-name-text";
+                groupLabel.textContent = schemaName;
+                const count = tableCount.get(schemaName);
+                const groupCount = document.createElement("span"); groupCount.className = "slls-lhm-group-count";
+                groupCount.textContent = `${count} table${count === 1 ? "" : "s"}`;
+                groupName.append(groupIcon, groupLabel, groupCount);
+                groupCell.appendChild(groupName); groupRow.appendChild(groupCell); tbody.appendChild(groupRow);
+            }
             const tr = document.createElement("tr");
+            if (grouped) tr.className = "slls-lhm-grouped";
             const nameCell = document.createElement("td");
             const name = document.createElement("div"); name.className = "slls-lhm-name";
             const icon = document.createElement("span");
-            icon.innerHTML = row.type === "Table" ? `__ICON_TABLE__` : (row.type === "Folder" ? `__ICON_FOLDER__` : `__ICON_FILE__`);
+            icon.innerHTML = row.shortcut ? `__ICON_LINK__` : `__ICON_TABLE__`;
+            if (row.shortcut) { icon.title = "Shortcut"; icon.setAttribute("aria-label", "Shortcut"); }
             const label = document.createElement("span"); label.className = "slls-lhm-name-text";
-            if (row.schema) {
-                const schema = document.createElement("span"); schema.className = "slls-lhm-schema"; schema.textContent = row.schema + ".";
-                label.append(schema, document.createTextNode(row.name));
-            } else { label.textContent = row.name; }
+            label.textContent = row.name;
             label.title = row.path;
             name.append(icon, label);
+            if (row.deleted) name.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
+            else if (row.deleted_files) name.appendChild(badge(row.deleted_files + " deleted", `__ICON_TRASH__`, true));
             nameCell.appendChild(name); tr.appendChild(nameCell);
 
-            const typeCell = document.createElement("td"); typeCell.textContent = row.type; tr.appendChild(typeCell);
             const sizeCell = document.createElement("td"); sizeCell.className = "slls-lhm-num"; sizeCell.textContent = row.size_label || "—"; tr.appendChild(sizeCell);
             const filesCell = document.createElement("td"); filesCell.className = "slls-lhm-num"; filesCell.textContent = String(row.files || 0); tr.appendChild(filesCell);
             const modCell = document.createElement("td"); modCell.textContent = row.modified_label || "—"; tr.appendChild(modCell);
-
-            const statusCell = document.createElement("td");
-            if (row.deleted) statusCell.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
-            else if (row.deleted_files) statusCell.appendChild(badge(row.deleted_files + " deleted file(s)", `__ICON_TRASH__`, true));
-            else if (row.shortcut) statusCell.appendChild(badge("Shortcut", `__ICON_LINK__`, false));
-            else statusCell.textContent = "";
-            tr.appendChild(statusCell);
 
             const actionsCell = document.createElement("td");
             actionsCell.appendChild(rowActions(row)); tr.appendChild(actionsCell);
             tbody.appendChild(tr);
         }
         table.appendChild(tbody); listWrap.appendChild(table);
+        // Measured once in the DOM, so the columns start out filling the list.
+        sllsInstallColumnResizers(table, { widths: tableWidths, key: "tables", minWidth: 56 });
     }
 
     function badge(text, iconSvg, bad) {
@@ -1221,6 +1301,8 @@ export default { render };
     .replace("__ICON_FILE__", _UI_ICONS["file"])
     .replace("__ICON_TRASH__", _UI_ICONS["trash"])
     .replace("__ICON_LINK__", _UI_ICONS["link"])
+    .replace("__ICON_SORT_ASC__", _UI_ICONS["sort_asc"])
+    .replace("__ICON_SORT_DESC__", _UI_ICONS["sort_desc"])
     .replace("__ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__ICON_WRENCH__", _UI_ICONS["wrench"])
     .replace("__ICON_ALERT__", _UI_ICONS["alert"])

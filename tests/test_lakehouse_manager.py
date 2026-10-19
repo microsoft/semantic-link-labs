@@ -59,6 +59,23 @@ def test_schema_enabled_lakehouses_key_tables_by_schema():
     assert row["name"] == "sales"
 
 
+def test_schema_folders_are_never_mistaken_for_tables():
+    # OneLake lists each schema's folder as a blob too, including empty schemas.
+    blobs = [
+        _blob("Tables/dbo"),
+        _blob("Tables/dbo/sales/part-0.parquet"),
+        _blob("Tables/empty"),
+    ]
+
+    rows = lhm._summarize_blobs(blobs, LAKEHOUSE_ID, schema_enabled=True)
+    tree = lhm._build_tree(blobs, LAKEHOUSE_ID, schema_enabled=True)
+
+    assert [(row["schema"], row["name"]) for row in rows] == [("dbo", "sales")]
+    assert lhm._summarize_objects(rows)["tables"] == 1
+    schemas = {node["name"]: node["type"] for node in tree[0]["children"]}
+    assert schemas == {"dbo": "Schema", "empty": "Schema"}
+
+
 def test_soft_deleted_objects_and_shortcuts_are_flagged():
     blobs = [
         _blob("Tables/dropped/part-0.parquet", deleted=True),
@@ -179,6 +196,22 @@ def test_the_contents_can_be_shown_as_a_tree_or_a_table():
     assert "function renderTable()" in js
     # A search opens the branches which matched inside.
     assert "(term && childMatch) || expanded.has(node.path)" in js
+
+
+def test_the_table_view_lists_only_tables_grouped_by_schema():
+    js = lhm._LHM_JS
+
+    assert 'if (row.container !== "Tables") return false;' in js
+    assert 'const pillButtons = ["All", "Deleted"]' in js
+    assert 'groupRow.className = "slls-lhm-group";' in js
+    # No status column; a shortcut shows the shortcut icon instead.
+    assert '{ key: "status"' not in js and '"Status"' not in js
+    assert "icon.innerHTML = row.shortcut ? `" in js
+    # Columns sort within each schema and can be resized.
+    assert "return byText(a.schema, b.schema) || order * tableSort.dir" in js
+    assert 'sllsInstallColumnResizers(table, { widths: tableWidths, key: "tables"' in js
+    assert "function sllsInstallColumnResizers(" in js
+    assert ".slls-lhm .slls-column-resizer {" in lhm._LHM_CSS
 
 
 def test_tree_objects_can_be_selected_and_acted_on_in_bulk():
