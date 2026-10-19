@@ -20,6 +20,72 @@ def test_tool_payload_carries_an_svg_icon_per_tool():
         assert tool["name"] and tool["description"] and tool["tags"]
 
 
+def test_every_tool_explains_itself_in_the_getting_started_guide():
+    for tool in _app._tool_payload():
+        assert tool["does"], tool["key"]
+        assert tool["when"], tool["key"]
+
+
+def test_getting_started_opens_a_modal_summarizing_every_tool():
+    js = _app._WIDGET_JS
+
+    assert 'modal.className = "slls-app-modal";' in js
+    assert 'modal.setAttribute("aria-modal", "true");' in js
+    assert "function renderGuide()" in js
+    assert '["What it does", tool.does]' in js
+    assert '["When to use it", tool.when]' in js
+    # Opened from the header button, closed by the X, the backdrop or Escape.
+    assert 'linksBtn.addEventListener("click", () =>' in js
+    assert 'closeGuideBtn.addEventListener("click", () => setGuideOpen(false));' in js
+    assert "if (event.target === modal) setGuideOpen(false);" in js
+    assert 'event.key === "Escape"' in js
+
+
+def test_getting_started_keeps_keyboard_focus_inside_the_modal():
+    js = _app._WIDGET_JS
+
+    # The launcher behind the modal is inert while it is open.
+    assert "child.inert = true;" in js
+    assert "setBackgroundInert(open);" in js
+    # Tab / Shift+Tab cycle within the dialog.
+    assert 'if (event.key !== "Tab" || !modal.classList.contains("show")) return;' in js
+    # Focus returns to the control which opened it.
+    assert "guideReturnFocus = document.activeElement;" in js
+    assert "target.focus();" in js
+
+
+def test_the_brand_flask_bubbles_on_hover():
+    assert "slls-app-brand-bubble" in _app._BRAND_BUBBLES_HTML
+    assert _app._BRAND_BUBBLES_HTML in _app._WIDGET_JS
+    assert ".slls-app-brand:hover .slls-app-brand-bubble {" in _app._WIDGET_CSS
+    assert "@keyframes slls-app-bubble {" in _app._WIDGET_CSS
+    assert "prefers-reduced-motion" in _app._WIDGET_CSS
+
+
+def test_spark_only_tools_are_disabled_in_a_pure_python_notebook(monkeypatch):
+    from sempy_labs import _helper_functions
+
+    monkeypatch.setattr(_helper_functions, "_pure_python_notebook", lambda: True)
+    by_key = {tool["key"]: tool for tool in _app._tool_payload()}
+
+    assert by_key["delta_analyzer"]["unavailable"] == _app._SPARK_REQUIRED_NOTE
+    assert not by_key["bpa"]["unavailable"]
+
+    monkeypatch.setattr(_helper_functions, "_pure_python_notebook", lambda: False)
+    by_key = {tool["key"]: tool for tool in _app._tool_payload()}
+
+    assert not by_key["delta_analyzer"]["unavailable"]
+
+
+def test_an_unavailable_tool_cannot_be_opened():
+    js = _app._WIDGET_JS
+
+    assert "card.disabled = !!tool.unavailable;" in js
+    assert "if (tool.unavailable) return;" in js
+    assert 'note.className = "slls-app-card-note";' in js
+    assert ".slls-app-card.is-disabled {" in _app._WIDGET_CSS
+
+
 def test_categories_start_with_all_and_cover_every_tag():
     categories = _app._category_payload()
 

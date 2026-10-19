@@ -4,8 +4,10 @@ import pandas as pd
 import re
 import os
 import json
+import base64
 from datetime import datetime
 from decimal import Decimal
+from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     _base_api,
     create_abfss_path,
@@ -17,6 +19,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_item_id,
     resolve_lakehouse_id,
+    _is_valid_uuid,
     _validate_weight,
     _create_dataframe,
     normalize_filter,
@@ -6136,7 +6139,6 @@ class TOMWrapper:
         segment of a Fabric SQL endpoint host name. Returns candidate IDs which
         must be verified against the API before being used.
         """
-        import base64
 
         segments = re.findall(r"[A-Za-z2-7]{26}", server)
         if len(segments) < 2:
@@ -6148,8 +6150,64 @@ class TOMWrapper:
             return []
         return list(dict.fromkeys([str(UUID(bytes=raw)), str(UUID(bytes_le=raw))]))
 
+    def _resolve_item_id_by_name(
+        self, display_name: str, workspace_ids: List[str], items_cache: dict
+    ) -> str:
+        """
+        Resolves a Lakehouse/Warehouse item's ID from its display name, searching
+        each of the given candidate workspace IDs in turn. Each workspace's items
+        are fetched once and cached so repeated lookups across multiple Direct
+        Lake expressions avoid redundant API calls. Raises a ValueError if no
+        candidate workspace yields exactly one match.
+        """
+
+        matching_items = []
+        for workspace_id in workspace_ids:
+            if workspace_id not in items_cache:
+                try:
+                    responses = _base_api(
+                        request=f"/v1/workspaces/{workspace_id}/items",
+                        client="fabric_sp",
+                        uses_pagination=True,
+                    )
+                except FabricHTTPException:
+                    items_cache[workspace_id] = None
+                else:
+                    items_cache[workspace_id] = [
+                        v
+                        for r in responses
+                        for v in r.get("value", [])
+                        if v.get("type") in ("Lakehouse", "Warehouse")
+                    ]
+
+            candidate_items = items_cache[workspace_id]
+            if candidate_items is None:
+                # The candidate didn't decode to a real, accessible workspace.
+                continue
+
+            matching_items.extend(
+                v for v in candidate_items if v.get("displayName") == display_name
+            )
+
+        if len(matching_items) != 1:
+            reason = (
+                "could not be resolved to a Lakehouse or Warehouse"
+                if not matching_items
+                else "matched multiple Lakehouses/Warehouses and is ambiguous"
+            )
+            raise ValueError(
+                f"{icons.red_dot} The '{display_name}' item referenced by a Direct "
+                f"Lake expression {reason}."
+            )
+
+        return matching_items[0].get("id")
+
     def _resolve_direct_lake_source(
-        self, source: str, artifact_id: str, uses_sql_endpoint: bool
+        self,
+        source: str,
+        artifact_id: str,
+        uses_sql_endpoint: bool,
+        items_cache: Optional[dict] = None,
     ) -> tuple:
         """
         Resolves a Direct Lake source to its (item ID, item name, item type, workspace ID).
@@ -6158,7 +6216,6 @@ class TOMWrapper:
         and only falls back to the internal metadata API (which does not) when
         the source's workspace cannot be determined otherwise.
         """
-        from sempy.fabric.exceptions import FabricHTTPException
 
         def _get_item(workspace_id):
             try:
@@ -6178,8 +6235,20 @@ class TOMWrapper:
             # AzureStorage.DataLake(".../<workspace id>/<item id>")
             candidates = [source]
 
+        candidate_workspace_ids = list(dict.fromkeys(str(c) for c in candidates if c))
+
+        if uses_sql_endpoint and not _is_valid_uuid(artifact_id):
+            # The M expression may reference the item by its friendly display name
+            # (e.g. a Lakehouse/Warehouse connected via a manually-created SQL
+            # Analytics Endpoint connection) rather than by its GUID.
+            artifact_id = self._resolve_item_id_by_name(
+                artifact_id,
+                candidate_workspace_ids,
+                items_cache if items_cache is not None else {},
+            )
+
         item = None
-        for ws in dict.fromkeys(str(c) for c in candidates if c):
+        for ws in candidate_workspace_ids:
             item = _get_item(ws)
             if item:
                 break
@@ -6270,6 +6339,7 @@ class TOMWrapper:
 
         sources = []
         expr = self._get_direct_lake_expressions()
+        workspace_items_cache = {}
         for name, items in expr.items():
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
@@ -6278,6 +6348,7 @@ class TOMWrapper:
                     source=items[0],
                     artifact_id=artifact_id,
                     uses_sql_endpoint=uses_sql_endpoint,
+                    items_cache=workspace_items_cache,
                 )
             )
 
