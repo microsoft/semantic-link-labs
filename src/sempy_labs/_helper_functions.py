@@ -3219,6 +3219,21 @@ def get_upstream_relations(item: str | UUID, type: Optional[str] = None, workspa
 
     """
     Gets upstream relations for an item.
+def update_item_logical_id(
+    item: str | UUID,
+    logical_id: UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates the logical ID of an item.
+
+    Corresponding item instances share the same logical ID. Use this function to resolve logical ID conflicts.
+    Before changing the logical ID, review any automations that rely on its current value and update them as needed.
+
+    This is a wrapper function for the following API: `Items - Update Logical Id <https://learn.microsoft.com/rest/api/fabric/core/items/update-logical-id>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -3243,3 +3258,33 @@ def get_upstream_relations(item: str | UUID, type: Optional[str] = None, workspa
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/upstream?beta=True")
 
     return response.json()
+    logical_id : uuid.UUID
+        The new logical ID for the item. Must be a non-empty GUID which is unique within the workspace.
+    type : str, default=None
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    if not _is_valid_uuid(str(logical_id)) or UUID(str(logical_id)).int == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{logical_id}' logical ID must be a valid, non-empty GUID."
+        )
+
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace_id
+    )
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/logicalId",
+        method="patch",
+        payload={"logicalId": str(logical_id)},
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} The logical ID of the '{item_name}' item within the '{workspace_name}' workspace has been updated to '{logical_id}'."
+    )
