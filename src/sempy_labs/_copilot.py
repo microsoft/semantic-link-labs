@@ -166,6 +166,7 @@ def _build_function_registry():
         "admin",
         "apache_airflow_job",
         "connection",
+        "data_agent",
         "data_pipeline",
         "dataflow",
         "daxlib",
