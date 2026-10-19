@@ -2146,9 +2146,14 @@ def fullscreen_toggle_script(
 # iframe used for raw ``display(HTML)`` output — the webview permits the
 # Fullscreen API, the sandbox iframe does not.
 _FULLSCREEN_BODY: str = r"""
+    // root may be a function, resolved on each use, for widgets whose
+    // full-screen element is not in place yet when the button is wired.
+    function getRoot() {
+        return typeof root === "function" ? root() : root;
+    }
     var cssFullscreen = false;
     function isFullscreen() {
-        return cssFullscreen || document.fullscreenElement === root;
+        return cssFullscreen || document.fullscreenElement === getRoot();
     }
     function renderFullscreenBtn() {
         var on = isFullscreen();
@@ -2156,14 +2161,15 @@ _FULLSCREEN_BODY: str = r"""
         var label = on ? "Exit full screen" : "Full screen";
         btn.title = label;
         btn.setAttribute("aria-label", label);
-        root.classList.toggle(fullscreenClass, cssFullscreen);
+        getRoot().classList.toggle(fullscreenClass, cssFullscreen);
     }
     function enterFullscreen() {
         cssFullscreen = true;
         renderFullscreenBtn();
-        if (root.requestFullscreen) {
+        var target = getRoot();
+        if (target.requestFullscreen) {
             try {
-                var request = root.requestFullscreen();
+                var request = target.requestFullscreen();
                 if (request && typeof request.then === "function") {
                     request.then(function () {
                         cssFullscreen = false;
@@ -2176,7 +2182,7 @@ _FULLSCREEN_BODY: str = r"""
         }
     }
     function exitFullscreen() {
-        if (document.fullscreenElement === root && document.exitFullscreen) {
+        if (document.fullscreenElement === getRoot() && document.exitFullscreen) {
             document.exitFullscreen().catch(function () {});
         }
         cssFullscreen = false;
@@ -2253,7 +2259,9 @@ def fullscreen_setup_js(func_name: str = "sllsSetupFullscreen") -> str:
     Intended for ``anywidget``-style widgets that build their DOM in
     JavaScript. Embed the returned source once at the top of the widget's
     ESM module, then call ``func_name(root, btn, fullscreenClass, enterSvg,
-    exitSvg)`` after creating the toggle button.
+    exitSvg)`` after creating the toggle button. ``root`` may also be a
+    function returning the element, resolved on every toggle, for widgets
+    whose full-screen element is not attached yet when the button is wired.
 
     Parameters
     ----------
