@@ -127,7 +127,9 @@ def test_resolve_item_id_by_name_no_match_raises():
 
     with patch(
         "sempy_labs.tom._model._base_api",
-        return_value=_paginated_items_response([_make_item(str(uuid.uuid4()), "Other")]),
+        return_value=_paginated_items_response(
+            [_make_item(str(uuid.uuid4()), "Other")]
+        ),
     ):
         with pytest.raises(ValueError, match="could not be resolved"):
             tom._resolve_item_id_by_name("LH_Admin", [workspace_id], {})

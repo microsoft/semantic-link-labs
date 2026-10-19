@@ -5,7 +5,6 @@ import re
 import os
 import json
 import base64
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from sempy.fabric.exceptions import FabricHTTPException
