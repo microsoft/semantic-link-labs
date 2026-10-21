@@ -198,20 +198,84 @@ def test_the_contents_can_be_shown_as_a_tree_or_a_table():
     assert "(term && childMatch) || expanded.has(node.path)" in js
 
 
-def test_the_table_view_lists_only_tables_grouped_by_schema():
+def test_the_table_view_lists_only_tables_with_a_schema_column():
     js = lhm._LHM_JS
 
-    assert 'if (row.container !== "Tables") return false;' in js
+    assert 'filter((row) => row.container === "Tables")' in js
     assert 'const pillButtons = ["All", "Deleted"]' in js
-    assert 'groupRow.className = "slls-lhm-group";' in js
+    # Tables are not grouped by schema; the schema is a column instead.
+    assert "slls-lhm-group" not in js
+    assert '{ key: "schema", label: "Schema", text: true, schemaOnly: true }' in js
     # No status column; a shortcut shows the shortcut icon instead.
     assert '{ key: "status"' not in js and '"Status"' not in js
     assert "icon.innerHTML = row.shortcut ? `" in js
-    # Columns sort within each schema and can be resized.
-    assert "return byText(a.schema, b.schema) || order * tableSort.dir" in js
-    assert 'sllsInstallColumnResizers(table, { widths: tableWidths, key: "tables"' in js
+    # Columns sort across all tables and can be resized.
+    assert (
+        "return order * tableSort.dir || byText(a.schema, b.schema) || byText(a.name, b.name);"
+        in js
+    )
+    assert "sllsInstallColumnResizers(table, {" in js
     assert "function sllsInstallColumnResizers(" in js
     assert ".slls-lhm .slls-column-resizer {" in lhm._LHM_CSS
+
+
+def test_the_table_view_shows_size_bars_and_delta_table_details():
+    js = lhm._LHM_JS
+
+    for label in ["File Sizes", "Partitions", "Deletion Vectors"]:
+        assert f'label: "{label}"' in js
+    assert "tr.appendChild(sizeCell(row, largest));" in js
+    assert "tr.appendChild(fileSizesCell(row));" in js
+    assert '"< 1 MB"' in js and "__FILE_SIZE_BANDS__" not in js
+    assert (
+        ".slls-lhm-table .slls-lhm-bar { display: block; width: 100%; }" in lhm._LHM_CSS
+    )
+
+
+def test_tables_report_their_file_sizes_partitions_and_deletion_vectors():
+    mb = 1024 * 1024
+    blobs = [
+        _blob("Tables/sales/year=2025/part-0.parquet", 200 * mb),
+        _blob("Tables/sales/year=2026/part-1.parquet", 2 * mb),
+        _blob("Tables/sales/year=2026/part-2.parquet", 500 * 1024),
+        _blob("Tables/sales/deletion_vector_abc.bin", 1024),
+        # Neither delta log checkpoints nor deleted files are data files.
+        _blob("Tables/sales/_delta_log/00.checkpoint.parquet", 5 * mb),
+        _blob("Tables/sales/year=2027/part-3.parquet", 9 * mb, deleted=True),
+        _blob("Tables/plain/part-0.parquet", 4 * mb),
+        _blob("Files/raw/data.parquet", 4 * mb),
+    ]
+
+    rows = {row["path"]: row for row in lhm._summarize_blobs(blobs, LAKEHOUSE_ID)}
+
+    sales = rows["Tables/sales"]
+    assert sales["partitions"] == 2
+    assert sales["deletion_vectors"] is True
+    assert sales["deletion_vector_files"] == 1
+    stats = sales["file_sizes"]
+    assert stats["count"] == 3
+    assert (stats["min"], stats["max"]) == (500 * 1024, 200 * mb)
+    assert stats["max_label"] == "200.0 MB"
+    # < 1 MB, 1-16 MB, 16-64 MB, 64-128 MB, 128-256 MB, 256 MB-1 GB, >= 1 GB
+    assert stats["bands"] == [1, 1, 0, 0, 1, 0, 0]
+
+    plain = rows["Tables/plain"]
+    assert plain["partitions"] == 0
+    assert plain["deletion_vectors"] is False
+    assert plain["file_sizes"]["count"] == 1
+    assert rows["Files/raw"]["file_sizes"] is None
+
+
+def test_schema_enabled_tables_report_their_partitions():
+    blobs = [
+        _blob("Tables/dbo/sales/region=eu/part-0.parquet"),
+        _blob("Tables/dbo/sales/region=us/part-0.parquet"),
+    ]
+
+    row = lhm._summarize_blobs(blobs, LAKEHOUSE_ID, schema_enabled=True)[0]
+
+    assert row["partitions"] == 2
+    assert row["file_sizes"]["count"] == 2
 
 
 def test_tree_objects_can_be_selected_and_acted_on_in_bulk():
@@ -342,6 +406,43 @@ def test_only_loaded_objects_schemas_and_never_containers_can_be_targeted():
     assert rejected == ["Tables", "Files/other"]
 
 
+def test_the_table_view_selects_tables_for_bulk_maintenance():
+    js = lhm._LHM_JS
+    css = lhm._LHM_CSS
+
+    # Shortcuts and deleted tables get no checkbox and are never maintained.
+    assert 'return row.type === "Table" && !row.deleted && !row.shortcut;' in js
+    assert "if (maintainable(row)) {" in js
+    assert 'checkAll.title = "Select all tables shown";' in js
+    # The toolbar runs maintenance on the selection; the rows no longer do.
+    assert (
+        'maintainSelected.addEventListener("click", () => openMaintenance(selectedTables()));'
+        in js
+    )
+    assert "actionsCell.appendChild(rowActions(row, false));" in js
+    assert "paths: maintenanceTargets.map((row) => row.path)," in js
+    # The list scrolls itself, so its sticky headers stay in view.
+    assert "max-height: min(640px, calc(100vh - 160px));" in css
+    assert ".slls-lhm:fullscreen .slls-lhm-list { max-height: none; }" in css
+
+
+def test_only_live_tables_which_are_not_shortcuts_can_be_maintained():
+    blobs = [
+        _blob("Tables/dbo/sales/part-0.parquet"),
+        _blob("Tables/dbo/dropped/part-0.parquet", deleted=True),
+        _blob("Tables/dbo/linked/part-0.parquet"),
+        _blob("Files/raw/data.csv"),
+    ]
+    objects = lhm._summarize_blobs(
+        blobs,
+        LAKEHOUSE_ID,
+        schema_enabled=True,
+        shortcut_paths={"Tables/dbo/linked"},
+    )
+
+    assert lhm._maintainable_tables(objects) == {"Tables/dbo/sales": ("dbo", "sales")}
+
+
 @pytest.fixture
 def manager(monkeypatch):
     """A Lakehouse Manager widget wired to fake lakehouses and file system."""
@@ -350,7 +451,12 @@ def manager(monkeypatch):
     from sempy_labs import _helper_functions
 
     contents = {
-        "lh-a": [_blob("Files/shared.csv"), _blob("Files/a-only.csv")],
+        "lh-a": [
+            _blob("Files/shared.csv"),
+            _blob("Files/a-only.csv"),
+            _blob("Tables/sales/part-0.parquet"),
+            _blob("Tables/orders/part-0.parquet"),
+        ],
         "lh-b": [_blob("Files/shared.csv")],
     }
     removed = []
@@ -448,3 +554,58 @@ def test_a_failed_refresh_keeps_the_action_error(manager):
 
     assert "Could not delete Files/a-only.csv" in widget.error_message
     assert "Could not read the lakehouse: listing failed" in widget.error_message
+
+
+def test_maintenance_runs_on_each_selected_table(manager, monkeypatch):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    calls = []
+    monkeypatch.setattr(
+        _lakehouse, "run_table_maintenance", lambda **kwargs: calls.append(kwargs)
+    )
+
+    act("maintenance", paths=["Tables/sales", "Tables/orders"], optimize=True)
+
+    assert [call["table_name"] for call in calls] == ["sales", "orders"]
+    assert all(call["lakehouse"] == "lh-a" for call in calls)
+    assert all(call["schema"] is None for call in calls)
+    assert widget.status_message == "Table maintenance finished for 2 of 2 tables."
+    assert widget.error_message == ""
+
+
+def test_maintenance_never_targets_a_path_which_is_not_a_loaded_table(
+    manager, monkeypatch
+):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    calls = []
+    monkeypatch.setattr(
+        _lakehouse, "run_table_maintenance", lambda **kwargs: calls.append(kwargs)
+    )
+
+    act("maintenance", paths=["Files/a-only.csv", "Tables/unknown"], optimize=True)
+
+    assert calls == []
+    assert "not a table of the loaded lakehouse" in widget.error_message
+
+
+def test_a_failed_table_does_not_stop_the_others(manager, monkeypatch):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    calls = []
+
+    def fake_maintenance(**kwargs):
+        calls.append(kwargs["table_name"])
+        if kwargs["table_name"] == "sales":
+            raise RuntimeError("locked")
+
+    monkeypatch.setattr(_lakehouse, "run_table_maintenance", fake_maintenance)
+
+    act("maintenance", paths=["Tables/sales", "Tables/orders"], optimize=True)
+
+    assert calls == ["sales", "orders"]
+    assert widget.status_message == "Table maintenance finished for 1 of 2 tables."
+    assert "Table maintenance failed for 'sales': locked" in widget.error_message
