@@ -417,7 +417,7 @@ def test_the_table_view_selects_tables_for_bulk_maintenance():
     assert 'checkAll.title = "Select all tables shown";' in js
     # The toolbar runs maintenance on the selection; the rows no longer do.
     assert (
-        'maintainSelected.addEventListener("click", () => openMaintenance(selectedTables()));'
+        'maintainSelected.addEventListener("click", () => openMaintenance(selectedTables(), true));'
         in js
     )
     assert "actionsCell.appendChild(rowActions(row, false));" in js
@@ -615,11 +615,8 @@ def test_a_failed_table_does_not_stop_the_others(manager, monkeypatch):
 def test_the_table_view_collects_stats_for_the_selected_tables():
     js = lhm._LHM_JS
 
-    assert (
-        "tableSelection.append(maintainSelected, statsSelected, tableSelectedText);"
-        in js
-    )
-    assert 'if (paths.length) act("stats", { paths: paths });' in js
+    assert "tableSelection.append(maintainSelected, statsSelected, " in js
+    assert 'if (paths.length) clearTablesAfter = act("stats", { paths: paths });' in js
     assert lhm._UI_ICONS["bar_chart"] in js
     for label in [
         "Columns",
@@ -1048,3 +1045,192 @@ def test_python_notebooks_read_table_stats_from_the_delta_log(monkeypatch, tmp_p
 def _mkfile(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def test_the_table_selection_is_cleared_once_its_operation_finishes(
+    manager, monkeypatch
+):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    monkeypatch.setattr(_lakehouse, "run_table_maintenance", lambda **kwargs: None)
+
+    act("maintenance", paths=["Tables/sales"], optimize=True)
+
+    # Python reports which action finished; the browser then clears the ticks
+    # of the maintenance or stats run it started from the selection.
+    assert widget.action_done == widget.action_trigger
+    js = lhm._LHM_JS
+    assert 'if (paths.length) clearTablesAfter = act("stats", { paths: paths });' in js
+    assert "if (fromSelection) clearTablesAfter = trigger;" in js
+    assert 'model.on("change:action_done", () => {' in js
+
+
+def test_bar_columns_start_at_their_set_width():
+    # The column resizers take a column's starting width from data-column-width.
+    assert "th.dataset.columnWidth = String(column.width);" in lhm._LHM_JS
+    assert '{ key: "size", label: "Size", num: true, width: 160 }' in lhm._LHM_JS
+
+
+def test_table_settings_are_changed_with_spark_sql_on_the_tables_path():
+    path = "abfss://ws@onelake.dfs.fabric.microsoft.com/lh/Tables/dbo/sales"
+
+    assert lhm._auto_compaction_sql(path, True) == (
+        f"ALTER TABLE delta.`{path}` SET TBLPROPERTIES "
+        "('delta.autoOptimize.autoCompact' = 'true')"
+    )
+    assert lhm._auto_compaction_sql(path, False).endswith("= 'false')")
+    assert lhm._clustering_sql(path, ["region", "odd`name"]) == (
+        f"ALTER TABLE delta.`{path}` CLUSTER BY (`region`, `odd``name`)"
+    )
+    assert (
+        lhm._clustering_sql(path, []) == f"ALTER TABLE delta.`{path}` CLUSTER BY NONE"
+    )
+
+
+def test_the_table_view_offers_auto_compaction_and_clustering():
+    js = lhm._LHM_JS
+
+    assert (
+        "tableSelection.append(maintainSelected, statsSelected, autoOnSelected, "
+        "autoOffSelected, tableSelectedText);" in js
+    )
+    assert 'act("auto_compaction", { paths: paths, enable: enable });' in js
+    assert 'clusterRequest = act("cluster_columns", { path: row.path });' in js
+    assert 'act("clustering", payload);' in js
+    assert (
+        'if (column.key !== "liquid_clustering" || !maintainable(row) || pending) return cell;'
+        in js
+    )
+    assert "const MAX_CLUSTERING_COLUMNS = 4;" in js
+    for icon in ("collapse_diagonal", "expand_diagonal", "pencil"):
+        assert lhm._UI_ICONS[icon] in js
+    source = _source()
+    for handler in (
+        '"auto_compaction": _auto_compaction',
+        '"cluster_columns": _cluster_columns',
+        '"clustering": _set_clustering',
+    ):
+        assert handler in source
+
+
+@pytest.fixture
+def spark_sql(manager, monkeypatch):
+    """The manager, with Spark SQL statements recorded rather than run."""
+
+    from sempy_labs import _helper_functions
+
+    widget, act, _, _ = manager
+    statements = []
+    monkeypatch.setattr(_helper_functions, "_run_spark_sql_query", statements.append)
+    monkeypatch.setattr(
+        _helper_functions,
+        "create_abfss_path",
+        lambda lakehouse_id, workspace_id, table, schema=None: f"abfss://{workspace_id}/{lakehouse_id}/Tables/{table}",
+    )
+    monkeypatch.setattr(
+        lhm,
+        "_table_columns_spark",
+        lambda path: {
+            "columns": [
+                {"name": "id", "type": "bigint", "clusterable": True},
+                {"name": "region", "type": "string", "clusterable": True},
+                {"name": "tags", "type": "array<string>", "clusterable": False},
+            ],
+            "clustering": ["id"],
+        },
+    )
+    return widget, act, statements
+
+
+def test_auto_compaction_is_turned_on_for_the_selected_tables(spark_sql):
+    widget, act, statements = spark_sql
+    widget.table_stats = {"Tables/sales": {"rows": 1, "auto_compaction": False}}
+
+    act(
+        "auto_compaction",
+        paths=["Tables/sales", "Tables/orders", "Files/a-only.csv"],
+        enable=True,
+    )
+
+    assert statements == [
+        lhm._auto_compaction_sql("abfss://ws-1/lh-a/Tables/sales", True),
+        lhm._auto_compaction_sql("abfss://ws-1/lh-a/Tables/orders", True),
+    ]
+    # Collected stats reflect the change.
+    assert widget.table_stats["Tables/sales"]["auto_compaction"] is True
+    assert widget.status_message == "Turned auto-compaction on for 2 of 2 tables."
+    assert "not a table of the loaded lakehouse" in widget.error_message
+    assert widget.action_done == widget.action_trigger
+
+
+def test_the_clustering_dialog_reads_the_tables_columns(spark_sql):
+    widget, act, _ = spark_sql
+
+    act("cluster_columns", path="Tables/sales")
+
+    assert widget.cluster_info["path"] == "Tables/sales"
+    assert widget.cluster_info["clustering"] == ["id"]
+    assert [c["name"] for c in widget.cluster_info["columns"]] == [
+        "id",
+        "region",
+        "tags",
+    ]
+
+
+def test_liquid_clustering_is_changed_and_removed(spark_sql):
+    widget, act, statements = spark_sql
+    widget.table_stats = {"Tables/sales": {"rows": 1, "liquid_clustering": ["id"]}}
+
+    act("clustering", path="Tables/sales", columns=["region", "id"])
+    assert statements[-1] == lhm._clustering_sql(
+        "abfss://ws-1/lh-a/Tables/sales", ["region", "id"]
+    )
+    assert widget.table_stats["Tables/sales"]["liquid_clustering"] == ["region", "id"]
+    assert widget.status_message.startswith("Clustered 'sales' by region, id.")
+
+    act("clustering", path="Tables/sales", columns=[])
+    assert statements[-1].endswith("CLUSTER BY NONE")
+    assert widget.status_message == "Removed liquid clustering from 'sales'."
+
+
+def test_only_the_tables_clusterable_columns_are_accepted(spark_sql):
+    widget, act, statements = spark_sql
+
+    act("clustering", path="Tables/sales", columns=["tags"])
+    assert statements == []
+    assert "not a column of the table which can be clustered" in widget.error_message
+
+    act("clustering", path="Tables/sales", columns=["a", "b", "c", "d", "e"])
+    assert statements == []
+    assert "Choose up to 4 different clustering columns." == widget.error_message
+
+
+def test_table_settings_require_a_pyspark_notebook(spark_sql):
+    widget, act, statements = spark_sql
+    widget.spark_available = False
+
+    act("auto_compaction", paths=["Tables/sales"], enable=False)
+    assert "requires a PySpark notebook" in widget.error_message
+
+    act("cluster_columns", path="Tables/sales")
+    assert "requires a PySpark notebook" in widget.cluster_info["error"]
+
+    act("clustering", path="Tables/sales", columns=["id"])
+    assert statements == []
+
+
+def test_the_checkbox_schema_and_name_columns_are_frozen():
+    js = lhm._LHM_JS
+    css = lhm._LHM_CSS
+
+    assert "const frozen = showSchema ? 3 : 2;" in js
+    # Their offsets follow the widths of the columns before them, also on resize.
+    assert "onWidthsChanged: (resized, widths) => {" in js
+    assert 'tr.cells[i].style.left = left + "px";' in js
+    assert ".slls-lhm-table td.slls-lhm-frozen {" in css
+    # Opaque, so the cells scrolling under them do not show through.
+    assert (
+        "background: linear-gradient(var(--ui-surface-2), var(--ui-surface-2)), var(--ui-bg);"
+        in css
+    )

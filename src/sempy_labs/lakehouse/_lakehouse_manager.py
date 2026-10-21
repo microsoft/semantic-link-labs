@@ -2,8 +2,8 @@
 
 Browses the tables, folders and files of a lakehouse (including the
 `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
-ones), recovers deleted objects, runs table maintenance and collects table
-stats, all from one widget.
+ones), recovers deleted objects, runs table maintenance, collects table stats
+and changes tables' auto-compaction and liquid clustering, all from one widget.
 """
 
 import json
@@ -534,6 +534,21 @@ _LHM_CSS = (
 .slls-lhm-table td { padding: 3px 12px; border-bottom: 1px solid var(--ui-border); vertical-align: middle; }
 .slls-lhm-table tr:last-child td { border-bottom: none; }
 .slls-lhm-table tr:hover td { background: var(--ui-surface-2); }
+/* The checkbox, schema and name columns stay in view when scrolling sideways.
+   Their left offsets are set by the script; above the cells scrolling under them. */
+.slls-lhm-table th { z-index: 2; }
+.slls-lhm-table th.slls-lhm-frozen { position: sticky; z-index: 3; }
+.slls-lhm-table td.slls-lhm-frozen {
+    position: sticky; z-index: 1; background: var(--ui-bg);
+    border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border);
+}
+.slls-lhm-table tr:hover td.slls-lhm-frozen {
+    background: linear-gradient(var(--ui-surface-2), var(--ui-surface-2)), var(--ui-bg);
+}
+.slls-lhm-table tr:last-child td.slls-lhm-frozen { box-shadow: none; }
+.slls-lhm-table th.slls-lhm-frozen-last { box-shadow: inset 0 -1px 0 var(--ui-border), inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-table td.slls-lhm-frozen-last { box-shadow: inset 0 -1px 0 var(--ui-border), inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-table tr:last-child td.slls-lhm-frozen-last { box-shadow: inset -1px 0 0 var(--ui-border-strong); }
 .slls-lhm-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .slls-lhm-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slls-lhm-name svg { display: block; width: 15px; height: 15px; flex: 0 0 auto; color: var(--ui-text-tertiary); }
@@ -548,6 +563,35 @@ _LHM_CSS = (
 .slls-lhm-table .slls-lhm-bar { display: block; width: 100%; }
 .slls-lhm-muted { color: var(--ui-text-tertiary); }
 .slls-lhm-table td.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-cellwrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.slls-lhm-cell-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-cellbtn {
+    width: 22px; height: 22px; flex: 0 0 auto; border-color: transparent;
+    background: transparent; color: var(--ui-text-tertiary);
+}
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-cellbtn svg { width: 13px; height: 13px; }
+.slls-lhm-table tr:hover .slls-lhm-iconbtn.slls-lhm-cellbtn:not(:disabled) { border-color: var(--ui-border-strong); color: var(--ui-text); }
+.slls-lhm-cluster-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; margin-top: 12px; overflow: auto; }
+.slls-lhm-cluster-col {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+    border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface);
+    color: var(--ui-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.slls-lhm-cluster-col:hover:not(:disabled) { background: var(--ui-surface-2); }
+.slls-lhm-cluster-col.slls-lhm-on { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.slls-lhm-cluster-col:disabled { opacity: .5; cursor: not-allowed; }
+.slls-lhm-cluster-badge {
+    display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+    flex: 0 0 auto; border: 1px solid var(--ui-border-strong); border-radius: 5px;
+    font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.slls-lhm-cluster-col.slls-lhm-on .slls-lhm-cluster-badge { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-on-accent); }
+.slls-lhm-cluster-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-cluster-type { flex: 0 0 auto; color: var(--ui-text-tertiary); font-size: 11.5px; }
+.slls-lhm-cluster-summary { margin-top: 12px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-lhm-cluster-state { padding: 12px 2px 4px; color: var(--ui-text-secondary); font-size: 13px; }
+.slls-lhm-cluster-state.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-dialog:focus { outline: none; }
 .slls-lhm-dist { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slls-lhm-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: 0 0 auto; }
 .slls-lhm-spark-bar { width: 6px; min-height: 2px; border-radius: 1px 1px 0 0; background: var(--ui-accent); }
@@ -715,10 +759,13 @@ function render({ model, el }) {
         const lab = document.createElement("label"); lab.textContent = label;
         wrap.append(lab, picker.el); return wrap;
     }
+    // Returns the action's number, which action_done reports once it finished.
     function act(action, extra) {
+        const trigger = (model.get("action_trigger") || 0) + 1;
         model.set("pending_action", Object.assign({ action: action }, extra || {}));
-        model.set("action_trigger", (model.get("action_trigger") || 0) + 1);
+        model.set("action_trigger", trigger);
         model.save_changes();
+        return trigger;
     }
     const ws = createSearchSelect({
         placeholder: "Select a workspace…", searchPlaceholder: "Filter workspaces…",
@@ -786,7 +833,13 @@ function render({ model, el }) {
     statsSelected.title = "Collect stats for the selected tables (columns, rows, row groups, "
         + "Z-Order, liquid clustering, auto-compaction and V-Order)";
     statsSelected.setAttribute("aria-label", "Collect stats for the selected tables");
-    tableSelection.append(maintainSelected, statsSelected, tableSelectedText);
+    const autoOnSelected = document.createElement("button"); autoOnSelected.type = "button";
+    autoOnSelected.className = "slls-lhm-iconbtn"; autoOnSelected.innerHTML = `__ICON_AUTO_ON__`;
+    autoOnSelected.setAttribute("aria-label", "Turn auto-compaction on for the selected tables");
+    const autoOffSelected = document.createElement("button"); autoOffSelected.type = "button";
+    autoOffSelected.className = "slls-lhm-iconbtn"; autoOffSelected.innerHTML = `__ICON_AUTO_OFF__`;
+    autoOffSelected.setAttribute("aria-label", "Turn auto-compaction off for the selected tables");
+    tableSelection.append(maintainSelected, statsSelected, autoOnSelected, autoOffSelected, tableSelectedText);
     const segment = document.createElement("div"); segment.className = "slls-lhm-seg";
     segment.setAttribute("role", "group"); segment.setAttribute("aria-label", "View");
     const viewButtons = [["Tree", `__ICON_TREE__`], ["Table", `__ICON_TABLE__`]].map(([name, icon]) => {
@@ -839,9 +892,14 @@ function render({ model, el }) {
     dialog.append(dialogHead, optimizeChk.el, vorderChk.el, vacuumChk.el, retention, dialogActions);
     overlay.appendChild(dialog); root.appendChild(overlay);
 
-    function openMaintenance(rows) {
+    // A maintenance or stats run started from the table view's selection
+    // clears the selection once it has finished.
+    let clearTablesAfter = 0;
+    let maintenanceFromSelection = false;
+    function openMaintenance(rows, fromSelection = false) {
         if (!rows.length) return;
         maintenanceTargets = rows;
+        maintenanceFromSelection = fromSelection;
         dialogTitle.querySelector(".slls-lhm-panel-sub").textContent = rows.length === 1
             ? rows[0].path
             : `${rows.length} tables: ` + rows.slice(0, 10).map((row) => row.path).join(", ")
@@ -860,8 +918,127 @@ function render({ model, el }) {
             optimize: optimizeChk.input.checked, v_order: vorderChk.input.checked,
             vacuum: vacuumChk.input.checked, retention_period: retention.value.trim(),
         };
+        const fromSelection = maintenanceFromSelection;
         closeDialog();
-        act("maintenance", payload);
+        const trigger = act("maintenance", payload);
+        if (fromSelection) clearTablesAfter = trigger;
+    });
+
+    // ---------------- Liquid clustering dialog ----------------
+    // Lists the table's columns (loaded by the kernel) as numbered picks; the
+    // order of the picks is the clustering columns' order.
+    const MAX_CLUSTERING_COLUMNS = 4;
+    let clusterTarget = null;
+    let clusterRequest = 0;
+    let clusterChoice = null;
+    const clusterOverlay = document.createElement("div"); clusterOverlay.className = "slls-lhm-overlay";
+    clusterOverlay.style.display = "none";
+    const clusterDialog = document.createElement("div"); clusterDialog.className = "slls-lhm-dialog";
+    clusterDialog.setAttribute("role", "dialog"); clusterDialog.setAttribute("aria-label", "Liquid clustering");
+    clusterDialog.tabIndex = -1;
+    const clusterHead = document.createElement("div"); clusterHead.className = "slls-lhm-panel-head";
+    const clusterTitle = document.createElement("div");
+    clusterTitle.innerHTML = '<h2 class="slls-lhm-panel-title">Liquid clustering</h2>'
+        + '<div class="slls-lhm-panel-sub"></div>';
+    const clusterClose = document.createElement("button"); clusterClose.type = "button"; clusterClose.className = "slls-lhm-close";
+    clusterClose.innerHTML = `__ICON_CLOSE__`; clusterClose.title = "Close";
+    clusterClose.setAttribute("aria-label", "Close liquid clustering");
+    clusterHead.append(clusterTitle, clusterClose);
+    const clusterIntro = document.createElement("div"); clusterIntro.className = "slls-lhm-panel-sub";
+    clusterIntro.textContent = `Choose up to ${MAX_CLUSTERING_COLUMNS} columns to cluster the table by; `
+        + "the order sets their priority. Clear every column to remove liquid clustering.";
+    const clusterBody = document.createElement("div"); clusterBody.className = "slls-lhm-cluster-list";
+    const clusterSummary = document.createElement("div"); clusterSummary.className = "slls-lhm-cluster-summary";
+    const clusterActions = document.createElement("div"); clusterActions.className = "slls-lhm-dialog-actions";
+    const clusterCancel = document.createElement("button"); clusterCancel.type = "button";
+    clusterCancel.className = "slls-lhm-ghost"; clusterCancel.textContent = "Cancel";
+    const clusterApply = document.createElement("button"); clusterApply.type = "button"; clusterApply.className = "slls-lhm-run";
+    clusterActions.append(clusterCancel, clusterApply);
+    clusterDialog.append(clusterHead, clusterIntro, clusterBody, clusterSummary, clusterActions);
+    clusterOverlay.appendChild(clusterDialog); root.appendChild(clusterOverlay);
+
+    function openClustering(row) {
+        clusterTarget = row; clusterChoice = null;
+        clusterTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
+        clusterOverlay.style.display = "flex";
+        clusterDialog.focus({ preventScroll: true });
+        clusterRequest = act("cluster_columns", { path: row.path });
+        renderClustering();
+    }
+    function closeClustering() { clusterTarget = null; clusterOverlay.style.display = "none"; }
+
+    // The table's columns once the kernel has read them, else null.
+    function clusterInfo() {
+        if (!clusterTarget || (model.get("action_done") || 0) < clusterRequest) return null;
+        const info = model.get("cluster_info") || {};
+        if (info.path !== clusterTarget.path) {
+            return { error: model.get("error_message") || "Could not read the table's columns." };
+        }
+        return info;
+    }
+
+    function clusterState(text, bad) {
+        const state = document.createElement("div");
+        state.className = "slls-lhm-cluster-state" + (bad ? " slls-lhm-failed" : "");
+        state.textContent = text; return state;
+    }
+
+    function renderClustering() {
+        if (!clusterTarget) return;
+        clusterBody.innerHTML = "";
+        const info = clusterInfo();
+        const current = (info && info.clustering) || [];
+        const columns = (info && info.columns) || [];
+        if (info && !info.error && clusterChoice === null) {
+            const known = new Set(columns.map((column) => column.name));
+            clusterChoice = current.filter((name) => known.has(name));
+        }
+        const choice = clusterChoice || [];
+        if (!info) clusterBody.appendChild(clusterState("Reading the table's columns…"));
+        else if (info.error) clusterBody.appendChild(clusterState(info.error, true));
+        else if (!columns.length) clusterBody.appendChild(clusterState("The table has no columns."));
+        for (const column of (info && !info.error) ? columns : []) {
+            const order = choice.indexOf(column.name);
+            const pick = document.createElement("button"); pick.type = "button";
+            pick.className = "slls-lhm-cluster-col" + (order >= 0 ? " slls-lhm-on" : "");
+            pick.setAttribute("aria-pressed", String(order >= 0));
+            pick.disabled = busy() || (order < 0 && (!column.clusterable || choice.length >= MAX_CLUSTERING_COLUMNS));
+            if (!column.clusterable) pick.title = "Columns of this type cannot be clustering columns";
+            const badge = document.createElement("span"); badge.className = "slls-lhm-cluster-badge";
+            badge.textContent = order >= 0 ? String(order + 1) : "";
+            const name = document.createElement("span"); name.className = "slls-lhm-cluster-name"; name.textContent = column.name;
+            const type = document.createElement("span"); type.className = "slls-lhm-cluster-type"; type.textContent = column.type || "";
+            pick.append(badge, name, type);
+            pick.dataset.column = column.name;
+            pick.addEventListener("click", () => {
+                clusterChoice = order >= 0 ? choice.filter((c) => c !== column.name) : choice.concat([column.name]);
+                renderClustering();
+                // The list is rebuilt, so focus returns to the same column.
+                for (const button of clusterBody.querySelectorAll(".slls-lhm-cluster-col")) {
+                    if (button.dataset.column === column.name) { button.focus({ preventScroll: true }); break; }
+                }
+            });
+            clusterBody.appendChild(pick);
+        }
+        const unchanged = choice.length === current.length && choice.every((c, i) => c === current[i]);
+        const removing = !choice.length && current.length > 0;
+        clusterSummary.textContent = !info || info.error ? ""
+            : choice.length ? "Cluster by: " + choice.join(", ")
+            : removing ? "No columns are chosen, so liquid clustering will be removed."
+            : "The table is not clustered. Choose the columns to cluster it by.";
+        clusterApply.textContent = removing ? "Remove clustering" : "Apply";
+        clusterApply.classList.toggle("slls-lhm-danger", removing);
+        clusterApply.disabled = !info || Boolean(info.error) || busy() || unchanged || !sparkAvailable();
+    }
+
+    clusterCancel.addEventListener("click", closeClustering);
+    clusterClose.addEventListener("click", closeClustering);
+    clusterOverlay.addEventListener("click", (event) => { if (event.target === clusterOverlay) closeClustering(); });
+    clusterApply.addEventListener("click", () => {
+        if (!clusterTarget || clusterChoice === null) return;
+        const payload = { path: clusterTarget.path, columns: clusterChoice.slice() };
+        closeClustering();
+        act("clustering", payload);
     });
 
     // ---------------- Delete confirmation ----------------
@@ -1118,13 +1295,31 @@ function render({ model, el }) {
             : "No tables selected";
         maintainSelected.disabled = busy() || !rows.length;
         statsSelected.disabled = busy() || !rows.length;
+        const spark = sparkAvailable();
+        autoOnSelected.disabled = busy() || !rows.length || !spark;
+        autoOffSelected.disabled = busy() || !rows.length || !spark;
+        autoOnSelected.title = spark
+            ? "Turn auto-compaction on for the selected tables (delta.autoOptimize.autoCompact = true)"
+            : "Turning auto-compaction on requires a PySpark notebook";
+        autoOffSelected.title = spark
+            ? "Turn auto-compaction off for the selected tables (delta.autoOptimize.autoCompact = false)"
+            : "Turning auto-compaction off requires a PySpark notebook";
     }
 
-    maintainSelected.addEventListener("click", () => openMaintenance(selectedTables()));
+    // Changing a table's properties runs Spark SQL, which a Python notebook lacks.
+    function sparkAvailable() { return model.get("spark_available") !== false; }
+
+    maintainSelected.addEventListener("click", () => openMaintenance(selectedTables(), true));
     statsSelected.addEventListener("click", () => {
         const paths = selectedTables().map((row) => row.path);
-        if (paths.length) act("stats", { paths: paths });
+        if (paths.length) clearTablesAfter = act("stats", { paths: paths });
     });
+    for (const [button, enable] of [[autoOnSelected, true], [autoOffSelected, false]]) {
+        button.addEventListener("click", () => {
+            const paths = selectedTables().map((row) => row.path);
+            if (paths.length) clearTablesAfter = act("auto_compaction", { paths: paths, enable: enable });
+        });
+    }
 
     function emptyState(text) {
         const empty = document.createElement("div"); empty.className = "slls-lhm-empty";
@@ -1345,8 +1540,28 @@ function render({ model, el }) {
         return td;
     }
 
-    // A collected stat; "…" while the table is being read, "—" before.
+    // A collected stat; the liquid clustering cell also offers changing it.
     function statCell(row, column) {
+        const cell = statValueCell(row, column);
+        const pending = (model.get("stats_pending") || []).indexOf(row.path) >= 0;
+        if (column.key !== "liquid_clustering" || !maintainable(row) || pending) return cell;
+        const text = document.createElement("span"); text.className = "slls-lhm-cell-text";
+        text.textContent = cell.textContent; cell.textContent = "";
+        const edit = document.createElement("button"); edit.type = "button";
+        edit.className = "slls-lhm-iconbtn slls-lhm-cellbtn"; edit.innerHTML = `__ICON_PENCIL__`;
+        edit.title = sparkAvailable()
+            ? "Add, change or remove the table's liquid clustering columns"
+            : "Changing liquid clustering requires a PySpark notebook";
+        edit.setAttribute("aria-label", "Change the liquid clustering of " + row.path);
+        edit.disabled = busy() || !sparkAvailable();
+        edit.addEventListener("click", () => openClustering(row));
+        const wrap = document.createElement("div"); wrap.className = "slls-lhm-cellwrap";
+        wrap.append(text, edit); cell.appendChild(wrap);
+        return cell;
+    }
+
+    // A collected stat; "…" while the table is being read, "—" before.
+    function statValueCell(row, column) {
         const num = column.num ? "slls-lhm-num " : "";
         if ((model.get("stats_pending") || []).indexOf(row.path) >= 0) {
             return textCell("…", num + "slls-lhm-muted", "Collecting stats…");
@@ -1416,8 +1631,12 @@ function render({ model, el }) {
         checkHead.appendChild(checkAll); headRow.appendChild(checkHead);
         for (const column of columns) {
             const th = document.createElement("th"); if (column.num) th.className = "slls-lhm-num";
-            // Bars have no intrinsic width, so their columns start at a set width.
-            if (column.width) th.style.width = column.width + "px";
+            // Bars have no intrinsic width, so their columns start at a set
+            // width (the resizers read it from data-column-width).
+            if (column.width) {
+                th.style.width = column.width + "px";
+                th.dataset.columnWidth = String(column.width);
+            }
             if (column.key) {
                 const active = tableSort.key === column.key;
                 th.setAttribute("aria-sort", active ? (tableSort.dir > 0 ? "ascending" : "descending") : "none");
@@ -1495,10 +1714,27 @@ function render({ model, el }) {
             tbody.appendChild(tr);
         }
         table.appendChild(tbody); listWrap.appendChild(table);
+        // The checkbox, schema (when shown) and name columns are frozen.
+        const frozen = showSchema ? 3 : 2;
+        for (const tr of table.rows) {
+            for (let i = 0; i < frozen; i++) {
+                tr.cells[i].classList.add("slls-lhm-frozen");
+                if (i === frozen - 1) tr.cells[i].classList.add("slls-lhm-frozen-last");
+            }
+        }
         // Measured once in the DOM, so the columns start out filling the list.
         sllsInstallColumnResizers(table, {
             widths: tableWidths, minWidth: 56,
             key: (showSchema ? "tables-schema" : "tables") + (showStats ? "-stats" : ""),
+            // Each frozen column sits right after the ones before it, so its
+            // offset follows their widths as they are resized.
+            onWidthsChanged: (resized, widths) => {
+                let left = 0;
+                for (let i = 0; i < frozen; i++) {
+                    for (const tr of resized.rows) tr.cells[i].style.left = left + "px";
+                    left += widths[i];
+                }
+            },
         });
     }
 
@@ -1577,6 +1813,7 @@ function render({ model, el }) {
     root.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         if (confirmOverlay.style.display !== "none") closeConfirm();
+        else if (clusterOverlay.style.display !== "none") closeClustering();
         else if (overlay.style.display !== "none") closeDialog();
         else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
     });
@@ -1599,15 +1836,25 @@ function render({ model, el }) {
 
     for (const name of ["available_workspaces", "available_lakehouses", "selected_workspace_id",
         "selected_lakehouse_id", "picker_loading", "loading", "busy", "summary",
-        "schema_enabled", "status_message", "error_message", "tree", "table_stats", "stats_pending"]) {
+        "schema_enabled", "status_message", "error_message", "tree", "table_stats", "stats_pending",
+        "spark_available"]) {
         model.on("change:" + name, () => { renderState(); renderRows(); });
     }
+    model.on("change:cluster_info", renderClustering);
+    model.on("change:busy", renderClustering);
     // A different lakehouse was loaded: selections made in the previous one
     // must never carry over to it.
     model.on("change:loaded_lakehouse_id", () => {
         selected.clear(); tableSelected.clear();
         expanded.clear(); expanded.add("Tables"); expanded.add("Files");
         renderState(); renderRows();
+    });
+    model.on("change:action_done", () => {
+        renderClustering();
+        if (!clearTablesAfter || (model.get("action_done") || 0) < clearTablesAfter) return;
+        clearTablesAfter = 0;
+        tableSelected.clear();
+        renderRows();
     });
     model.on("change:objects", () => {
         if ((model.get("objects") || []).length) pickerOpen = false;
@@ -1638,6 +1885,9 @@ export default { render };
     .replace("__ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__ICON_WRENCH__", _UI_ICONS["wrench"])
     .replace("__ICON_STATS__", _UI_ICONS["bar_chart"])
+    .replace("__ICON_AUTO_ON__", _UI_ICONS["collapse_diagonal"])
+    .replace("__ICON_AUTO_OFF__", _UI_ICONS["expand_diagonal"])
+    .replace("__ICON_PENCIL__", _UI_ICONS["pencil"])
     .replace("__ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__ICON_CHECK__", _UI_ICONS["check_circle"])
     .replace("__ATTRIBUTION__", _ui_render_attribution_html())
@@ -1895,6 +2145,87 @@ def _delta_details_spark(path: str, table_rel: str) -> dict:
         "properties": dict(detail.get("properties") or {}),
         "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
     }
+
+
+# ---------------------------------------------------------------------------
+# Table settings (auto-compaction and liquid clustering), changed with Spark SQL
+# ---------------------------------------------------------------------------
+_SPARK_REQUIRED = (
+    "{what} requires a PySpark notebook, as it runs Spark SQL; this is a "
+    "Python notebook."
+)
+# Delta allows at most four clustering columns.
+_MAX_CLUSTERING_COLUMNS = 4
+# Delta clusters on columns it keeps min/max statistics for, which these lack.
+_UNCLUSTERABLE_TYPES = ("array", "map", "struct", "binary")
+
+
+def _quote_identifier(name: str) -> str:
+    """A Spark SQL identifier, back-quoted so any name is taken literally."""
+
+    return "`" + str(name).replace("`", "``") + "`"
+
+
+def _delta_path_table(path: str) -> str:
+    """A Spark SQL reference to the delta table at ``path``.
+
+    The path is used rather than the table's name so the table need not be in
+    the lakehouse attached to the notebook.
+    """
+
+    return "delta." + _quote_identifier(path)
+
+
+def _auto_compaction_sql(path: str, enable: bool) -> str:
+    value = "true" if enable else "false"
+    return (
+        f"ALTER TABLE {_delta_path_table(path)} SET TBLPROPERTIES "
+        f"('delta.autoOptimize.autoCompact' = '{value}')"
+    )
+
+
+def _clustering_sql(path: str, columns: List[str]) -> str:
+    """``CLUSTER BY`` the given columns, or ``CLUSTER BY NONE`` to remove it."""
+
+    if columns:
+        clause = "CLUSTER BY (" + ", ".join(_quote_identifier(c) for c in columns) + ")"
+    else:
+        clause = "CLUSTER BY NONE"
+    return f"ALTER TABLE {_delta_path_table(path)} {clause}"
+
+
+def _table_columns_spark(path: str) -> dict:
+    """A delta table's columns and current liquid clustering columns."""
+
+    from sempy_labs._helper_functions import _get_delta_table
+
+    delta_table = _get_delta_table(path)
+    detail = delta_table.detail().collect()[0].asDict()
+    columns = []
+    for field in delta_table.toDF().schema.fields:
+        data_type = field.dataType.simpleString()
+        columns.append(
+            {
+                "name": field.name,
+                "type": data_type,
+                "clusterable": not data_type.startswith(_UNCLUSTERABLE_TYPES),
+            }
+        )
+    return {
+        "columns": columns,
+        "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
+    }
+
+
+def _spark_available() -> bool:
+    """Whether the notebook runs Spark (a PySpark, not a Python, notebook)."""
+
+    try:
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        return not _pure_python_notebook()
+    except Exception:
+        return True
 
 
 _COMMIT_FILE = re.compile(r"^(\d{20})\.json$")
@@ -2223,9 +2554,11 @@ def lakehouse_manager(
     Browses the lakehouse's tables, folders and files, flags OneLake shortcuts
     and `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
     objects, recovers those deleted objects, runs table maintenance
-    (optimize, V-Order, vacuum) on one or more tables, and collects table stats
+    (optimize, V-Order, vacuum) on one or more tables, collects table stats
     (columns, rows, row groups, Z-Order, liquid clustering, auto-compaction and
-    V-Order).
+    V-Order), turns auto-compaction on or off, and changes a table's liquid
+    clustering columns. Changing auto-compaction or liquid clustering runs
+    Spark SQL, so it requires a PySpark notebook.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -2306,9 +2639,15 @@ def lakehouse_manager(
         dark_mode = traitlets.Bool(False).tag(sync=True)
         pending_action = traitlets.Dict({}).tag(sync=True)
         action_trigger = traitlets.Int(0).tag(sync=True)
+        # The action_trigger of the last action which finished.
+        action_done = traitlets.Int(0).tag(sync=True)
         # Stats collected per table path, and the tables still being read.
         table_stats = traitlets.Dict({}).tag(sync=True)
         stats_pending = traitlets.List([]).tag(sync=True)
+        # Whether Spark SQL can run, which changing a table's settings needs.
+        spark_available = traitlets.Bool(True).tag(sync=True)
+        # The columns of the table whose liquid clustering is being changed.
+        cluster_info = traitlets.Dict({}).tag(sync=True)
 
     widget = LakehouseManagerWidget(
         available_workspaces=initial_workspaces,
@@ -2316,6 +2655,7 @@ def lakehouse_manager(
         selected_workspace_id=workspace_id,
         selected_lakehouse_id=lakehouse_id,
         dark_mode=bool(dark_mode),
+        spark_available=_spark_available(),
     )
 
     def _load_lakehouses(data: dict):
@@ -2632,6 +2972,193 @@ def lakehouse_manager(
                 if part
             )
 
+    def _require_spark(what: str) -> bool:
+        if widget.spark_available:
+            return True
+        widget.error_message = _SPARK_REQUIRED.format(what=what)
+        return False
+
+    def _table_label(path: str) -> str:
+        schema, table = loaded["tables"][path]
+        return f"{schema}.{table}" if schema else table
+
+    def _table_abfss_path(path: str) -> str:
+        from sempy_labs._helper_functions import create_abfss_path
+
+        schema, table = loaded["tables"][path]
+        return create_abfss_path(
+            loaded["lakehouse_id"], loaded["workspace_id"], table, schema=schema or None
+        )
+
+    def _update_stats(path: str, **values):
+        """Reflect a changed setting in a table's collected stats, if any."""
+
+        stats = widget.table_stats.get(path)
+        if isinstance(stats, dict) and not stats.get("error"):
+            widget.table_stats = {**widget.table_stats, path: {**stats, **values}}
+
+    def _auto_compaction(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        enable = bool(data.get("enable"))
+        state = "on" if enable else "off"
+        if not _require_spark(f"Turning auto-compaction {state}"):
+            return
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected:
+            widget.error_message = (
+                f"Could not turn auto-compaction {state} for "
+                + ", ".join(rejected)
+                + ": not a table of the loaded lakehouse."
+            )
+        if not paths:
+            return
+        widget.busy = True
+        failures = []
+        try:
+            from sempy_labs._helper_functions import _run_spark_sql_query
+
+            for path in paths:
+                try:
+                    _run_spark_sql_query(
+                        _auto_compaction_sql(_table_abfss_path(path), enable)
+                    )
+                except BaseException as e:
+                    if _is_fatal(e):
+                        raise
+                    failures.append(f"'{_table_label(path)}': {_error_text(e)}")
+                    continue
+                _update_stats(path, auto_compaction=enable)
+            done = len(paths) - len(failures)
+            if len(paths) == 1:
+                if done:
+                    widget.status_message = f"Turned auto-compaction {state} for '{_table_label(paths[0])}'."
+            else:
+                widget.status_message = (
+                    f"Turned auto-compaction {state} for {done} of {len(paths)} tables."
+                )
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            failures.append(f"the selected tables: {_error_text(e)}")
+        finally:
+            widget.busy = False
+        if failures:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    f"Could not turn auto-compaction {state} for "
+                    + "; ".join(failures),
+                )
+                if part
+            )
+
+    def _single_table(data: dict, verb: str) -> Optional[str]:
+        """The one loaded table an action targets, or None (with an error)."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected or len(paths) != 1:
+            widget.error_message = (
+                f"Could not {verb} "
+                + (", ".join(rejected) or "the table")
+                + ": not a table of the loaded lakehouse."
+            )
+            return None
+        return paths[0]
+
+    def _cluster_columns(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        path = _single_table(data, "read the columns of")
+        if path is None:
+            return
+        if not widget.spark_available:
+            widget.cluster_info = {
+                "path": path,
+                "error": _SPARK_REQUIRED.format(what="Changing liquid clustering"),
+            }
+            return
+        widget.busy = True
+        try:
+            widget.cluster_info = {
+                "path": path,
+                **_table_columns_spark(_table_abfss_path(path)),
+            }
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            widget.cluster_info = {
+                "path": path,
+                "error": f"Could not read the table's columns: {_error_text(e)}",
+            }
+        finally:
+            widget.busy = False
+
+    def _set_clustering(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        if not _require_spark("Changing liquid clustering"):
+            return
+        path = _single_table(data, "change the liquid clustering of")
+        if path is None:
+            return
+        columns = data.get("columns")
+        if not isinstance(columns, list) or not all(
+            isinstance(c, str) and c for c in columns
+        ):
+            widget.error_message = "The clustering columns are not valid."
+            return
+        if len(columns) > _MAX_CLUSTERING_COLUMNS or len(set(columns)) != len(columns):
+            widget.error_message = (
+                f"Choose up to {_MAX_CLUSTERING_COLUMNS} different clustering columns."
+            )
+            return
+        label = _table_label(path)
+        widget.busy = True
+        try:
+            from sempy_labs._helper_functions import _run_spark_sql_query
+
+            table_path = _table_abfss_path(path)
+            # Only the table's own clusterable columns are accepted.
+            known = {
+                column["name"]
+                for column in _table_columns_spark(table_path)["columns"]
+                if column["clusterable"]
+            }
+            unknown = [c for c in columns if c not in known]
+            if unknown:
+                widget.error_message = (
+                    f"Could not cluster '{label}' by " + ", ".join(unknown) + ": "
+                    "not a column of the table which can be clustered."
+                )
+                return
+            _run_spark_sql_query(_clustering_sql(table_path, columns))
+            _update_stats(path, liquid_clustering=list(columns))
+            widget.cluster_info = {}
+            if columns:
+                widget.status_message = (
+                    f"Clustered '{label}' by {', '.join(columns)}. Run table "
+                    "maintenance (optimize) to recluster its existing data."
+                )
+            else:
+                widget.status_message = f"Removed liquid clustering from '{label}'."
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            widget.error_message = (
+                f"Could not change the liquid clustering of '{label}': "
+                f"{_error_text(e)}"
+            )
+        finally:
+            widget.busy = False
+
     handlers = {
         "workspace": _load_lakehouses,
         "open": _load_objects,
@@ -2640,6 +3167,9 @@ def lakehouse_manager(
         "delete": _delete,
         "maintenance": _maintenance,
         "stats": _collect_stats,
+        "auto_compaction": _auto_compaction,
+        "cluster_columns": _cluster_columns,
+        "clustering": _set_clustering,
     }
 
     def _on_action(change):
@@ -2661,6 +3191,8 @@ def lakehouse_manager(
             widget.busy = False
             widget.stats_pending = []
             widget.error_message = f"The action failed: {_error_text(e)}"
+        finally:
+            widget.action_done = change["new"]
 
     widget.observe(_on_action, names="action_trigger")
     display(widget)
