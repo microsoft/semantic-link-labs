@@ -2,11 +2,12 @@
 
 Browses the tables, folders and files of a lakehouse (including the
 `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
-ones), recovers deleted objects and runs table maintenance, all from one
-widget.
+ones), recovers deleted objects, runs table maintenance and collects table
+stats, all from one widget.
 """
 
 import json
+import re
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -546,6 +547,7 @@ _LHM_CSS = (
 .slls-lhm-table .slls-lhm-iconbtn svg { width: 13px; height: 13px; }
 .slls-lhm-table .slls-lhm-bar { display: block; width: 100%; }
 .slls-lhm-muted { color: var(--ui-text-tertiary); }
+.slls-lhm-table td.slls-lhm-failed { color: var(--ui-danger-text); }
 .slls-lhm-dist { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slls-lhm-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: 0 0 auto; }
 .slls-lhm-spark-bar { width: 6px; min-height: 2px; border-radius: 1px 1px 0 0; background: var(--ui-accent); }
@@ -779,7 +781,12 @@ function render({ model, el }) {
     maintainSelected.className = "slls-lhm-iconbtn"; maintainSelected.innerHTML = `__ICON_WRENCH__`;
     maintainSelected.title = "Run table maintenance on the selected tables";
     maintainSelected.setAttribute("aria-label", maintainSelected.title);
-    tableSelection.append(maintainSelected, tableSelectedText);
+    const statsSelected = document.createElement("button"); statsSelected.type = "button";
+    statsSelected.className = "slls-lhm-iconbtn"; statsSelected.innerHTML = `__ICON_STATS__`;
+    statsSelected.title = "Collect stats for the selected tables (columns, rows, row groups, "
+        + "Z-Order, liquid clustering, auto-compaction and V-Order)";
+    statsSelected.setAttribute("aria-label", "Collect stats for the selected tables");
+    tableSelection.append(maintainSelected, statsSelected, tableSelectedText);
     const segment = document.createElement("div"); segment.className = "slls-lhm-seg";
     segment.setAttribute("role", "group"); segment.setAttribute("aria-label", "View");
     const viewButtons = [["Tree", `__ICON_TREE__`], ["Table", `__ICON_TABLE__`]].map(([name, icon]) => {
@@ -1110,9 +1117,14 @@ function render({ model, el }) {
             ? `${rows.length} table${rows.length === 1 ? "" : "s"} selected`
             : "No tables selected";
         maintainSelected.disabled = busy() || !rows.length;
+        statsSelected.disabled = busy() || !rows.length;
     }
 
     maintainSelected.addEventListener("click", () => openMaintenance(selectedTables()));
+    statsSelected.addEventListener("click", () => {
+        const paths = selectedTables().map((row) => row.path);
+        if (paths.length) act("stats", { paths: paths });
+    });
 
     function emptyState(text) {
         const empty = document.createElement("div"); empty.className = "slls-lhm-empty";
@@ -1234,14 +1246,43 @@ function render({ model, el }) {
         { key: "files", label: "Files", num: true },
         { key: "partitions", label: "Partitions", num: true },
         { key: "deletion_vectors", label: "Deletion Vectors" },
+        // Collected on demand for the selected tables; shown once any are.
+        { key: "columns", label: "Columns", num: true, stats: true,
+          title: "The number of columns in the table" },
+        { key: "row_groups", label: "Row Groups", num: true, stats: true,
+          title: "The number of parquet row groups in the table's data files" },
+        { key: "rows", label: "Rows", num: true, stats: true,
+          title: "The number of rows in the table" },
+        { key: "z_order", label: "Z-Order", stats: true,
+          title: "The columns of the table's most recent Z-Ordered OPTIMIZE" },
+        { key: "liquid_clustering", label: "Liquid Clustering", stats: true,
+          title: "The table's liquid clustering columns" },
+        { key: "auto_compaction", label: "Auto-compaction", stats: true,
+          title: "Whether the table compacts small files automatically (delta.autoOptimize.autoCompact)" },
+        { key: "v_order", label: "V-Order", stats: true,
+          title: "Whether the table's data files are V-Ordered" },
         { key: "modified", label: "Last modified" },
         { key: "", label: "", num: true },
     ];
+    const STAT_KEYS = new Set(TABLE_COLUMNS.filter((column) => column.stats).map((column) => column.key));
     let tableSort = { key: "name", dir: 1 };
     // Column widths the user set, kept across re-renders.
     const tableWidths = new Map();
 
+    function statsOf(row) {
+        return (model.get("table_stats") || {})[row.path] || null;
+    }
+
     function sortValue(row, key) {
+        if (STAT_KEYS.has(key)) {
+            // Tables without stats sort below every table which has them.
+            const stats = statsOf(row);
+            if (!stats || stats.error) return -1;
+            const value = stats[key];
+            if (Array.isArray(value)) return value.length;
+            if (typeof value === "boolean") return value ? 1 : 0;
+            return Number(value) || 0;
+        }
         if (key === "file_sizes") return (row.file_sizes && row.file_sizes.avg) || 0;
         if (key === "deletion_vectors") return row.deletion_vectors ? 1 : 0;
         return row[key] || 0;
@@ -1304,6 +1345,36 @@ function render({ model, el }) {
         return td;
     }
 
+    // A collected stat; "…" while the table is being read, "—" before.
+    function statCell(row, column) {
+        const num = column.num ? "slls-lhm-num " : "";
+        if ((model.get("stats_pending") || []).indexOf(row.path) >= 0) {
+            return textCell("…", num + "slls-lhm-muted", "Collecting stats…");
+        }
+        const stats = statsOf(row);
+        if (!stats) {
+            return textCell("—", num + "slls-lhm-muted",
+                maintainable(row) ? "Not collected; select the table and collect its stats" : "");
+        }
+        if (stats.error) {
+            const failed = textCell(column.key === "columns" ? "Failed" : "—", num + "slls-lhm-muted", stats.error);
+            if (column.key === "columns") failed.classList.add("slls-lhm-failed");
+            return failed;
+        }
+        const value = stats[column.key];
+        if (Array.isArray(value)) {
+            return value.length
+                ? textCell(value.join(", "), "", value.join(", "))
+                : textCell("No", "slls-lhm-muted");
+        }
+        if (typeof value === "boolean") return value ? textCell("Yes") : textCell("No", "slls-lhm-muted");
+        const cell = textCell(Number(value || 0).toLocaleString(), "slls-lhm-num");
+        if (column.key === "row_groups" && stats.unread_files) {
+            cell.title = `${stats.unread_files} data file${stats.unread_files === 1 ? "" : "s"} could not be read`;
+        }
+        return cell;
+    }
+
     function renderTable() {
         const term = search.value.trim().toLowerCase();
         const tables = (model.get("objects") || []).filter((row) => row.container === "Tables");
@@ -1316,7 +1387,10 @@ function render({ model, el }) {
             return;
         }
         const showSchema = model.get("schema_enabled") === true || tables.some((row) => row.schema);
-        const columns = TABLE_COLUMNS.filter((column) => showSchema || !column.schemaOnly);
+        const showStats = Object.keys(model.get("table_stats") || {}).length > 0
+            || (model.get("stats_pending") || []).length > 0;
+        const columns = TABLE_COLUMNS.filter((column) =>
+            (showSchema || !column.schemaOnly) && (showStats || !column.stats));
         if (!columns.some((column) => column.key === tableSort.key)) tableSort = { key: "name", dir: 1 };
         rows.sort(compareTables);
         const largest = rows.reduce((max, row) => Math.max(max, row.size || 0), 0) || 1;
@@ -1411,6 +1485,9 @@ function render({ model, el }) {
             tr.appendChild(row.deletion_vectors
                 ? textCell("Yes", "", `${dvFiles} deletion vector file${dvFiles === 1 ? "" : "s"}`)
                 : textCell("No", "slls-lhm-muted"));
+            if (showStats) {
+                for (const column of columns) if (column.stats) tr.appendChild(statCell(row, column));
+            }
             tr.appendChild(textCell(row.modified_label || "—"));
 
             const actionsCell = document.createElement("td");
@@ -1420,7 +1497,8 @@ function render({ model, el }) {
         table.appendChild(tbody); listWrap.appendChild(table);
         // Measured once in the DOM, so the columns start out filling the list.
         sllsInstallColumnResizers(table, {
-            widths: tableWidths, key: showSchema ? "tables-schema" : "tables", minWidth: 56,
+            widths: tableWidths, minWidth: 56,
+            key: (showSchema ? "tables-schema" : "tables") + (showStats ? "-stats" : ""),
         });
     }
 
@@ -1521,7 +1599,7 @@ function render({ model, el }) {
 
     for (const name of ["available_workspaces", "available_lakehouses", "selected_workspace_id",
         "selected_lakehouse_id", "picker_loading", "loading", "busy", "summary",
-        "schema_enabled", "status_message", "error_message", "tree"]) {
+        "schema_enabled", "status_message", "error_message", "tree", "table_stats", "stats_pending"]) {
         model.on("change:" + name, () => { renderState(); renderRows(); });
     }
     // A different lakehouse was loaded: selections made in the previous one
@@ -1559,6 +1637,7 @@ export default { render };
     .replace("__ICON_SORT_DESC__", _UI_ICONS["sort_desc"])
     .replace("__ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__ICON_WRENCH__", _UI_ICONS["wrench"])
+    .replace("__ICON_STATS__", _UI_ICONS["bar_chart"])
     .replace("__ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__ICON_CHECK__", _UI_ICONS["check_circle"])
     .replace("__ATTRIBUTION__", _ui_render_attribution_html())
@@ -1652,6 +1731,474 @@ def _maintainable_tables(objects: List[dict]) -> Dict[str, Tuple[str, str]]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Table stats (columns, rows, row groups and the table's layout features)
+# ---------------------------------------------------------------------------
+def _relative_data_file(uri: str, table_rel: str) -> Optional[str]:
+    """A data file's path relative to its table folder, or None.
+
+    Spark reports a table's files as full (possibly percent-encoded) URIs;
+    ``table_rel`` is the table's folder in the lakehouse, e.g. ``Tables/dbo/sales``.
+    """
+
+    from urllib.parse import unquote
+
+    text = unquote(str(uri or ""))
+    marker = "/" + table_rel.strip("/") + "/"
+    index = text.find(marker)
+    if index < 0:
+        return None
+    start = index + len(marker)
+    return text[start:] or None
+
+
+def _parse_column_list(value: Any) -> List[str]:
+    """The columns of a history parameter such as ``zOrderBy`` or ``clusterBy``.
+
+    Delta records them as a JSON array (sometimes of nested name parts); an
+    unparsable value is read as a comma-separated list.
+    """
+
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except ValueError:
+            return [part.strip() for part in text.split(",") if part.strip()]
+    else:
+        parsed = value
+    if isinstance(parsed, str):
+        return [parsed] if parsed else []
+    columns = []
+    for item in parsed or []:
+        if isinstance(item, (list, tuple)):
+            name = ".".join(str(part) for part in item if part is not None)
+        else:
+            name = str(item) if item is not None else ""
+        if name:
+            columns.append(name)
+    return columns
+
+
+def _history_entries(history: Any) -> List[dict]:
+    """A table's history entries, newest first, as plain dicts."""
+
+    if history is None:
+        return []
+    if hasattr(history, "to_dict"):
+        entries = history.to_dict("records")
+    else:
+        entries = [dict(entry) for entry in history]
+    if any("version" in entry for entry in entries):
+        entries.sort(key=lambda entry: entry.get("version") or 0, reverse=True)
+    return entries
+
+
+def _operation_parameters(entry: dict) -> dict:
+    params = entry.get("operationParameters")
+    return params if isinstance(params, dict) else {}
+
+
+def _history_zorder(history: Any) -> List[str]:
+    """The Z-Order columns of the table's most recent Z-Ordered OPTIMIZE.
+
+    Z-Order is not a table property; each OPTIMIZE records it in the history.
+    """
+
+    for entry in _history_entries(history):
+        if str(entry.get("operation") or "") != "OPTIMIZE":
+            continue
+        columns = _parse_column_list(_operation_parameters(entry).get("zOrderBy"))
+        if columns:
+            return columns
+    return []
+
+
+def _history_clustering(history: Any) -> List[str]:
+    """The liquid clustering columns, as last set in the table's history.
+
+    Set when the table is created (``clusterBy``) or altered with
+    ``CLUSTER BY`` (``newClusteringColumns``); an empty list means removed.
+    """
+
+    for entry in _history_entries(history):
+        params = _operation_parameters(entry)
+        for key in ("newClusteringColumns", "clusterBy"):
+            if key in params:
+                return _parse_column_list(params.get(key))
+    return []
+
+
+def _is_true(value: Any) -> bool:
+    return str(value).strip().lower() == "true"
+
+
+def _is_fatal(error: BaseException) -> bool:
+    """Whether an error must stop the kernel's work rather than be reported."""
+
+    return isinstance(error, (KeyboardInterrupt, SystemExit, GeneratorExit))
+
+
+def _error_text(error: BaseException) -> str:
+    return str(error) or type(error).__name__
+
+
+def _footer_stats(table_dir: str, files: List[str]) -> Tuple[int, int, bool, int]:
+    """Read the parquet footers of a table's live data files.
+
+    Returns ``(row_groups, rows, v_ordered, unread_files)``. A file is V-Ordered
+    when its footer carries a ``vorder`` key.
+    """
+
+    import os
+    import pyarrow.parquet as pq
+
+    row_groups = rows = unread = 0
+    v_ordered = False
+    for file in files:
+        local = os.path.join(table_dir, *str(file).split("/"))
+        try:
+            metadata = pq.read_metadata(local)
+        except Exception:
+            unread += 1
+            continue
+        row_groups += metadata.num_row_groups
+        rows += metadata.num_rows
+        if not v_ordered:
+            v_ordered = any(
+                b"vorder" in key.lower() for key in (metadata.metadata or {})
+            )
+    return row_groups, rows, v_ordered, unread
+
+
+def _delta_details_spark(path: str, table_rel: str) -> dict:
+    """Columns, rows, live files, properties and clustering, read with Spark."""
+
+    from sempy_labs._helper_functions import _get_delta_table
+
+    delta_table = _get_delta_table(path)
+    detail = delta_table.detail().collect()[0].asDict()
+    df = delta_table.toDF()
+    return {
+        "columns": len(df.columns),
+        # Counted by Spark, so rows removed by deletion vectors are excluded.
+        "rows": int(df.count()),
+        "files": [
+            rel
+            for rel in (_relative_data_file(uri, table_rel) for uri in df.inputFiles())
+            if rel
+        ],
+        "properties": dict(detail.get("properties") or {}),
+        "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
+    }
+
+
+_COMMIT_FILE = re.compile(r"^(\d{20})\.json$")
+# A classic checkpoint, whole or in parts: <version>.checkpoint[.<part>.<parts>].parquet
+_CHECKPOINT_FILE = re.compile(
+    r"^(\d{20})\.checkpoint(?:\.(\d{10})\.(\d{10}))?\.parquet$"
+)
+_LOG_UNREADABLE = (
+    "The table's delta log uses a format which can only be read with Spark; "
+    "collect its stats in a PySpark notebook."
+)
+
+
+def _as_dict(value: Any) -> dict:
+    """A delta map (a dict in JSON, key/value pairs in a parquet checkpoint)."""
+
+    if isinstance(value, dict):
+        return dict(value)
+    result = {}
+    for item in value or []:
+        if isinstance(item, dict):
+            result[item.get("key")] = item.get("value")
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            result[item[0]] = item[1]
+    return result
+
+
+def _log_files(log_dir: str) -> Tuple[Dict[int, str], Dict[int, List[str]]]:
+    """A delta log's commit files and complete classic checkpoints, by version."""
+
+    import os
+
+    commits: Dict[int, str] = {}
+    parts: Dict[int, Dict[int, str]] = {}
+    totals: Dict[int, int] = {}
+    for name in os.listdir(log_dir):
+        match = _COMMIT_FILE.match(name)
+        if match:
+            commits[int(match.group(1))] = name
+            continue
+        match = _CHECKPOINT_FILE.match(name)
+        if match:
+            version = int(match.group(1))
+            parts.setdefault(version, {})[int(match.group(2) or 1)] = name
+            totals[version] = int(match.group(3) or 1)
+    checkpoints = {
+        version: [found[index] for index in sorted(found)]
+        for version, found in parts.items()
+        if len(found) == totals[version]
+    }
+    return commits, checkpoints
+
+
+def _read_checkpoint_actions(file: str):
+    """Yield ``(action, value)`` for the actions in a parquet checkpoint file."""
+
+    import pyarrow.parquet as pq
+
+    present = set(pq.read_schema(file).names)
+    columns = [
+        name
+        for name in ("add", "metaData", "protocol", "domainMetadata")
+        if name in present
+    ]
+    table = pq.read_table(file, columns=columns)
+    for name in columns:
+        for value in table.column(name).to_pylist():
+            if value is not None:
+                yield name, value
+
+
+def _read_commit_actions(file: str):
+    """Yield ``(action, value)`` for the actions in a JSON commit file."""
+
+    with open(file, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            for name, value in json.loads(line).items():
+                yield name, value
+
+
+def _physical_names(schema: dict) -> Dict[str, str]:
+    """Map column mapping's physical column names to the columns' names."""
+
+    names: Dict[str, str] = {}
+
+    def _walk(fields: list):
+        for field in fields or []:
+            physical = (field.get("metadata") or {}).get(
+                "delta.columnMapping.physicalName"
+            )
+            if physical:
+                names[str(physical)] = str(field.get("name"))
+            nested = field.get("type")
+            if isinstance(nested, dict):
+                _walk(nested.get("fields"))
+
+    _walk(schema.get("fields"))
+    return names
+
+
+def _log_zorder(log_dir: str, commits: Dict[int, str]) -> List[str]:
+    """The Z-Order columns of the most recent Z-Ordered OPTIMIZE in the log."""
+
+    import os
+
+    for version in sorted(commits, reverse=True):
+        try:
+            with open(
+                os.path.join(log_dir, commits[version]), "r", encoding="utf-8"
+            ) as handle:
+                for line in handle:
+                    if '"commitInfo"' not in line:
+                        continue
+                    info = json.loads(line).get("commitInfo") or {}
+                    if info.get("operation") != "OPTIMIZE":
+                        continue
+                    params = info.get("operationParameters") or {}
+                    columns = _parse_column_list(params.get("zOrderBy"))
+                    if columns:
+                        return columns
+        except (OSError, ValueError):
+            continue
+    return []
+
+
+def _delta_log_details(table_dir: str) -> dict:
+    """Columns, rows, live files, properties, clustering and Z-Order of a table.
+
+    Read straight from the table's delta log (JSON commits on top of its latest
+    usable parquet checkpoint), so neither Spark nor the deltalake package is
+    needed.
+    """
+
+    import os
+    from urllib.parse import unquote
+
+    log_dir = os.path.join(table_dir, "_delta_log")
+    commits, checkpoints = _log_files(log_dir)
+    latest = max(list(commits) + list(checkpoints), default=None)
+    if latest is None:
+        raise ValueError("The table has no delta log.")
+    # Replay from the newest checkpoint followed by every later commit; with
+    # no usable checkpoint, from the first commit.
+    start = next(
+        (
+            version
+            for version in sorted(checkpoints, reverse=True)
+            if all(v in commits for v in range(version + 1, latest + 1))
+        ),
+        None,
+    )
+    if start is None:
+        if not all(v in commits for v in range(0, latest + 1)):
+            raise ValueError(_LOG_UNREADABLE)
+        start = -1
+
+    live: Dict[str, dict] = {}
+    state: Dict[str, Any] = {"metaData": None, "protocol": None}
+    domains: Dict[str, Any] = {}
+
+    def _apply(name: str, value: Any):
+        if name == "add":
+            live[value["path"]] = value
+        elif name == "remove":
+            live.pop(value.get("path"), None)
+        elif name in state:
+            state[name] = value
+        elif name == "domainMetadata":
+            if value.get("removed"):
+                domains.pop(value.get("domain"), None)
+            else:
+                domains[value.get("domain")] = value.get("configuration")
+
+    if start >= 0:
+        for name in checkpoints[start]:
+            for action, value in _read_checkpoint_actions(os.path.join(log_dir, name)):
+                _apply(action, value)
+    for version in range(start + 1, latest + 1):
+        for action, value in _read_commit_actions(
+            os.path.join(log_dir, commits[version])
+        ):
+            _apply(action, value)
+
+    protocol = state["protocol"] or {}
+    if protocol.get("minReaderVersion", 1) > 3:
+        raise ValueError(_LOG_UNREADABLE)
+    metadata = state["metaData"] or {}
+    schema = json.loads(metadata.get("schemaString") or "{}")
+
+    files = []
+    rows: Optional[int] = 0
+    deleted_rows = 0
+    for path, add in live.items():
+        # Files outside the table folder (e.g. a shallow clone's) are not read.
+        if "://" not in path:
+            files.append(unquote(path))
+        records = None
+        stats = add.get("stats")
+        if isinstance(stats, str) and stats:
+            try:
+                records = json.loads(stats).get("numRecords")
+            except ValueError:
+                records = None
+        if records is None and isinstance(add.get("stats_parsed"), dict):
+            records = add["stats_parsed"].get("numRecords")
+        if records is None:
+            rows = None
+        elif rows is not None:
+            rows += int(records)
+        vector = add.get("deletionVector") or {}
+        deleted_rows += int(vector.get("cardinality") or 0)
+
+    clustering = []
+    config = domains.get("delta.clustering")
+    if config:
+        try:
+            parsed = json.loads(config) if isinstance(config, str) else config
+            physical = _physical_names(schema)
+            clustering = [
+                (
+                    ".".join(physical.get(str(part), str(part)) for part in column)
+                    if isinstance(column, (list, tuple))
+                    else physical.get(str(column), str(column))
+                )
+                for column in parsed.get("clusteringColumns") or []
+            ]
+        except (ValueError, AttributeError):
+            clustering = []
+
+    return {
+        "columns": len(schema.get("fields") or []),
+        # Rows marked deleted by deletion vectors are still in the files.
+        "rows": None if rows is None else rows - deleted_rows,
+        "deleted_rows": deleted_rows,
+        "files": files,
+        "properties": _as_dict(metadata.get("configuration")),
+        "clustering": clustering,
+        "z_order": _log_zorder(log_dir, commits),
+    }
+
+
+def _table_stats(
+    workspace_id: str, lakehouse_id: str, schema: str, table: str, local_root: str
+) -> dict:
+    """Collect a delta table's stats.
+
+    ``local_root`` is the lakehouse mounted on the notebook, from which the
+    data files' parquet footers are read for the row groups and V-Order. A
+    PySpark notebook reads the table with Spark; a Python notebook reads its
+    delta log directly.
+    """
+
+    import os
+    from sempy_labs._helper_functions import (
+        _pure_python_notebook,
+        _read_delta_table_history,
+        create_abfss_path,
+    )
+
+    table_rel = "/".join(part for part in ("Tables", schema, table) if part)
+    table_dir = os.path.join(local_root, *table_rel.split("/"))
+    if _pure_python_notebook():
+        details = _delta_log_details(table_dir)
+    else:
+        path = create_abfss_path(
+            lakehouse_id, workspace_id, table, schema=schema or None
+        )
+        details = _delta_details_spark(path, table_rel)
+        try:
+            history = _read_delta_table_history(path)
+        except Exception:
+            history = None
+        details["z_order"] = _history_zorder(history)
+        if details["clustering"] is None:
+            details["clustering"] = _history_clustering(history)
+
+    row_groups, footer_rows, v_ordered, unread = _footer_stats(
+        table_dir, details["files"]
+    )
+    properties = details["properties"]
+    if not details["files"]:
+        v_ordered = _is_true(properties.get("delta.parquet.vorder.enabled"))
+
+    rows = details["rows"]
+    if rows is None:
+        rows = footer_rows - int(details.get("deleted_rows") or 0)
+    return {
+        "columns": int(details["columns"]),
+        "rows": int(rows),
+        "row_groups": int(row_groups),
+        "z_order": list(details["z_order"]),
+        "liquid_clustering": list(details["clustering"] or []),
+        "auto_compaction": str(properties.get("delta.autoOptimize.autoCompact") or "")
+        .strip()
+        .lower()
+        in ("true", "auto", "legacy"),
+        "v_order": bool(v_ordered),
+        "unread_files": int(unread),
+    }
+
+
 def _authorized_paths(paths: List[str], allowed: set) -> Tuple[List[str], List[str]]:
     """Split requested paths into those which may be acted on and the rest."""
 
@@ -1675,8 +2222,10 @@ def lakehouse_manager(
 
     Browses the lakehouse's tables, folders and files, flags OneLake shortcuts
     and `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
-    objects, recovers those deleted objects, and runs table maintenance
-    (optimize, V-Order, vacuum) on one or more tables.
+    objects, recovers those deleted objects, runs table maintenance
+    (optimize, V-Order, vacuum) on one or more tables, and collects table stats
+    (columns, rows, row groups, Z-Order, liquid clustering, auto-compaction and
+    V-Order).
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -1757,6 +2306,9 @@ def lakehouse_manager(
         dark_mode = traitlets.Bool(False).tag(sync=True)
         pending_action = traitlets.Dict({}).tag(sync=True)
         action_trigger = traitlets.Int(0).tag(sync=True)
+        # Stats collected per table path, and the tables still being read.
+        table_stats = traitlets.Dict({}).tag(sync=True)
+        stats_pending = traitlets.List([]).tag(sync=True)
 
     widget = LakehouseManagerWidget(
         available_workspaces=initial_workspaces,
@@ -1805,6 +2357,9 @@ def lakehouse_manager(
             return False
         finally:
             widget.loading = False
+        # Stats belong to the lakehouse they were collected from.
+        if lakehouse_id != loaded["lakehouse_id"]:
+            widget.table_stats = {}
         loaded.update(
             workspace_id=workspace_id,
             lakehouse_id=lakehouse_id,
@@ -1991,6 +2546,12 @@ def lakehouse_manager(
             failures.append(f"the selected tables: {e}")
         finally:
             widget.busy = False
+        # Maintenance rewrites the files, so their stats no longer hold.
+        widget.table_stats = {
+            path: stats
+            for path, stats in widget.table_stats.items()
+            if path not in paths
+        }
         if failures:
             widget.error_message = "; ".join(
                 part
@@ -2002,6 +2563,75 @@ def lakehouse_manager(
             )
         _refresh_after_action()
 
+    def _collect_stats(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected:
+            widget.error_message = (
+                "Could not collect stats for " + ", ".join(rejected) + ": "
+                "not a table of the loaded lakehouse."
+            )
+        if not paths:
+            return
+        widget.busy = True
+        widget.stats_pending = list(paths)
+        failures = []
+        label = ""
+        try:
+            from sempy_labs._helper_functions import _mount
+
+            local_root = _mount(
+                lakehouse=loaded["lakehouse_id"], workspace=loaded["workspace_id"]
+            )
+            for path in paths:
+                schema, table = loaded["tables"][path]
+                label = f"{schema}.{table}" if schema else table
+                try:
+                    stats = _table_stats(
+                        loaded["workspace_id"],
+                        loaded["lakehouse_id"],
+                        schema,
+                        table,
+                        local_root,
+                    )
+                except BaseException as e:
+                    # Native readers can fail with errors outside Exception
+                    # (e.g. a Rust panic); those must not end the whole run.
+                    if _is_fatal(e):
+                        raise
+                    stats = {"error": _error_text(e)}
+                    failures.append(f"'{label}': {_error_text(e)}")
+                # Shown as each table finishes rather than all at the end.
+                widget.table_stats = {**widget.table_stats, path: stats}
+                widget.stats_pending = [p for p in widget.stats_pending if p != path]
+            done = len(paths) - len(failures)
+            if len(paths) == 1:
+                if done:
+                    widget.status_message = f"Collected the stats for '{label}'."
+            else:
+                widget.status_message = (
+                    f"Collected the stats for {done} of {len(paths)} tables."
+                )
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            failures.append(f"the selected tables: {_error_text(e)}")
+        finally:
+            widget.stats_pending = []
+            widget.busy = False
+        if failures:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    "Could not collect the stats for " + "; ".join(failures),
+                )
+                if part
+            )
+
     handlers = {
         "workspace": _load_lakehouses,
         "open": _load_objects,
@@ -2009,6 +2639,7 @@ def lakehouse_manager(
         "recover": _recover,
         "delete": _delete,
         "maintenance": _maintenance,
+        "stats": _collect_stats,
     }
 
     def _on_action(change):
@@ -2018,7 +2649,18 @@ def lakehouse_manager(
         handler = handlers.get(str(data.get("action") or ""))
         if handler is None:
             return
-        _ui_run_widget_task(handler, (data,))
+        try:
+            _ui_run_widget_task(handler, (data,))
+        except BaseException as e:
+            # An error escaping a widget callback leaves the widget unable to
+            # handle further actions, so it is reported instead.
+            if _is_fatal(e):
+                raise
+            widget.picker_loading = False
+            widget.loading = False
+            widget.busy = False
+            widget.stats_pending = []
+            widget.error_message = f"The action failed: {_error_text(e)}"
 
     widget.observe(_on_action, names="action_trigger")
     display(widget)

@@ -793,6 +793,14 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M1.5 8h3l1.8-4.8 3 9.6L11.1 8h3.4"/></svg>'
     ),
+    # Statistics: a bar chart on an axis.
+    "bar_chart": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2 2v10.5A1.5 1.5 0 0 0 3.5 14H14"/>'
+        '<path d="M5.5 11V8.5"/><path d="M8.5 11V4.5"/><path d="M11.5 11V6.5"/></svg>'
+    ),
     "code": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '

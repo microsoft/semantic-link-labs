@@ -1,5 +1,6 @@
 """The Lakehouse Manager rolls OneLake blobs up into lakehouse objects."""
 
+import json
 import sys
 import types
 
@@ -609,3 +610,441 @@ def test_a_failed_table_does_not_stop_the_others(manager, monkeypatch):
     assert calls == ["sales", "orders"]
     assert widget.status_message == "Table maintenance finished for 1 of 2 tables."
     assert "Table maintenance failed for 'sales': locked" in widget.error_message
+
+
+def test_the_table_view_collects_stats_for_the_selected_tables():
+    js = lhm._LHM_JS
+
+    assert (
+        "tableSelection.append(maintainSelected, statsSelected, tableSelectedText);"
+        in js
+    )
+    assert 'if (paths.length) act("stats", { paths: paths });' in js
+    assert lhm._UI_ICONS["bar_chart"] in js
+    for label in [
+        "Columns",
+        "Row Groups",
+        "Rows",
+        "Z-Order",
+        "Liquid Clustering",
+        "Auto-compaction",
+        "V-Order",
+    ]:
+        assert f'label: "{label}", ' in js, label
+    # The stat columns appear once any table has (or is collecting) stats.
+    assert "(showStats || !column.stats)" in js
+    assert '"stats": _collect_stats' in _source()
+
+
+def test_data_files_are_located_relative_to_their_table():
+    table = "Tables/dbo/sales"
+    uri = (
+        "abfss://ws@onelake.dfs.fabric.microsoft.com/lh/Tables/dbo/sales/"
+        "region%3Deu%20west/part-0.parquet"
+    )
+
+    assert lhm._relative_data_file(uri, table) == "region=eu west/part-0.parquet"
+    assert (
+        lhm._relative_data_file("abfss://x/lh/Tables/other/part-0.parquet", table)
+        is None
+    )
+
+
+def test_zorder_and_clustering_are_read_from_the_history():
+    import pandas as pd
+
+    history = pd.DataFrame(
+        [
+            {
+                "version": 3,
+                "operation": "OPTIMIZE",
+                "operationParameters": {"zOrderBy": "[]"},
+            },
+            {"version": 4, "operation": "WRITE", "operationParameters": {}},
+            {
+                "version": 2,
+                "operation": "OPTIMIZE",
+                "operationParameters": {"zOrderBy": '["region","day"]'},
+            },
+            {
+                "version": 0,
+                "operation": "CREATE TABLE",
+                "operationParameters": {"clusterBy": '["id"]'},
+            },
+        ]
+    )
+
+    assert lhm._history_zorder(history) == ["region", "day"]
+    assert lhm._history_clustering(history) == ["id"]
+    # A later CLUSTER BY replaces the columns; CLUSTER BY NONE removes them.
+    altered = [
+        {
+            "version": 5,
+            "operation": "CLUSTER BY",
+            "operationParameters": {"newClusteringColumns": "[]"},
+        },
+        {
+            "version": 0,
+            "operation": "CREATE TABLE",
+            "operationParameters": {"clusterBy": '["id"]'},
+        },
+    ]
+    assert lhm._history_clustering(altered) == []
+    assert lhm._history_zorder([]) == []
+    assert lhm._parse_column_list('[["a", "b"], "c"]') == ["a.b", "c"]
+    assert lhm._parse_column_list("x, y") == ["x", "y"]
+
+
+def test_row_groups_and_vorder_are_read_from_the_parquet_footers(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    plain = pa.table({"id": list(range(10))})
+    vordered = plain.replace_schema_metadata(
+        {"com.microsoft.parquet.vorder.enabled": "true"}
+    )
+    (tmp_path / "region=eu").mkdir()
+    pq.write_table(plain, tmp_path / "region=eu" / "part-0.parquet", row_group_size=4)
+    pq.write_table(vordered, tmp_path / "part-1.parquet")
+
+    assert lhm._footer_stats(str(tmp_path), ["region=eu/part-0.parquet"]) == (
+        3,
+        10,
+        False,
+        0,
+    )
+    assert lhm._footer_stats(
+        str(tmp_path), ["region=eu/part-0.parquet", "part-1.parquet", "missing.parquet"]
+    ) == (4, 20, True, 1)
+
+
+def test_table_stats_combine_the_delta_metadata_footers_and_history(
+    monkeypatch, tmp_path
+):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from sempy_labs import _helper_functions
+
+    table_dir = tmp_path / "Tables" / "dbo" / "sales"
+    table_dir.mkdir(parents=True)
+    pq.write_table(pa.table({"id": [1, 2, 3]}), table_dir / "part-0.parquet")
+    seen = {}
+
+    def fake_details(path, table_rel):
+        seen["path"], seen["table_rel"] = path, table_rel
+        return {
+            "columns": 4,
+            "rows": 2,
+            "files": ["part-0.parquet"],
+            "properties": {"delta.autoOptimize.autoCompact": "true"},
+            "clustering": ["id"],
+        }
+
+    monkeypatch.setattr(_helper_functions, "_pure_python_notebook", lambda: False)
+    monkeypatch.setattr(
+        _helper_functions,
+        "create_abfss_path",
+        lambda lakehouse_id, workspace_id, table, schema=None: (
+            f"abfss://{workspace_id}@onelake/{lakehouse_id}/Tables/{schema}/{table}"
+        ),
+    )
+    monkeypatch.setattr(lhm, "_delta_details_spark", fake_details)
+    monkeypatch.setattr(
+        _helper_functions,
+        "_read_delta_table_history",
+        lambda path: [
+            {
+                "version": 1,
+                "operation": "OPTIMIZE",
+                "operationParameters": {"zOrderBy": '["id"]'},
+            }
+        ],
+    )
+
+    stats = lhm._table_stats("ws-1", "lh-a", "dbo", "sales", str(tmp_path))
+
+    assert seen["table_rel"] == "Tables/dbo/sales"
+    assert seen["path"].endswith("/lh-a/Tables/dbo/sales")
+    assert stats == {
+        "columns": 4,
+        # Spark's count, which leaves out rows removed by deletion vectors.
+        "rows": 2,
+        "row_groups": 1,
+        "z_order": ["id"],
+        "liquid_clustering": ["id"],
+        "auto_compaction": True,
+        "v_order": False,
+        "unread_files": 0,
+    }
+
+
+def test_stats_are_collected_for_each_selected_table(manager, monkeypatch):
+    from sempy_labs import _helper_functions
+
+    widget, act, _, _ = manager
+    calls = []
+
+    def fake_stats(workspace_id, lakehouse_id, schema, table, local_root):
+        calls.append((workspace_id, lakehouse_id, table, local_root))
+        if table == "orders":
+            raise RuntimeError("unreadable")
+        return {"columns": 3, "rows": 10}
+
+    monkeypatch.setattr(lhm, "_table_stats", fake_stats)
+    monkeypatch.setattr(
+        _helper_functions, "_mount", lambda lakehouse=None, workspace=None: "/mnt/lh"
+    )
+
+    act("stats", paths=["Tables/sales", "Tables/orders", "Files/a-only.csv"])
+
+    assert calls == [
+        ("ws-1", "lh-a", "sales", "/mnt/lh"),
+        ("ws-1", "lh-a", "orders", "/mnt/lh"),
+    ]
+    assert widget.table_stats["Tables/sales"] == {"columns": 3, "rows": 10}
+    assert widget.table_stats["Tables/orders"] == {"error": "unreadable"}
+    assert widget.stats_pending == []
+    assert widget.status_message == "Collected the stats for 1 of 2 tables."
+    assert "not a table of the loaded lakehouse" in widget.error_message
+    assert (
+        "Could not collect the stats for 'orders': unreadable" in widget.error_message
+    )
+
+
+def test_maintenance_drops_the_stale_stats_of_its_tables(manager, monkeypatch):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    widget.table_stats = {"Tables/sales": {"rows": 1}, "Tables/orders": {"rows": 2}}
+    monkeypatch.setattr(_lakehouse, "run_table_maintenance", lambda **kwargs: None)
+
+    act("maintenance", paths=["Tables/sales"], optimize=True)
+
+    assert widget.table_stats == {"Tables/orders": {"rows": 2}}
+
+
+class _PanicException(BaseException):
+    """Like the Rust panics native readers raise: not an Exception."""
+
+
+def test_a_table_which_panics_fails_alone_and_later_runs_still_work(
+    manager, monkeypatch
+):
+    from sempy_labs import _helper_functions
+
+    widget, act, _, _ = manager
+
+    def fake_stats(workspace_id, lakehouse_id, schema, table, local_root):
+        if table == "orders":
+            raise _PanicException("reader panicked")
+        return {"rows": len(table)}
+
+    monkeypatch.setattr(lhm, "_table_stats", fake_stats)
+    monkeypatch.setattr(
+        _helper_functions, "_mount", lambda lakehouse=None, workspace=None: "/mnt"
+    )
+
+    act("stats", paths=["Tables/orders"])
+    assert widget.table_stats["Tables/orders"] == {"error": "reader panicked"}
+    assert (
+        "Could not collect the stats for 'orders': reader panicked"
+        in widget.error_message
+    )
+    assert (widget.busy, widget.stats_pending) == (False, [])
+
+    act("stats", paths=["Tables/sales"])
+    assert widget.table_stats["Tables/sales"] == {"rows": 5}
+    assert widget.status_message == "Collected the stats for 'sales'."
+
+
+def test_an_action_which_fails_unexpectedly_is_reported(manager, monkeypatch):
+    widget, act, _, _ = manager
+
+    def broken(**kwargs):
+        raise _PanicException("boom")
+
+    monkeypatch.setattr(lhm, "_authorized_paths", lambda *a: broken())
+
+    act("stats", paths=["Tables/sales"])
+
+    assert widget.error_message == "The action failed: boom"
+    assert widget.busy is False
+
+
+def _schema(*names, mapping=False):
+    fields = []
+    for index, name in enumerate(names):
+        metadata = (
+            {"delta.columnMapping.physicalName": f"col-{index}"} if mapping else {}
+        )
+        fields.append(
+            {"name": name, "type": "long", "nullable": True, "metadata": metadata}
+        )
+    return json.dumps({"type": "struct", "fields": fields})
+
+
+def _commit(log_dir, version, *actions):
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with open(log_dir / f"{version:020d}.json", "w") as handle:
+        for action in actions:
+            handle.write(json.dumps(action) + "\n")
+
+
+def _add(path, records=None, dv=0):
+    action = {"path": path, "size": 10, "dataChange": True}
+    if records is not None:
+        action["stats"] = json.dumps({"numRecords": records})
+    if dv:
+        action["deletionVector"] = {
+            "storageType": "u",
+            "pathOrInlineDv": "x",
+            "sizeInBytes": 1,
+            "cardinality": dv,
+        }
+    return {"add": action}
+
+
+def test_the_delta_log_is_replayed_without_spark(tmp_path):
+    log = tmp_path / "_delta_log"
+    _commit(
+        log,
+        0,
+        {"protocol": {"minReaderVersion": 3, "minWriterVersion": 7}},
+        {
+            "metaData": {
+                "schemaString": _schema("id", "region", mapping=True),
+                "configuration": {"delta.autoOptimize.autoCompact": "true"},
+            }
+        },
+        {
+            "domainMetadata": {
+                "domain": "delta.clustering",
+                "removed": False,
+                "configuration": json.dumps({"clusteringColumns": [["col-1"]]}),
+            }
+        },
+        _add("part-0.parquet", 10),
+        _add("region%3Deu/part-1.parquet", 5),
+    )
+    _commit(
+        log,
+        1,
+        {
+            "commitInfo": {
+                "operation": "OPTIMIZE",
+                "operationParameters": {"zOrderBy": '["id"]'},
+            }
+        },
+        {"remove": {"path": "part-0.parquet"}},
+        _add("part-2.parquet", 10, dv=3),
+    )
+    _commit(log, 2, {"commitInfo": {"operation": "WRITE", "operationParameters": {}}})
+
+    details = lhm._delta_log_details(str(tmp_path))
+
+    assert details["columns"] == 2
+    # 5 + 10 rows, less the 3 a deletion vector marks deleted.
+    assert details["rows"] == 12
+    assert sorted(details["files"]) == ["part-2.parquet", "region=eu/part-1.parquet"]
+    assert details["properties"] == {"delta.autoOptimize.autoCompact": "true"}
+    # Clustering columns are stored by their physical (column mapping) names.
+    assert details["clustering"] == ["region"]
+    assert details["z_order"] == ["id"]
+
+
+def test_the_delta_log_is_read_from_its_latest_checkpoint(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    log = tmp_path / "_delta_log"
+    # Commits before the checkpoint have been cleaned up.
+    add_type = pa.struct(
+        [("path", pa.string()), ("size", pa.int64()), ("stats", pa.string())]
+    )
+    meta_type = pa.struct(
+        [
+            ("schemaString", pa.string()),
+            ("configuration", pa.map_(pa.string(), pa.string())),
+        ]
+    )
+    checkpoint = pa.table(
+        {
+            "add": pa.array(
+                [
+                    {
+                        "path": "a.parquet",
+                        "size": 1,
+                        "stats": json.dumps({"numRecords": 7}),
+                    },
+                    None,
+                    None,
+                ],
+                type=add_type,
+            ),
+            "metaData": pa.array(
+                [
+                    None,
+                    {
+                        "schemaString": _schema("x", "y", "z"),
+                        "configuration": [("delta.parquet.vorder.enabled", "true")],
+                    },
+                    None,
+                ],
+                type=meta_type,
+            ),
+        }
+    )
+    log.mkdir()
+    pq.write_table(
+        checkpoint, log / f"{10:020d}.checkpoint.0000000001.0000000002.parquet"
+    )
+    pq.write_table(
+        checkpoint.slice(0, 0),
+        log / f"{10:020d}.checkpoint.0000000002.0000000002.parquet",
+    )
+    _commit(log, 11, _add("b.parquet", 3))
+
+    details = lhm._delta_log_details(str(tmp_path))
+
+    assert details["columns"] == 3
+    assert details["rows"] == 10
+    assert sorted(details["files"]) == ["a.parquet", "b.parquet"]
+    assert details["properties"] == {"delta.parquet.vorder.enabled": "true"}
+    assert details["clustering"] == []
+
+
+def test_a_delta_log_which_cannot_be_replayed_asks_for_pyspark(tmp_path):
+    log = tmp_path / "_delta_log"
+    # Commit 0 is gone and there is no classic checkpoint to start from.
+    _commit(log, 1, _add("a.parquet", 1))
+
+    with pytest.raises(ValueError, match="PySpark notebook"):
+        lhm._delta_log_details(str(tmp_path))
+
+
+def test_python_notebooks_read_table_stats_from_the_delta_log(monkeypatch, tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from sempy_labs import _helper_functions
+
+    table_dir = tmp_path / "Tables" / "sales"
+    pq.write_table(
+        pa.table({"id": [1, 2, 3, 4]}), _mkfile(table_dir / "part-0.parquet")
+    )
+    _commit(
+        table_dir / "_delta_log",
+        0,
+        {"metaData": {"schemaString": _schema("id"), "configuration": {}}},
+        _add("part-0.parquet"),
+    )
+    monkeypatch.setattr(_helper_functions, "_pure_python_notebook", lambda: True)
+
+    stats = lhm._table_stats("ws-1", "lh-a", "", "sales", str(tmp_path))
+
+    # Without file stats in the log, the rows come from the parquet footers.
+    assert (stats["columns"], stats["rows"], stats["row_groups"]) == (1, 4, 1)
+
+
+def _mkfile(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
