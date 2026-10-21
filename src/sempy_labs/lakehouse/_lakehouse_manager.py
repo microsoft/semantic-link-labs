@@ -162,6 +162,22 @@ def _file_size_stats(sizes: List[int]) -> dict:
     }
 
 
+def _is_file_blob(blob: dict) -> bool:
+    """Whether a blob is a file rather than a folder (directory marker).
+
+    OneLake reports each blob's resource type; when it is missing, a blob
+    holding data is taken to be a file.
+    """
+
+    kind = str(blob.get("Resource Type") or "").strip().lower()
+    if kind:
+        return kind == "file"
+    try:
+        return int(blob.get("Content Length") or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
 def _summarize_blobs(
     blobs: List[dict],
     lakehouse_id: str,
@@ -186,6 +202,9 @@ def _summarize_blobs(
             continue
         container, name, schema, is_leaf = located
         key = "/".join(part for part in (container, schema, name) if part)
+        # A table is a folder; a file where a table would be (e.g. a
+        # schema.json.gz beside the tables) is a file.
+        lone_file = is_leaf and _is_file_blob(blob)
         record = objects.get(key)
         if record is None:
             record = {
@@ -194,7 +213,7 @@ def _summarize_blobs(
                 "schema": schema,
                 "container": container,
                 "type": (
-                    "Table"
+                    ("File" if lone_file else "Table")
                     if container == "Tables"
                     else ("File" if is_leaf else "Folder")
                 ),
@@ -209,7 +228,11 @@ def _summarize_blobs(
             }
             objects[key] = record
         elif not is_leaf and record["type"] == "File":
-            record["type"] = "Folder"
+            record["type"] = "Table" if container == "Tables" else "Folder"
+        elif is_leaf and not lone_file and record["type"] == "File":
+            # The folder's own marker, listed after a file was taken for it.
+            if container == "Tables":
+                record["type"] = "Table"
 
         deleted = bool(blob.get("Is Deleted"))
         if deleted:
@@ -240,7 +263,7 @@ def _summarize_blobs(
         record["deleted"] = record["files"] == 0 and record["deleted_files"] > 0
         record["file_sizes"] = (
             _file_size_stats(data_file_sizes.get(key, []))
-            if record["container"] == "Tables"
+            if record["type"] == "Table"
             else None
         )
         record["partitions"] = len(partitions.get(key, ()))
@@ -254,7 +277,7 @@ def _summarize_objects(objects: List[dict]) -> dict:
 
     live = [row for row in objects if not row.get("deleted")]
     return {
-        "tables": sum(1 for row in live if row["container"] == "Tables"),
+        "tables": sum(1 for row in live if row.get("type") == "Table"),
         "files": sum(1 for row in live if row["container"] == "Files"),
         "deleted": sum(1 for row in objects if row.get("deleted")),
         "recoverable": sum(int(row.get("deleted_files") or 0) for row in objects),
@@ -329,7 +352,7 @@ def _build_tree(
 
         children = roots
         walked: List[str] = []
-        for part in parts:
+        for index, part in enumerate(parts):
             walked.append(part)
             node = children.get(part)
             if node is None:
@@ -340,8 +363,11 @@ def _build_tree(
                     "files": 0,
                     "deleted_files": 0,
                     "children": {},
+                    "is_file": False,
                 }
                 children[part] = node
+            if index == len(parts) - 1 and _is_file_blob(blob):
+                node["is_file"] = True
             node["size"] += size
             if deleted:
                 node["deleted_files"] += 1
@@ -352,6 +378,9 @@ def _build_tree(
     def _finalize(node: dict, depth: int, container: str, schema: str) -> dict:
         raw_children = list(node["children"].values())
         node_type = _node_type(depth, container, schema_enabled, bool(raw_children))
+        # A file where a table would be (e.g. a schema.json.gz) is a file.
+        if node_type == "Table" and not raw_children and node.get("is_file"):
+            node_type = "File"
         child_schema = node["name"] if node_type == "Schema" else schema
         # Folders and tables first, then files; each group by name.
         raw_children.sort(key=lambda c: (not c["children"], c["name"].lower()))
@@ -592,6 +621,13 @@ _LHM_CSS = (
 .slls-lhm-cluster-state { padding: 12px 2px 4px; color: var(--ui-text-secondary); font-size: 13px; }
 .slls-lhm-cluster-state.slls-lhm-failed { color: var(--ui-danger-text); }
 .slls-lhm-dialog:focus { outline: none; }
+.slls-lhm-batch {
+    display: none; align-items: center; gap: 10px; padding: 6px 8px 6px 14px;
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
+    color: var(--ui-text-secondary); font-size: 12.5px;
+}
+.slls-lhm-batch-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-batch .slls-lhm-ghost { flex: 0 0 auto; padding: 4px 14px; font-size: 12px; }
 .slls-lhm-dist { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slls-lhm-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: 0 0 auto; }
 .slls-lhm-spark-bar { width: 6px; min-height: 2px; border-radius: 1px 1px 0 0; background: var(--ui-accent); }
@@ -855,7 +891,15 @@ function render({ model, el }) {
     const note = document.createElement("div"); note.className = "slls-lhm-note";
     const noteIcon = document.createElement("span"); const noteText = document.createElement("span");
     note.append(noteIcon, noteText);
-    body.append(cards, toolbar, listWrap, note);
+    // The running batch of table actions, which can be cancelled; it stops
+    // after the table in progress.
+    const batchBar = document.createElement("div"); batchBar.className = "slls-lhm-batch";
+    batchBar.setAttribute("role", "status");
+    const batchText = document.createElement("span"); batchText.className = "slls-lhm-batch-text";
+    const batchCancel = document.createElement("button"); batchCancel.type = "button";
+    batchCancel.className = "slls-lhm-ghost"; batchCancel.textContent = "Cancel";
+    batchBar.append(batchText, batchCancel);
+    body.append(cards, toolbar, batchBar, listWrap, note);
 
     const attribution = document.createElement("div"); attribution.className = "slls-lhm-attr";
     attribution.innerHTML = `__ATTRIBUTION__`;
@@ -1592,7 +1636,7 @@ function render({ model, el }) {
 
     function renderTable() {
         const term = search.value.trim().toLowerCase();
-        const tables = (model.get("objects") || []).filter((row) => row.container === "Tables");
+        const tables = (model.get("objects") || []).filter((row) => row.type === "Table");
         const rows = tables.filter((row) => {
             if (filter === "Deleted" && !row.deleted && !row.deleted_files) return false;
             return !term || row.path.toLowerCase().indexOf(term) >= 0;
@@ -1851,7 +1895,10 @@ function render({ model, el }) {
     });
     model.on("change:action_done", () => {
         renderClustering();
+        pumpBatch();
         if (!clearTablesAfter || (model.get("action_done") || 0) < clearTablesAfter) return;
+        // A batch's first request finishes with its first table.
+        if (batchActive()) return;
         clearTablesAfter = 0;
         tableSelected.clear();
         renderRows();
@@ -1861,7 +1908,34 @@ function render({ model, el }) {
         renderState(); renderRows();
     });
 
-    renderState(); renderRows();
+    // The kernel runs a batch one table per request; the next is asked for
+    // once the kernel is idle, or the batch is cancelled instead.
+    let cancelRequested = false;
+    function batchActive() { return Boolean((model.get("batch") || {}).total); }
+    function pumpBatch() {
+        if (!batchActive()) { cancelRequested = false; renderBatch(); return; }
+        if ((model.get("action_done") || 0) < (model.get("action_trigger") || 0)) return;
+        act(cancelRequested ? "batch_cancel" : "batch_next");
+    }
+    function renderBatch() {
+        const info = model.get("batch") || {};
+        batchBar.style.display = batchActive() ? "flex" : "none";
+        if (!batchActive()) return;
+        batchText.textContent = `${info.title}: ${info.done} of ${info.total} table${info.total === 1 ? "" : "s"} done`
+            + (cancelRequested ? " · stopping after the table in progress…"
+                : info.current ? ` · ${info.current}…` : "");
+        batchCancel.disabled = cancelRequested;
+        batchCancel.textContent = cancelRequested ? "Cancelling…" : "Cancel";
+    }
+    batchCancel.addEventListener("click", () => {
+        cancelRequested = true;
+        renderBatch();
+        pumpBatch();
+    });
+    model.on("change:batch", renderBatch);
+
+    renderState(); renderRows(); renderBatch();
+    pumpBatch();
 }
 export default { render };
 """.replace("__ICON_LAKEHOUSE__", _UI_ICONS["warehouse"])
@@ -2095,6 +2169,15 @@ def _is_fatal(error: BaseException) -> bool:
 
 def _error_text(error: BaseException) -> str:
     return str(error) or type(error).__name__
+
+
+def _job_status(result: Any) -> str:
+    """The status of a finished Fabric job, from its result dataframe."""
+
+    try:
+        return str(result["Status"].iloc[0] or "")
+    except Exception:
+        return ""
 
 
 def _footer_stats(table_dir: str, files: List[str]) -> Tuple[int, int, bool, int]:
@@ -2648,6 +2731,8 @@ def lakehouse_manager(
         spark_available = traitlets.Bool(True).tag(sync=True)
         # The columns of the table whose liquid clustering is being changed.
         cluster_info = traitlets.Dict({}).tag(sync=True)
+        # The running batch of table actions: title, total, done and current.
+        batch = traitlets.Dict({}).tag(sync=True)
 
     widget = LakehouseManagerWidget(
         available_workspaces=initial_workspaces,
@@ -2679,6 +2764,7 @@ def lakehouse_manager(
         "lakehouse_id": "",
         "paths": set(),
         "tables": {},
+        "local_root": "",
     }
 
     def _read_lakehouse(workspace_id: str, lakehouse_id: str) -> bool:
@@ -2697,9 +2783,10 @@ def lakehouse_manager(
             return False
         finally:
             widget.loading = False
-        # Stats belong to the lakehouse they were collected from.
+        # Stats and the mount belong to the lakehouse they were made for.
         if lakehouse_id != loaded["lakehouse_id"]:
             widget.table_stats = {}
+            loaded["local_root"] = ""
         loaded.update(
             workspace_id=workspace_id,
             lakehouse_id=lakehouse_id,
@@ -2832,145 +2919,16 @@ def lakehouse_manager(
             )
         _refresh_after_action()
 
-    def _maintenance(data: dict):
-        if not loaded["lakehouse_id"]:
-            return
-        widget.error_message = ""
-        widget.status_message = ""
-        optimize = bool(data.get("optimize"))
-        v_order = bool(data.get("v_order"))
-        vacuum = bool(data.get("vacuum"))
-        if not (optimize or v_order or vacuum):
-            widget.error_message = "Select at least one maintenance operation."
-            return
-        # Only the loaded lakehouse's own tables; never a name from the browser.
-        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
-        if rejected:
-            widget.error_message = (
-                "Could not run table maintenance on " + ", ".join(rejected) + ": "
-                "not a table of the loaded lakehouse."
-            )
-        if not paths:
-            return
-        retention = str(data.get("retention_period") or "").strip()
-        widget.busy = True
-        failures = []
-        try:
-            from sempy_labs.lakehouse._lakehouse import run_table_maintenance
+    def _local_root() -> str:
+        """The loaded lakehouse mounted on the notebook (mounted once)."""
 
-            for path in paths:
-                schema, table = loaded["tables"][path]
-                label = f"{schema}.{table}" if schema else table
-                try:
-                    run_table_maintenance(
-                        table_name=table,
-                        optimize=optimize,
-                        v_order=v_order,
-                        vacuum=vacuum,
-                        retention_period=retention if (vacuum and retention) else None,
-                        schema=schema or None,
-                        lakehouse=loaded["lakehouse_id"],
-                        workspace=loaded["workspace_id"],
-                    )
-                except Exception as e:
-                    failures.append(f"'{label}': {e}")
-            done = len(paths) - len(failures)
-            if len(paths) == 1:
-                if done:
-                    widget.status_message = f"Table maintenance finished for '{label}'."
-            else:
-                widget.status_message = (
-                    f"Table maintenance finished for {done} of {len(paths)} tables."
-                )
-        except Exception as e:
-            failures.append(f"the selected tables: {e}")
-        finally:
-            widget.busy = False
-        # Maintenance rewrites the files, so their stats no longer hold.
-        widget.table_stats = {
-            path: stats
-            for path, stats in widget.table_stats.items()
-            if path not in paths
-        }
-        if failures:
-            widget.error_message = "; ".join(
-                part
-                for part in (
-                    widget.error_message,
-                    "Table maintenance failed for " + "; ".join(failures),
-                )
-                if part
-            )
-        _refresh_after_action()
-
-    def _collect_stats(data: dict):
-        if not loaded["lakehouse_id"]:
-            return
-        widget.error_message = ""
-        widget.status_message = ""
-        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
-        if rejected:
-            widget.error_message = (
-                "Could not collect stats for " + ", ".join(rejected) + ": "
-                "not a table of the loaded lakehouse."
-            )
-        if not paths:
-            return
-        widget.busy = True
-        widget.stats_pending = list(paths)
-        failures = []
-        label = ""
-        try:
+        if not loaded.get("local_root"):
             from sempy_labs._helper_functions import _mount
 
-            local_root = _mount(
+            loaded["local_root"] = _mount(
                 lakehouse=loaded["lakehouse_id"], workspace=loaded["workspace_id"]
             )
-            for path in paths:
-                schema, table = loaded["tables"][path]
-                label = f"{schema}.{table}" if schema else table
-                try:
-                    stats = _table_stats(
-                        loaded["workspace_id"],
-                        loaded["lakehouse_id"],
-                        schema,
-                        table,
-                        local_root,
-                    )
-                except BaseException as e:
-                    # Native readers can fail with errors outside Exception
-                    # (e.g. a Rust panic); those must not end the whole run.
-                    if _is_fatal(e):
-                        raise
-                    stats = {"error": _error_text(e)}
-                    failures.append(f"'{label}': {_error_text(e)}")
-                # Shown as each table finishes rather than all at the end.
-                widget.table_stats = {**widget.table_stats, path: stats}
-                widget.stats_pending = [p for p in widget.stats_pending if p != path]
-            done = len(paths) - len(failures)
-            if len(paths) == 1:
-                if done:
-                    widget.status_message = f"Collected the stats for '{label}'."
-            else:
-                widget.status_message = (
-                    f"Collected the stats for {done} of {len(paths)} tables."
-                )
-        except BaseException as e:
-            if _is_fatal(e):
-                raise
-            failures.append(f"the selected tables: {_error_text(e)}")
-        finally:
-            widget.stats_pending = []
-            widget.busy = False
-        if failures:
-            widget.error_message = "; ".join(
-                part
-                for part in (
-                    widget.error_message,
-                    "Could not collect the stats for " + "; ".join(failures),
-                )
-                if part
-            )
+        return loaded["local_root"]
 
     def _require_spark(what: str) -> bool:
         if widget.spark_available:
@@ -2997,6 +2955,227 @@ def lakehouse_manager(
         if isinstance(stats, dict) and not stats.get("error"):
             widget.table_stats = {**widget.table_stats, path: {**stats, **values}}
 
+    # Stats, table maintenance and auto-compaction act on the selected tables
+    # in a batch, one table per request: the browser asks for each next table
+    # once the previous one finished, so a Cancel it sends meanwhile is seen.
+    # (While a request runs the kernel reads no messages from the browser, and
+    # widget updates made off the kernel thread never reach a Fabric notebook.)
+    batch: Dict[str, Any] = {}
+
+    def _bulk_tables(data: dict, verb: str) -> List[str]:
+        """The requested paths which are tables of the loaded lakehouse."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected:
+            widget.error_message = (
+                f"Could not {verb} " + ", ".join(rejected) + ": not a table of "
+                "the loaded lakehouse."
+            )
+        return paths
+
+    def _publish_batch(current: str = ""):
+        widget.batch = (
+            {
+                "title": batch["messages"]["title"],
+                "total": batch["total"],
+                "done": batch["processed"],
+                "current": current,
+            }
+            if batch
+            else {}
+        )
+
+    def _start_batch(kind: str, paths: List[str], step, messages: dict, **options):
+        batch.clear()
+        batch.update(
+            kind=kind,
+            step=step,
+            messages=messages,
+            options=options,
+            paths=list(paths),
+            total=len(paths),
+            processed=0,
+            succeeded=0,
+            failures=[],
+            last="",
+        )
+        widget.busy = True
+        if kind == "stats":
+            widget.stats_pending = list(paths)
+        _batch_step()
+
+    def _batch_step():
+        if not batch:
+            return
+        if batch["paths"]:
+            path = batch["paths"].pop(0)
+            label = _table_label(path)
+            batch["last"] = label
+            _publish_batch(current=label)
+            try:
+                batch["step"](path, **batch["options"])
+                batch["succeeded"] += 1
+            except BaseException as e:
+                # Native readers can fail with errors outside Exception (e.g.
+                # a Rust panic); those must not end the whole batch.
+                if _is_fatal(e):
+                    raise
+                batch["failures"].append(f"'{label}': {_error_text(e)}")
+            batch["processed"] += 1
+            if batch["kind"] == "stats":
+                widget.stats_pending = list(batch["paths"])
+        if batch["paths"]:
+            _publish_batch()
+        else:
+            _finish_batch(cancelled=False)
+
+    def _finish_batch(cancelled: bool):
+        messages = batch["messages"]
+        processed, total = batch["processed"], batch["total"]
+        if cancelled:
+            widget.status_message = messages["cancelled"](processed, total)
+        elif total == 1:
+            if batch["succeeded"]:
+                widget.status_message = messages["one"](batch["last"])
+        else:
+            widget.status_message = messages["many"](batch["succeeded"], total)
+        if batch["failures"]:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    messages["failed"] + "; ".join(batch["failures"]),
+                )
+                if part
+            )
+        refresh = batch["kind"] == "maintenance" and processed > 0
+        batch.clear()
+        widget.batch = {}
+        widget.stats_pending = []
+        widget.busy = False
+        if refresh:
+            _refresh_after_action()
+
+    def _next_in_batch(data: dict):
+        _batch_step()
+
+    def _cancel_batch(data: dict):
+        if batch:
+            _finish_batch(cancelled=True)
+
+    def _stats_step(path: str):
+        schema, table = loaded["tables"][path]
+        try:
+            stats = _table_stats(
+                loaded["workspace_id"],
+                loaded["lakehouse_id"],
+                schema,
+                table,
+                _local_root(),
+            )
+        except BaseException as e:
+            if not _is_fatal(e):
+                widget.table_stats = {
+                    **widget.table_stats,
+                    path: {"error": _error_text(e)},
+                }
+            raise
+        widget.table_stats = {**widget.table_stats, path: stats}
+
+    def _collect_stats(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _bulk_tables(data, "collect stats for")
+        if paths:
+            _start_batch(
+                "stats",
+                paths,
+                _stats_step,
+                {
+                    "title": "Collecting stats",
+                    "one": lambda label: f"Collected the stats for '{label}'.",
+                    "many": lambda ok, total: (
+                        f"Collected the stats for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Stopped collecting stats after {done} of {total} tables."
+                    ),
+                    "failed": "Could not collect the stats for ",
+                },
+            )
+
+    def _maintenance_step(
+        path: str,
+        optimize: bool,
+        v_order: bool,
+        vacuum: bool,
+        retention: str,
+    ):
+        from sempy_labs.lakehouse._lakehouse import run_table_maintenance
+
+        schema, table = loaded["tables"][path]
+        # Maintenance rewrites the files, so the table's stats no longer hold.
+        widget.table_stats = {
+            p: stats for p, stats in widget.table_stats.items() if p != path
+        }
+        result = run_table_maintenance(
+            table_name=table,
+            optimize=optimize,
+            v_order=v_order,
+            vacuum=vacuum,
+            retention_period=retention if (vacuum and retention) else None,
+            schema=schema or None,
+            lakehouse=loaded["lakehouse_id"],
+            workspace=loaded["workspace_id"],
+        )
+        # A job which did not succeed is reported, not raised.
+        status = _job_status(result)
+        if status and status != "Completed":
+            raise RuntimeError(f"the maintenance job ended as '{status}'.")
+
+    def _maintenance(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        optimize = bool(data.get("optimize"))
+        v_order = bool(data.get("v_order"))
+        vacuum = bool(data.get("vacuum"))
+        if not (optimize or v_order or vacuum):
+            widget.error_message = "Select at least one maintenance operation."
+            return
+        # Only the loaded lakehouse's own tables; never a name from the browser.
+        paths = _bulk_tables(data, "run table maintenance on")
+        if paths:
+            _start_batch(
+                "maintenance",
+                paths,
+                _maintenance_step,
+                {
+                    "title": "Running table maintenance",
+                    "one": lambda label: f"Table maintenance finished for '{label}'.",
+                    "many": lambda ok, total: (
+                        f"Table maintenance finished for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Cancelled table maintenance after {done} of {total} tables."
+                    ),
+                    "failed": "Table maintenance failed for ",
+                },
+                optimize=optimize,
+                v_order=v_order,
+                vacuum=vacuum,
+                retention=str(data.get("retention_period") or "").strip(),
+            )
+
+    def _auto_compaction_step(path: str, enable: bool):
+        from sempy_labs._helper_functions import _run_spark_sql_query
+
+        _run_spark_sql_query(_auto_compaction_sql(_table_abfss_path(path), enable))
+        _update_stats(path, auto_compaction=enable)
+
     def _auto_compaction(data: dict):
         if not loaded["lakehouse_id"]:
             return
@@ -3006,54 +3185,27 @@ def lakehouse_manager(
         state = "on" if enable else "off"
         if not _require_spark(f"Turning auto-compaction {state}"):
             return
-        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
-        if rejected:
-            widget.error_message = (
-                f"Could not turn auto-compaction {state} for "
-                + ", ".join(rejected)
-                + ": not a table of the loaded lakehouse."
-            )
-        if not paths:
-            return
-        widget.busy = True
-        failures = []
-        try:
-            from sempy_labs._helper_functions import _run_spark_sql_query
-
-            for path in paths:
-                try:
-                    _run_spark_sql_query(
-                        _auto_compaction_sql(_table_abfss_path(path), enable)
-                    )
-                except BaseException as e:
-                    if _is_fatal(e):
-                        raise
-                    failures.append(f"'{_table_label(path)}': {_error_text(e)}")
-                    continue
-                _update_stats(path, auto_compaction=enable)
-            done = len(paths) - len(failures)
-            if len(paths) == 1:
-                if done:
-                    widget.status_message = f"Turned auto-compaction {state} for '{_table_label(paths[0])}'."
-            else:
-                widget.status_message = (
-                    f"Turned auto-compaction {state} for {done} of {len(paths)} tables."
-                )
-        except BaseException as e:
-            if _is_fatal(e):
-                raise
-            failures.append(f"the selected tables: {_error_text(e)}")
-        finally:
-            widget.busy = False
-        if failures:
-            widget.error_message = "; ".join(
-                part
-                for part in (
-                    widget.error_message,
-                    f"Could not turn auto-compaction {state} for "
-                    + "; ".join(failures),
-                )
-                if part
+        paths = _bulk_tables(data, f"turn auto-compaction {state} for")
+        if paths:
+            _start_batch(
+                "auto_compaction",
+                paths,
+                _auto_compaction_step,
+                {
+                    "title": f"Turning auto-compaction {state}",
+                    "one": lambda label: (
+                        f"Turned auto-compaction {state} for '{label}'."
+                    ),
+                    "many": lambda ok, total: (
+                        f"Turned auto-compaction {state} for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Cancelled turning auto-compaction {state} after {done} "
+                        f"of {total} tables."
+                    ),
+                    "failed": f"Could not turn auto-compaction {state} for ",
+                },
+                enable=enable,
             )
 
     def _single_table(data: dict, verb: str) -> Optional[str]:
@@ -3170,6 +3322,8 @@ def lakehouse_manager(
         "auto_compaction": _auto_compaction,
         "cluster_columns": _cluster_columns,
         "clustering": _set_clustering,
+        "batch_next": _next_in_batch,
+        "batch_cancel": _cancel_batch,
     }
 
     def _on_action(change):
@@ -3190,6 +3344,8 @@ def lakehouse_manager(
             widget.loading = False
             widget.busy = False
             widget.stats_pending = []
+            batch.clear()
+            widget.batch = {}
             widget.error_message = f"The action failed: {_error_text(e)}"
         finally:
             widget.action_done = change["new"]

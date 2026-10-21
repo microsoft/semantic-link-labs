@@ -202,7 +202,7 @@ def test_the_contents_can_be_shown_as_a_tree_or_a_table():
 def test_the_table_view_lists_only_tables_with_a_schema_column():
     js = lhm._LHM_JS
 
-    assert 'filter((row) => row.container === "Tables")' in js
+    assert 'filter((row) => row.type === "Table")' in js
     assert 'const pillButtons = ["All", "Deleted"]' in js
     # Tables are not grouped by schema; the schema is a column instead.
     assert "slls-lhm-group" not in js
@@ -506,9 +506,13 @@ def manager(monkeypatch):
     lhm.lakehouse_manager()
     widget = shown[0]
 
-    def act(action, **data):
+    def act(action, _drain=True, **data):
         widget.pending_action = dict(action=action, **data)
         widget.action_trigger += 1
+        # Like the browser, ask for each next table of a batch.
+        while _drain and widget.batch:
+            widget.pending_action = {"action": "batch_next"}
+            widget.action_trigger += 1
 
     act("open", workspace="ws-1", lakehouse="lh-a")
     return widget, act, removed, state
@@ -1233,4 +1237,197 @@ def test_the_checkbox_schema_and_name_columns_are_frozen():
     assert (
         "background: linear-gradient(var(--ui-surface-2), var(--ui-surface-2)), var(--ui-bg);"
         in css
+    )
+
+
+def _typed(name, kind, size=100):
+    blob = _blob(name, size)
+    blob["Resource Type"] = kind
+    return blob
+
+
+def test_files_beside_the_tables_are_not_tables():
+    blobs = [
+        _typed("Tables/sales", "directory", 0),
+        _typed("Tables/sales/part-0.parquet", "file"),
+        _typed("Tables/empty_table", "directory", 0),
+        _typed("Tables/schema.json.gz", "file"),
+    ]
+
+    rows = {row["path"]: row for row in lhm._summarize_blobs(blobs, LAKEHOUSE_ID)}
+
+    assert rows["Tables/sales"]["type"] == "Table"
+    # A table folder with nothing in it yet is still a table.
+    assert rows["Tables/empty_table"]["type"] == "Table"
+    assert rows["Tables/schema.json.gz"]["type"] == "File"
+    assert rows["Tables/schema.json.gz"]["file_sizes"] is None
+    assert set(lhm._maintainable_tables(rows.values())) == {
+        "Tables/sales",
+        "Tables/empty_table",
+    }
+    assert lhm._summarize_objects(list(rows.values()))["tables"] == 2
+
+    tables = lhm._build_tree(blobs, LAKEHOUSE_ID)[0]["children"]
+    assert {node["name"]: node["type"] for node in tables} == {
+        "sales": "Table",
+        "empty_table": "Table",
+        "schema.json.gz": "File",
+    }
+
+
+def test_files_beside_a_schemas_tables_are_not_tables():
+    blobs = [
+        _typed("Tables/dbo", "directory", 0),
+        _typed("Tables/dbo/schema.json.gz", "file"),
+        _typed("Tables/dbo/sales/part-0.parquet", "file"),
+    ]
+
+    rows = {
+        row["path"]: row
+        for row in lhm._summarize_blobs(blobs, LAKEHOUSE_ID, schema_enabled=True)
+    }
+
+    assert rows["Tables/dbo/sales"]["type"] == "Table"
+    assert rows["Tables/dbo/schema.json.gz"]["type"] == "File"
+    schema = lhm._build_tree(blobs, LAKEHOUSE_ID, schema_enabled=True)[0]["children"][0]
+    assert {node["name"]: node["type"] for node in schema["children"]} == {
+        "sales": "Table",
+        "schema.json.gz": "File",
+    }
+
+
+def test_the_table_view_lists_only_tables():
+    assert 'filter((row) => row.type === "Table")' in lhm._LHM_JS
+
+
+def test_stats_are_only_collected_for_the_selected_tables():
+    import inspect
+
+    js = lhm._LHM_JS
+    assert "collect_stats" not in inspect.signature(lhm.lakehouse_manager).parameters
+    assert "pumpStats" not in js and "auto_stats" not in js
+    assert "background: true" not in js
+
+
+def test_the_mount_is_reused_across_stats_runs(manager, monkeypatch):
+    from sempy_labs import _helper_functions
+
+    widget, act, _, _ = manager
+    mounts = []
+
+    def fake_mount(lakehouse=None, workspace=None):
+        mounts.append(lakehouse)
+        return "/mnt/lh"
+
+    monkeypatch.setattr(lhm, "_table_stats", lambda *args: {"rows": 1})
+    monkeypatch.setattr(_helper_functions, "_mount", fake_mount)
+
+    act("stats", paths=["Tables/sales"])
+    act("stats", paths=["Tables/orders"])
+
+    assert set(widget.table_stats) == {"Tables/sales", "Tables/orders"}
+    assert mounts == ["lh-a"]
+
+
+def test_bulk_table_actions_can_be_cancelled_between_tables():
+    js = lhm._LHM_JS
+
+    assert "body.append(cards, toolbar, batchBar, listWrap, note);" in js
+    assert 'act(cancelRequested ? "batch_cancel" : "batch_next");' in js
+    # The next table is only asked for once the kernel is idle.
+    assert (
+        'if ((model.get("action_done") || 0) < (model.get("action_trigger") || 0)) return;'
+        in js
+    )
+    source = _source()
+    assert '"batch_next": _next_in_batch' in source
+    assert '"batch_cancel": _cancel_batch' in source
+
+
+def test_cancelling_stats_stops_after_the_table_in_progress(manager, monkeypatch):
+    from sempy_labs import _helper_functions
+
+    widget, act, _, _ = manager
+    monkeypatch.setattr(
+        lhm, "_table_stats", lambda w, l, s, table, r: {"rows": len(table)}
+    )
+    monkeypatch.setattr(
+        _helper_functions, "_mount", lambda lakehouse=None, workspace=None: "/mnt"
+    )
+
+    act("stats", paths=["Tables/sales", "Tables/orders"], _drain=False)
+
+    # One table per request: the first is done, the next is waiting.
+    assert widget.batch == {
+        "title": "Collecting stats",
+        "total": 2,
+        "done": 1,
+        "current": "",
+    }
+    assert widget.busy is True
+    assert widget.stats_pending == ["Tables/orders"]
+    assert set(widget.table_stats) == {"Tables/sales"}
+
+    act("batch_cancel")
+
+    assert widget.batch == {}
+    assert widget.busy is False
+    assert widget.stats_pending == []
+    assert set(widget.table_stats) == {"Tables/sales"}
+    assert widget.status_message == "Stopped collecting stats after 1 of 2 tables."
+
+
+def test_cancelling_table_maintenance_and_auto_compaction(spark_sql, monkeypatch):
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, statements = spark_sql
+    maintained = []
+    monkeypatch.setattr(
+        _lakehouse,
+        "run_table_maintenance",
+        lambda **kwargs: maintained.append(kwargs["table_name"]),
+    )
+
+    act(
+        "maintenance",
+        paths=["Tables/sales", "Tables/orders"],
+        optimize=True,
+        _drain=False,
+    )
+    assert widget.batch["title"] == "Running table maintenance"
+    act("batch_cancel")
+    assert maintained == ["sales"]
+    assert widget.status_message == "Cancelled table maintenance after 1 of 2 tables."
+
+    act(
+        "auto_compaction",
+        paths=["Tables/sales", "Tables/orders"],
+        enable=True,
+        _drain=False,
+    )
+    act("batch_cancel")
+    assert len(statements) == 1
+    assert widget.status_message == (
+        "Cancelled turning auto-compaction on after 1 of 2 tables."
+    )
+    assert (widget.batch, widget.busy) == ({}, False)
+
+
+def test_a_maintenance_job_which_did_not_succeed_is_a_failure(manager, monkeypatch):
+    import pandas as pd
+    from sempy_labs.lakehouse import _lakehouse
+
+    widget, act, _, _ = manager
+    monkeypatch.setattr(
+        _lakehouse,
+        "run_table_maintenance",
+        lambda **kwargs: pd.DataFrame([{"Status": "Failed"}]),
+    )
+
+    act("maintenance", paths=["Tables/sales"], optimize=True)
+
+    assert widget.status_message == ""
+    assert (
+        "Table maintenance failed for 'sales': the maintenance job ended as 'Failed'."
+        in widget.error_message
     )
