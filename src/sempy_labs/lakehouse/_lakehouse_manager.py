@@ -526,6 +526,60 @@ _LHM_JS = (
     + "\n"
     + _ui_fullscreen_setup_js("sllsLhmSetupFullscreen")
     + r"""
+// A labelled modal dialog: while open, the rest of the widget is inert, focus
+// moves into the dialog and Tab / Shift+Tab cycle within it; on close, focus
+// returns to the control which opened it.
+let sllsLhmDialogCount = 0;
+function sllsLhmCreateModal(root, overlay, dialog, heading, onClose) {
+    sllsLhmDialogCount += 1;
+    heading.id = "slls-lhm-dialog-title-" + sllsLhmDialogCount + "-" + Math.random().toString(36).slice(2, 8);
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", heading.id);
+    dialog.tabIndex = -1;
+    let returnFocus = null;
+    const inerted = [];
+    function isOpen() { return overlay.style.display !== "none"; }
+    function focusables() {
+        const selector = 'a[href], button:not([disabled]), input:not([disabled]), '
+            + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        return [...dialog.querySelectorAll(selector)].filter((node) => node.getClientRects().length > 0);
+    }
+    function open(initialFocus) {
+        if (isOpen()) return;
+        returnFocus = document.activeElement;
+        for (const child of root.children) {
+            if (child !== overlay && !child.inert) { child.inert = true; inerted.push(child); }
+        }
+        overlay.style.display = "flex";
+        (initialFocus || focusables()[0] || dialog).focus();
+    }
+    function close() {
+        if (!isOpen()) return;
+        overlay.style.display = "none";
+        while (inerted.length) inerted.pop().inert = false;
+        const target = returnFocus;
+        returnFocus = null;
+        if (onClose) onClose();
+        if (target && target.isConnected && typeof target.focus === "function") target.focus();
+    }
+    overlay.addEventListener("keydown", (event) => {
+        if (event.key !== "Tab" || !isOpen()) return;
+        const items = focusables();
+        if (!items.length) { event.preventDefault(); dialog.focus(); return; }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey && (active === first || !dialog.contains(active))) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+            event.preventDefault(); first.focus();
+        }
+    });
+    overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
+    return { open: open, close: close, isOpen: isOpen };
+}
+
 function render({ model, el }) {
     const root = document.createElement("div");
     root.className = "slls-lhm" + (model.get("dark_mode") ? " slls-lhm-dark" : "");
@@ -691,10 +745,11 @@ function render({ model, el }) {
     dialog.append(dialogHead, optimizeChk.el, vorderChk.el, vacuumChk.el, retention, dialogActions);
     overlay.appendChild(dialog); root.appendChild(overlay);
 
-    function closeDialog() { maintenanceTarget = null; overlay.style.display = "none"; }
+    function closeDialog() { maintenanceDialog.close(); }
+    const maintenanceDialog = sllsLhmCreateModal(
+        root, overlay, dialog, dialogTitle.querySelector("h2"), () => { maintenanceTarget = null; });
     cancelBtn.addEventListener("click", closeDialog);
     dialogClose.addEventListener("click", closeDialog);
-    overlay.addEventListener("click", (event) => { if (event.target === overlay) closeDialog(); });
     runBtn.addEventListener("click", () => {
         if (!maintenanceTarget) return;
         const payload = {
@@ -729,14 +784,16 @@ function render({ model, el }) {
     confirmDialog.append(confirmHead, confirmList, confirmActions);
     confirmOverlay.appendChild(confirmDialog); root.appendChild(confirmOverlay);
 
-    function closeConfirm() { confirmOverlay.style.display = "none"; }
+    // The paths shown when the confirmation opened: only these are deleted,
+    // whatever happens to the selection meanwhile.
+    let pendingDelete = [];
+    function closeConfirm() { confirmModal.close(); }
+    const confirmModal = sllsLhmCreateModal(
+        root, confirmOverlay, confirmDialog, confirmTitle.querySelector("h2"), () => { pendingDelete = []; });
     confirmCancel.addEventListener("click", closeConfirm);
     confirmClose.addEventListener("click", closeConfirm);
-    confirmOverlay.addEventListener("click", (event) => {
-        if (event.target === confirmOverlay) closeConfirm();
-    });
     confirmDelete.addEventListener("click", () => {
-        const paths = [...selected];
+        const paths = pendingDelete.slice();
         closeConfirm();
         if (paths.length) act("delete", { paths: paths });
     });
@@ -783,7 +840,7 @@ function render({ model, el }) {
                 maintenanceTarget = row;
                 dialogTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
                 retention.style.display = vacuumChk.input.checked ? "" : "none";
-                overlay.style.display = "flex";
+                maintenanceDialog.open();
             });
             buttons.appendChild(maintain);
         }
@@ -849,11 +906,12 @@ function render({ model, el }) {
     deleteSelected.addEventListener("click", () => {
         const nodes = selectedNodes();
         if (!nodes.length) return;
+        pendingDelete = nodes.map((node) => node.path);
         confirmTitle.querySelector(".slls-lhm-panel-sub").textContent =
             `${nodes.length} object${nodes.length === 1 ? "" : "s"} will be deleted from the lakehouse.`;
         confirmList.textContent = nodes.slice(0, 10).map((node) => node.path).join(", ")
             + (nodes.length > 10 ? `, +${nodes.length - 10} more` : "");
-        confirmOverlay.style.display = "flex";
+        confirmModal.open(confirmCancel);
     });
 
     function emptyState(text) {
@@ -1081,8 +1139,8 @@ function render({ model, el }) {
     });
     root.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
-        if (confirmOverlay.style.display !== "none") closeConfirm();
-        else if (overlay.style.display !== "none") closeDialog();
+        if (confirmModal.isOpen()) closeConfirm();
+        else if (maintenanceDialog.isOpen()) closeDialog();
         else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
     });
     search.addEventListener("input", renderRows);
@@ -1095,6 +1153,8 @@ function render({ model, el }) {
     // A different lakehouse was loaded: selections made in the previous one
     // must never carry over to it.
     model.on("change:loaded_lakehouse_id", () => {
+        // A confirmation shown for the previous lakehouse must not apply here.
+        closeConfirm(); closeDialog();
         selected.clear();
         expanded.clear(); expanded.add("Tables"); expanded.add("Files");
         renderState(); renderRows();

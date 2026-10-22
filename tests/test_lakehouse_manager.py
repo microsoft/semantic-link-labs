@@ -194,8 +194,42 @@ def test_tree_objects_can_be_selected_and_acted_on_in_bulk():
     assert 'act("recover", { paths: paths })' in js
     assert 'act("delete", { paths: paths })' in js
     # Deleting is confirmed first.
-    assert 'confirmOverlay.style.display = "flex";' in js
+    assert "confirmModal.open(confirmCancel);" in js
     assert '"delete": _delete' in _source()
+
+
+def test_the_delete_confirmation_deletes_only_the_paths_it_showed():
+    js = lhm._LHM_JS
+    handler = js[js.index('confirmDelete.addEventListener("click"') :]
+    handler = handler[: handler.index("});")]
+
+    # The selection can change while the confirmation is open: the paths are
+    # captured when it opens, and only that snapshot is deleted.
+    assert "pendingDelete = nodes.map((node) => node.path);" in js
+    assert "const paths = pendingDelete.slice();" in handler
+    assert "selected" not in handler
+    # A confirmation shown for one lakehouse never applies to the next.
+    reload_handler = js[js.index('model.on("change:loaded_lakehouse_id"') :]
+    assert "closeConfirm(); closeDialog();" in reload_handler[:300]
+
+
+def test_the_dialogs_are_focus_managed_modals():
+    js = lhm._LHM_JS
+
+    assert "function sllsLhmCreateModal(" in js
+    assert 'dialog.setAttribute("role", "dialog");' in js
+    assert 'dialog.setAttribute("aria-modal", "true");' in js
+    assert 'dialog.setAttribute("aria-labelledby", heading.id);' in js
+    # The background is inert while open and focus returns to the opener.
+    assert "child.inert = true;" in js
+    assert "while (inerted.length) inerted.pop().inert = false;" in js
+    assert "target.focus();" in js
+    assert 'if (event.key !== "Tab" || !isOpen()) return;' in js
+    # Both the delete confirmation and the maintenance dialog use it.
+    assert "confirmModal.open(confirmCancel);" in js
+    assert "maintenanceDialog.open();" in js
+    # Only the modal helper shows an overlay.
+    assert js.count('style.display = "flex";') == 1
 
 
 def test_an_action_can_target_one_object_or_a_selection():
