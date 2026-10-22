@@ -1947,7 +1947,8 @@ def _visualize_dax_test(
         DARK_THEME_VARS as _UI_DARK_VARS,
         SYNTAX_HIGHLIGHT_VARS as _UI_SYNTAX_VARS,
         HEADER_CSS as _UI_HEADER_CSS,
-        ATTRIBUTION_CSS as _UI_ATTRIBUTION_CSS,
+        render_attribution_html as _ui_render_attribution_html,
+        scoped_attribution_css as _ui_scoped_attribution_css,
         ICONS as _UI_ICONS,
     )
     _UI_SEARCH_SELECT_CSS = getattr(
@@ -1973,7 +1974,7 @@ def _visualize_dax_test(
     widget_css = (
         _UI_HEADER_CSS
         + "\n"
-        + _UI_ATTRIBUTION_CSS
+        + _ui_scoped_attribution_css(".dtx")
         + "\n"
         + _UI_SEARCH_SELECT_CSS
         + "\n"
@@ -11006,10 +11007,7 @@ function render({ model, el }) {
     }
 
     // ---------- Attribution ----------
-    const attribution = document.createElement("div");
-    attribution.className = "sl-attribution";
-    attribution.innerHTML = 'Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener">Semantic Link Labs</a>';
-    container.appendChild(attribution);
+    container.insertAdjacentHTML("beforeend", `__SLLS_ATTRIBUTION__`);
 
     // ---------- Wiring ----------
     model.on("change:dark_mode", applyTheme);
@@ -11296,6 +11294,7 @@ export default { render };
     )
     widget_js = (
         widget_js.replace("__DTX_SUN__", sun_icon)
+        .replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
         .replace("__DTX_MOON__", moon_icon)
         .replace("__DTX_INFO__", info_icon)
         .replace("__DTX_TABLE__", table_icon)

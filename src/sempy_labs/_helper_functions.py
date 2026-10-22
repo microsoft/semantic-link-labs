@@ -3216,9 +3216,44 @@ def get_downstream_relations(item: str | UUID, type: Optional[str] = None, works
 
 @log
 def get_upstream_relations(item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> dict:
-
     """
     Gets upstream relations for an item.
+
+    Returns all items that are upstream of the specified item, including the relation edges and referenced workspaces.
+
+    This is a wrapper function for the following API: `Items - Get Upstream Relations (beta) <https://learn.microsoft.com/rest/api/fabric/core/items/get-upstream-relations(beta)>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID. If specifying the item name, the item type is required.
+    type : str, default=None
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict
+        The API response as a dictionary, containing the 'items', 'relations' and 'workspaces' keys.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/upstream?beta=True",
+        client="fabric_sp",
+    )
+
+    return response.json()
+
+
+@log
 def update_item_logical_id(
     item: str | UUID,
     logical_id: UUID,
@@ -3239,25 +3274,6 @@ def update_item_logical_id(
     ----------
     item : str | uuid.UUID
         The item name or ID. If specifying the item name, the item type is required.
-    type : str, default=None
-        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
-    workspace : str | uuid.UUID, default=None
-        The workspace name or ID.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    dict
-        The API response as a dictionary.
-    """
-
-    workspace_id = resolve_workspace_id(workspace)
-    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
-
-    response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/upstream?beta=True")
-
-    return response.json()
     logical_id : uuid.UUID
         The new logical ID for the item. Must be a non-empty GUID which is unique within the workspace.
     type : str, default=None

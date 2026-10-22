@@ -68,15 +68,6 @@ _TOOLS: tuple = (
         ),
     },
     {
-        "key": "bpa",
-        "name": "Semantic Model BPA",
-        "description": "Run Best Practice Analyzer rules against a semantic model.",
-        "tags": ("Semantic Model",),
-        "icon": "shield_check",
-        "module": "sempy_labs.semantic_model._bpa",
-        "function": "bpa",
-    },
-    {
         "key": "vertipaq_analyzer",
         "name": "Vertipaq Analyzer",
         "description": "Analyze the memory footprint of a semantic model.",
@@ -116,15 +107,6 @@ _TOOLS: tuple = (
             "Debug a refresh which failed on a single partition.",
             "Recalculate the model after editing measures or relationships.",
         ),
-    },
-    {
-        "key": "refresh_manager",
-        "name": "Refresh Manager",
-        "description": "Refresh a semantic model, its tables or individual partitions.",
-        "tags": ("Semantic Model",),
-        "icon": "sync",
-        "module": "sempy_labs.semantic_model._refresh_manager",
-        "function": "refresh_manager",
     },
     {
         "key": "lineage_view",
@@ -1089,11 +1071,27 @@ function render({ model, el }) {
     fsBtn.className = "slls-app-btn slls-app-btn-icon";
     actions.appendChild(fsBtn);
     applyTheme();
-    sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs", FS_ENTER_SVG, FS_EXIT_SVG);
-    // Runs as a microtask, so the tool and its Back button land in one paint.
-    new MutationObserver(() => { applyView(); placeBack(); }).observe(shell(),
-        { childList: true, subtree: true });
-    shell().addEventListener("click", interceptToolChrome, true);
+    // ipywidgets can run render() before this view is inserted into the
+    // .slls-app-shell box, so the shell is resolved on each toggle (passing
+    // shell() now could make the launcher alone go full screen, without the
+    // open tool), and the shell listeners are bound once the view is in it.
+    sllsSetupFullscreen(shell, fsBtn, "slls-app-fs", FS_ENTER_SVG, FS_EXIT_SVG);
+    let disposed = false;
+    function bindShell() {
+        if (disposed) return;
+        if (!root.closest(".slls-app-shell") && !root.isConnected) {
+            requestAnimationFrame(bindShell);
+            return;
+        }
+        applyTheme();
+        // Runs as a microtask, so the tool and its Back button land in one paint.
+        new MutationObserver(() => { applyView(); placeBack(); }).observe(shell(),
+            { childList: true, subtree: true });
+        shell().addEventListener("click", interceptToolChrome, true);
+        // Catch up on tools the shell gained before it was observed.
+        setTimeout(() => { applyView(); placeBack(); });
+    }
+    bindShell();
     document.addEventListener("fullscreenchange", syncHostedTool);
     fsBtn.addEventListener("click", () => setTimeout(syncHostedTool));
 
@@ -1675,6 +1673,7 @@ function render({ model, el }) {
     renderGrid();
     renderGuide();
     renderBanner();
+    return () => { disposed = true; };
 }
 export default { render };
 """

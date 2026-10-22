@@ -2,10 +2,12 @@
 
 Browses the tables, folders and files of a lakehouse (including the
 `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
-ones), recovers deleted objects and runs table maintenance, all from one
-widget.
+ones), recovers deleted objects, runs table maintenance, collects table stats
+and changes tables' auto-compaction and liquid clustering, all from one widget.
 """
 
+import json
+import re
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -17,6 +19,7 @@ from sempy_labs._ui_components import (
     LIGHT_THEME_VARS as _UI_LIGHT_VARS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    TABLE_COLUMN_RESIZE_JS as _UI_TABLE_COLUMN_RESIZE_JS,
     fullscreen_css as _ui_fullscreen_css,
     fullscreen_setup_js as _ui_fullscreen_setup_js,
     list_picker_lakehouses as _ui_list_picker_lakehouses,
@@ -26,6 +29,7 @@ from sempy_labs._ui_components import (
     scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
+    scoped_table_column_resize_css as _ui_scoped_table_column_resize_css,
 )
 
 # The two OneLake containers a lakehouse exposes; everything else (system
@@ -37,7 +41,7 @@ _CONTAINERS = ("Tables", "Files")
 # Lakehouse contents (pure helpers, so they are testable without Fabric)
 # ---------------------------------------------------------------------------
 def _format_bytes(size: Optional[float]) -> str:
-    """A byte count as a short, human readable string."""
+    """A byte count as a short, human readable string. """
 
     try:
         value = float(size or 0)
@@ -78,9 +82,100 @@ def _object_of(path: str, schema_enabled: bool) -> Optional[Tuple[str, str, str,
     if len(parts) < 2 or parts[0] not in _CONTAINERS:
         return None
     container = parts[0]
-    if container == "Tables" and schema_enabled and len(parts) >= 3:
+    if container == "Tables" and schema_enabled:
+        # Directly beneath Tables is a schema (its folder is listed as a blob
+        # too), never a table.
+        if len(parts) < 3:
+            return None
         return (container, parts[2], parts[1], len(parts) == 3)
     return (container, parts[1], "", len(parts) == 2)
+
+
+# Upper bounds (exclusive) of the bands a table's data files are counted in;
+# the last band is everything from 1 GB up. Delta tables read best with data
+# files of roughly 128 MB to 1 GB.
+_MB = 1024 * 1024
+_FILE_SIZE_BANDS: Tuple[Tuple[str, Optional[int]], ...] = (
+    ("< 1 MB", _MB),
+    ("1–16 MB", 16 * _MB),
+    ("16–64 MB", 64 * _MB),
+    ("64–128 MB", 128 * _MB),
+    ("128–256 MB", 256 * _MB),
+    ("256 MB–1 GB", 1024 * _MB),
+    ("≥ 1 GB", None),
+)
+
+
+def _file_size_band(size: int) -> int:
+    """The index of the band in ``_FILE_SIZE_BANDS`` a file size falls in."""
+
+    for index, (_, upper) in enumerate(_FILE_SIZE_BANDS):
+        if upper is None or size < upper:
+            return index
+    return len(_FILE_SIZE_BANDS) - 1
+
+
+def _table_file(inner: List[str]) -> Tuple[str, str]:
+    """What a file inside a delta table's folder is.
+
+    ``inner`` is the file's path relative to the table folder. Returns
+    ``(kind, partition)`` where ``kind`` is ``"data"`` for a parquet data file,
+    ``"dv"`` for a deletion vector file, or ``""`` for anything else, and
+    ``partition`` is the data file's partition folder (``""`` if unpartitioned).
+    """
+
+    if not inner:
+        return "", ""
+    # Delta (like Spark) ignores anything beneath a folder starting with "_"
+    # or ".", which covers _delta_log and its parquet checkpoints.
+    if any(part.startswith(("_", ".")) for part in inner):
+        return "", ""
+    file_name = inner[-1].lower()
+    if file_name.startswith("deletion_vector_") and file_name.endswith(".bin"):
+        return "dv", ""
+    if file_name.endswith(".parquet"):
+        folders = inner[:-1]
+        partition = "/".join(folders) if all("=" in f for f in folders) else ""
+        return "data", partition
+    return "", ""
+
+
+def _file_size_stats(sizes: List[int]) -> dict:
+    """The distribution of a table's data file sizes."""
+
+    bands = [0] * len(_FILE_SIZE_BANDS)
+    for size in sizes:
+        bands[_file_size_band(size)] += 1
+    if not sizes:
+        return {"count": 0, "min": 0, "avg": 0, "max": 0, "bands": bands}
+    smallest, largest = min(sizes), max(sizes)
+    average = sum(sizes) / len(sizes)
+    return {
+        "count": len(sizes),
+        "min": smallest,
+        "avg": average,
+        "max": largest,
+        "min_label": _format_bytes(smallest),
+        "avg_label": _format_bytes(average),
+        "max_label": _format_bytes(largest),
+        "bands": bands,
+    }
+
+
+def _is_file_blob(blob: dict) -> bool:
+    """Whether a blob is a file rather than a folder (directory marker).
+
+    OneLake reports each blob's resource type; when it is missing, a blob
+    holding data is taken to be a file.
+    """
+
+    kind = str(blob.get("Resource Type") or "").strip().lower()
+    if kind:
+        return kind == "file"
+    try:
+        return int(blob.get("Content Length") or 0) > 0
+    except (TypeError, ValueError):
+        return False
 
 
 def _summarize_blobs(
@@ -89,10 +184,16 @@ def _summarize_blobs(
     schema_enabled: bool = False,
     shortcut_paths: Optional[set] = None,
 ) -> List[dict]:
-    """Roll a lakehouse's blobs up into one row per table, folder or file."""
+    """Roll a lakehouse's blobs up into one row per table, folder or file.
+
+    Tables also get the size distribution of their data files, their number of
+    partitions and whether they hold deletion vectors.
+    """
 
     shortcuts = shortcut_paths or set()
     objects: Dict[str, dict] = {}
+    data_file_sizes: Dict[str, List[int]] = {}
+    partitions: Dict[str, set] = {}
 
     for blob in blobs:
         path = _blob_path(blob.get("Blob Name"), lakehouse_id)
@@ -101,6 +202,9 @@ def _summarize_blobs(
             continue
         container, name, schema, is_leaf = located
         key = "/".join(part for part in (container, schema, name) if part)
+        # A table is a folder; a file where a table would be (e.g. a
+        # schema.json.gz beside the tables) is a file.
+        lone_file = is_leaf and _is_file_blob(blob)
         record = objects.get(key)
         if record is None:
             record = {
@@ -109,7 +213,7 @@ def _summarize_blobs(
                 "schema": schema,
                 "container": container,
                 "type": (
-                    "Table"
+                    ("File" if lone_file else "Table")
                     if container == "Tables"
                     else ("File" if is_leaf else "Folder")
                 ),
@@ -118,10 +222,17 @@ def _summarize_blobs(
                 "deleted_files": 0,
                 "modified": "",
                 "shortcut": key in shortcuts,
+                "partitions": 0,
+                "deletion_vectors": False,
+                "deletion_vector_files": 0,
             }
             objects[key] = record
         elif not is_leaf and record["type"] == "File":
-            record["type"] = "Folder"
+            record["type"] = "Table" if container == "Tables" else "Folder"
+        elif is_leaf and not lone_file and record["type"] == "File":
+            # The folder's own marker, listed after a file was taken for it.
+            if container == "Tables":
+                record["type"] = "Table"
 
         deleted = bool(blob.get("Is Deleted"))
         if deleted:
@@ -129,16 +240,34 @@ def _summarize_blobs(
         else:
             record["files"] += 1
             try:
-                record["size"] += int(blob.get("Content Length") or 0)
+                size = int(blob.get("Content Length") or 0)
             except (TypeError, ValueError):
-                pass
+                size = 0
+            record["size"] += size
+            if container == "Tables":
+                parts = [part for part in path.split("/") if part]
+                table_depth = 3 if schema_enabled else 2
+                kind, partition = _table_file(parts[table_depth:])
+                if kind == "data":
+                    data_file_sizes.setdefault(key, []).append(size)
+                    if partition:
+                        partitions.setdefault(key, set()).add(partition)
+                elif kind == "dv":
+                    record["deletion_vector_files"] += 1
         modified = str(blob.get("Last Modified") or blob.get("Creation Time") or "")
         if modified > record["modified"]:
             record["modified"] = modified
 
-    for record in objects.values():
+    for key, record in objects.items():
         # Nothing live left: the object itself is in the soft-deleted state.
         record["deleted"] = record["files"] == 0 and record["deleted_files"] > 0
+        record["file_sizes"] = (
+            _file_size_stats(data_file_sizes.get(key, []))
+            if record["type"] == "Table"
+            else None
+        )
+        record["partitions"] = len(partitions.get(key, ()))
+        record["deletion_vectors"] = record["deletion_vector_files"] > 0
 
     return sorted(objects.values(), key=lambda row: row["path"].lower())
 
@@ -148,7 +277,7 @@ def _summarize_objects(objects: List[dict]) -> dict:
 
     live = [row for row in objects if not row.get("deleted")]
     return {
-        "tables": sum(1 for row in live if row["container"] == "Tables"),
+        "tables": sum(1 for row in live if row.get("type") == "Table"),
         "files": sum(1 for row in live if row["container"] == "Files"),
         "deleted": sum(1 for row in objects if row.get("deleted")),
         "recoverable": sum(int(row.get("deleted_files") or 0) for row in objects),
@@ -184,8 +313,9 @@ def _node_type(
         return "Container"
     if container == "Tables":
         if schema_enabled:
+            # Even an empty schema is a schema, not a table.
             if depth == 1:
-                return "Schema" if has_children else "Table"
+                return "Schema"
             if depth == 2:
                 return "Table"
         elif depth == 1:
@@ -222,7 +352,7 @@ def _build_tree(
 
         children = roots
         walked: List[str] = []
-        for part in parts:
+        for index, part in enumerate(parts):
             walked.append(part)
             node = children.get(part)
             if node is None:
@@ -233,8 +363,11 @@ def _build_tree(
                     "files": 0,
                     "deleted_files": 0,
                     "children": {},
+                    "is_file": False,
                 }
                 children[part] = node
+            if index == len(parts) - 1 and _is_file_blob(blob):
+                node["is_file"] = True
             node["size"] += size
             if deleted:
                 node["deleted_files"] += 1
@@ -245,6 +378,9 @@ def _build_tree(
     def _finalize(node: dict, depth: int, container: str, schema: str) -> dict:
         raw_children = list(node["children"].values())
         node_type = _node_type(depth, container, schema_enabled, bool(raw_children))
+        # A file where a table would be (e.g. a schema.json.gz) is a file.
+        if node_type == "Table" and not raw_children and node.get("is_file"):
+            node_type = "File"
         child_schema = node["name"] if node_type == "Schema" else schema
         # Folders and tables first, then files; each group by name.
         raw_children.sort(key=lambda c: (not c["children"], c["name"].lower()))
@@ -410,22 +546,97 @@ _LHM_CSS = (
     padding-right: 8px; color: var(--ui-text-secondary); font-size: 12px; font-variant-numeric: tabular-nums;
 }
 .slls-lhm-node-more { color: var(--ui-text-tertiary); font-size: 12px; font-style: italic; }
-.slls-lhm-list { flex: 1 1 auto; min-height: 220px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg); overflow: auto; }
+/* Capped so the list scrolls itself and its column headers stay in view. */
+.slls-lhm-list {
+    flex: 1 1 auto; min-height: 220px; max-height: min(640px, calc(100vh - 160px));
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg); overflow: auto;
+}
+.slls-lhm.slls-lhm-fullscreen .slls-lhm-list, .slls-lhm:fullscreen .slls-lhm-list { max-height: none; }
 .slls-lhm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* A collapsed border scrolls away from a sticky header, so it is drawn as a shadow. */
 .slls-lhm-table th {
     position: sticky; top: 0; z-index: 1; padding: 9px 12px;
-    border-bottom: 1px solid var(--ui-border); background: var(--ui-bg-secondary);
+    border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border); background: var(--ui-bg-secondary);
     color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-align: left;
     text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
 }
-.slls-lhm-table td { padding: 9px 12px; border-bottom: 1px solid var(--ui-border); vertical-align: middle; }
+.slls-lhm-table td { padding: 3px 12px; border-bottom: 1px solid var(--ui-border); vertical-align: middle; }
 .slls-lhm-table tr:last-child td { border-bottom: none; }
 .slls-lhm-table tr:hover td { background: var(--ui-surface-2); }
+/* The checkbox, schema and name columns stay in view when scrolling sideways.
+   Their left offsets are set by the script; above the cells scrolling under them. */
+.slls-lhm-table th { z-index: 2; }
+.slls-lhm-table th.slls-lhm-frozen { position: sticky; z-index: 3; }
+.slls-lhm-table td.slls-lhm-frozen {
+    position: sticky; z-index: 1; background: var(--ui-bg);
+    border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border);
+}
+.slls-lhm-table tr:hover td.slls-lhm-frozen {
+    background: linear-gradient(var(--ui-surface-2), var(--ui-surface-2)), var(--ui-bg);
+}
+.slls-lhm-table tr:last-child td.slls-lhm-frozen { box-shadow: none; }
+.slls-lhm-table th.slls-lhm-frozen-last { box-shadow: inset 0 -1px 0 var(--ui-border), inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-table td.slls-lhm-frozen-last { box-shadow: inset 0 -1px 0 var(--ui-border), inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-table tr:last-child td.slls-lhm-frozen-last { box-shadow: inset -1px 0 0 var(--ui-border-strong); }
 .slls-lhm-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .slls-lhm-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slls-lhm-name svg { display: block; width: 15px; height: 15px; flex: 0 0 auto; color: var(--ui-text-tertiary); }
 .slls-lhm-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.slls-lhm-schema { color: var(--ui-text-tertiary); }
+.slls-lhm-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-table th.slls-lhm-num { text-align: right; }
+.slls-lhm-table td.slls-lhm-barcell { padding-top: 3px; padding-bottom: 3px; }
+.slls-lhm-table .slls-lhm-checkcell { padding-right: 0; text-overflow: clip; }
+.slls-lhm-table .slls-lhm-checkcell .slls-lhm-node-check { display: block; }
+.slls-lhm-table .slls-lhm-iconbtn { width: 24px; height: 24px; border-radius: 6px; }
+.slls-lhm-table .slls-lhm-iconbtn svg { width: 13px; height: 13px; }
+.slls-lhm-table .slls-lhm-bar { display: block; width: 100%; }
+.slls-lhm-muted { color: var(--ui-text-tertiary); }
+.slls-lhm-table td.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-cellwrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.slls-lhm-cell-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-cellbtn {
+    width: 22px; height: 22px; flex: 0 0 auto; border-color: transparent;
+    background: transparent; color: var(--ui-text-tertiary);
+}
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-cellbtn svg { width: 13px; height: 13px; }
+.slls-lhm-table tr:hover .slls-lhm-iconbtn.slls-lhm-cellbtn:not(:disabled) { border-color: var(--ui-border-strong); color: var(--ui-text); }
+.slls-lhm-cluster-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; margin-top: 12px; overflow: auto; }
+.slls-lhm-cluster-col {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+    border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface);
+    color: var(--ui-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.slls-lhm-cluster-col:hover:not(:disabled) { background: var(--ui-surface-2); }
+.slls-lhm-cluster-col.slls-lhm-on { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.slls-lhm-cluster-col:disabled { opacity: .5; cursor: not-allowed; }
+.slls-lhm-cluster-badge {
+    display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+    flex: 0 0 auto; border: 1px solid var(--ui-border-strong); border-radius: 5px;
+    font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.slls-lhm-cluster-col.slls-lhm-on .slls-lhm-cluster-badge { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-on-accent); }
+.slls-lhm-cluster-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-cluster-type { flex: 0 0 auto; color: var(--ui-text-tertiary); font-size: 11.5px; }
+.slls-lhm-cluster-summary { margin-top: 12px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-lhm-cluster-state { padding: 12px 2px 4px; color: var(--ui-text-secondary); font-size: 13px; }
+.slls-lhm-cluster-state.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-dialog:focus { outline: none; }
+.slls-lhm-batch {
+    display: none; align-items: center; gap: 10px; padding: 6px 8px 6px 14px;
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
+    color: var(--ui-text-secondary); font-size: 12.5px;
+}
+.slls-lhm-batch-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-batch .slls-lhm-ghost { flex: 0 0 auto; padding: 4px 14px; font-size: 12px; }
+.slls-lhm-dist { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slls-lhm-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: 0 0 auto; }
+.slls-lhm-spark-bar { width: 6px; min-height: 2px; border-radius: 1px 1px 0 0; background: var(--ui-accent); }
+.slls-lhm-spark-bar.slls-lhm-zero { height: 1px; min-height: 1px; background: var(--ui-border-strong); }
+.slls-lhm-sort { all: unset; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; cursor: pointer; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
+.slls-lhm-sort:hover { color: var(--ui-text); }
+.slls-lhm-sort:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; border-radius: 3px; }
+.slls-lhm-table th[aria-sort="ascending"] .slls-lhm-sort, .slls-lhm-table th[aria-sort="descending"] .slls-lhm-sort { color: var(--ui-accent); }
+.slls-lhm-sort-icon svg { display: block; width: 12px; height: 12px; }
 .slls-lhm-badge {
     display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
     border: 1px solid var(--ui-border); border-radius: 999px;
@@ -517,6 +728,7 @@ __SEARCH_CSS__
 _LHM_CSS += _ui_scoped_header_css(".slls-lhm")
 _LHM_CSS += _ui_scoped_button_press_css(".slls-lhm")
 _LHM_CSS += _ui_scoped_attribution_css(".slls-lhm")
+_LHM_CSS += _ui_scoped_table_column_resize_css(".slls-lhm")
 _LHM_CSS += "\n" + _ui_fullscreen_css(
     ".slls-lhm", "slls-lhm-fullscreen", bg_var="var(--ui-bg)"
 )
@@ -524,6 +736,8 @@ _LHM_CSS += "\n" + _ui_fullscreen_css(
 
 _LHM_JS = (
     _UI_SEARCH_SELECT_JS
+    + "\n"
+    + _UI_TABLE_COLUMN_RESIZE_JS
     + "\n"
     + _ui_fullscreen_setup_js("sllsLhmSetupFullscreen")
     + r"""
@@ -581,10 +795,13 @@ function render({ model, el }) {
         const lab = document.createElement("label"); lab.textContent = label;
         wrap.append(lab, picker.el); return wrap;
     }
+    // Returns the action's number, which action_done reports once it finished.
     function act(action, extra) {
+        const trigger = (model.get("action_trigger") || 0) + 1;
         model.set("pending_action", Object.assign({ action: action }, extra || {}));
-        model.set("action_trigger", (model.get("action_trigger") || 0) + 1);
+        model.set("action_trigger", trigger);
         model.save_changes();
+        return trigger;
     }
     const ws = createSearchSelect({
         placeholder: "Select a workspace…", searchPlaceholder: "Filter workspaces…",
@@ -623,7 +840,7 @@ function render({ model, el }) {
     const pills = document.createElement("div"); pills.className = "slls-lhm-pills"; pills.setAttribute("role", "group");
     pills.setAttribute("aria-label", "Filter objects");
     let filter = "All";
-    const pillButtons = ["All", "Tables", "Files", "Deleted"].map((name) => {
+    const pillButtons = ["All", "Deleted"].map((name) => {
         const pill = document.createElement("button"); pill.type = "button"; pill.className = "slls-lhm-pill"; pill.textContent = name;
         pill.addEventListener("click", () => { filter = name; renderRows(); });
         pills.appendChild(pill); return { name: name, el: pill };
@@ -640,6 +857,25 @@ function render({ model, el }) {
     deleteSelected.title = "Delete the selected objects";
     deleteSelected.setAttribute("aria-label", deleteSelected.title);
     selection.append(selectedText, recoverSelected, deleteSelected);
+    // Tables ticked in the table view for a bulk table maintenance run.
+    const tableSelection = document.createElement("div"); tableSelection.className = "slls-lhm-selection";
+    const tableSelectedText = document.createElement("span"); tableSelectedText.className = "slls-lhm-selected";
+    const maintainSelected = document.createElement("button"); maintainSelected.type = "button";
+    maintainSelected.className = "slls-lhm-iconbtn"; maintainSelected.innerHTML = `__ICON_WRENCH__`;
+    maintainSelected.title = "Run table maintenance on the selected tables";
+    maintainSelected.setAttribute("aria-label", maintainSelected.title);
+    const statsSelected = document.createElement("button"); statsSelected.type = "button";
+    statsSelected.className = "slls-lhm-iconbtn"; statsSelected.innerHTML = `__ICON_STATS__`;
+    statsSelected.title = "Collect stats for the selected tables (columns, rows, row groups, "
+        + "Z-Order, liquid clustering, auto-compaction and V-Order)";
+    statsSelected.setAttribute("aria-label", "Collect stats for the selected tables");
+    const autoOnSelected = document.createElement("button"); autoOnSelected.type = "button";
+    autoOnSelected.className = "slls-lhm-iconbtn"; autoOnSelected.innerHTML = `__ICON_AUTO_ON__`;
+    autoOnSelected.setAttribute("aria-label", "Turn auto-compaction on for the selected tables");
+    const autoOffSelected = document.createElement("button"); autoOffSelected.type = "button";
+    autoOffSelected.className = "slls-lhm-iconbtn"; autoOffSelected.innerHTML = `__ICON_AUTO_OFF__`;
+    autoOffSelected.setAttribute("aria-label", "Turn auto-compaction off for the selected tables");
+    tableSelection.append(maintainSelected, statsSelected, autoOnSelected, autoOffSelected, tableSelectedText);
     const segment = document.createElement("div"); segment.className = "slls-lhm-seg";
     segment.setAttribute("role", "group"); segment.setAttribute("aria-label", "View");
     const viewButtons = [["Tree", `__ICON_TREE__`], ["Table", `__ICON_TABLE__`]].map(([name, icon]) => {
@@ -650,19 +886,27 @@ function render({ model, el }) {
         button.addEventListener("click", () => { view = name; renderRows(); });
         segment.appendChild(button); return { name: name, el: button };
     });
-    toolbar.append(search, selection, pills, segment);
+    toolbar.append(search, selection, pills, tableSelection, segment);
     const listWrap = document.createElement("div"); listWrap.className = "slls-lhm-list";
     const note = document.createElement("div"); note.className = "slls-lhm-note";
     const noteIcon = document.createElement("span"); const noteText = document.createElement("span");
     note.append(noteIcon, noteText);
-    body.append(cards, toolbar, listWrap, note);
+    // The running batch of table actions, which can be cancelled; it stops
+    // after the table in progress.
+    const batchBar = document.createElement("div"); batchBar.className = "slls-lhm-batch";
+    batchBar.setAttribute("role", "status");
+    const batchText = document.createElement("span"); batchText.className = "slls-lhm-batch-text";
+    const batchCancel = document.createElement("button"); batchCancel.type = "button";
+    batchCancel.className = "slls-lhm-ghost"; batchCancel.textContent = "Cancel";
+    batchBar.append(batchText, batchCancel);
+    body.append(cards, toolbar, batchBar, listWrap, note);
 
     const attribution = document.createElement("div"); attribution.className = "slls-lhm-attr";
     attribution.innerHTML = `__ATTRIBUTION__`;
     root.append(headWrap, progress, backdrop, body, attribution);
 
     // ---------------- Maintenance dialog ----------------
-    let maintenanceTarget = null;
+    let maintenanceTargets = [];
     const overlay = document.createElement("div"); overlay.className = "slls-lhm-overlay"; overlay.style.display = "none";
     const dialog = document.createElement("div"); dialog.className = "slls-lhm-dialog";
     const dialogHead = document.createElement("div"); dialogHead.className = "slls-lhm-panel-head";
@@ -692,20 +936,153 @@ function render({ model, el }) {
     dialog.append(dialogHead, optimizeChk.el, vorderChk.el, vacuumChk.el, retention, dialogActions);
     overlay.appendChild(dialog); root.appendChild(overlay);
 
-    function closeDialog() { maintenanceTarget = null; overlay.style.display = "none"; }
+    // A maintenance or stats run started from the table view's selection
+    // clears the selection once it has finished.
+    let clearTablesAfter = 0;
+    let maintenanceFromSelection = false;
+    function openMaintenance(rows, fromSelection = false) {
+        if (!rows.length) return;
+        maintenanceTargets = rows;
+        maintenanceFromSelection = fromSelection;
+        dialogTitle.querySelector(".slls-lhm-panel-sub").textContent = rows.length === 1
+            ? rows[0].path
+            : `${rows.length} tables: ` + rows.slice(0, 10).map((row) => row.path).join(", ")
+                + (rows.length > 10 ? `, +${rows.length - 10} more` : "");
+        retention.style.display = vacuumChk.input.checked ? "" : "none";
+        overlay.style.display = "flex";
+    }
+    function closeDialog() { maintenanceTargets = []; overlay.style.display = "none"; }
     cancelBtn.addEventListener("click", closeDialog);
     dialogClose.addEventListener("click", closeDialog);
     overlay.addEventListener("click", (event) => { if (event.target === overlay) closeDialog(); });
     runBtn.addEventListener("click", () => {
-        if (!maintenanceTarget) return;
+        if (!maintenanceTargets.length) return;
         const payload = {
-            path: maintenanceTarget.path, table: maintenanceTarget.name,
-            schema: maintenanceTarget.schema || "",
+            paths: maintenanceTargets.map((row) => row.path),
             optimize: optimizeChk.input.checked, v_order: vorderChk.input.checked,
             vacuum: vacuumChk.input.checked, retention_period: retention.value.trim(),
         };
+        const fromSelection = maintenanceFromSelection;
         closeDialog();
-        act("maintenance", payload);
+        const trigger = act("maintenance", payload);
+        if (fromSelection) clearTablesAfter = trigger;
+    });
+
+    // ---------------- Liquid clustering dialog ----------------
+    // Lists the table's columns (loaded by the kernel) as numbered picks; the
+    // order of the picks is the clustering columns' order.
+    const MAX_CLUSTERING_COLUMNS = 4;
+    let clusterTarget = null;
+    let clusterRequest = 0;
+    let clusterChoice = null;
+    const clusterOverlay = document.createElement("div"); clusterOverlay.className = "slls-lhm-overlay";
+    clusterOverlay.style.display = "none";
+    const clusterDialog = document.createElement("div"); clusterDialog.className = "slls-lhm-dialog";
+    clusterDialog.setAttribute("role", "dialog"); clusterDialog.setAttribute("aria-label", "Liquid clustering");
+    clusterDialog.tabIndex = -1;
+    const clusterHead = document.createElement("div"); clusterHead.className = "slls-lhm-panel-head";
+    const clusterTitle = document.createElement("div");
+    clusterTitle.innerHTML = '<h2 class="slls-lhm-panel-title">Liquid clustering</h2>'
+        + '<div class="slls-lhm-panel-sub"></div>';
+    const clusterClose = document.createElement("button"); clusterClose.type = "button"; clusterClose.className = "slls-lhm-close";
+    clusterClose.innerHTML = `__ICON_CLOSE__`; clusterClose.title = "Close";
+    clusterClose.setAttribute("aria-label", "Close liquid clustering");
+    clusterHead.append(clusterTitle, clusterClose);
+    const clusterIntro = document.createElement("div"); clusterIntro.className = "slls-lhm-panel-sub";
+    clusterIntro.textContent = `Choose up to ${MAX_CLUSTERING_COLUMNS} columns to cluster the table by; `
+        + "the order sets their priority. Clear every column to remove liquid clustering.";
+    const clusterBody = document.createElement("div"); clusterBody.className = "slls-lhm-cluster-list";
+    const clusterSummary = document.createElement("div"); clusterSummary.className = "slls-lhm-cluster-summary";
+    const clusterActions = document.createElement("div"); clusterActions.className = "slls-lhm-dialog-actions";
+    const clusterCancel = document.createElement("button"); clusterCancel.type = "button";
+    clusterCancel.className = "slls-lhm-ghost"; clusterCancel.textContent = "Cancel";
+    const clusterApply = document.createElement("button"); clusterApply.type = "button"; clusterApply.className = "slls-lhm-run";
+    clusterActions.append(clusterCancel, clusterApply);
+    clusterDialog.append(clusterHead, clusterIntro, clusterBody, clusterSummary, clusterActions);
+    clusterOverlay.appendChild(clusterDialog); root.appendChild(clusterOverlay);
+
+    function openClustering(row) {
+        clusterTarget = row; clusterChoice = null;
+        clusterTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
+        clusterOverlay.style.display = "flex";
+        clusterDialog.focus({ preventScroll: true });
+        clusterRequest = act("cluster_columns", { path: row.path });
+        renderClustering();
+    }
+    function closeClustering() { clusterTarget = null; clusterOverlay.style.display = "none"; }
+
+    // The table's columns once the kernel has read them, else null.
+    function clusterInfo() {
+        if (!clusterTarget || (model.get("action_done") || 0) < clusterRequest) return null;
+        const info = model.get("cluster_info") || {};
+        if (info.path !== clusterTarget.path) {
+            return { error: model.get("error_message") || "Could not read the table's columns." };
+        }
+        return info;
+    }
+
+    function clusterState(text, bad) {
+        const state = document.createElement("div");
+        state.className = "slls-lhm-cluster-state" + (bad ? " slls-lhm-failed" : "");
+        state.textContent = text; return state;
+    }
+
+    function renderClustering() {
+        if (!clusterTarget) return;
+        clusterBody.innerHTML = "";
+        const info = clusterInfo();
+        const current = (info && info.clustering) || [];
+        const columns = (info && info.columns) || [];
+        if (info && !info.error && clusterChoice === null) {
+            const known = new Set(columns.map((column) => column.name));
+            clusterChoice = current.filter((name) => known.has(name));
+        }
+        const choice = clusterChoice || [];
+        if (!info) clusterBody.appendChild(clusterState("Reading the table's columns…"));
+        else if (info.error) clusterBody.appendChild(clusterState(info.error, true));
+        else if (!columns.length) clusterBody.appendChild(clusterState("The table has no columns."));
+        for (const column of (info && !info.error) ? columns : []) {
+            const order = choice.indexOf(column.name);
+            const pick = document.createElement("button"); pick.type = "button";
+            pick.className = "slls-lhm-cluster-col" + (order >= 0 ? " slls-lhm-on" : "");
+            pick.setAttribute("aria-pressed", String(order >= 0));
+            pick.disabled = busy() || (order < 0 && (!column.clusterable || choice.length >= MAX_CLUSTERING_COLUMNS));
+            if (!column.clusterable) pick.title = "Columns of this type cannot be clustering columns";
+            const badge = document.createElement("span"); badge.className = "slls-lhm-cluster-badge";
+            badge.textContent = order >= 0 ? String(order + 1) : "";
+            const name = document.createElement("span"); name.className = "slls-lhm-cluster-name"; name.textContent = column.name;
+            const type = document.createElement("span"); type.className = "slls-lhm-cluster-type"; type.textContent = column.type || "";
+            pick.append(badge, name, type);
+            pick.dataset.column = column.name;
+            pick.addEventListener("click", () => {
+                clusterChoice = order >= 0 ? choice.filter((c) => c !== column.name) : choice.concat([column.name]);
+                renderClustering();
+                // The list is rebuilt, so focus returns to the same column.
+                for (const button of clusterBody.querySelectorAll(".slls-lhm-cluster-col")) {
+                    if (button.dataset.column === column.name) { button.focus({ preventScroll: true }); break; }
+                }
+            });
+            clusterBody.appendChild(pick);
+        }
+        const unchanged = choice.length === current.length && choice.every((c, i) => c === current[i]);
+        const removing = !choice.length && current.length > 0;
+        clusterSummary.textContent = !info || info.error ? ""
+            : choice.length ? "Cluster by: " + choice.join(", ")
+            : removing ? "No columns are chosen, so liquid clustering will be removed."
+            : "The table is not clustered. Choose the columns to cluster it by.";
+        clusterApply.textContent = removing ? "Remove clustering" : "Apply";
+        clusterApply.classList.toggle("slls-lhm-danger", removing);
+        clusterApply.disabled = !info || Boolean(info.error) || busy() || unchanged || !sparkAvailable();
+    }
+
+    clusterCancel.addEventListener("click", closeClustering);
+    clusterClose.addEventListener("click", closeClustering);
+    clusterOverlay.addEventListener("click", (event) => { if (event.target === clusterOverlay) closeClustering(); });
+    clusterApply.addEventListener("click", () => {
+        if (!clusterTarget || clusterChoice === null) return;
+        const payload = { path: clusterTarget.path, columns: clusterChoice.slice() };
+        closeClustering();
+        act("clustering", payload);
     });
 
     // ---------------- Delete confirmation ----------------
@@ -746,6 +1123,8 @@ function render({ model, el }) {
     let pickerOpen = !(model.get("selected_lakehouse_id") || "") || !(model.get("objects") || []).length;
     // Tree objects ticked for a bulk recover or delete.
     const selected = new Set();
+    // Table paths ticked in the table view for table maintenance.
+    const tableSelected = new Set();
 
     function busy() {
         return model.get("loading") === true || model.get("busy") === true
@@ -763,7 +1142,14 @@ function render({ model, el }) {
     // Tree nodes which are open; both containers start expanded.
     const expanded = new Set(["Tables", "Files"]);
 
-    function rowActions(row) {
+    // Shortcuts point at another source's data, so they are never maintained here.
+    function maintainable(row) {
+        return row.type === "Table" && !row.deleted && !row.shortcut;
+    }
+
+    // In the table view tables are maintained in bulk from the toolbar, so the
+    // row only offers recovery.
+    function rowActions(row, withMaintenance = true) {
         const buttons = document.createElement("div"); buttons.className = "slls-lhm-rowbtns";
         // Containers and schemas are groupings, not objects which can be restored.
         const grouping = row.type === "Container" || row.type === "Schema";
@@ -775,21 +1161,20 @@ function render({ model, el }) {
             recover.addEventListener("click", () => act("recover", { path: row.path }));
             buttons.appendChild(recover);
         }
-        if (row.type === "Table" && !row.deleted && !row.shortcut) {
+        if (withMaintenance && maintainable(row)) {
             const maintain = document.createElement("button"); maintain.type = "button"; maintain.className = "slls-lhm-iconbtn";
             maintain.innerHTML = `__ICON_WRENCH__`; maintain.title = "Run table maintenance";
             maintain.setAttribute("aria-label", "Run table maintenance on " + row.path);
             maintain.disabled = busy();
-            maintain.addEventListener("click", () => {
-                maintenanceTarget = row;
-                dialogTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
-                retention.style.display = vacuumChk.input.checked ? "" : "none";
-                overlay.style.display = "flex";
-            });
+            maintain.addEventListener("click", () => openMaintenance([row]));
             buttons.appendChild(maintain);
         }
         return buttons;
     }
+
+    // What the list last showed, so a re-render of the same list keeps its
+    // scroll position (e.g. after ticking a box) but a new list starts at the top.
+    let renderedList = "";
 
     function renderRows() {
         for (const entry of pillButtons) entry.el.classList.toggle("slls-lhm-on", entry.name === filter);
@@ -797,8 +1182,13 @@ function render({ model, el }) {
         // The tree already groups by container, so the pills only apply to the table.
         pills.style.display = view === "Tree" ? "none" : "";
         selection.style.display = view === "Tree" ? "flex" : "none";
-        search.placeholder = view === "Tree" ? "Search tree…" : "Search tables and files…";
+        tableSelection.style.display = view === "Tree" ? "none" : "flex";
+        search.placeholder = view === "Tree" ? "Search tree…" : "Search tables…";
         renderSelection();
+        renderTableSelection();
+        const listKey = [view, filter, search.value.trim().toLowerCase(), model.get("loaded_lakehouse_id") || ""].join("|");
+        const scrollTop = listKey === renderedList ? listWrap.scrollTop : 0;
+        renderedList = listKey;
         listWrap.innerHTML = "";
         if (!(model.get("objects") || []).length) {
             listWrap.appendChild(emptyState(model.get("loading")
@@ -806,12 +1196,88 @@ function render({ model, el }) {
             return;
         }
         if (view === "Tree") renderTree(); else renderTable();
+        listWrap.scrollTop = scrollTop;
     }
 
-    // Selectable: everything the user can act on, so not the containers and
-    // schemas (groupings) nor the "+N more" placeholders.
+    // Selectable: everything the user can act on, so not the containers
+    // (groupings) nor the "+N more" placeholders. A schema is picked as a
+    // whole; a table only as a whole, never the files inside it.
     function selectable(node) {
-        return node.type !== "Container" && node.type !== "Schema" && node.type !== "More";
+        if (node.type === "Container" || node.type === "More") return false;
+        indexTree();
+        for (let parent = parentOf.get(node.path); parent; parent = parentOf.get(parent.path)) {
+            if (parent.type === "Table") return false;
+        }
+        return true;
+    }
+
+    // `selected` holds only the topmost picked objects: a picked schema, folder
+    // or table stands for everything inside it, so its contents show as
+    // selected and an action targets it once rather than each object in it.
+    let indexedTree = null;
+    const parentOf = new Map();
+    function indexTree() {
+        const tree = model.get("tree") || [];
+        if (tree === indexedTree) return;
+        indexedTree = tree;
+        parentOf.clear();
+        const walk = (nodes, parent) => {
+            for (const node of nodes) { parentOf.set(node.path, parent); walk(node.children || [], node); }
+        };
+        walk(tree, null);
+    }
+
+    function selectedAncestor(node) {
+        indexTree();
+        for (let parent = parentOf.get(node.path); parent; parent = parentOf.get(parent.path)) {
+            if (selected.has(parent.path)) return parent;
+        }
+        return null;
+    }
+
+    function isChecked(node) {
+        return selected.has(node.path) || selectedAncestor(node) !== null;
+    }
+
+    // Paths holding some, but not all, selected objects.
+    function partialPaths() {
+        indexTree();
+        const partial = new Set();
+        for (const path of selected) {
+            for (let parent = parentOf.get(path); parent; parent = parentOf.get(parent.path)) partial.add(parent.path);
+        }
+        return partial;
+    }
+
+    function unselectWithin(node) {
+        for (const child of node.children || []) { selected.delete(child.path); unselectWithin(child); }
+    }
+
+    function setChecked(node, on) {
+        indexTree();
+        if (on) {
+            unselectWithin(node);
+            selected.add(node.path);
+            // A branch whose objects are now all selected becomes selected as a
+            // whole, unless it holds objects which are not listed (+N more).
+            for (let parent = parentOf.get(node.path); parent && selectable(parent); parent = parentOf.get(parent.path)) {
+                const children = parent.children || [];
+                if (!children.every((child) => selectable(child) && selected.has(child.path))) break;
+                for (const child of children) selected.delete(child.path);
+                selected.add(parent.path);
+            }
+            return;
+        }
+        if (selected.has(node.path)) { selected.delete(node.path); return; }
+        const ancestor = selectedAncestor(node);
+        if (!ancestor) return;
+        // Unpicking one object inside a picked branch keeps the rest of it.
+        selected.delete(ancestor.path);
+        for (let current = node; current.path !== ancestor.path; current = parentOf.get(current.path)) {
+            for (const sibling of parentOf.get(current.path).children || []) {
+                if (sibling.path !== current.path && selectable(sibling)) selected.add(sibling.path);
+            }
+        }
     }
 
     function selectedNodes() {
@@ -857,6 +1323,48 @@ function render({ model, el }) {
         confirmOverlay.style.display = "flex";
     });
 
+    function selectedTables() {
+        return (model.get("objects") || []).filter((row) => tableSelected.has(row.path) && maintainable(row));
+    }
+
+    function renderTableSelection() {
+        const rows = selectedTables();
+        // Tables picked before a reload may have gone or become unmaintainable.
+        if (rows.length !== tableSelected.size) {
+            tableSelected.clear();
+            for (const row of rows) tableSelected.add(row.path);
+        }
+        tableSelectedText.textContent = rows.length
+            ? `${rows.length} table${rows.length === 1 ? "" : "s"} selected`
+            : "No tables selected";
+        maintainSelected.disabled = busy() || !rows.length;
+        statsSelected.disabled = busy() || !rows.length;
+        const spark = sparkAvailable();
+        autoOnSelected.disabled = busy() || !rows.length || !spark;
+        autoOffSelected.disabled = busy() || !rows.length || !spark;
+        autoOnSelected.title = spark
+            ? "Turn auto-compaction on for the selected tables (delta.autoOptimize.autoCompact = true)"
+            : "Turning auto-compaction on requires a PySpark notebook";
+        autoOffSelected.title = spark
+            ? "Turn auto-compaction off for the selected tables (delta.autoOptimize.autoCompact = false)"
+            : "Turning auto-compaction off requires a PySpark notebook";
+    }
+
+    // Changing a table's properties runs Spark SQL, which a Python notebook lacks.
+    function sparkAvailable() { return model.get("spark_available") !== false; }
+
+    maintainSelected.addEventListener("click", () => openMaintenance(selectedTables(), true));
+    statsSelected.addEventListener("click", () => {
+        const paths = selectedTables().map((row) => row.path);
+        if (paths.length) clearTablesAfter = act("stats", { paths: paths });
+    });
+    for (const [button, enable] of [[autoOnSelected, true], [autoOffSelected, false]]) {
+        button.addEventListener("click", () => {
+            const paths = selectedTables().map((row) => row.path);
+            if (paths.length) clearTablesAfter = act("auto_compaction", { paths: paths, enable: enable });
+        });
+    }
+
     function emptyState(text) {
         const empty = document.createElement("div"); empty.className = "slls-lhm-empty";
         empty.textContent = text; return empty;
@@ -892,6 +1400,7 @@ function render({ model, el }) {
         collectNodes(model.get("tree") || [], 0, rows, search.value.trim().toLowerCase());
         if (!rows.length) { listWrap.appendChild(emptyState("No objects match this search.")); return; }
         const largest = rows.reduce((max, row) => Math.max(max, row.node.size || 0), 0) || 1;
+        const partial = partialPaths();
         const wrap = document.createElement("div"); wrap.className = "slls-lhm-tree";
         for (const row of rows) {
             const node = row.node;
@@ -923,11 +1432,17 @@ function render({ model, el }) {
 
             if (selectable(node)) {
                 const check = document.createElement("input"); check.type = "checkbox";
-                check.className = "slls-lhm-node-check"; check.checked = selected.has(node.path);
+                check.className = "slls-lhm-node-check"; check.checked = isChecked(node);
+                check.indeterminate = !check.checked && partial.has(node.path);
                 check.setAttribute("aria-label", "Select " + node.path);
+                check.dataset.path = node.path;
                 check.addEventListener("change", () => {
-                    if (check.checked) selected.add(node.path); else selected.delete(node.path);
-                    renderSelection();
+                    setChecked(node, check.checked);
+                    // Ticking a branch changes the boxes above and below it.
+                    renderRows();
+                    for (const box of listWrap.querySelectorAll(".slls-lhm-node-check")) {
+                        if (box.dataset.path === node.path) { box.focus(); break; }
+                    }
                 });
                 el.appendChild(check);
             } else {
@@ -958,54 +1473,313 @@ function render({ model, el }) {
         listWrap.appendChild(wrap);
     }
 
+    // The table view lists the lakehouse's tables only; files are browsed in
+    // the tree. The schema column is shown for schema-enabled lakehouses.
+    const FILE_SIZE_BANDS = __FILE_SIZE_BANDS__;
+    const TABLE_COLUMNS = [
+        { key: "schema", label: "Schema", text: true, schemaOnly: true },
+        { key: "name", label: "Name", text: true },
+        { key: "size", label: "Size", num: true, width: 160 },
+        { key: "file_sizes", label: "File Sizes", width: 190,
+          title: "The distribution of the table's data file sizes; sorts by the average file size" },
+        { key: "files", label: "Files", num: true },
+        { key: "partitions", label: "Partitions", num: true },
+        { key: "deletion_vectors", label: "Deletion Vectors" },
+        // Collected on demand for the selected tables; shown once any are.
+        { key: "columns", label: "Columns", num: true, stats: true,
+          title: "The number of columns in the table" },
+        { key: "row_groups", label: "Row Groups", num: true, stats: true,
+          title: "The number of parquet row groups in the table's data files" },
+        { key: "rows", label: "Rows", num: true, stats: true,
+          title: "The number of rows in the table" },
+        { key: "z_order", label: "Z-Order", stats: true,
+          title: "The columns of the table's most recent Z-Ordered OPTIMIZE" },
+        { key: "liquid_clustering", label: "Liquid Clustering", stats: true,
+          title: "The table's liquid clustering columns" },
+        { key: "auto_compaction", label: "Auto-compaction", stats: true,
+          title: "Whether the table compacts small files automatically (delta.autoOptimize.autoCompact)" },
+        { key: "v_order", label: "V-Order", stats: true,
+          title: "Whether the table's data files are V-Ordered" },
+        { key: "modified", label: "Last modified" },
+        { key: "", label: "", num: true },
+    ];
+    const STAT_KEYS = new Set(TABLE_COLUMNS.filter((column) => column.stats).map((column) => column.key));
+    let tableSort = { key: "name", dir: 1 };
+    // Column widths the user set, kept across re-renders.
+    const tableWidths = new Map();
+
+    function statsOf(row) {
+        return (model.get("table_stats") || {})[row.path] || null;
+    }
+
+    function sortValue(row, key) {
+        if (STAT_KEYS.has(key)) {
+            // Tables without stats sort below every table which has them.
+            const stats = statsOf(row);
+            if (!stats || stats.error) return -1;
+            const value = stats[key];
+            if (Array.isArray(value)) return value.length;
+            if (typeof value === "boolean") return value ? 1 : 0;
+            return Number(value) || 0;
+        }
+        if (key === "file_sizes") return (row.file_sizes && row.file_sizes.avg) || 0;
+        if (key === "deletion_vectors") return row.deletion_vectors ? 1 : 0;
+        return row[key] || 0;
+    }
+
+    function compareTables(a, b) {
+        const byText = (x, y) => String(x || "").toLowerCase().localeCompare(String(y || "").toLowerCase());
+        const key = tableSort.key;
+        const column = TABLE_COLUMNS.find((c) => c.key === key) || {};
+        const order = column.text || key === "modified"
+            ? byText(a[key], b[key])
+            : sortValue(a, key) - sortValue(b, key);
+        return order * tableSort.dir || byText(a.schema, b.schema) || byText(a.name, b.name);
+    }
+
+    function textCell(text, className, title) {
+        const td = document.createElement("td");
+        if (className) td.className = className;
+        td.textContent = text;
+        if (title) td.title = title;
+        return td;
+    }
+
+    function sizeCell(row, largest) {
+        const td = document.createElement("td"); td.className = "slls-lhm-num slls-lhm-barcell";
+        const bar = document.createElement("span"); bar.className = "slls-lhm-bar";
+        const fill = document.createElement("span"); fill.className = "slls-lhm-bar-fill";
+        fill.style.width = Math.min(100, ((row.size || 0) / largest) * 100) + "%";
+        const text = document.createElement("span"); text.className = "slls-lhm-bar-text";
+        text.textContent = row.size_label || "—";
+        bar.append(fill, text); td.appendChild(bar);
+        return td;
+    }
+
+    // A mini histogram of the table's data files across the size bands, with
+    // the full breakdown (including the average file size) on hover.
+    function fileSizesCell(row) {
+        const stats = row.file_sizes || {};
+        if (!stats.count) return textCell("—", "slls-lhm-muted", "No data files");
+        const td = document.createElement("td");
+        const dist = document.createElement("div"); dist.className = "slls-lhm-dist";
+        const spark = document.createElement("span"); spark.className = "slls-lhm-spark";
+        spark.setAttribute("aria-hidden", "true");
+        const bands = stats.bands || [];
+        const peak = Math.max(1, ...bands);
+        bands.forEach((count) => {
+            const bar = document.createElement("span");
+            bar.className = "slls-lhm-spark-bar" + (count ? "" : " slls-lhm-zero");
+            if (count) bar.style.height = Math.max(12, (count / peak) * 100) + "%";
+            spark.appendChild(bar);
+        });
+        dist.appendChild(spark); td.appendChild(dist);
+        const lines = [
+            `${stats.count} data file${stats.count === 1 ? "" : "s"}`,
+            `Min ${stats.min_label} · Avg ${stats.avg_label} · Max ${stats.max_label}`,
+            "",
+        ];
+        bands.forEach((count, index) => lines.push(`${FILE_SIZE_BANDS[index]}: ${count}`));
+        td.title = lines.join("\n");
+        return td;
+    }
+
+    // A collected stat; the liquid clustering cell also offers changing it.
+    function statCell(row, column) {
+        const cell = statValueCell(row, column);
+        const pending = (model.get("stats_pending") || []).indexOf(row.path) >= 0;
+        if (column.key !== "liquid_clustering" || !maintainable(row) || pending) return cell;
+        const text = document.createElement("span"); text.className = "slls-lhm-cell-text";
+        text.textContent = cell.textContent; cell.textContent = "";
+        const edit = document.createElement("button"); edit.type = "button";
+        edit.className = "slls-lhm-iconbtn slls-lhm-cellbtn"; edit.innerHTML = `__ICON_PENCIL__`;
+        edit.title = sparkAvailable()
+            ? "Add, change or remove the table's liquid clustering columns"
+            : "Changing liquid clustering requires a PySpark notebook";
+        edit.setAttribute("aria-label", "Change the liquid clustering of " + row.path);
+        edit.disabled = busy() || !sparkAvailable();
+        edit.addEventListener("click", () => openClustering(row));
+        const wrap = document.createElement("div"); wrap.className = "slls-lhm-cellwrap";
+        wrap.append(text, edit); cell.appendChild(wrap);
+        return cell;
+    }
+
+    // A collected stat; "…" while the table is being read, "—" before.
+    function statValueCell(row, column) {
+        const num = column.num ? "slls-lhm-num " : "";
+        if ((model.get("stats_pending") || []).indexOf(row.path) >= 0) {
+            return textCell("…", num + "slls-lhm-muted", "Collecting stats…");
+        }
+        const stats = statsOf(row);
+        if (!stats) {
+            return textCell("—", num + "slls-lhm-muted",
+                maintainable(row) ? "Not collected; select the table and collect its stats" : "");
+        }
+        if (stats.error) {
+            const failed = textCell(column.key === "columns" ? "Failed" : "—", num + "slls-lhm-muted", stats.error);
+            if (column.key === "columns") failed.classList.add("slls-lhm-failed");
+            return failed;
+        }
+        const value = stats[column.key];
+        if (Array.isArray(value)) {
+            return value.length
+                ? textCell(value.join(", "), "", value.join(", "))
+                : textCell("No", "slls-lhm-muted");
+        }
+        if (typeof value === "boolean") return value ? textCell("Yes") : textCell("No", "slls-lhm-muted");
+        const cell = textCell(Number(value || 0).toLocaleString(), "slls-lhm-num");
+        if (column.key === "row_groups" && stats.unread_files) {
+            cell.title = `${stats.unread_files} data file${stats.unread_files === 1 ? "" : "s"} could not be read`;
+        }
+        return cell;
+    }
+
     function renderTable() {
         const term = search.value.trim().toLowerCase();
-        const rows = (model.get("objects") || []).filter((row) => {
-            if (filter === "Tables" && row.container !== "Tables") return false;
-            if (filter === "Files" && row.container !== "Files") return false;
+        const tables = (model.get("objects") || []).filter((row) => row.type === "Table");
+        const rows = tables.filter((row) => {
             if (filter === "Deleted" && !row.deleted && !row.deleted_files) return false;
             return !term || row.path.toLowerCase().indexOf(term) >= 0;
         });
-        if (!rows.length) { listWrap.appendChild(emptyState("No objects match this filter.")); return; }
+        if (!rows.length) {
+            listWrap.appendChild(emptyState(tables.length ? "No tables match this filter." : "This lakehouse has no tables."));
+            return;
+        }
+        const showSchema = model.get("schema_enabled") === true || tables.some((row) => row.schema);
+        const showStats = Object.keys(model.get("table_stats") || {}).length > 0
+            || (model.get("stats_pending") || []).length > 0;
+        const columns = TABLE_COLUMNS.filter((column) =>
+            (showSchema || !column.schemaOnly) && (showStats || !column.stats));
+        if (!columns.some((column) => column.key === tableSort.key)) tableSort = { key: "name", dir: 1 };
+        rows.sort(compareTables);
+        const largest = rows.reduce((max, row) => Math.max(max, row.size || 0), 0) || 1;
         const table = document.createElement("table"); table.className = "slls-lhm-table";
         const thead = document.createElement("thead"); const headRow = document.createElement("tr");
-        for (const [label, cls] of [["Name", ""], ["Type", ""], ["Size", "slls-lhm-num"], ["Files", "slls-lhm-num"], ["Last modified", ""], ["Status", ""], ["", "slls-lhm-num"]]) {
-            const th = document.createElement("th"); th.textContent = label; if (cls) th.className = cls; headRow.appendChild(th);
+        // Ticks every visible table which can be maintained.
+        const eligible = rows.filter(maintainable);
+        const allTicked = eligible.length > 0 && eligible.every((row) => tableSelected.has(row.path));
+        const checkHead = document.createElement("th"); checkHead.className = "slls-lhm-checkcell";
+        checkHead.dataset.columnWidth = "36";
+        const checkAll = document.createElement("input"); checkAll.type = "checkbox"; checkAll.className = "slls-lhm-node-check";
+        checkAll.checked = allTicked;
+        checkAll.indeterminate = !allTicked && eligible.some((row) => tableSelected.has(row.path));
+        checkAll.disabled = !eligible.length;
+        checkAll.title = "Select all tables shown";
+        checkAll.setAttribute("aria-label", checkAll.title);
+        checkAll.addEventListener("change", () => {
+            for (const row of eligible) {
+                if (allTicked) tableSelected.delete(row.path); else tableSelected.add(row.path);
+            }
+            renderRows();
+        });
+        checkHead.appendChild(checkAll); headRow.appendChild(checkHead);
+        for (const column of columns) {
+            const th = document.createElement("th"); if (column.num) th.className = "slls-lhm-num";
+            // Bars have no intrinsic width, so their columns start at a set
+            // width (the resizers read it from data-column-width).
+            if (column.width) {
+                th.style.width = column.width + "px";
+                th.dataset.columnWidth = String(column.width);
+            }
+            if (column.key) {
+                const active = tableSort.key === column.key;
+                th.setAttribute("aria-sort", active ? (tableSort.dir > 0 ? "ascending" : "descending") : "none");
+                const sortBtn = document.createElement("button"); sortBtn.type = "button"; sortBtn.className = "slls-lhm-sort";
+                sortBtn.textContent = column.label;
+                sortBtn.title = column.title || ("Sort by " + column.label.toLowerCase());
+                if (active) {
+                    const arrow = document.createElement("span"); arrow.className = "slls-lhm-sort-icon";
+                    arrow.innerHTML = tableSort.dir > 0 ? `__ICON_SORT_ASC__` : `__ICON_SORT_DESC__`;
+                    sortBtn.appendChild(arrow);
+                }
+                sortBtn.addEventListener("click", () => {
+                    // Text starts A to Z; sizes, counts, flags and dates start with the largest.
+                    if (active) tableSort = { key: column.key, dir: -tableSort.dir };
+                    else tableSort = { key: column.key, dir: column.text ? 1 : -1 };
+                    renderRows();
+                });
+                th.appendChild(sortBtn);
+            }
+            headRow.appendChild(th);
         }
         thead.appendChild(headRow); table.appendChild(thead);
         const tbody = document.createElement("tbody");
         for (const row of rows) {
             const tr = document.createElement("tr");
+            const checkCell = document.createElement("td"); checkCell.className = "slls-lhm-checkcell";
+            if (maintainable(row)) {
+                const check = document.createElement("input"); check.type = "checkbox";
+                check.className = "slls-lhm-node-check"; check.checked = tableSelected.has(row.path);
+                check.setAttribute("aria-label", "Select " + row.path);
+                check.dataset.path = row.path;
+                check.addEventListener("change", () => {
+                    if (check.checked) tableSelected.add(row.path); else tableSelected.delete(row.path);
+                    // The select-all box and the toolbar count follow the tick.
+                    renderRows();
+                    for (const box of listWrap.querySelectorAll(".slls-lhm-node-check")) {
+                        if (box.dataset.path === row.path) { box.focus({ preventScroll: true }); break; }
+                    }
+                });
+                checkCell.appendChild(check);
+            }
+            tr.appendChild(checkCell);
+            if (showSchema) tr.appendChild(textCell(row.schema || "—", row.schema ? "" : "slls-lhm-muted"));
+
             const nameCell = document.createElement("td");
             const name = document.createElement("div"); name.className = "slls-lhm-name";
             const icon = document.createElement("span");
-            icon.innerHTML = row.type === "Table" ? `__ICON_TABLE__` : (row.type === "Folder" ? `__ICON_FOLDER__` : `__ICON_FILE__`);
+            icon.innerHTML = row.shortcut ? `__ICON_LINK__` : `__ICON_TABLE__`;
+            if (row.shortcut) { icon.title = "Shortcut"; icon.setAttribute("aria-label", "Shortcut"); }
             const label = document.createElement("span"); label.className = "slls-lhm-name-text";
-            if (row.schema) {
-                const schema = document.createElement("span"); schema.className = "slls-lhm-schema"; schema.textContent = row.schema + ".";
-                label.append(schema, document.createTextNode(row.name));
-            } else { label.textContent = row.name; }
+            label.textContent = row.name;
             label.title = row.path;
             name.append(icon, label);
+            if (row.deleted) name.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
+            else if (row.deleted_files) name.appendChild(badge(row.deleted_files + " deleted", `__ICON_TRASH__`, true));
             nameCell.appendChild(name); tr.appendChild(nameCell);
 
-            const typeCell = document.createElement("td"); typeCell.textContent = row.type; tr.appendChild(typeCell);
-            const sizeCell = document.createElement("td"); sizeCell.className = "slls-lhm-num"; sizeCell.textContent = row.size_label || "—"; tr.appendChild(sizeCell);
-            const filesCell = document.createElement("td"); filesCell.className = "slls-lhm-num"; filesCell.textContent = String(row.files || 0); tr.appendChild(filesCell);
-            const modCell = document.createElement("td"); modCell.textContent = row.modified_label || "—"; tr.appendChild(modCell);
-
-            const statusCell = document.createElement("td");
-            if (row.deleted) statusCell.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
-            else if (row.deleted_files) statusCell.appendChild(badge(row.deleted_files + " deleted file(s)", `__ICON_TRASH__`, true));
-            else if (row.shortcut) statusCell.appendChild(badge("Shortcut", `__ICON_LINK__`, false));
-            else statusCell.textContent = "";
-            tr.appendChild(statusCell);
+            tr.appendChild(sizeCell(row, largest));
+            tr.appendChild(fileSizesCell(row));
+            tr.appendChild(textCell(String(row.files || 0), "slls-lhm-num"));
+            tr.appendChild(row.partitions
+                ? textCell(String(row.partitions), "slls-lhm-num")
+                : textCell("—", "slls-lhm-num slls-lhm-muted", "Not partitioned"));
+            const dvFiles = row.deletion_vector_files || 0;
+            tr.appendChild(row.deletion_vectors
+                ? textCell("Yes", "", `${dvFiles} deletion vector file${dvFiles === 1 ? "" : "s"}`)
+                : textCell("No", "slls-lhm-muted"));
+            if (showStats) {
+                for (const column of columns) if (column.stats) tr.appendChild(statCell(row, column));
+            }
+            tr.appendChild(textCell(row.modified_label || "—"));
 
             const actionsCell = document.createElement("td");
-            actionsCell.appendChild(rowActions(row)); tr.appendChild(actionsCell);
+            actionsCell.appendChild(rowActions(row, false)); tr.appendChild(actionsCell);
             tbody.appendChild(tr);
         }
         table.appendChild(tbody); listWrap.appendChild(table);
+        // The checkbox, schema (when shown) and name columns are frozen.
+        const frozen = showSchema ? 3 : 2;
+        for (const tr of table.rows) {
+            for (let i = 0; i < frozen; i++) {
+                tr.cells[i].classList.add("slls-lhm-frozen");
+                if (i === frozen - 1) tr.cells[i].classList.add("slls-lhm-frozen-last");
+            }
+        }
+        // Measured once in the DOM, so the columns start out filling the list.
+        sllsInstallColumnResizers(table, {
+            widths: tableWidths, minWidth: 56,
+            key: (showSchema ? "tables-schema" : "tables") + (showStats ? "-stats" : ""),
+            // Each frozen column sits right after the ones before it, so its
+            // offset follows their widths as they are resized.
+            onWidthsChanged: (resized, widths) => {
+                let left = 0;
+                for (let i = 0; i < frozen; i++) {
+                    for (const tr of resized.rows) tr.cells[i].style.left = left + "px";
+                    left += widths[i];
+                }
+            },
+        });
     }
 
     function badge(text, iconSvg, bad) {
@@ -1061,7 +1835,7 @@ function render({ model, el }) {
         }
 
         const error = model.get("error_message") || "";
-        const status = model.get("status_message") || "";
+        const status = statusShown ? (model.get("status_message") || "") : "";
         noteText.textContent = error || status;
         noteIcon.innerHTML = error ? `__ICON_ALERT__` : `__ICON_CHECK__`;
         noteIcon.style.display = (error || status) ? "" : "none";
@@ -1083,29 +1857,85 @@ function render({ model, el }) {
     root.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         if (confirmOverlay.style.display !== "none") closeConfirm();
+        else if (clusterOverlay.style.display !== "none") closeClustering();
         else if (overlay.style.display !== "none") closeDialog();
         else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
     });
     search.addEventListener("input", renderRows);
 
+    // An action's outcome is shown for a few seconds, then hidden; errors stay
+    // until the next action so they are not missed. Registered before the
+    // re-render below so a new message is never hidden by the previous timer.
+    const STATUS_VISIBLE_MS = 5000;
+    let statusShown = true;
+    let statusTimer = null;
+    function scheduleStatusHide() {
+        clearTimeout(statusTimer);
+        statusShown = true;
+        if (!model.get("status_message")) return;
+        statusTimer = setTimeout(() => { statusShown = false; renderState(); }, STATUS_VISIBLE_MS);
+    }
+    model.on("change:status_message", scheduleStatusHide);
+    scheduleStatusHide();
+
     for (const name of ["available_workspaces", "available_lakehouses", "selected_workspace_id",
         "selected_lakehouse_id", "picker_loading", "loading", "busy", "summary",
-        "schema_enabled", "status_message", "error_message", "tree"]) {
+        "schema_enabled", "status_message", "error_message", "tree", "table_stats", "stats_pending",
+        "spark_available"]) {
         model.on("change:" + name, () => { renderState(); renderRows(); });
     }
+    model.on("change:cluster_info", renderClustering);
+    model.on("change:busy", renderClustering);
     // A different lakehouse was loaded: selections made in the previous one
     // must never carry over to it.
     model.on("change:loaded_lakehouse_id", () => {
-        selected.clear();
+        selected.clear(); tableSelected.clear();
         expanded.clear(); expanded.add("Tables"); expanded.add("Files");
         renderState(); renderRows();
+    });
+    model.on("change:action_done", () => {
+        renderClustering();
+        pumpBatch();
+        if (!clearTablesAfter || (model.get("action_done") || 0) < clearTablesAfter) return;
+        // A batch's first request finishes with its first table.
+        if (batchActive()) return;
+        clearTablesAfter = 0;
+        tableSelected.clear();
+        renderRows();
     });
     model.on("change:objects", () => {
         if ((model.get("objects") || []).length) pickerOpen = false;
         renderState(); renderRows();
     });
 
-    renderState(); renderRows();
+    // The kernel runs a batch one table per request; the next is asked for
+    // once the kernel is idle, or the batch is cancelled instead.
+    let cancelRequested = false;
+    function batchActive() { return Boolean((model.get("batch") || {}).total); }
+    function pumpBatch() {
+        if (!batchActive()) { cancelRequested = false; renderBatch(); return; }
+        if ((model.get("action_done") || 0) < (model.get("action_trigger") || 0)) return;
+        act(cancelRequested ? "batch_cancel" : "batch_next");
+    }
+    function renderBatch() {
+        const info = model.get("batch") || {};
+        batchBar.style.display = batchActive() ? "flex" : "none";
+        if (!batchActive()) return;
+        batchText.textContent = `${info.title}: ${info.done} of ${info.total} table${info.total === 1 ? "" : "s"} done`
+            + (cancelRequested ? " · stopping after the table in progress…"
+                : info.current ? ` · ${info.current}…` : "");
+        batchCancel.disabled = cancelRequested;
+        batchCancel.textContent = cancelRequested ? "Cancelling…" : "Cancel";
+    }
+    batchCancel.addEventListener("click", () => {
+        cancelRequested = true;
+        renderBatch();
+        pumpBatch();
+    });
+    model.on("change:batch", renderBatch);
+
+    renderState(); renderRows(); renderBatch();
+    pumpBatch();
 }
 export default { render };
 """.replace("__ICON_LAKEHOUSE__", _UI_ICONS["warehouse"])
@@ -1124,11 +1954,21 @@ export default { render };
     .replace("__ICON_FILE__", _UI_ICONS["file"])
     .replace("__ICON_TRASH__", _UI_ICONS["trash"])
     .replace("__ICON_LINK__", _UI_ICONS["link"])
+    .replace("__ICON_SORT_ASC__", _UI_ICONS["sort_asc"])
+    .replace("__ICON_SORT_DESC__", _UI_ICONS["sort_desc"])
     .replace("__ICON_UNDO__", _UI_ICONS["undo"])
     .replace("__ICON_WRENCH__", _UI_ICONS["wrench"])
+    .replace("__ICON_STATS__", _UI_ICONS["bar_chart"])
+    .replace("__ICON_AUTO_ON__", _UI_ICONS["collapse_diagonal"])
+    .replace("__ICON_AUTO_OFF__", _UI_ICONS["expand_diagonal"])
+    .replace("__ICON_PENCIL__", _UI_ICONS["pencil"])
     .replace("__ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__ICON_CHECK__", _UI_ICONS["check_circle"])
     .replace("__ATTRIBUTION__", _ui_render_attribution_html())
+    .replace(
+        "__FILE_SIZE_BANDS__",
+        json.dumps([label for label, _ in _FILE_SIZE_BANDS], ensure_ascii=False),
+    )
 )
 
 
@@ -1177,8 +2017,8 @@ def _is_safe_object_path(path: str) -> bool:
 def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
     """The paths of the loaded objects which recover / delete may target.
 
-    Containers and schemas are groupings and the "+N more" nodes are not
-    objects, so none of them can be targeted.
+    Containers are groupings and the "+N more" nodes are not objects, so
+    neither can be targeted. A schema can, which acts on all of its tables.
     """
 
     allowed = {str(row.get("path") or "") for row in objects}
@@ -1187,7 +2027,7 @@ def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
     def _walk(nodes: List[dict]):
         for node in nodes:
             path = str(node.get("path") or "")
-            if node.get("type") in ("Container", "Schema", "More"):
+            if node.get("type") in ("Container", "More"):
                 groupings.add(path)
             else:
                 allowed.add(path)
@@ -1195,6 +2035,582 @@ def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
 
     _walk(tree)
     return {path for path in allowed - groupings if _is_safe_object_path(path)}
+
+
+def _maintainable_tables(objects: List[dict]) -> Dict[str, Tuple[str, str]]:
+    """The loaded tables which table maintenance may target, by path.
+
+    Maps each table's path to its ``(schema, name)``. Shortcuts point at
+    another source's data and deleted tables have no data, so neither is
+    included.
+    """
+
+    return {
+        str(row["path"]): (str(row.get("schema") or ""), str(row.get("name") or ""))
+        for row in objects
+        if row.get("type") == "Table"
+        and not row.get("shortcut")
+        and not row.get("deleted")
+        and _is_safe_object_path(str(row.get("path") or ""))
+    }
+
+
+# ---------------------------------------------------------------------------
+# Table stats (columns, rows, row groups and the table's layout features)
+# ---------------------------------------------------------------------------
+def _relative_data_file(uri: str, table_rel: str) -> Optional[str]:
+    """A data file's path relative to its table folder, or None.
+
+    Spark reports a table's files as full (possibly percent-encoded) URIs;
+    ``table_rel`` is the table's folder in the lakehouse, e.g. ``Tables/dbo/sales``.
+    """
+
+    from urllib.parse import unquote
+
+    text = unquote(str(uri or ""))
+    marker = "/" + table_rel.strip("/") + "/"
+    index = text.find(marker)
+    if index < 0:
+        return None
+    start = index + len(marker)
+    return text[start:] or None
+
+
+def _parse_column_list(value: Any) -> List[str]:
+    """The columns of a history parameter such as ``zOrderBy`` or ``clusterBy``.
+
+    Delta records them as a JSON array (sometimes of nested name parts); an
+    unparsable value is read as a comma-separated list.
+    """
+
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except ValueError:
+            return [part.strip() for part in text.split(",") if part.strip()]
+    else:
+        parsed = value
+    if isinstance(parsed, str):
+        return [parsed] if parsed else []
+    columns = []
+    for item in parsed or []:
+        if isinstance(item, (list, tuple)):
+            name = ".".join(str(part) for part in item if part is not None)
+        else:
+            name = str(item) if item is not None else ""
+        if name:
+            columns.append(name)
+    return columns
+
+
+def _history_entries(history: Any) -> List[dict]:
+    """A table's history entries, newest first, as plain dicts."""
+
+    if history is None:
+        return []
+    if hasattr(history, "to_dict"):
+        entries = history.to_dict("records")
+    else:
+        entries = [dict(entry) for entry in history]
+    if any("version" in entry for entry in entries):
+        entries.sort(key=lambda entry: entry.get("version") or 0, reverse=True)
+    return entries
+
+
+def _operation_parameters(entry: dict) -> dict:
+    params = entry.get("operationParameters")
+    return params if isinstance(params, dict) else {}
+
+
+def _history_zorder(history: Any) -> List[str]:
+    """The Z-Order columns of the table's most recent Z-Ordered OPTIMIZE.
+
+    Z-Order is not a table property; each OPTIMIZE records it in the history.
+    """
+
+    for entry in _history_entries(history):
+        if str(entry.get("operation") or "") != "OPTIMIZE":
+            continue
+        columns = _parse_column_list(_operation_parameters(entry).get("zOrderBy"))
+        if columns:
+            return columns
+    return []
+
+
+def _history_clustering(history: Any) -> List[str]:
+    """The liquid clustering columns, as last set in the table's history.
+
+    Set when the table is created (``clusterBy``) or altered with
+    ``CLUSTER BY`` (``newClusteringColumns``); an empty list means removed.
+    """
+
+    for entry in _history_entries(history):
+        params = _operation_parameters(entry)
+        for key in ("newClusteringColumns", "clusterBy"):
+            if key in params:
+                return _parse_column_list(params.get(key))
+    return []
+
+
+def _is_true(value: Any) -> bool:
+    return str(value).strip().lower() == "true"
+
+
+def _is_fatal(error: BaseException) -> bool:
+    """Whether an error must stop the kernel's work rather than be reported."""
+
+    return isinstance(error, (KeyboardInterrupt, SystemExit, GeneratorExit))
+
+
+def _error_text(error: BaseException) -> str:
+    return str(error) or type(error).__name__
+
+
+def _job_status(result: Any) -> str:
+    """The status of a finished Fabric job, from its result dataframe."""
+
+    try:
+        return str(result["Status"].iloc[0] or "")
+    except Exception:
+        return ""
+
+
+def _footer_stats(table_dir: str, files: List[str]) -> Tuple[int, int, bool, int]:
+    """Read the parquet footers of a table's live data files.
+
+    Returns ``(row_groups, rows, v_ordered, unread_files)``. A file is V-Ordered
+    when its footer carries a ``vorder`` key.
+    """
+
+    import os
+    import pyarrow.parquet as pq
+
+    row_groups = rows = unread = 0
+    v_ordered = False
+    for file in files:
+        local = os.path.join(table_dir, *str(file).split("/"))
+        try:
+            metadata = pq.read_metadata(local)
+        except Exception:
+            unread += 1
+            continue
+        row_groups += metadata.num_row_groups
+        rows += metadata.num_rows
+        if not v_ordered:
+            v_ordered = any(
+                b"vorder" in key.lower() for key in (metadata.metadata or {})
+            )
+    return row_groups, rows, v_ordered, unread
+
+
+def _delta_details_spark(path: str, table_rel: str) -> dict:
+    """Columns, rows, live files, properties and clustering, read with Spark."""
+
+    from sempy_labs._helper_functions import _get_delta_table
+
+    delta_table = _get_delta_table(path)
+    detail = delta_table.detail().collect()[0].asDict()
+    df = delta_table.toDF()
+    return {
+        "columns": len(df.columns),
+        # Counted by Spark, so rows removed by deletion vectors are excluded.
+        "rows": int(df.count()),
+        "files": [
+            rel
+            for rel in (_relative_data_file(uri, table_rel) for uri in df.inputFiles())
+            if rel
+        ],
+        "properties": dict(detail.get("properties") or {}),
+        "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Table settings (auto-compaction and liquid clustering), changed with Spark SQL
+# ---------------------------------------------------------------------------
+_SPARK_REQUIRED = (
+    "{what} requires a PySpark notebook, as it runs Spark SQL; this is a "
+    "Python notebook."
+)
+# Delta allows at most four clustering columns.
+_MAX_CLUSTERING_COLUMNS = 4
+# Delta clusters on columns it keeps min/max statistics for, which these lack.
+_UNCLUSTERABLE_TYPES = ("array", "map", "struct", "binary")
+
+
+def _quote_identifier(name: str) -> str:
+    """A Spark SQL identifier, back-quoted so any name is taken literally."""
+
+    return "`" + str(name).replace("`", "``") + "`"
+
+
+def _delta_path_table(path: str) -> str:
+    """A Spark SQL reference to the delta table at ``path``.
+
+    The path is used rather than the table's name so the table need not be in
+    the lakehouse attached to the notebook.
+    """
+
+    return "delta." + _quote_identifier(path)
+
+
+def _auto_compaction_sql(path: str, enable: bool) -> str:
+    value = "true" if enable else "false"
+    return (
+        f"ALTER TABLE {_delta_path_table(path)} SET TBLPROPERTIES "
+        f"('delta.autoOptimize.autoCompact' = '{value}')"
+    )
+
+
+def _clustering_sql(path: str, columns: List[str]) -> str:
+    """``CLUSTER BY`` the given columns, or ``CLUSTER BY NONE`` to remove it."""
+
+    if columns:
+        clause = "CLUSTER BY (" + ", ".join(_quote_identifier(c) for c in columns) + ")"
+    else:
+        clause = "CLUSTER BY NONE"
+    return f"ALTER TABLE {_delta_path_table(path)} {clause}"
+
+
+def _table_columns_spark(path: str) -> dict:
+    """A delta table's columns and current liquid clustering columns."""
+
+    from sempy_labs._helper_functions import _get_delta_table
+
+    delta_table = _get_delta_table(path)
+    detail = delta_table.detail().collect()[0].asDict()
+    columns = []
+    for field in delta_table.toDF().schema.fields:
+        data_type = field.dataType.simpleString()
+        columns.append(
+            {
+                "name": field.name,
+                "type": data_type,
+                "clusterable": not data_type.startswith(_UNCLUSTERABLE_TYPES),
+            }
+        )
+    return {
+        "columns": columns,
+        "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
+    }
+
+
+def _spark_available() -> bool:
+    """Whether the notebook runs Spark (a PySpark, not a Python, notebook)."""
+
+    try:
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        return not _pure_python_notebook()
+    except Exception:
+        return True
+
+
+_COMMIT_FILE = re.compile(r"^(\d{20})\.json$")
+# A classic checkpoint, whole or in parts: <version>.checkpoint[.<part>.<parts>].parquet
+_CHECKPOINT_FILE = re.compile(
+    r"^(\d{20})\.checkpoint(?:\.(\d{10})\.(\d{10}))?\.parquet$"
+)
+_LOG_UNREADABLE = (
+    "The table's delta log uses a format which can only be read with Spark; "
+    "collect its stats in a PySpark notebook."
+)
+
+
+def _as_dict(value: Any) -> dict:
+    """A delta map (a dict in JSON, key/value pairs in a parquet checkpoint)."""
+
+    if isinstance(value, dict):
+        return dict(value)
+    result = {}
+    for item in value or []:
+        if isinstance(item, dict):
+            result[item.get("key")] = item.get("value")
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            result[item[0]] = item[1]
+    return result
+
+
+def _log_files(log_dir: str) -> Tuple[Dict[int, str], Dict[int, List[str]]]:
+    """A delta log's commit files and complete classic checkpoints, by version."""
+
+    import os
+
+    commits: Dict[int, str] = {}
+    parts: Dict[int, Dict[int, str]] = {}
+    totals: Dict[int, int] = {}
+    for name in os.listdir(log_dir):
+        match = _COMMIT_FILE.match(name)
+        if match:
+            commits[int(match.group(1))] = name
+            continue
+        match = _CHECKPOINT_FILE.match(name)
+        if match:
+            version = int(match.group(1))
+            parts.setdefault(version, {})[int(match.group(2) or 1)] = name
+            totals[version] = int(match.group(3) or 1)
+    checkpoints = {
+        version: [found[index] for index in sorted(found)]
+        for version, found in parts.items()
+        if len(found) == totals[version]
+    }
+    return commits, checkpoints
+
+
+def _read_checkpoint_actions(file: str):
+    """Yield ``(action, value)`` for the actions in a parquet checkpoint file."""
+
+    import pyarrow.parquet as pq
+
+    present = set(pq.read_schema(file).names)
+    columns = [
+        name
+        for name in ("add", "metaData", "protocol", "domainMetadata")
+        if name in present
+    ]
+    table = pq.read_table(file, columns=columns)
+    for name in columns:
+        for value in table.column(name).to_pylist():
+            if value is not None:
+                yield name, value
+
+
+def _read_commit_actions(file: str):
+    """Yield ``(action, value)`` for the actions in a JSON commit file."""
+
+    with open(file, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            for name, value in json.loads(line).items():
+                yield name, value
+
+
+def _physical_names(schema: dict) -> Dict[str, str]:
+    """Map column mapping's physical column names to the columns' names."""
+
+    names: Dict[str, str] = {}
+
+    def _walk(fields: list):
+        for field in fields or []:
+            physical = (field.get("metadata") or {}).get(
+                "delta.columnMapping.physicalName"
+            )
+            if physical:
+                names[str(physical)] = str(field.get("name"))
+            nested = field.get("type")
+            if isinstance(nested, dict):
+                _walk(nested.get("fields"))
+
+    _walk(schema.get("fields"))
+    return names
+
+
+def _log_zorder(log_dir: str, commits: Dict[int, str]) -> List[str]:
+    """The Z-Order columns of the most recent Z-Ordered OPTIMIZE in the log."""
+
+    import os
+
+    for version in sorted(commits, reverse=True):
+        try:
+            with open(
+                os.path.join(log_dir, commits[version]), "r", encoding="utf-8"
+            ) as handle:
+                for line in handle:
+                    if '"commitInfo"' not in line:
+                        continue
+                    info = json.loads(line).get("commitInfo") or {}
+                    if info.get("operation") != "OPTIMIZE":
+                        continue
+                    params = info.get("operationParameters") or {}
+                    columns = _parse_column_list(params.get("zOrderBy"))
+                    if columns:
+                        return columns
+        except (OSError, ValueError):
+            continue
+    return []
+
+
+def _delta_log_details(table_dir: str) -> dict:
+    """Columns, rows, live files, properties, clustering and Z-Order of a table.
+
+    Read straight from the table's delta log (JSON commits on top of its latest
+    usable parquet checkpoint), so neither Spark nor the deltalake package is
+    needed.
+    """
+
+    import os
+    from urllib.parse import unquote
+
+    log_dir = os.path.join(table_dir, "_delta_log")
+    commits, checkpoints = _log_files(log_dir)
+    latest = max(list(commits) + list(checkpoints), default=None)
+    if latest is None:
+        raise ValueError("The table has no delta log.")
+    # Replay from the newest checkpoint followed by every later commit; with
+    # no usable checkpoint, from the first commit.
+    start = next(
+        (
+            version
+            for version in sorted(checkpoints, reverse=True)
+            if all(v in commits for v in range(version + 1, latest + 1))
+        ),
+        None,
+    )
+    if start is None:
+        if not all(v in commits for v in range(0, latest + 1)):
+            raise ValueError(_LOG_UNREADABLE)
+        start = -1
+
+    live: Dict[str, dict] = {}
+    state: Dict[str, Any] = {"metaData": None, "protocol": None}
+    domains: Dict[str, Any] = {}
+
+    def _apply(name: str, value: Any):
+        if name == "add":
+            live[value["path"]] = value
+        elif name == "remove":
+            live.pop(value.get("path"), None)
+        elif name in state:
+            state[name] = value
+        elif name == "domainMetadata":
+            if value.get("removed"):
+                domains.pop(value.get("domain"), None)
+            else:
+                domains[value.get("domain")] = value.get("configuration")
+
+    if start >= 0:
+        for name in checkpoints[start]:
+            for action, value in _read_checkpoint_actions(os.path.join(log_dir, name)):
+                _apply(action, value)
+    for version in range(start + 1, latest + 1):
+        for action, value in _read_commit_actions(
+            os.path.join(log_dir, commits[version])
+        ):
+            _apply(action, value)
+
+    protocol = state["protocol"] or {}
+    if protocol.get("minReaderVersion", 1) > 3:
+        raise ValueError(_LOG_UNREADABLE)
+    metadata = state["metaData"] or {}
+    schema = json.loads(metadata.get("schemaString") or "{}")
+
+    files = []
+    rows: Optional[int] = 0
+    deleted_rows = 0
+    for path, add in live.items():
+        # Files outside the table folder (e.g. a shallow clone's) are not read.
+        if "://" not in path:
+            files.append(unquote(path))
+        records = None
+        stats = add.get("stats")
+        if isinstance(stats, str) and stats:
+            try:
+                records = json.loads(stats).get("numRecords")
+            except ValueError:
+                records = None
+        if records is None and isinstance(add.get("stats_parsed"), dict):
+            records = add["stats_parsed"].get("numRecords")
+        if records is None:
+            rows = None
+        elif rows is not None:
+            rows += int(records)
+        vector = add.get("deletionVector") or {}
+        deleted_rows += int(vector.get("cardinality") or 0)
+
+    clustering = []
+    config = domains.get("delta.clustering")
+    if config:
+        try:
+            parsed = json.loads(config) if isinstance(config, str) else config
+            physical = _physical_names(schema)
+            clustering = [
+                (
+                    ".".join(physical.get(str(part), str(part)) for part in column)
+                    if isinstance(column, (list, tuple))
+                    else physical.get(str(column), str(column))
+                )
+                for column in parsed.get("clusteringColumns") or []
+            ]
+        except (ValueError, AttributeError):
+            clustering = []
+
+    return {
+        "columns": len(schema.get("fields") or []),
+        # Rows marked deleted by deletion vectors are still in the files.
+        "rows": None if rows is None else rows - deleted_rows,
+        "deleted_rows": deleted_rows,
+        "files": files,
+        "properties": _as_dict(metadata.get("configuration")),
+        "clustering": clustering,
+        "z_order": _log_zorder(log_dir, commits),
+    }
+
+
+def _table_stats(
+    workspace_id: str, lakehouse_id: str, schema: str, table: str, local_root: str
+) -> dict:
+    """Collect a delta table's stats.
+
+    ``local_root`` is the lakehouse mounted on the notebook, from which the
+    data files' parquet footers are read for the row groups and V-Order. A
+    PySpark notebook reads the table with Spark; a Python notebook reads its
+    delta log directly.
+    """
+
+    import os
+    from sempy_labs._helper_functions import (
+        _pure_python_notebook,
+        _read_delta_table_history,
+        create_abfss_path,
+    )
+
+    table_rel = "/".join(part for part in ("Tables", schema, table) if part)
+    table_dir = os.path.join(local_root, *table_rel.split("/"))
+    if _pure_python_notebook():
+        details = _delta_log_details(table_dir)
+    else:
+        path = create_abfss_path(
+            lakehouse_id, workspace_id, table, schema=schema or None
+        )
+        details = _delta_details_spark(path, table_rel)
+        try:
+            history = _read_delta_table_history(path)
+        except Exception:
+            history = None
+        details["z_order"] = _history_zorder(history)
+        if details["clustering"] is None:
+            details["clustering"] = _history_clustering(history)
+
+    row_groups, footer_rows, v_ordered, unread = _footer_stats(
+        table_dir, details["files"]
+    )
+    properties = details["properties"]
+    if not details["files"]:
+        v_ordered = _is_true(properties.get("delta.parquet.vorder.enabled"))
+
+    rows = details["rows"]
+    if rows is None:
+        rows = footer_rows - int(details.get("deleted_rows") or 0)
+    return {
+        "columns": int(details["columns"]),
+        "rows": int(rows),
+        "row_groups": int(row_groups),
+        "z_order": list(details["z_order"]),
+        "liquid_clustering": list(details["clustering"] or []),
+        "auto_compaction": str(properties.get("delta.autoOptimize.autoCompact") or "")
+        .strip()
+        .lower()
+        in ("true", "auto", "legacy"),
+        "v_order": bool(v_ordered),
+        "unread_files": int(unread),
+    }
 
 
 def _authorized_paths(paths: List[str], allowed: set) -> Tuple[List[str], List[str]]:
@@ -1220,8 +2636,12 @@ def lakehouse_manager(
 
     Browses the lakehouse's tables, folders and files, flags OneLake shortcuts
     and `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
-    objects, recovers those deleted objects, and runs table maintenance
-    (optimize, V-Order, vacuum) on a table.
+    objects, recovers those deleted objects, runs table maintenance
+    (optimize, V-Order, vacuum) on one or more tables, collects table stats
+    (columns, rows, row groups, Z-Order, liquid clustering, auto-compaction and
+    V-Order), turns auto-compaction on or off, and changes a table's liquid
+    clustering columns. Changing auto-compaction or liquid clustering runs
+    Spark SQL, so it requires a PySpark notebook.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -1302,6 +2722,17 @@ def lakehouse_manager(
         dark_mode = traitlets.Bool(False).tag(sync=True)
         pending_action = traitlets.Dict({}).tag(sync=True)
         action_trigger = traitlets.Int(0).tag(sync=True)
+        # The action_trigger of the last action which finished.
+        action_done = traitlets.Int(0).tag(sync=True)
+        # Stats collected per table path, and the tables still being read.
+        table_stats = traitlets.Dict({}).tag(sync=True)
+        stats_pending = traitlets.List([]).tag(sync=True)
+        # Whether Spark SQL can run, which changing a table's settings needs.
+        spark_available = traitlets.Bool(True).tag(sync=True)
+        # The columns of the table whose liquid clustering is being changed.
+        cluster_info = traitlets.Dict({}).tag(sync=True)
+        # The running batch of table actions: title, total, done and current.
+        batch = traitlets.Dict({}).tag(sync=True)
 
     widget = LakehouseManagerWidget(
         available_workspaces=initial_workspaces,
@@ -1309,6 +2740,7 @@ def lakehouse_manager(
         selected_workspace_id=workspace_id,
         selected_lakehouse_id=lakehouse_id,
         dark_mode=bool(dark_mode),
+        spark_available=_spark_available(),
     )
 
     def _load_lakehouses(data: dict):
@@ -1327,7 +2759,13 @@ def lakehouse_manager(
     # the picker selection, which can change without a Connect (the picker can
     # be closed after choosing another lakehouse). Held on the kernel only, so
     # the browser cannot redirect an action to another lakehouse.
-    loaded: Dict[str, Any] = {"workspace_id": "", "lakehouse_id": "", "paths": set()}
+    loaded: Dict[str, Any] = {
+        "workspace_id": "",
+        "lakehouse_id": "",
+        "paths": set(),
+        "tables": {},
+        "local_root": "",
+    }
 
     def _read_lakehouse(workspace_id: str, lakehouse_id: str) -> bool:
         """Load a lakehouse's contents into the widget; True when it succeeded."""
@@ -1345,10 +2783,15 @@ def lakehouse_manager(
             return False
         finally:
             widget.loading = False
+        # Stats and the mount belong to the lakehouse they were made for.
+        if lakehouse_id != loaded["lakehouse_id"]:
+            widget.table_stats = {}
+            loaded["local_root"] = ""
         loaded.update(
             workspace_id=workspace_id,
             lakehouse_id=lakehouse_id,
             paths=_actionable_paths(objects, tree),
+            tables=_maintainable_tables(objects),
         )
         widget.schema_enabled = schema_enabled
         widget.summary = _summarize_objects(objects)
@@ -1476,39 +2919,397 @@ def lakehouse_manager(
             )
         _refresh_after_action()
 
-    def _maintenance(data: dict):
-        table = str(data.get("table") or "")
-        if not table or not loaded["lakehouse_id"]:
+    def _local_root() -> str:
+        """The loaded lakehouse mounted on the notebook (mounted once)."""
+
+        if not loaded.get("local_root"):
+            from sempy_labs._helper_functions import _mount
+
+            loaded["local_root"] = _mount(
+                lakehouse=loaded["lakehouse_id"], workspace=loaded["workspace_id"]
+            )
+        return loaded["local_root"]
+
+    def _require_spark(what: str) -> bool:
+        if widget.spark_available:
+            return True
+        widget.error_message = _SPARK_REQUIRED.format(what=what)
+        return False
+
+    def _table_label(path: str) -> str:
+        schema, table = loaded["tables"][path]
+        return f"{schema}.{table}" if schema else table
+
+    def _table_abfss_path(path: str) -> str:
+        from sempy_labs._helper_functions import create_abfss_path
+
+        schema, table = loaded["tables"][path]
+        return create_abfss_path(
+            loaded["lakehouse_id"], loaded["workspace_id"], table, schema=schema or None
+        )
+
+    def _update_stats(path: str, **values):
+        """Reflect a changed setting in a table's collected stats, if any."""
+
+        stats = widget.table_stats.get(path)
+        if isinstance(stats, dict) and not stats.get("error"):
+            widget.table_stats = {**widget.table_stats, path: {**stats, **values}}
+
+    # Stats, table maintenance and auto-compaction act on the selected tables
+    # in a batch, one table per request: the browser asks for each next table
+    # once the previous one finished, so a Cancel it sends meanwhile is seen.
+    # (While a request runs the kernel reads no messages from the browser, and
+    # widget updates made off the kernel thread never reach a Fabric notebook.)
+    batch: Dict[str, Any] = {}
+
+    def _bulk_tables(data: dict, verb: str) -> List[str]:
+        """The requested paths which are tables of the loaded lakehouse."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected:
+            widget.error_message = (
+                f"Could not {verb} " + ", ".join(rejected) + ": not a table of "
+                "the loaded lakehouse."
+            )
+        return paths
+
+    def _publish_batch(current: str = ""):
+        widget.batch = (
+            {
+                "title": batch["messages"]["title"],
+                "total": batch["total"],
+                "done": batch["processed"],
+                "current": current,
+            }
+            if batch
+            else {}
+        )
+
+    def _start_batch(kind: str, paths: List[str], step, messages: dict, **options):
+        batch.clear()
+        batch.update(
+            kind=kind,
+            step=step,
+            messages=messages,
+            options=options,
+            paths=list(paths),
+            total=len(paths),
+            processed=0,
+            succeeded=0,
+            failures=[],
+            last="",
+        )
+        widget.busy = True
+        if kind == "stats":
+            widget.stats_pending = list(paths)
+        _batch_step()
+
+    def _batch_step():
+        if not batch:
             return
+        if batch["paths"]:
+            path = batch["paths"].pop(0)
+            label = _table_label(path)
+            batch["last"] = label
+            _publish_batch(current=label)
+            try:
+                batch["step"](path, **batch["options"])
+                batch["succeeded"] += 1
+            except BaseException as e:
+                # Native readers can fail with errors outside Exception (e.g.
+                # a Rust panic); those must not end the whole batch.
+                if _is_fatal(e):
+                    raise
+                batch["failures"].append(f"'{label}': {_error_text(e)}")
+            batch["processed"] += 1
+            if batch["kind"] == "stats":
+                widget.stats_pending = list(batch["paths"])
+        if batch["paths"]:
+            _publish_batch()
+        else:
+            _finish_batch(cancelled=False)
+
+    def _finish_batch(cancelled: bool):
+        messages = batch["messages"]
+        processed, total = batch["processed"], batch["total"]
+        if cancelled:
+            widget.status_message = messages["cancelled"](processed, total)
+        elif total == 1:
+            if batch["succeeded"]:
+                widget.status_message = messages["one"](batch["last"])
+        else:
+            widget.status_message = messages["many"](batch["succeeded"], total)
+        if batch["failures"]:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    messages["failed"] + "; ".join(batch["failures"]),
+                )
+                if part
+            )
+        refresh = batch["kind"] == "maintenance" and processed > 0
+        batch.clear()
+        widget.batch = {}
+        widget.stats_pending = []
+        widget.busy = False
+        if refresh:
+            _refresh_after_action()
+
+    def _next_in_batch(data: dict):
+        _batch_step()
+
+    def _cancel_batch(data: dict):
+        if batch:
+            _finish_batch(cancelled=True)
+
+    def _stats_step(path: str):
+        schema, table = loaded["tables"][path]
+        try:
+            stats = _table_stats(
+                loaded["workspace_id"],
+                loaded["lakehouse_id"],
+                schema,
+                table,
+                _local_root(),
+            )
+        except BaseException as e:
+            if not _is_fatal(e):
+                widget.table_stats = {
+                    **widget.table_stats,
+                    path: {"error": _error_text(e)},
+                }
+            raise
+        widget.table_stats = {**widget.table_stats, path: stats}
+
+    def _collect_stats(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _bulk_tables(data, "collect stats for")
+        if paths:
+            _start_batch(
+                "stats",
+                paths,
+                _stats_step,
+                {
+                    "title": "Collecting stats",
+                    "one": lambda label: f"Collected the stats for '{label}'.",
+                    "many": lambda ok, total: (
+                        f"Collected the stats for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Stopped collecting stats after {done} of {total} tables."
+                    ),
+                    "failed": "Could not collect the stats for ",
+                },
+            )
+
+    def _maintenance_step(
+        path: str,
+        optimize: bool,
+        v_order: bool,
+        vacuum: bool,
+        retention: str,
+    ):
+        from sempy_labs.lakehouse._lakehouse import run_table_maintenance
+
+        schema, table = loaded["tables"][path]
+        # Maintenance rewrites the files, so the table's stats no longer hold.
+        widget.table_stats = {
+            p: stats for p, stats in widget.table_stats.items() if p != path
+        }
+        result = run_table_maintenance(
+            table_name=table,
+            optimize=optimize,
+            v_order=v_order,
+            vacuum=vacuum,
+            retention_period=retention if (vacuum and retention) else None,
+            schema=schema or None,
+            lakehouse=loaded["lakehouse_id"],
+            workspace=loaded["workspace_id"],
+        )
+        # A job which did not succeed is reported, not raised.
+        status = _job_status(result)
+        if status and status != "Completed":
+            raise RuntimeError(f"the maintenance job ended as '{status}'.")
+
+    def _maintenance(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
         optimize = bool(data.get("optimize"))
         v_order = bool(data.get("v_order"))
         vacuum = bool(data.get("vacuum"))
         if not (optimize or v_order or vacuum):
             widget.error_message = "Select at least one maintenance operation."
             return
-        retention = str(data.get("retention_period") or "").strip()
-        widget.busy = True
-        widget.error_message = ""
-        widget.status_message = ""
-        try:
-            from sempy_labs.lakehouse._lakehouse import run_table_maintenance
-
-            run_table_maintenance(
-                table_name=table,
+        # Only the loaded lakehouse's own tables; never a name from the browser.
+        paths = _bulk_tables(data, "run table maintenance on")
+        if paths:
+            _start_batch(
+                "maintenance",
+                paths,
+                _maintenance_step,
+                {
+                    "title": "Running table maintenance",
+                    "one": lambda label: f"Table maintenance finished for '{label}'.",
+                    "many": lambda ok, total: (
+                        f"Table maintenance finished for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Cancelled table maintenance after {done} of {total} tables."
+                    ),
+                    "failed": "Table maintenance failed for ",
+                },
                 optimize=optimize,
                 v_order=v_order,
                 vacuum=vacuum,
-                retention_period=retention if (vacuum and retention) else None,
-                schema=str(data.get("schema") or "") or None,
-                lakehouse=loaded["lakehouse_id"],
-                workspace=loaded["workspace_id"],
+                retention=str(data.get("retention_period") or "").strip(),
             )
-            widget.status_message = f"Table maintenance finished for '{table}'."
-        except Exception as e:
-            widget.error_message = f"Table maintenance failed for '{table}': {e}"
+
+    def _auto_compaction_step(path: str, enable: bool):
+        from sempy_labs._helper_functions import _run_spark_sql_query
+
+        _run_spark_sql_query(_auto_compaction_sql(_table_abfss_path(path), enable))
+        _update_stats(path, auto_compaction=enable)
+
+    def _auto_compaction(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        enable = bool(data.get("enable"))
+        state = "on" if enable else "off"
+        if not _require_spark(f"Turning auto-compaction {state}"):
+            return
+        paths = _bulk_tables(data, f"turn auto-compaction {state} for")
+        if paths:
+            _start_batch(
+                "auto_compaction",
+                paths,
+                _auto_compaction_step,
+                {
+                    "title": f"Turning auto-compaction {state}",
+                    "one": lambda label: (
+                        f"Turned auto-compaction {state} for '{label}'."
+                    ),
+                    "many": lambda ok, total: (
+                        f"Turned auto-compaction {state} for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Cancelled turning auto-compaction {state} after {done} "
+                        f"of {total} tables."
+                    ),
+                    "failed": f"Could not turn auto-compaction {state} for ",
+                },
+                enable=enable,
+            )
+
+    def _single_table(data: dict, verb: str) -> Optional[str]:
+        """The one loaded table an action targets, or None (with an error)."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected or len(paths) != 1:
+            widget.error_message = (
+                f"Could not {verb} "
+                + (", ".join(rejected) or "the table")
+                + ": not a table of the loaded lakehouse."
+            )
+            return None
+        return paths[0]
+
+    def _cluster_columns(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        path = _single_table(data, "read the columns of")
+        if path is None:
+            return
+        if not widget.spark_available:
+            widget.cluster_info = {
+                "path": path,
+                "error": _SPARK_REQUIRED.format(what="Changing liquid clustering"),
+            }
+            return
+        widget.busy = True
+        try:
+            widget.cluster_info = {
+                "path": path,
+                **_table_columns_spark(_table_abfss_path(path)),
+            }
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            widget.cluster_info = {
+                "path": path,
+                "error": f"Could not read the table's columns: {_error_text(e)}",
+            }
         finally:
             widget.busy = False
-        _refresh_after_action()
+
+    def _set_clustering(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        if not _require_spark("Changing liquid clustering"):
+            return
+        path = _single_table(data, "change the liquid clustering of")
+        if path is None:
+            return
+        columns = data.get("columns")
+        if not isinstance(columns, list) or not all(
+            isinstance(c, str) and c for c in columns
+        ):
+            widget.error_message = "The clustering columns are not valid."
+            return
+        if len(columns) > _MAX_CLUSTERING_COLUMNS or len(set(columns)) != len(columns):
+            widget.error_message = (
+                f"Choose up to {_MAX_CLUSTERING_COLUMNS} different clustering columns."
+            )
+            return
+        label = _table_label(path)
+        widget.busy = True
+        try:
+            from sempy_labs._helper_functions import _run_spark_sql_query
+
+            table_path = _table_abfss_path(path)
+            # Only the table's own clusterable columns are accepted.
+            known = {
+                column["name"]
+                for column in _table_columns_spark(table_path)["columns"]
+                if column["clusterable"]
+            }
+            unknown = [c for c in columns if c not in known]
+            if unknown:
+                widget.error_message = (
+                    f"Could not cluster '{label}' by " + ", ".join(unknown) + ": "
+                    "not a column of the table which can be clustered."
+                )
+                return
+            _run_spark_sql_query(_clustering_sql(table_path, columns))
+            _update_stats(path, liquid_clustering=list(columns))
+            widget.cluster_info = {}
+            if columns:
+                widget.status_message = (
+                    f"Clustered '{label}' by {', '.join(columns)}. Run table "
+                    "maintenance (optimize) to recluster its existing data."
+                )
+            else:
+                widget.status_message = f"Removed liquid clustering from '{label}'."
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            widget.error_message = (
+                f"Could not change the liquid clustering of '{label}': "
+                f"{_error_text(e)}"
+            )
+        finally:
+            widget.busy = False
 
     handlers = {
         "workspace": _load_lakehouses,
@@ -1517,6 +3318,12 @@ def lakehouse_manager(
         "recover": _recover,
         "delete": _delete,
         "maintenance": _maintenance,
+        "stats": _collect_stats,
+        "auto_compaction": _auto_compaction,
+        "cluster_columns": _cluster_columns,
+        "clustering": _set_clustering,
+        "batch_next": _next_in_batch,
+        "batch_cancel": _cancel_batch,
     }
 
     def _on_action(change):
@@ -1526,7 +3333,22 @@ def lakehouse_manager(
         handler = handlers.get(str(data.get("action") or ""))
         if handler is None:
             return
-        _ui_run_widget_task(handler, (data,))
+        try:
+            _ui_run_widget_task(handler, (data,))
+        except BaseException as e:
+            # An error escaping a widget callback leaves the widget unable to
+            # handle further actions, so it is reported instead.
+            if _is_fatal(e):
+                raise
+            widget.picker_loading = False
+            widget.loading = False
+            widget.busy = False
+            widget.stats_pending = []
+            batch.clear()
+            widget.batch = {}
+            widget.error_message = f"The action failed: {_error_text(e)}"
+        finally:
+            widget.action_done = change["new"]
 
     widget.observe(_on_action, names="action_trigger")
     display(widget)
