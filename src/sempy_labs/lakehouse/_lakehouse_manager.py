@@ -41,7 +41,7 @@ _CONTAINERS = ("Tables", "Files")
 # Lakehouse contents (pure helpers, so they are testable without Fabric)
 # ---------------------------------------------------------------------------
 def _format_bytes(size: Optional[float]) -> str:
-    """A byte count as a short, human readable string."""
+    """A byte count as a short, human readable string. """
 
     try:
         value = float(size or 0)
