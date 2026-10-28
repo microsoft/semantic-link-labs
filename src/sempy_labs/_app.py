@@ -118,15 +118,6 @@ _TOOLS: tuple = (
         ),
     },
     {
-        "key": "refresh_manager",
-        "name": "Refresh Manager",
-        "description": "Refresh a semantic model, its tables or individual partitions.",
-        "tags": ("Semantic Model",),
-        "icon": "sync",
-        "module": "sempy_labs.semantic_model._refresh_manager",
-        "function": "refresh_manager",
-    },
-    {
         "key": "lineage_view",
         "name": "Lineage View",
         "description": "Explore which reports depend on a semantic model and determine if they have broken components.",
