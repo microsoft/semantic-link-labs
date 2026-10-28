@@ -248,7 +248,7 @@ _WIDGET_CSS = """
 }
 .slls-pe-btn-icon svg { display: block; }
 
-.slls-pe.slls-pe-picker-open > :not(.slls-pe-header):not(.slls-pe-picker-screen):not(.slls-pe-attribution) { display: none !important; }
+.slls-pe.slls-pe-picker-open > :not(.slls-pe-header):not(.slls-pe-picker-screen):not(.sl-attribution) { display: none !important; }
 .slls-pe-picker-screen { display: none; align-items: flex-start; justify-content: stretch; min-height: 430px; }
 .slls-pe.slls-pe-picker-open .slls-pe-picker-screen { display: flex; }
 .slls-pe-picker-panel { width: 100%; padding: 16px; border: 1px solid var(--slls-border); border-radius: 14px; background: var(--slls-surface); }
@@ -507,22 +507,6 @@ _WIDGET_CSS = """
 @keyframes slls-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.45); }
     50% { box-shadow: 0 0 0 4px rgba(255, 149, 0, 0); }
-}
-
-.slls-pe-attribution {
-    margin-top: 18px;
-    text-align: right;
-    font-size: 11.5px;
-    color: var(--slls-text-tertiary);
-}
-.slls-pe-attribution a {
-    color: var(--slls-text-tertiary);
-    text-decoration: none;
-    transition: color 120ms ease;
-}
-.slls-pe-attribution a:hover {
-    color: var(--slls-accent);
-    text-decoration: none;
 }
 """
 
@@ -800,11 +784,7 @@ function render({ model, el }) {
     root.appendChild(status);
 
     // ----------- Attribution -----------
-    const attribution = document.createElement("div");
-    attribution.className = "slls-pe-attribution";
-    attribution.innerHTML =
-        'Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>';
-    root.appendChild(attribution);
+    root.insertAdjacentHTML("beforeend", `__SLLS_ATTRIBUTION__`);
 
     // ============== Helpers ==============
     function buildSelectionFromMembers(perspectiveName, normalizeCalculationGroups) {
@@ -1454,7 +1434,12 @@ from sempy_labs._ui_components import (  # noqa: E402
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
 )
+
+_WIDGET_CSS += _ui_scoped_attribution_css(".slls-pe")
+_WIDGET_JS = _WIDGET_JS.replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
 
 _WIDGET_CSS += "\n" + _UI_SEARCH_SELECT_CSS
 _WIDGET_CSS += _ui_scoped_header_css(".slls-pe")

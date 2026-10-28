@@ -4,6 +4,8 @@ from sempy._utils._log import log
 
 _WIDGET_CSS = """
 .slls-mmm {
+    --ui-text-tertiary: var(--slls-text-tertiary);
+    --ui-accent: var(--slls-accent);
     --slls-bg-solid: #ffffff;
     --slls-surface: rgba(255, 255, 255, 0.85);
     --slls-surface-2: rgba(0, 0, 0, 0.025);
@@ -761,19 +763,6 @@ _WIDGET_CSS = """
     pointer-events: none;
     opacity: 0.55;
 }
-
-.slls-mmm-attribution {
-    margin-top: 18px;
-    text-align: right;
-    font-size: 11.5px;
-    color: var(--slls-text-tertiary);
-}
-.slls-mmm-attribution a {
-    color: var(--slls-text-tertiary);
-    text-decoration: none;
-    transition: color 120ms ease;
-}
-.slls-mmm-attribution a:hover { color: var(--slls-accent); }
 """
 
 
@@ -1537,11 +1526,7 @@ function render({ model, el }) {
     status.className = "slls-mmm-status";
     root.appendChild(status);
 
-    const attribution = document.createElement("div");
-    attribution.className = "slls-mmm-attribution";
-    attribution.innerHTML =
-        'Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>';
-    root.appendChild(attribution);
+    root.insertAdjacentHTML("beforeend", `__SLLS_ATTRIBUTION__`);
 
     // ================= Helpers =================
     function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -2169,7 +2154,12 @@ from sempy_labs._ui_components import ICONS as _UI_ICONS  # noqa: E402
 from sempy_labs._ui_components import (  # noqa: E402
     list_picker_datasets as _list_picker_datasets,
     list_picker_workspaces as _list_picker_workspaces,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
 )
+
+_WIDGET_CSS += _ui_scoped_attribution_css(".slls-mmm")
+_WIDGET_JS = _WIDGET_JS.replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_COLUMN__", _UI_ICONS["column"])
