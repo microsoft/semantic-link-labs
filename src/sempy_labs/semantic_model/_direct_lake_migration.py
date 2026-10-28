@@ -527,6 +527,7 @@ _WIDGET_CSS = """
 .slls-mdl-chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--slls-accent-soft); color: var(--slls-accent); white-space: nowrap; }
 .slls-mdl-removed { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .slls-mdl-refpill { font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; background: var(--slls-danger-soft); color: var(--slls-danger); padding: 1px 6px; border-radius: 4px; }
+.slls-mdl-colpill { font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; background: var(--slls-accent-soft); color: var(--slls-accent); padding: 1px 6px; border-radius: 4px; }
 .slls-mdl-details { margin-top: 8px; }
 .slls-mdl-details > summary { cursor: pointer; list-style: none; color: var(--slls-accent); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
 .slls-mdl-details > summary::-webkit-details-marker { display: none; }
@@ -838,6 +839,7 @@ function render({ model, el }) {
         const reshaped = changes.filter((c) => c.category === "reshape");
         const keptFp = changes.filter((c) => c.category === "kept" && c.kind === "Field parameter");
         const keptCg = changes.filter((c) => c.category === "kept" && c.kind === "Calculation group");
+        const keptCc = changes.filter((c) => c.category === "kept" && c.kind === "Calculated column");
 
         // Tables reshaped into a single partition (data preserved).
         if (reshaped.length > 0) {
@@ -850,9 +852,10 @@ function render({ model, el }) {
             });
         }
 
-        // Objects kept in the new model (calculation groups + field parameters).
-        if (keptFp.length + keptCg.length > 0) {
-            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculation groups and field parameters are supported in Direct Lake):</div>`;
+        // Objects kept in the new model (calculation groups, field parameters
+        // and calculated columns).
+        if (keptFp.length + keptCg.length + keptCc.length > 0) {
+            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculation groups, field parameters and calculated columns are supported in Direct Lake):</div>`;
             keptFp.forEach((c) => {
                 out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Field parameter</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
                 if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
@@ -871,6 +874,18 @@ function render({ model, el }) {
                 if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
                 out += `</div>`;
             });
+            keptCc.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Calculated column</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                const cols = c.columns || [];
+                if (cols.length > 0) {
+                    out += `<div class="slls-mdl-removed"><span>Column${cols.length === 1 ? "" : "s"}:</span>${cols.map((n) => `<span class="slls-mdl-colpill">${esc(n)}</span>`).join("")}</div>`;
+                }
+                out += `</div>`;
+            });
+            if (keptCc.length > 0) {
+                out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.alert}<div>Calculated columns in Direct Lake support the <b>User Context</b> <a href="https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext" target="_blank" rel="noopener noreferrer">expression context</a> only. They are evaluated at query time (not materialized) and cannot be used in relationships. <a href="https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance" target="_blank" rel="noopener noreferrer">Learn more</a></div></div>`;
+            }
         }
 
         // Objects that won't be migrated — one collapsible section per category.
@@ -1690,6 +1705,14 @@ def migrate_to_direct_lake(
     :func:`sempy_labs.migration.migrate_tables_columns_to_semantic_model` and the
     related ``migrate_*`` helpers) under the hood.
 
+    Calculated columns within regular (data) tables are migrated as
+    `Direct Lake on OneLake calculated columns <https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance>`_ (preview)
+    with their `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_
+    set to 'UserContext' — the only expression context supported for calculated columns in Direct Lake. These columns are evaluated
+    at query time (not materialized), so relationships which use calculated columns are not migrated. Migrating calculated columns requires
+    a version of the Tabular Object Model which supports the ExpressionContext property (Microsoft.AnalysisServices v19.117.0 or later);
+    otherwise they are reported as not migrated. Calculated columns within calculated tables are not migrated.
+
     Parameters
     ----------
     dataset : str | uuid.UUID, default=None
@@ -1787,6 +1810,7 @@ def migrate_to_direct_lake(
         field-parameter / calculation-group dependencies. Mirrors the reference
         migration tool (m-kovalsky/Two)."""
         import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs.tom._model import _supports_expression_context
 
         # Calculation dependencies drive the transitive removal of measures /
         # calculated columns. Best-effort: skip the expansion if unavailable.
@@ -1922,6 +1946,10 @@ def migrate_to_direct_lake(
                 continue
 
         # --- Column-level unsupported features (within surviving tables) ---
+        # Calculated columns are supported in Direct Lake on OneLake (preview)
+        # with the 'UserContext' expression context only. Setting that property
+        # requires a TOM version which exposes CalculatedColumn.ExpressionContext.
+        supports_expression_context = _supports_expression_context()
         for t in tom.model.Tables:
             tname = t.Name
             if (
@@ -1934,15 +1962,22 @@ def migrate_to_direct_lake(
                 if c.Type == TOM.ColumnType.RowNumber:
                     continue
                 if c.Type == TOM.ColumnType.Calculated:
-                    removed_columns.add(_mig_key(tname, c.Name))
-                    unsupported.append(
-                        {
-                            "category": "Calculated column",
-                            "table": tname,
-                            "name": c.Name,
-                            "reason": "Calculated (DAX) columns are not supported in Direct Lake.",
-                        }
-                    )
+                    if not supports_expression_context:
+                        removed_columns.add(_mig_key(tname, c.Name))
+                        unsupported.append(
+                            {
+                                "category": "Calculated column",
+                                "table": tname,
+                                "name": c.Name,
+                                "reason": (
+                                    "Calculated columns in Direct Lake require the "
+                                    "'User Context' expression context, which is not "
+                                    "supported by the installed version of the "
+                                    "Tabular Object Model (requires "
+                                    "Microsoft.AnalysisServices v19.117.0 or later)."
+                                ),
+                            }
+                        )
                 elif c.DataType == TOM.DataType.Binary:
                     removed_columns.add(_mig_key(tname, c.Name))
                     unsupported.append(
@@ -2017,6 +2052,88 @@ def migrate_to_direct_lake(
         _expand_dependents(
             dep_df, removed_tables, removed_columns, removed_measures, unsupported
         )
+
+        # --- Calculated columns kept in the new model ---
+        # Only calculated columns within regular (data) tables are kept; those
+        # within calculated tables (incl. field parameters) are not migrated.
+        # Direct Lake calculated columns only support the 'UserContext'
+        # expression context: they are evaluated at query time (not materialized)
+        # and respect RLS/OLS.
+        if supports_expression_context:
+            for t in tom.model.Tables:
+                tname = t.Name
+                if (
+                    tname in removed_tables
+                    or tname in field_parameters
+                    or t.CalculationGroup is not None
+                    or any(
+                        getattr(p, "SourceType", None)
+                        == TOM.PartitionSourceType.Calculated
+                        for p in t.Partitions
+                    )
+                ):
+                    continue
+                kept_cc = [
+                    c.Name
+                    for c in t.Columns
+                    if c.Type == TOM.ColumnType.Calculated
+                    and _mig_key(tname, c.Name) not in removed_columns
+                ]
+                if not kept_cc:
+                    continue
+                n = len(kept_cc)
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Calculated column",
+                        "category": "kept",
+                        "detail": (
+                            f"Kept {n} calculated column{'' if n == 1 else 's'} "
+                            "with the Expression Context set to User Context (the "
+                            "only expression context supported in Direct Lake). "
+                            "They are evaluated at query time, are not "
+                            "materialized and respect RLS/OLS."
+                        ),
+                        "columns": kept_cc,
+                    }
+                )
+
+        # --- Relationships using calculated columns ---
+        # Calculated columns are not materialized in Direct Lake so they cannot
+        # be used in relationships.
+        try:
+            for r in tom.model.Relationships:
+                if (
+                    r.FromTable.Name in removed_tables
+                    or r.ToTable.Name in removed_tables
+                ):
+                    continue
+                calc_cols = [
+                    f"'{tbl.Name}'[{col.Name}]"
+                    for tbl, col in (
+                        (r.FromTable, r.FromColumn),
+                        (r.ToTable, r.ToColumn),
+                    )
+                    if col.Type == TOM.ColumnType.Calculated
+                ]
+                if calc_cols:
+                    unsupported.append(
+                        {
+                            "category": "Relationship",
+                            "table": r.FromTable.Name,
+                            "name": (
+                                f"'{r.FromTable.Name}'[{r.FromColumn.Name}] → "
+                                f"'{r.ToTable.Name}'[{r.ToColumn.Name}]"
+                            ),
+                            "reason": (
+                                f"Uses the calculated column {', '.join(calc_cols)}. "
+                                "Calculated columns in Direct Lake are not "
+                                "materialized and cannot be used in relationships."
+                            ),
+                        }
+                    )
+        except Exception:
+            pass
 
         # --- Security (RLS / OLS) referencing removed objects ---
         # Roles, RLS, OLS and role members are copied to the migrated model. The
@@ -2136,6 +2253,7 @@ def migrate_to_direct_lake(
             "Calculated column",
             "Binary column",
             "Dependent object",
+            "Relationship",
             "Security (RLS)",
             "Security (OLS)",
         ]
@@ -2245,7 +2363,6 @@ def migrate_to_direct_lake(
                     1
                     for c in t.Columns
                     if c.Type != TOM.ColumnType.RowNumber
-                    and c.Type != TOM.ColumnType.Calculated
                     and _mig_key(tname, c.Name) not in removed_cols
                 )
                 tables.append(
@@ -2453,6 +2570,7 @@ def migrate_to_direct_lake(
         #    partition. Field parameters and calculation groups are kept as-is.
         converted = 0
         import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs.tom._model import _set_expression_context
 
         with connect_semantic_model(
             dataset=dataset_id, workspace=workspace_id, readonly=False
@@ -2507,6 +2625,12 @@ def migrate_to_direct_lake(
                         src = src[:-1]
                     if src:
                         c.SourceColumn = src
+
+                # Calculated columns in Direct Lake only support the
+                # 'UserContext' expression context (compat level >= 1705).
+                for c in t.Columns:
+                    if c.Type == TOM.ColumnType.Calculated:
+                        _set_expression_context(tom.model, c, "UserContext")
 
                 # Replace the existing partition(s) with a single entity
                 # partition in Direct Lake mode.
@@ -2642,6 +2766,7 @@ def migrate_to_direct_lake(
         #     field-parameter DAX (dead references removed), and stamp the schema
         #     onto each Direct Lake entity partition (the helpers leave it blank).
         removed_measures = set()
+        removed_columns = set()
         field_parameters = {}
         try:
             with connect_semantic_model(
@@ -2649,6 +2774,7 @@ def migrate_to_direct_lake(
             ) as src_tom:
                 _plan = _compute_migration_plan(src_tom)
                 removed_measures = _plan["removedMeasures"]
+                removed_columns = _plan["removedColumns"]
                 field_parameters = _plan["fieldParameters"]
         except Exception as e:
             warnings.append(f"Resolving non-migrated objects: {e}")
@@ -2660,7 +2786,7 @@ def migrate_to_direct_lake(
                 dataset=new_name, workspace=target_ws, readonly=False
             ) as new_tom:
                 # Apply the rewritten field-parameter DAX so references to
-                # objects that were not migrated (e.g. a calculated column) are
+                # objects that were not migrated (e.g. a calculated table) are
                 # removed — otherwise the field parameter fails on refresh.
                 for t in new_tom.model.Tables:
                     new_expr = field_parameters.get(t.Name)
@@ -2674,6 +2800,15 @@ def migrate_to_direct_lake(
                     for mname in [m.Name for m in t.Measures]:
                         if _mig_key(t.Name, mname) in removed_measures:
                             t.Measures.Remove(t.Measures[mname])
+                # Drop calculated columns that depend on objects that were not
+                # migrated.
+                for c in [
+                    c
+                    for c in new_tom.all_columns()
+                    if c.Type == TOM.ColumnType.Calculated
+                    and _mig_key(c.Parent.Name, c.Name) in removed_columns
+                ]:
+                    new_tom.remove_object(c)
                 # Stamp the schema/entity onto each Direct Lake entity partition.
                 for t in new_tom.model.Tables:
                     for p in t.Partitions:

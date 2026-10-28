@@ -23,12 +23,13 @@ classifiers = [
 license= { text = "MIT License" }
 
 dependencies = [
-    "semantic-link-sempy>=0.14.2",
+    "semantic-link-sempy>=0.14.3",
     "anytree",
     "polib",
     "jsonpath_ng",
     "anywidget",
     "sqlglot",
+    "powerbiclient",
 ]
 
 [tool.setuptools.packages.find]

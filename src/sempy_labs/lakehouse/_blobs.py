@@ -187,6 +187,7 @@ def recover_lakehouse_object(
     file_path: str,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
+    raise_errors: bool = False,
 ):
     """
     Recovers an object (i.e. table, file, folder) in a lakehouse from a deleted state. Only `soft-deleted objects <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_ can be recovered (deleted for less than 7 days).
@@ -202,6 +203,8 @@ def recover_lakehouse_object(
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    raise_errors : bool, default=False
+        If True, re-raises the error when the recover request fails instead of only printing it.
     """
 
     workspace_id = resolve_workspace_id(workspace)
@@ -227,6 +230,8 @@ def recover_lakehouse_object(
             f"{icons.green_dot} The '{blob_name}' blob recover attempt was successful."
         )
     except FabricHTTPException as e:
+        if raise_errors:
+            raise
         if e.status_code == 404:
             print(
                 f"{icons.warning} The '{blob_name}' blob was not found. No action taken."
