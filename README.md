@@ -240,15 +240,17 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 * Dataflows Gen2 will create delta tables in your Fabric lakehouse. These tables can then be used for your Direct Lake model.
 * Create a new semantic model in Direct Lake mode containing all the standard tables and columns, calculation groups, measures, relationships, hierarchies, roles, row level security, perspectives, and translations from your original semantic model.
 * Viable calculated tables are migrated to the new semantic model as data tables. Delta tables are dynamically generated in the lakehouse to support the Direct Lake model. The calculated table DAX logic is stored as model annotations in the new semantic model.
-* Field parameters are migrated to the new semantic model as they were in the original semantic model (as calculated tables). Any calculated columns used in field parameters are automatically removed in the new semantic model's field parameter(s).
-* Non-supported objects are not transferred (i.e. calculated columns, relationships using columns with unsupported data types etc.).
+* Calculated columns within regular (data) tables are migrated to the new semantic model as [Direct Lake calculated columns](https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance) (preview) with their [expression context](https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext) set to User Context.
+* Field parameters are migrated to the new semantic model as they were in the original semantic model (as calculated tables). Any references to calculated columns which were not migrated are automatically removed in the new semantic model's field parameter(s).
+* Non-supported objects are not transferred (i.e. relationships using calculated columns or columns with unsupported data types etc.).
 * Reports used by your original semantic model will be rebinded to your new semantic model.
 
 ### Limitations
-* Calculated columns are not migrated.
+* Calculated columns in Direct Lake support the User Context expression context only (`ExpressionContext = UserContext`, requiring compatibility level 1705+). They are evaluated at query time (not materialized) and therefore cannot be used in relationships.
+* Migrating calculated columns requires a version of semantic-link-sempy which includes Microsoft.AnalysisServices v19.117.0 or later. Otherwise, calculated columns are not migrated.
+* Calculated columns within calculated tables are not migrated.
 * Auto date/time tables are not migrated.
-* References to calculated columns in Field Parameters are removed.
-* References to calculated columns in measure expressions or other DAX expressions will break.
+* References to calculated columns which are not migrated are removed from Field Parameters and will break in measure expressions or other DAX expressions.
 * Calculated tables are migrated as possible. The success of this migration depends on the interdependencies and complexity of the calculated table. This part of the migration is a workaround as technically calculated tables are not supported in Direct Lake.
 * See [here](https://learn.microsoft.com/fabric/get-started/direct-lake-overview#considerations-and-limitations) for the rest of the limitations of Direct Lake.
 
