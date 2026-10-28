@@ -3338,14 +3338,14 @@ def lakehouse_manager(
         except BaseException as e:
             # An error escaping a widget callback leaves the widget unable to
             # handle further actions, so it is reported instead.
-            if _is_fatal(e):
-                raise
             widget.picker_loading = False
             widget.loading = False
             widget.busy = False
             widget.stats_pending = []
             batch.clear()
             widget.batch = {}
+            if _is_fatal(e):
+                raise
             widget.error_message = f"The action failed: {_error_text(e)}"
         finally:
             widget.action_done = change["new"]
