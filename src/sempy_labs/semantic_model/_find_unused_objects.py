@@ -1269,9 +1269,8 @@ __SEARCH_SELECT_CSS__
     padding-left: 8px;
 }
 .fuo-empty { padding: 40px 16px; text-align: center; color: var(--ui-text-tertiary); font-size: 13px; }
-.fuo-attr { padding: 12px 18px 14px 18px; text-align: right; font-size: 11.5px; color: var(--ui-text-tertiary); }
-.fuo-attr a { color: var(--ui-text-tertiary); text-decoration: none; transition: color 120ms ease; }
-.fuo-attr a:hover { color: var(--ui-accent); }
+.fuo-attr { padding: 12px 18px 14px 18px; }
+.fuo .fuo-attr .sl-attribution { margin: 0; padding: 0; }
 
 /* ---- Spinner ---- */
 .fuo-spin {
@@ -1785,7 +1784,7 @@ function render({ model, el }) {
                 </div>
                 <div class="fuo-search-wrap fuo-res-search">${IC.search}<input type="text" class="fuo-search" data-r="search" placeholder="Filter objects…" /></div>
                 <div class="fuo-tree" data-r="tree"></div>
-                <div class="fuo-attr">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a></div>
+                <div class="fuo-attr">__SLLS_ATTRIBUTION__</div>
             </div>`;
         wireHeaderCtrls();
         root.querySelector('[data-r="rerun"]').addEventListener("click", () => goScreen("config"));
@@ -1957,6 +1956,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     DARK_THEME_VARS as _UI_DARK_VARS,
     list_picker_datasets as _list_picker_datasets,
     list_picker_workspaces as _list_picker_workspaces,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
@@ -1970,9 +1971,11 @@ _WIDGET_CSS = (
 )
 _WIDGET_CSS += _ui_scoped_header_css(".fuo")
 _WIDGET_CSS += _ui_scoped_button_press_css(".fuo")
+_WIDGET_CSS += _ui_scoped_attribution_css(".fuo")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SEARCH_SELECT_JS__", _UI_SEARCH_SELECT_JS)
+    .replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
     .replace("__IC_SCAN__", _UI_ICONS["scan_search"])
     .replace("__IC_TABLE__", _UI_ICONS["table"])
     .replace("__IC_CALCTABLE__", _UI_ICONS["calculated_table"])

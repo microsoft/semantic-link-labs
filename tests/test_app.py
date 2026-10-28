@@ -114,17 +114,26 @@ def test_tools_open_inside_the_full_screen_shell():
     # Full screen applies to the shell (launcher + tools), so opening a tool
     # does not drop out of full screen, and Home returns to the tool list.
     assert 'root.closest(".slls-app-shell")' in _app._WIDGET_JS
-    assert 'sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs"' in _app._WIDGET_JS
+    assert 'sllsSetupFullscreen(shell, fsBtn, "slls-app-fs"' in _app._WIDGET_JS
     assert '{ action: "home" }' in _app._WIDGET_JS
     assert ".slls-app-shell.slls-app-fs {" in _app._WIDGET_CSS
 
 
 def test_home_fullscreen_button_is_wired_before_first_click():
-    setup = 'sllsSetupFullscreen(shell(), fsBtn, "slls-app-fs"'
+    setup = 'sllsSetupFullscreen(shell, fsBtn, "slls-app-fs"'
     setup_index = _app._WIDGET_JS.index(setup)
     preceding_frame = _app._WIDGET_JS.rfind("requestAnimationFrame", 0, setup_index)
 
     assert preceding_frame == -1
+
+
+def test_fullscreen_resolves_the_shell_on_each_toggle():
+    # render() can run before the view sits inside the shell, so the shell is
+    # passed as a resolver; resolving it once would full-screen the launcher.
+    from sempy_labs._ui_components import fullscreen_setup_js
+
+    assert "sllsSetupFullscreen(shell(), fsBtn" not in _app._WIDGET_JS
+    assert 'typeof root === "function" ? root() : root' in fullscreen_setup_js()
 
 
 def test_home_render_does_not_use_back_state_before_initialization():
