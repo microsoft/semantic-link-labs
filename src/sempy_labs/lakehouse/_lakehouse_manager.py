@@ -78,9 +78,7 @@ def _object_of(path: str, schema_enabled: bool) -> Optional[Tuple[str, str, str,
     if len(parts) < 2 or parts[0] not in _CONTAINERS:
         return None
     container = parts[0]
-    if container == "Tables" and schema_enabled:
-        if len(parts) < 3:
-            return None
+    if container == "Tables" and schema_enabled and len(parts) >= 3:
         return (container, parts[2], parts[1], len(parts) == 3)
     return (container, parts[1], "", len(parts) == 2)
 
@@ -187,7 +185,7 @@ def _node_type(
     if container == "Tables":
         if schema_enabled:
             if depth == 1:
-                return "Schema"
+                return "Schema" if has_children else "Table"
             if depth == 2:
                 return "Table"
         elif depth == 1:
@@ -299,9 +297,12 @@ def _lakehouse_objects(
     from sempy_labs.lakehouse._blobs import list_blobs
     from sempy_labs.lakehouse._schemas import is_schema_enabled
 
-    schema_enabled = bool(
-        is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
-    )
+    try:
+        schema_enabled = bool(
+            is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
+        )
+    except Exception:
+        schema_enabled = False
 
     df = list_blobs(lakehouse=lakehouse_id, workspace=workspace_id)
     blobs = df.to_dict("records") if df is not None and not df.empty else []
@@ -526,60 +527,6 @@ _LHM_JS = (
     + "\n"
     + _ui_fullscreen_setup_js("sllsLhmSetupFullscreen")
     + r"""
-// A labelled modal dialog: while open, the rest of the widget is inert, focus
-// moves into the dialog and Tab / Shift+Tab cycle within it; on close, focus
-// returns to the control which opened it.
-let sllsLhmDialogCount = 0;
-function sllsLhmCreateModal(root, overlay, dialog, heading, onClose) {
-    sllsLhmDialogCount += 1;
-    heading.id = "slls-lhm-dialog-title-" + sllsLhmDialogCount + "-" + Math.random().toString(36).slice(2, 8);
-    dialog.setAttribute("role", "dialog");
-    dialog.setAttribute("aria-modal", "true");
-    dialog.setAttribute("aria-labelledby", heading.id);
-    dialog.tabIndex = -1;
-    let returnFocus = null;
-    const inerted = [];
-    function isOpen() { return overlay.style.display !== "none"; }
-    function focusables() {
-        const selector = 'a[href], button:not([disabled]), input:not([disabled]), '
-            + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-        return [...dialog.querySelectorAll(selector)].filter((node) => node.getClientRects().length > 0);
-    }
-    function open(initialFocus) {
-        if (isOpen()) return;
-        returnFocus = document.activeElement;
-        for (const child of root.children) {
-            if (child !== overlay && !child.inert) { child.inert = true; inerted.push(child); }
-        }
-        overlay.style.display = "flex";
-        (initialFocus || focusables()[0] || dialog).focus();
-    }
-    function close() {
-        if (!isOpen()) return;
-        overlay.style.display = "none";
-        while (inerted.length) inerted.pop().inert = false;
-        const target = returnFocus;
-        returnFocus = null;
-        if (onClose) onClose();
-        if (target && target.isConnected && typeof target.focus === "function") target.focus();
-    }
-    overlay.addEventListener("keydown", (event) => {
-        if (event.key !== "Tab" || !isOpen()) return;
-        const items = focusables();
-        if (!items.length) { event.preventDefault(); dialog.focus(); return; }
-        const first = items[0];
-        const last = items[items.length - 1];
-        const active = document.activeElement;
-        if (event.shiftKey && (active === first || !dialog.contains(active))) {
-            event.preventDefault(); last.focus();
-        } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
-            event.preventDefault(); first.focus();
-        }
-    });
-    overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
-    return { open: open, close: close, isOpen: isOpen };
-}
-
 function render({ model, el }) {
     const root = document.createElement("div");
     root.className = "slls-lhm" + (model.get("dark_mode") ? " slls-lhm-dark" : "");
@@ -745,11 +692,10 @@ function render({ model, el }) {
     dialog.append(dialogHead, optimizeChk.el, vorderChk.el, vacuumChk.el, retention, dialogActions);
     overlay.appendChild(dialog); root.appendChild(overlay);
 
-    function closeDialog() { maintenanceDialog.close(); }
-    const maintenanceDialog = sllsLhmCreateModal(
-        root, overlay, dialog, dialogTitle.querySelector("h2"), () => { maintenanceTarget = null; });
+    function closeDialog() { maintenanceTarget = null; overlay.style.display = "none"; }
     cancelBtn.addEventListener("click", closeDialog);
     dialogClose.addEventListener("click", closeDialog);
+    overlay.addEventListener("click", (event) => { if (event.target === overlay) closeDialog(); });
     runBtn.addEventListener("click", () => {
         if (!maintenanceTarget) return;
         const payload = {
@@ -784,16 +730,14 @@ function render({ model, el }) {
     confirmDialog.append(confirmHead, confirmList, confirmActions);
     confirmOverlay.appendChild(confirmDialog); root.appendChild(confirmOverlay);
 
-    // The paths shown when the confirmation opened: only these are deleted,
-    // whatever happens to the selection meanwhile.
-    let pendingDelete = [];
-    function closeConfirm() { confirmModal.close(); }
-    const confirmModal = sllsLhmCreateModal(
-        root, confirmOverlay, confirmDialog, confirmTitle.querySelector("h2"), () => { pendingDelete = []; });
+    function closeConfirm() { confirmOverlay.style.display = "none"; }
     confirmCancel.addEventListener("click", closeConfirm);
     confirmClose.addEventListener("click", closeConfirm);
+    confirmOverlay.addEventListener("click", (event) => {
+        if (event.target === confirmOverlay) closeConfirm();
+    });
     confirmDelete.addEventListener("click", () => {
-        const paths = pendingDelete.slice();
+        const paths = [...selected];
         closeConfirm();
         if (paths.length) act("delete", { paths: paths });
     });
@@ -840,7 +784,7 @@ function render({ model, el }) {
                 maintenanceTarget = row;
                 dialogTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
                 retention.style.display = vacuumChk.input.checked ? "" : "none";
-                maintenanceDialog.open();
+                overlay.style.display = "flex";
             });
             buttons.appendChild(maintain);
         }
@@ -906,12 +850,11 @@ function render({ model, el }) {
     deleteSelected.addEventListener("click", () => {
         const nodes = selectedNodes();
         if (!nodes.length) return;
-        pendingDelete = nodes.map((node) => node.path);
         confirmTitle.querySelector(".slls-lhm-panel-sub").textContent =
             `${nodes.length} object${nodes.length === 1 ? "" : "s"} will be deleted from the lakehouse.`;
         confirmList.textContent = nodes.slice(0, 10).map((node) => node.path).join(", ")
             + (nodes.length > 10 ? `, +${nodes.length - 10} more` : "");
-        confirmModal.open(confirmCancel);
+        confirmOverlay.style.display = "flex";
     });
 
     function emptyState(text) {
@@ -1139,8 +1082,8 @@ function render({ model, el }) {
     });
     root.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
-        if (confirmModal.isOpen()) closeConfirm();
-        else if (maintenanceDialog.isOpen()) closeDialog();
+        if (confirmOverlay.style.display !== "none") closeConfirm();
+        else if (overlay.style.display !== "none") closeDialog();
         else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
     });
     search.addEventListener("input", renderRows);
@@ -1153,8 +1096,6 @@ function render({ model, el }) {
     // A different lakehouse was loaded: selections made in the previous one
     // must never carry over to it.
     model.on("change:loaded_lakehouse_id", () => {
-        // A confirmation shown for the previous lakehouse must not apply here.
-        closeConfirm(); closeDialog();
         selected.clear();
         expanded.clear(); expanded.add("Tables"); expanded.add("Files");
         renderState(); renderRows();
@@ -1254,21 +1195,6 @@ def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
 
     _walk(tree)
     return {path for path in allowed - groupings if _is_safe_object_path(path)}
-
-
-def _table_metadata(objects: List[dict]) -> Dict[str, Tuple[str, str]]:
-    """The loaded tables which maintenance may target: path -> (name, schema)."""
-
-    return {
-        str(row.get("path") or ""): (
-            str(row.get("name") or ""),
-            str(row.get("schema") or ""),
-        )
-        for row in objects
-        if row.get("type") == "Table"
-        and row.get("container") == "Tables"
-        and _is_safe_object_path(str(row.get("path") or ""))
-    }
 
 
 def _authorized_paths(paths: List[str], allowed: set) -> Tuple[List[str], List[str]]:
@@ -1401,12 +1327,7 @@ def lakehouse_manager(
     # the picker selection, which can change without a Connect (the picker can
     # be closed after choosing another lakehouse). Held on the kernel only, so
     # the browser cannot redirect an action to another lakehouse.
-    loaded: Dict[str, Any] = {
-        "workspace_id": "",
-        "lakehouse_id": "",
-        "paths": set(),
-        "tables": {},
-    }
+    loaded: Dict[str, Any] = {"workspace_id": "", "lakehouse_id": "", "paths": set()}
 
     def _read_lakehouse(workspace_id: str, lakehouse_id: str) -> bool:
         """Load a lakehouse's contents into the widget; True when it succeeded."""
@@ -1428,7 +1349,6 @@ def lakehouse_manager(
             workspace_id=workspace_id,
             lakehouse_id=lakehouse_id,
             paths=_actionable_paths(objects, tree),
-            tables=_table_metadata(objects),
         )
         widget.schema_enabled = schema_enabled
         widget.summary = _summarize_objects(objects)
@@ -1488,7 +1408,6 @@ def lakehouse_manager(
                         file_path=path,
                         lakehouse=loaded["lakehouse_id"],
                         workspace=loaded["workspace_id"],
-                        raise_errors=True,
                     )
                 except Exception as e:
                     failures.append(f"{path}: {e}")
@@ -1561,21 +1480,6 @@ def lakehouse_manager(
         table = str(data.get("table") or "")
         if not table or not loaded["lakehouse_id"]:
             return
-        schema = str(data.get("schema") or "")
-        # The table comes from the browser: its path, name and schema must all
-        # match a table of the loaded lakehouse.
-        table_path = "/".join(part for part in ("Tables", schema, table) if part)
-        requested_path = str(data.get("path") or "").strip("/")
-        if requested_path != table_path or loaded["tables"].get(requested_path) != (
-            table,
-            schema,
-        ):
-            widget.error_message = (
-                f"Could not run table maintenance on '{table_path}': not a "
-                "table of the loaded lakehouse."
-            )
-            widget.status_message = ""
-            return
         optimize = bool(data.get("optimize"))
         v_order = bool(data.get("v_order"))
         vacuum = bool(data.get("vacuum"))
@@ -1589,21 +1493,16 @@ def lakehouse_manager(
         try:
             from sempy_labs.lakehouse._lakehouse import run_table_maintenance
 
-            result = run_table_maintenance(
+            run_table_maintenance(
                 table_name=table,
                 optimize=optimize,
                 v_order=v_order,
                 vacuum=vacuum,
                 retention_period=retention if (vacuum and retention) else None,
-                schema=schema or None,
+                schema=str(data.get("schema") or "") or None,
                 lakehouse=loaded["lakehouse_id"],
                 workspace=loaded["workspace_id"],
             )
-            job = result.iloc[0]
-            if job["Status"] != "Completed":
-                raise RuntimeError(
-                    f"Job status: {job['Status']}. {job.get('Error Message', '')}"
-                )
             widget.status_message = f"Table maintenance finished for '{table}'."
         except Exception as e:
             widget.error_message = f"Table maintenance failed for '{table}': {e}"

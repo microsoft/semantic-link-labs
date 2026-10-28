@@ -293,6 +293,7 @@ from ._helper_functions import (
     get_capacity_name,
     resolve_capacity_name,
     get_tenant_id,
+    update_item_logical_id,
 )
 from ._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -608,6 +609,7 @@ __all__ = [
     "search_notebooks",
     "list_notebooks",
     "get_item_definition",
+    "update_item_logical_id",
     "get_workspace_network_communication_policy",
     "set_workspace_network_communication_policy",
     "get_connection_string",

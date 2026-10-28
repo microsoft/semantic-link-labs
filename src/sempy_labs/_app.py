@@ -68,6 +68,15 @@ _TOOLS: tuple = (
         ),
     },
     {
+        "key": "bpa",
+        "name": "Semantic Model BPA",
+        "description": "Run Best Practice Analyzer rules against a semantic model.",
+        "tags": ("Semantic Model",),
+        "icon": "shield_check",
+        "module": "sempy_labs.semantic_model._bpa",
+        "function": "bpa",
+    },
+    {
         "key": "vertipaq_analyzer",
         "name": "Vertipaq Analyzer",
         "description": "Analyze the memory footprint of a semantic model.",

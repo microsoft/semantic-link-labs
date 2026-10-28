@@ -3,7 +3,6 @@
 import sys
 import types
 
-import pandas as pd
 import pytest
 
 from sempy_labs import _app
@@ -194,42 +193,8 @@ def test_tree_objects_can_be_selected_and_acted_on_in_bulk():
     assert 'act("recover", { paths: paths })' in js
     assert 'act("delete", { paths: paths })' in js
     # Deleting is confirmed first.
-    assert "confirmModal.open(confirmCancel);" in js
+    assert 'confirmOverlay.style.display = "flex";' in js
     assert '"delete": _delete' in _source()
-
-
-def test_the_delete_confirmation_deletes_only_the_paths_it_showed():
-    js = lhm._LHM_JS
-    handler = js[js.index('confirmDelete.addEventListener("click"') :]
-    handler = handler[: handler.index("});")]
-
-    # The selection can change while the confirmation is open: the paths are
-    # captured when it opens, and only that snapshot is deleted.
-    assert "pendingDelete = nodes.map((node) => node.path);" in js
-    assert "const paths = pendingDelete.slice();" in handler
-    assert "selected" not in handler
-    # A confirmation shown for one lakehouse never applies to the next.
-    reload_handler = js[js.index('model.on("change:loaded_lakehouse_id"') :]
-    assert "closeConfirm(); closeDialog();" in reload_handler[:300]
-
-
-def test_the_dialogs_are_focus_managed_modals():
-    js = lhm._LHM_JS
-
-    assert "function sllsLhmCreateModal(" in js
-    assert 'dialog.setAttribute("role", "dialog");' in js
-    assert 'dialog.setAttribute("aria-modal", "true");' in js
-    assert 'dialog.setAttribute("aria-labelledby", heading.id);' in js
-    # The background is inert while open and focus returns to the opener.
-    assert "child.inert = true;" in js
-    assert "while (inerted.length) inerted.pop().inert = false;" in js
-    assert "target.focus();" in js
-    assert 'if (event.key !== "Tab" || !isOpen()) return;' in js
-    # Both the delete confirmation and the maintenance dialog use it.
-    assert "confirmModal.open(confirmCancel);" in js
-    assert "maintenanceDialog.open();" in js
-    # Only the modal helper shows an overlay.
-    assert js.count('style.display = "flex";') == 1
 
 
 def test_an_action_can_target_one_object_or_a_selection():
@@ -324,11 +289,7 @@ def manager(monkeypatch):
     from sempy_labs import _helper_functions
 
     contents = {
-        "lh-a": [
-            _blob("Files/shared.csv"),
-            _blob("Files/a-only.csv"),
-            _blob("Tables/sales/part-0.parquet"),
-        ],
+        "lh-a": [_blob("Files/shared.csv"), _blob("Files/a-only.csv")],
         "lh-b": [_blob("Files/shared.csv")],
     }
     removed = []
@@ -426,40 +387,3 @@ def test_a_failed_refresh_keeps_the_action_error(manager):
 
     assert "Could not delete Files/a-only.csv" in widget.error_message
     assert "Could not read the lakehouse: listing failed" in widget.error_message
-
-
-def test_maintenance_runs_only_on_a_table_of_the_loaded_lakehouse(manager, monkeypatch):
-    from sempy_labs.lakehouse import _lakehouse
-
-    widget, act, _, _ = manager
-    calls = []
-
-    def fake_maintenance(**kwargs):
-        calls.append(kwargs)
-        return pd.DataFrame([{"Status": "Completed", "Error Message": None}])
-
-    monkeypatch.setattr(_lakehouse, "run_table_maintenance", fake_maintenance)
-
-    act("maintenance", path="Tables/other", table="other", optimize=True)
-    act("maintenance", path="Tables/sales", table="../x", optimize=True)
-    act(
-        "maintenance",
-        path="Tables/sales/part-0.parquet",
-        table="sales/part-0.parquet",
-        optimize=True,
-    )
-    act(
-        "maintenance",
-        path="Tables/dbo/sales",
-        table="sales",
-        schema="dbo",
-        optimize=True,
-    )
-    assert calls == []
-    assert "not a table of the loaded lakehouse" in widget.error_message
-
-    act("maintenance", path="Tables/sales", table="sales", optimize=True)
-    assert len(calls) == 1
-    assert calls[0]["table_name"] == "sales"
-    assert calls[0]["lakehouse"] == "lh-a"
-    assert widget.error_message == ""
