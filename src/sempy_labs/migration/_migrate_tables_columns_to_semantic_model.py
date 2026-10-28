@@ -23,6 +23,14 @@ def migrate_tables_columns_to_semantic_model(
     """
     Adds tables/columns to the new Direct Lake semantic model based on an import/DirectQuery semantic model.
 
+    Calculated columns within regular (data) tables are migrated with their `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_
+    set to 'UserContext', which is the only expression context supported by calculated columns in
+    `Direct Lake <https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance>`_ (preview).
+    Calculated columns within calculated tables are not migrated.
+    Such calculated columns are evaluated at query time (they are not materialized) and therefore cannot be used in relationships.
+    Migrating calculated columns requires a version of the Tabular Object Model which supports the ExpressionContext property (Microsoft.AnalysisServices v19.117.0 or later);
+    otherwise calculated columns are not migrated.
+
     Parameters
     ----------
     dataset : str
@@ -46,6 +54,7 @@ def migrate_tables_columns_to_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
     from sempy_labs.tom import connect_semantic_model
+    from sempy_labs.tom._model import _supports_expression_context
 
     if dataset == new_dataset:
         raise ValueError(
@@ -86,6 +95,7 @@ def migrate_tables_columns_to_semantic_model(
         & ~(dfC["Column Name"].str.startswith("RowNumber-"))
         & (dfC["Type"] != "Calculated")
     ]
+    dfC_calc = dfC[(dfC["Table Type"] == "Table") & (dfC["Type"] == "Calculated")]
 
     print(f"{icons.in_progress} Updating '{new_dataset}' based on '{dataset}'...")
 
@@ -168,6 +178,37 @@ def migrate_tables_columns_to_semantic_model(
                 print(
                     f"{icons.green_dot} The '{tName}'[{cName}] column has been added."
                 )
+
+        # Calculated columns are supported in Direct Lake (preview) with the
+        # 'UserContext' expression context only. Only calculated columns within
+        # regular (data) tables are migrated — not those within calculated tables.
+        if not dfC_calc.empty:
+            if not _supports_expression_context():
+                print(
+                    f"{icons.warning} The {len(dfC_calc)} calculated column(s) were not migrated as the installed version of the Tabular Object Model "
+                    "does not support the ExpressionContext property (required for calculated columns in Direct Lake). "
+                    "Upgrade to a version of semantic-link-sempy which includes Microsoft.AnalysisServices v19.117.0 or later to migrate calculated columns."
+                )
+            else:
+                for _, r in dfC_calc.iterrows():
+                    tName = r["Table Name"]
+                    cName = r["Column Name"]
+                    if any(
+                        c.Name == cName and c.Parent.Name == tName
+                        for c in tom.all_columns()
+                    ):
+                        continue
+                    tom.add_calculated_column(
+                        table_name=tName,
+                        column_name=cName,
+                        expression=r["Source"],
+                        data_type=r["Data Type"],
+                        hidden=bool(r["Hidden"]),
+                        expression_context="UserContext",
+                    )
+                    print(
+                        f"{icons.green_dot} The '{tName}'[{cName}] calculated column has been added (Expression Context: User Context)."
+                    )
 
         print(
             f"\n{icons.green_dot} All regular tables and columns have been added to the '{new_dataset}' semantic model."

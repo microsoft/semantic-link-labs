@@ -50,6 +50,54 @@ if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
     import Microsoft.AnalysisServices.Tabular as TOM
 
+# Minimum compatibility level for the CalculatedColumn.ExpressionContext property
+# (https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext).
+_EXPRESSION_CONTEXT_MIN_COMPAT = 1705
+
+
+def _supports_expression_context() -> bool:
+    """
+    Whether the loaded TOM library exposes the CalculatedColumn.ExpressionContext
+    property (Microsoft.AnalysisServices v19.117.0 or later).
+    """
+    import Microsoft.AnalysisServices.Tabular as TOM
+
+    return hasattr(TOM, "ExpressionContext") and hasattr(
+        TOM.CalculatedColumn, "ExpressionContext"
+    )
+
+
+def _is_direct_lake_table(table) -> bool:
+    """Whether a TOM table has a partition in Direct Lake mode."""
+    import Microsoft.AnalysisServices.Tabular as TOM
+
+    return any(p.Mode == TOM.ModeType.DirectLake for p in table.Partitions)
+
+
+def _set_expression_context(model, column, expression_context: str):
+    """
+    Sets the ExpressionContext of a calculated column, raising the model's
+    compatibility level to the required minimum if necessary.
+    """
+    import Microsoft.AnalysisServices.Tabular as TOM
+    import System
+
+    valid = {"standard": "Standard", "usercontext": "UserContext"}
+    value = valid.get(str(expression_context).replace(" ", "").lower())
+    if value is None:
+        raise ValueError(
+            f"{icons.red_dot} Invalid expression_context '{expression_context}'. Valid options: {list(valid.values())}."
+        )
+    if not _supports_expression_context():
+        raise ValueError(
+            f"{icons.red_dot} The installed version of the Tabular Object Model (TOM) does not support the ExpressionContext property of calculated columns. "
+            "Please upgrade to a version of semantic-link-sempy which includes Microsoft.AnalysisServices v19.117.0 or later."
+        )
+    if model.Database.CompatibilityLevel < _EXPRESSION_CONTEXT_MIN_COMPAT:
+        model.Database.CompatibilityLevel = _EXPRESSION_CONTEXT_MIN_COMPAT
+
+    column.ExpressionContext = System.Enum.Parse(TOM.ExpressionContext, value)
+
 
 class TOMWrapper:
     """
@@ -672,9 +720,14 @@ class TOMWrapper:
         summarize_by: Optional[str] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
+        expression_context: Optional[Literal["Standard", "UserContext"]] = None,
     ):
         """
         Adds a calculated column to a table within a semantic model.
+
+        Calculated columns in `Direct Lake on OneLake <https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance>`_ tables (preview)
+        only support the 'UserContext' `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_.
+        They are evaluated at query time (not materialized) and therefore cannot be used in relationships.
 
         Parameters
         ----------
@@ -705,6 +758,12 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+        expression_context : typing.Literal["Standard", "UserContext"], default=None
+            The `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_ of the calculated column.
+            'UserContext' evaluates the column at query time in the context of the querying user (it is not materialized).
+            Defaults to None which resolves to 'UserContext' if the table is in Direct Lake mode (the only expression context supported in Direct Lake)
+            or otherwise leaves the property unset (the server default, 'Standard').
+            Setting this property requires a compatibility level of 1705 or higher (the compatibility level is raised automatically if needed).
 
         Returns
         -------
@@ -713,6 +772,11 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
+
+        if expression_context is None and _is_direct_lake_table(
+            self.model.Tables[table_name]
+        ):
+            expression_context = "UserContext"
 
         data_type = (
             data_type.capitalize()
@@ -748,6 +812,8 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        if expression_context is not None:
+            _set_expression_context(self.model, obj, expression_context)
         self.model.Tables[table_name].Columns.Add(obj)
         return obj
 

@@ -77,6 +77,15 @@ _TOOLS: tuple = (
         "function": "bpa",
     },
     {
+        "key": "bpa",
+        "name": "Semantic Model BPA",
+        "description": "Run Best Practice Analyzer rules against a semantic model.",
+        "tags": ("Semantic Model",),
+        "icon": "shield_check",
+        "module": "sempy_labs.semantic_model._bpa",
+        "function": "bpa",
+    },
+    {
         "key": "vertipaq_analyzer",
         "name": "Vertipaq Analyzer",
         "description": "Analyze the memory footprint of a semantic model.",
@@ -116,6 +125,15 @@ _TOOLS: tuple = (
             "Debug a refresh which failed on a single partition.",
             "Recalculate the model after editing measures or relationships.",
         ),
+    },
+    {
+        "key": "refresh_manager",
+        "name": "Refresh Manager",
+        "description": "Refresh a semantic model, its tables or individual partitions.",
+        "tags": ("Semantic Model",),
+        "icon": "sync",
+        "module": "sempy_labs.semantic_model._refresh_manager",
+        "function": "refresh_manager",
     },
     {
         "key": "lineage_view",
