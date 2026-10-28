@@ -19,6 +19,7 @@ from sempy_labs._ui_components import (
 
 # Every tool the launcher can open. ``module`` / ``function`` are imported
 # lazily so opening the launcher does not import every tool in the library.
+# ``does`` / ``when`` feed the "Getting started" guide.
 _TOOLS: tuple = (
     {
         "key": "dax_perf_optimizer",
@@ -28,6 +29,52 @@ _TOOLS: tuple = (
         "icon": "dax_performance",
         "module": "sempy_labs.semantic_model._dax_perf",
         "function": "dax_perf_optimizer",
+        "does": (
+            "Run a DAX query and capture server timings - formula engine vs "
+            "storage engine.",
+            "Scan report(s) and capture the DAX queries by cycling through each page.",
+            "Assemble a query from columns, measures and filters with the "
+            "Query Builder, without writing DAX.",
+            "Use natural language to generate a DAX query.",
+            "View top slowest queries via querying Workspace Monitoring.",
+            "Identify and address performance bottlenecks in your DAX queries.",
+            "Shows semantic model object lineage in a tree view or node graph.",
+        ),
+        "when": (
+            "Find out why a visual or a query is slow.",
+            "Check whether a model change removed a bottleneck.",
+            "Identify and improve the slowest queries in your reports.",
+            "Identify and improve the slowest queries to hit your semantic model (via Workspace Monitoring).",
+        ),
+    },
+    {
+        "key": "bpa",
+        "name": "Semantic Model BPA",
+        "description": "Run Best Practice Analyzer rules against a semantic model.",
+        "tags": ("Semantic Model",),
+        "icon": "shield_check",
+        "module": "sempy_labs.semantic_model._bpa",
+        "function": "bpa",
+        "does": (
+            "Run the Best Practice Analyzer rules against a semantic model.",
+            "Group the violations by category, severity and object so the "
+            "important ones surface first.",
+            "Edit, disable or add rules, and re-run with your own rule set.",
+        ),
+        "when": (
+            "Review a model before handing it over to report authors.",
+            "Audit a model against your organization's modeling standards.",
+            "Catch DAX, formatting and performance anti-patterns early.",
+        ),
+    },
+    {
+        "key": "bpa",
+        "name": "Semantic Model BPA",
+        "description": "Run Best Practice Analyzer rules against a semantic model.",
+        "tags": ("Semantic Model",),
+        "icon": "shield_check",
+        "module": "sempy_labs.semantic_model._bpa",
+        "function": "bpa",
     },
     {
         "key": "bpa",
@@ -46,6 +93,38 @@ _TOOLS: tuple = (
         "icon": "vertipaq",
         "module": "sempy_labs.semantic_model._vertipaq_analyzer",
         "function": "vertipaq_analyzer",
+        "does": (
+            "Break the model size down by table, column, hierarchy and "
+            "relationship.",
+            "Show cardinality, encoding, compression and dictionary size for "
+            "every column.",
+            "Export the results, including as a .vpax file.",
+        ),
+        "when": (
+            "Find the columns which are driving the model's size.",
+            "Decide what to trim before a refresh or a Direct Lake migration.",
+            "Compare the memory footprint before and after a model change.",
+        ),
+    },
+    {
+        "key": "refresh_manager",
+        "name": "Refresh Manager",
+        "description": "Refresh a semantic model, its tables or individual partitions.",
+        "tags": ("Semantic Model",),
+        "icon": "sync",
+        "module": "sempy_labs.semantic_model._refresh_manager",
+        "function": "refresh_manager",
+        "does": (
+            "Refresh a whole model, selected tables, or individual " "partitions.",
+            "Pick the refresh type (full, automatic, calculate, data only and "
+            "more).",
+            "Follow the refresh live and review per-object results and " "errors.",
+        ),
+        "when": (
+            "Reprocess one large table without refreshing the whole model.",
+            "Debug a refresh which failed on a single partition.",
+            "Recalculate the model after editing measures or relationships.",
+        ),
     },
     {
         "key": "refresh_manager",
@@ -59,11 +138,21 @@ _TOOLS: tuple = (
     {
         "key": "lineage_view",
         "name": "Lineage View",
-        "description": "Explore how tables, columns and measures depend on each other.",
+        "description": "Explore which reports depend on a semantic model and determine if they have broken components.",
         "tags": ("Semantic Model",),
         "icon": "workflow",
         "module": "sempy_labs.semantic_model._lineage_view",
         "function": "lineage_view",
+        "does": (
+            "Shows a diagram of the reports which depend on the semantic model.",
+            "Analyzes reports and Excel files for broken semantic model references.",
+            "Fix broken references in reports and Excel files.",
+            "Rebind report(s) to a new semantic model.",
+        ),
+        "when": (
+            "Determine which reports or Excel files have broken semantic model references.",
+            "Connect report(s) to a different semantic model.",
+        ),
     },
     {
         "key": "find_unused_objects",
@@ -73,6 +162,19 @@ _TOOLS: tuple = (
         "icon": "scan_search",
         "module": "sempy_labs.semantic_model._find_unused_objects",
         "function": "find_unused_objects",
+        "does": (
+            "Scan the reports built on a model or Workspace Monitoring and match them against the "
+            "model's objects.",
+            "List the tables, columns, measures and hierarchies which no "
+            "report uses.",
+            "Account for indirect usage through measures, relationships, "
+            "hierarchies and row-level security.",
+        ),
+        "when": (
+            "Shrink a model by removing objects nobody consumes.",
+            "Cut refresh time and memory on a bloated model.",
+            "Clean up before a Direct Lake migration.",
+        ),
     },
     {
         "key": "delta_analyzer",
@@ -82,6 +184,19 @@ _TOOLS: tuple = (
         "icon": "delta_stats",
         "module": "sempy_labs._delta_analyzer",
         "function": "delta_analyzer",
+        "requires_spark": True,
+        "does": (
+            "Inspect the parquet files, row groups and column statistics "
+            "behind a delta table.",
+            "Summarize file counts, row group sizes, V-Order status and "
+            "table history.",
+            "Show which columns cost the most space on disk.",
+        ),
+        "when": (
+            "Diagnose slow Direct Lake queries caused by too many small " "files.",
+            "Decide whether a table needs OPTIMIZE or VACUUM.",
+            "Check the effect of a write pattern on file layout.",
+        ),
     },
     {
         "key": "migrate_to_direct_lake",
@@ -91,6 +206,15 @@ _TOOLS: tuple = (
         "icon": "database_zap",
         "module": "sempy_labs.semantic_model._direct_lake_migration",
         "function": "migrate_to_direct_lake",
+        "does": (
+            "Converts an import or DirectQuery model into a Direct Lake model.",
+            "Identifies and summarizes unsupported objects which will not be migrated.",
+        ),
+        "when": (
+            "Convert an existing import or DirectQuery model into a Direct Lake model.",
+            "Prototype a Direct Lake version of a model without rebuilding "
+            "it by hand.",
+        ),
     },
     {
         "key": "mini_model_manager",
@@ -100,6 +224,17 @@ _TOOLS: tuple = (
         "icon": "mini_model",
         "module": "sempy_labs.semantic_model._mini_model_manager",
         "function": "mini_model_manager",
+        "does": (
+            "Clones a semantic model into a smaller semantic model.",
+            "Keeps the cloned model consistent by pulling in the relationships and "
+            "dependencies it needs.",
+            "Cloned model is reduced by removing unneeded tables, columns, and measures.",
+            "Cloned models in Direct Lake can also be shrunk using filters.",
+        ),
+        "when": (
+            "Give a team a focused slice of a large enterprise model.",
+            "Produce a lightweight copy of a model for testing or a demo.",
+        ),
     },
     {
         "key": "perspective_editor",
@@ -109,6 +244,16 @@ _TOOLS: tuple = (
         "icon": "perspective",
         "module": "sempy_labs.semantic_model._perspective_editor",
         "function": "perspective_editor",
+        "does": (
+            "Create, rename and delete perspectives.",
+            "Choose the tables, columns, measures and hierarchies each "
+            "perspective exposes.",
+            "Write the changes back to the semantic model.",
+        ),
+        "when": (
+            "Tailor the field list a given audience sees.",
+            "Fix perspectives which drifted as the model changed.",
+        ),
     },
     {
         "key": "model_comparison",
@@ -118,6 +263,37 @@ _TOOLS: tuple = (
         "icon": "git_compare",
         "module": "sempy_labs.semantic_model._model_comparison",
         "function": "model_comparison",
+        "does": (
+            "Diff two semantic models object by object.",
+            "Show what was added, removed or changed, down to the property " "level.",
+            "Compare DAX expressions and partition sources side by side.",
+        ),
+        "when": (
+            "Review what actually changed between development and " "production.",
+            "Confirm a deployment pipeline moved what you expected.",
+            "Track down a difference which only appears in one environment.",
+        ),
+    },
+    {
+        "key": "lakehouse_manager",
+        "name": "Lakehouse Manager",
+        "description": "Browse a lakehouse and recover soft-deleted tables, folders or files.",
+        "tags": ("Lakehouse", "Direct Lake"),
+        "icon": "warehouse",
+        "module": "sempy_labs.lakehouse._lakehouse_manager",
+        "function": "lakehouse_manager",
+        "does": (
+            "Browse a lakehouse's tables, folders and files with their size, "
+            "file count and last modified time.",
+            "Flag OneLake shortcuts and soft-deleted objects.",
+            "Recover an object which was deleted within the last 7 days.",
+            "Run table maintenance - optimize, V-Order and vacuum - on a " "table.",
+        ),
+        "when": (
+            "Restore a table, folder or file someone deleted by accident.",
+            "Audit what a lakehouse actually contains, and how big it is.",
+            "Compact and V-Order a table feeding a Direct Lake model.",
+        ),
     },
 )
 
@@ -125,6 +301,19 @@ _TOOLS_BY_KEY = {tool["key"]: tool for tool in _TOOLS}
 
 # Fabric item types, in the order shown in the splash-screen filter.
 _CATEGORY_ORDER = ("Semantic Model", "Direct Lake", "Report", "Lakehouse", "Admin")
+
+_SPARK_REQUIRED_NOTE = "Requires a PySpark notebook."
+
+
+def _unavailable_reason(tool: dict) -> Optional[str]:
+    """Why the tool cannot run in this notebook, or None when it can."""
+
+    if not tool.get("requires_spark"):
+        return None
+
+    from sempy_labs._helper_functions import _pure_python_notebook
+
+    return _SPARK_REQUIRED_NOTE if _pure_python_notebook() else None
 
 
 def _tool_payload() -> List[dict]:
@@ -137,6 +326,9 @@ def _tool_payload() -> List[dict]:
             "description": tool["description"],
             "tags": list(tool["tags"]),
             "icon": _UI_ICONS[tool["icon"]],
+            "does": list(tool["does"]),
+            "when": list(tool["when"]),
+            "unavailable": _unavailable_reason(tool) or "",
         }
         for tool in _TOOLS
     ]
@@ -355,6 +547,7 @@ _WIDGET_CSS = (
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
     width: 36px;
     height: 36px;
     flex: 0 0 auto;
@@ -365,6 +558,46 @@ _WIDGET_CSS = (
     color: var(--ui-accent);
 }
 .slls-app-brand svg { display: block; width: 20px; height: 20px; }
+/* Bubbles rise inside the flask while the mark is hovered. The overlay shares
+   the mark's 24-unit viewBox, so the circles are placed in flask coordinates. */
+.slls-app-brand-bubbles {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    overflow: visible;
+}
+.slls-app-brand-bubble {
+    fill: currentColor;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+.slls-app-brand:hover .slls-app-brand-bubble {
+    animation: slls-app-bubble 1.6s ease-in-out infinite;
+}
+.slls-app-brand:hover .slls-app-brand-bubble:nth-child(2) {
+    animation-duration: 1.9s;
+    animation-delay: 0.35s;
+}
+.slls-app-brand:hover .slls-app-brand-bubble:nth-child(3) {
+    animation-duration: 1.4s;
+    animation-delay: 0.7s;
+}
+.slls-app-brand:hover .slls-app-brand-bubble:nth-child(4) {
+    animation-duration: 2.1s;
+    animation-delay: 1s;
+}
+@keyframes slls-app-bubble {
+    0% { opacity: 0; transform: translateY(0) scale(0.35); }
+    25% { opacity: 0.95; }
+    70% { opacity: 0.7; }
+    100% { opacity: 0; transform: translateY(-6.5px) scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .slls-app-brand:hover .slls-app-brand-bubble { animation: none; }
+}
 .slls-app-brand-name {
     font-size: 16px;
     font-weight: 600;
@@ -450,19 +683,159 @@ _WIDGET_CSS = (
 }
 
 /* ---------------- Getting started ---------------- */
-.slls-app-links {
+/* A modal over the launcher: an intro plus one section per tool. */
+.slls-app-modal {
     display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.5);
+}
+.slls-app-modal.show { display: flex; }
+.slls-app-dialog {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 900px;
+    max-height: 85vh;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-bg);
+    box-shadow: var(--ui-shadow-lg);
+    overflow: hidden;
+}
+.slls-app-dialog-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 0 0 auto;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--ui-border);
+}
+.slls-app-dialog-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
+.slls-app-dialog-icon svg { display: block; width: 22px; height: 22px; }
+.slls-app-dialog-heading { flex: 1 1 auto; min-width: 0; }
+.slls-app-dialog-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ui-text);
+}
+.slls-app-dialog-sub {
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--ui-text-secondary);
+}
+.slls-app-dialog-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-surface);
+    color: var(--ui-text-secondary);
+    font: inherit;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+.slls-app-dialog-close svg { display: block; width: 18px; height: 18px; }
+.slls-app-dialog-close:hover { background: var(--ui-bg-hover); color: var(--ui-text); }
+.slls-app-dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 24px 24px;
+}
+.slls-app-guide { display: flex; flex-direction: column; gap: 16px; }
+.slls-app-guide-card {
+    padding: 16px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-surface);
+}
+.slls-app-guide-head { display: flex; align-items: flex-start; gap: 12px; }
+.slls-app-guide-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
+.slls-app-guide-icon svg { display: block; width: 20px; height: 20px; }
+.slls-app-guide-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.slls-app-guide-name { font-size: 16px; font-weight: 600; color: var(--ui-text); }
+.slls-app-guide-desc {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 20px;
+    color: var(--ui-text-secondary);
+}
+.slls-app-guide-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+.slls-app-guide-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ui-text-tertiary);
+}
+.slls-app-guide-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 12px;
+    line-height: 20px;
+    color: var(--ui-text);
+}
+.slls-app-guide-list li { margin-bottom: 4px; }
+.slls-app-guide-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ui-text-tertiary);
+}
+.slls-app-guide-note svg { display: block; width: 14px; height: 14px; flex: 0 0 auto; }
+.slls-app-links {
     margin-bottom: 20px;
     padding: 16px;
     border: 1px solid var(--ui-border);
     border-radius: 12px;
     background: var(--ui-surface);
-    box-shadow: var(--ui-shadow-sm);
     font-size: 12px;
     line-height: 20px;
     color: var(--ui-text-secondary);
 }
-.slls-app-links.show { display: block; }
 .slls-app-links ul { margin: 8px 0 0; padding-left: 18px; }
 .slls-app-links a { color: var(--ui-accent); text-decoration: none; }
 .slls-app-links a:hover { text-decoration: underline; }
@@ -551,6 +924,33 @@ _WIDGET_CSS = (
     margin-top: auto;
     padding-top: 8px;
 }
+.slls-app-card-note {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ui-text-tertiary);
+}
+.slls-app-card-note svg { display: block; width: 14px; height: 14px; flex: 0 0 auto; }
+/* Requirement not met in this notebook: shown, but inert. */
+.slls-app-card.is-disabled {
+    cursor: not-allowed;
+    box-shadow: none;
+    background: var(--ui-surface-2);
+}
+.slls-app-card.is-disabled:hover {
+    transform: none;
+    border-color: var(--ui-border);
+    box-shadow: none;
+}
+.slls-app-card.is-disabled .slls-app-card-icon,
+.slls-app-card.is-disabled .slls-app-card-text,
+.slls-app-card.is-disabled .slls-app-card-tags { opacity: 0.5; }
+.slls-app-card.is-disabled:hover .slls-app-card-icon {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
 .slls-app-tag {
     border: 1px solid var(--ui-border);
     border-radius: 9999px;
@@ -585,6 +985,7 @@ _WIDGET_CSS = (
 /* A tool is open: the launcher gets out of the way entirely — Back is moved
    into the tool's own header, next to its title. */
 .slls-app.slls-app-tool-open .slls-app-main,
+.slls-app.slls-app-tool-open .slls-app-modal,
 .slls-app.slls-app-tool-open .slls-app-topbar { display: none; }
 /* Fallback bar for a tool with no header to host the Back button. */
 .slls-app.slls-app-tool-open.slls-app-back-parked .slls-app-topbar {
@@ -661,7 +1062,7 @@ function render({ model, el }) {
 
     const brand = document.createElement("span");
     brand.className = "slls-app-brand";
-    brand.innerHTML = `__SLLS_ICON_BRAND__`;
+    brand.innerHTML = `__SLLS_ICON_BRAND____SLLS_BRAND_BUBBLES__`;
     left.appendChild(brand);
 
     const brandName = document.createElement("span");
@@ -762,8 +1163,166 @@ function render({ model, el }) {
     const links = document.createElement("div");
     links.className = "slls-app-links";
     links.innerHTML = `__SLLS_LINKS__`;
-    main.appendChild(links);
-    linksBtn.addEventListener("click", () => links.classList.toggle("show"));
+
+    // ---------------- Getting started ----------------
+    const modal = document.createElement("div");
+    modal.className = "slls-app-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-label", "Getting started");
+    modal.innerHTML = `
+        <div class="slls-app-dialog">
+            <div class="slls-app-dialog-head">
+                <span class="slls-app-dialog-icon">__SLLS_ICON_BOOK__</span>
+                <div class="slls-app-dialog-heading">
+                    <div class="slls-app-dialog-title">Getting started</div>
+                    <div class="slls-app-dialog-sub">What each tool does and when to use it</div>
+                </div>
+                <button type="button" class="slls-app-dialog-close" title="Close"
+                    aria-label="Close">__SLLS_ICON_CLOSE__</button>
+            </div>
+            <div class="slls-app-dialog-body"><div class="slls-app-guide"></div></div>
+        </div>`;
+    root.appendChild(modal);
+
+    const dialogBody = modal.querySelector(".slls-app-dialog-body");
+    dialogBody.insertBefore(links, dialogBody.firstChild);
+    const guide = modal.querySelector(".slls-app-guide");
+    const closeGuideBtn = modal.querySelector(".slls-app-dialog-close");
+
+    function renderGuide() {
+        guide.innerHTML = "";
+        for (const tool of model.get("tools") || []) {
+            const card = document.createElement("div");
+            card.className = "slls-app-guide-card";
+
+            const head = document.createElement("div");
+            head.className = "slls-app-guide-head";
+            const icon = document.createElement("span");
+            icon.className = "slls-app-guide-icon";
+            icon.innerHTML = tool.icon || "";
+            head.appendChild(icon);
+
+            const text = document.createElement("div");
+            const title = document.createElement("div");
+            title.className = "slls-app-guide-title";
+            const name = document.createElement("span");
+            name.className = "slls-app-guide-name";
+            name.textContent = tool.name;
+            title.appendChild(name);
+            for (const tag of tool.tags || []) {
+                const pill = document.createElement("span");
+                pill.className = "slls-app-tag";
+                pill.textContent = tag;
+                title.appendChild(pill);
+            }
+            text.appendChild(title);
+            const desc = document.createElement("div");
+            desc.className = "slls-app-guide-desc";
+            desc.textContent = tool.description || "";
+            text.appendChild(desc);
+            head.appendChild(text);
+            card.appendChild(head);
+
+            const cols = document.createElement("div");
+            cols.className = "slls-app-guide-cols";
+            const sections = [
+                ["What it does", tool.does],
+                ["When to use it", tool.when],
+            ];
+            for (const [label, items] of sections) {
+                if (!(items || []).length) continue;
+                const col = document.createElement("div");
+                const heading = document.createElement("div");
+                heading.className = "slls-app-guide-label";
+                heading.textContent = label;
+                col.appendChild(heading);
+                const list = document.createElement("ul");
+                list.className = "slls-app-guide-list";
+                for (const item of items) {
+                    const li = document.createElement("li");
+                    li.textContent = item;
+                    list.appendChild(li);
+                }
+                col.appendChild(list);
+                cols.appendChild(col);
+            }
+            card.appendChild(cols);
+            if (tool.unavailable) {
+                const note = document.createElement("div");
+                note.className = "slls-app-guide-note";
+                note.innerHTML = `__SLLS_ICON_INFO__`;
+                const noteText = document.createElement("span");
+                noteText.textContent = tool.unavailable;
+                note.appendChild(noteText);
+                card.appendChild(note);
+            }
+            guide.appendChild(card);
+        }
+    }
+
+    // While the guide is open the rest of the launcher is inert, so keyboard
+    // and assistive-technology users cannot reach controls behind the modal.
+    let guideReturnFocus = null;
+    const inertWhileGuideOpen = [];
+    function setBackgroundInert(on) {
+        if (on) {
+            for (const child of root.children) {
+                if (child !== modal && !child.inert) {
+                    child.inert = true;
+                    inertWhileGuideOpen.push(child);
+                }
+            }
+        } else {
+            while (inertWhileGuideOpen.length) inertWhileGuideOpen.pop().inert = false;
+        }
+    }
+    function guideFocusables() {
+        const selector = 'a[href], button:not([disabled]), input:not([disabled]), '
+            + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        return [...modal.querySelectorAll(selector)]
+            .filter((el) => el.getClientRects().length > 0);
+    }
+    function setGuideOpen(open) {
+        if (open === modal.classList.contains("show")) return;
+        modal.classList.toggle("show", open);
+        setBackgroundInert(open);
+        if (open) {
+            guideReturnFocus = document.activeElement;
+            dialogBody.scrollTop = 0;
+            closeGuideBtn.focus();
+        } else {
+            const target = guideReturnFocus && guideReturnFocus.isConnected
+                ? guideReturnFocus : linksBtn;
+            guideReturnFocus = null;
+            target.focus();
+        }
+    }
+    linksBtn.addEventListener("click", () =>
+        setGuideOpen(!modal.classList.contains("show")));
+    closeGuideBtn.addEventListener("click", () => setGuideOpen(false));
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) setGuideOpen(false);
+    });
+    // Keep Tab / Shift+Tab cycling within the dialog.
+    modal.addEventListener("keydown", (event) => {
+        if (event.key !== "Tab" || !modal.classList.contains("show")) return;
+        const focusables = guideFocusables();
+        if (!focusables.length) { event.preventDefault(); return; }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey && (active === first || !modal.contains(active))) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (active === last || !modal.contains(active))) {
+            event.preventDefault(); first.focus();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal.classList.contains("show")) {
+            setGuideOpen(false);
+        }
+    });
 
     // ---------------- Item-type filter ----------------
     const filters = document.createElement("div");
@@ -1009,7 +1568,7 @@ function render({ model, el }) {
     }
 
     function renderView() {
-        links.classList.remove("show");
+        setGuideOpen(false);
         applyView();
         placeBack();
     }
@@ -1039,8 +1598,13 @@ function render({ model, el }) {
         for (const tool of tools) {
             const card = document.createElement("button");
             card.type = "button";
-            card.className = "slls-app-card";
-            card.setAttribute("aria-label", `Open ${tool.name}`);
+            card.className = "slls-app-card"
+                + (tool.unavailable ? " is-disabled" : "");
+            card.disabled = !!tool.unavailable;
+            card.setAttribute("aria-label", tool.unavailable
+                ? `${tool.name} - ${tool.unavailable}`
+                : `Open ${tool.name}`);
+            if (tool.unavailable) card.title = tool.unavailable;
 
             const icon = document.createElement("span");
             icon.className = "slls-app-card-icon";
@@ -1069,7 +1633,18 @@ function render({ model, el }) {
             }
             card.appendChild(tags);
 
+            if (tool.unavailable) {
+                const note = document.createElement("span");
+                note.className = "slls-app-card-note";
+                note.innerHTML = `__SLLS_ICON_INFO__`;
+                const noteText = document.createElement("span");
+                noteText.textContent = tool.unavailable;
+                note.appendChild(noteText);
+                card.appendChild(note);
+            }
+
             card.addEventListener("click", () => {
+                if (tool.unavailable) return;
                 pendingKey = tool.key;
                 renderView();
                 send({ action: "launch", tool: tool.key });
@@ -1101,11 +1676,13 @@ function render({ model, el }) {
         shell().scrollTop = 0;
     });
     model.on("change:tools", renderGrid);
+    model.on("change:tools", renderGuide);
     model.on("change:categories", () => { renderFilters(); renderGrid(); });
 
     renderView();
     renderFilters();
     renderGrid();
+    renderGuide();
     renderBanner();
 }
 export default { render };
@@ -1123,6 +1700,20 @@ _LINKS_HTML = (
     '<li><a href="https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples" '
     'target="_blank" rel="noopener noreferrer">Code examples</a></li>'
     "</ul>"
+)
+
+# Overlay on the brand mark: circles placed in the flask's own coordinates
+# (24-unit viewBox), which bubble out of the mouth while the mark is hovered.
+# The overlay does not clip, so above the rim a bubble is free of the neck's
+# 3.2-unit width and can grow enough to read at a 20px mark.
+_BRAND_BUBBLES_HTML = (
+    '<svg class="slls-app-brand-bubbles" viewBox="0 0 24 24" width="20" '
+    'height="20" aria-hidden="true">'
+    '<circle class="slls-app-brand-bubble" cx="12" cy="3.4" r="1.3"/>'
+    '<circle class="slls-app-brand-bubble" cx="10.6" cy="4.2" r="0.95"/>'
+    '<circle class="slls-app-brand-bubble" cx="13.4" cy="4" r="0.8"/>'
+    '<circle class="slls-app-brand-bubble" cx="11.3" cy="2.5" r="0.65"/>'
+    "</svg>"
 )
 
 _WIDGET_CSS += _ui_scoped_attribution_css(".slls-app")
@@ -1155,7 +1746,10 @@ _WIDGET_JS = (
     .replace("__SLLS_ICON_FULLSCREEN__", _UI_ICONS["fullscreen"])
     .replace("__SLLS_ICON_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
     .replace("__SLLS_ICON_BRAND__", _UI_ICONS["semantic_link_labs"])
+    .replace("__SLLS_BRAND_BUBBLES__", _BRAND_BUBBLES_HTML)
     .replace("__SLLS_ICON_BOOK__", _UI_ICONS["book"])
+    .replace("__SLLS_ICON_INFO__", _UI_ICONS["info"])
+    .replace("__SLLS_ICON_CLOSE__", _UI_ICONS["close"])
     .replace("__SLLS_ICON_ARROW_LEFT__", _UI_ICONS["arrow_left"])
     .replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
     .replace("__SLLS_LINKS__", _LINKS_HTML)
@@ -1245,6 +1839,14 @@ def app(dark_mode: bool = False):
         tool = _TOOLS_BY_KEY.get(str(data.get("tool") or ""))
         if tool is None:
             widget.status = {"message": "Unknown tool.", "kind": "error"}
+            return
+
+        reason = _unavailable_reason(tool)
+        if reason is not None:
+            widget.status = {
+                "message": f"{tool['name']} is not available here: {reason}",
+                "kind": "error",
+            }
             return
 
         if tool["key"] in mounted:
