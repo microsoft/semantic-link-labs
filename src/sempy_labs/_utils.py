@@ -90,5 +90,5 @@ items = {
     "Plan": "plans",
     "PolicySet": "policySets",
     "DeploymentPlan": "deploymentPlans",
-    "Montoring": "monitoringItems",
+    "Monitoring": "monitoringItems",
 }
