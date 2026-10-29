@@ -295,6 +295,74 @@ def _expand_dependents(
                 )
 
 
+def _resolve_field_parameter_removals(
+    dep_df,
+    field_parameters,
+    removed_tables,
+    removed_columns,
+    removed_measures,
+    unsupported,
+    calc_tables=None,
+):
+    """Alternate dependency expansion and field-parameter rewriting until the
+    removal sets stabilize.
+
+    Emptying a field parameter removes it, which may remove calculated tables
+    (and measures / calculated columns) depending on it, which may in turn
+    invalidate references in other field parameters. Each field parameter is
+    therefore rewritten from its original DAX on every pass.
+
+    ``field_parameters`` (table name -> DAX) is updated in place: emptied field
+    parameters are deleted (and added to ``removed_tables``) and the surviving
+    ones are set to their rewritten DAX. Returns a dict mapping each surviving
+    field parameter to a tuple of its original DAX and the list of removed
+    field references.
+    """
+    originals = dict(field_parameters)
+    removed_refs_by_table = {}
+    while True:
+        _expand_dependents(
+            dep_df,
+            removed_tables,
+            removed_columns,
+            removed_measures,
+            unsupported,
+            calc_tables,
+        )
+        emptied = False
+        for tname in list(field_parameters.keys()):
+            rewritten, removed_refs = _rewrite_field_parameter_dax(
+                originals[tname],
+                removed_tables,
+                removed_columns,
+                removed_measures,
+            )
+            if rewritten is None or not rewritten.strip():
+                # Every field referenced a dropped object — drop the table.
+                del field_parameters[tname]
+                removed_refs_by_table.pop(tname, None)
+                removed_tables.add(tname)
+                unsupported.append(
+                    {
+                        "category": "Field parameter",
+                        "table": tname,
+                        "name": tname,
+                        "reason": "Every field references an object that is not migrated.",
+                    }
+                )
+                emptied = True
+                continue
+            field_parameters[tname] = rewritten
+            removed_refs_by_table[tname] = removed_refs
+        if not emptied:
+            break
+
+    return {
+        tname: (originals[tname], removed_refs_by_table[tname])
+        for tname in field_parameters
+    }
+
+
 _WIDGET_CSS = """
 .slls-mdl {
     --slls-bg-solid: #ffffff;
@@ -2056,40 +2124,21 @@ def migrate_to_direct_lake(
                         }
                     )
 
-        # --- Transitive dependents (measures / calc columns / calc tables) ---
-        _expand_dependents(
+        # --- Transitive dependents + field-parameter DAX rewrite ---
+        # Repeated until the removal sets stabilize, as emptying a field
+        # parameter can remove calculated tables referenced by other field
+        # parameters (and vice versa).
+        field_parameter_rewrites = _resolve_field_parameter_removals(
             dep_df,
+            field_parameters,
             removed_tables,
             removed_columns,
             removed_measures,
             unsupported,
             calc_tables,
         )
-
-        # --- Field-parameter DAX rewrite (drop only dead field references) ---
-        for tname in list(field_parameters.keys()):
-            original = field_parameters[tname]
-            rewritten, removed_refs = _rewrite_field_parameter_dax(
-                original,
-                removed_tables,
-                removed_columns,
-                removed_measures,
-            )
-            if rewritten is None or not rewritten.strip():
-                # Every field referenced a dropped object — drop the table.
-                del field_parameters[tname]
-                removed_tables.add(tname)
-                unsupported.append(
-                    {
-                        "category": "Field parameter",
-                        "table": tname,
-                        "name": tname,
-                        "reason": "Every field references an object that is not migrated.",
-                    }
-                )
-                continue
-
-            field_parameters[tname] = rewritten
+        for tname, (original, removed_refs) in field_parameter_rewrites.items():
+            rewritten = field_parameters[tname]
             if removed_refs:
                 n = len(removed_refs)
                 detail = (
@@ -2119,16 +2168,6 @@ def migrate_to_direct_lake(
                     }
                 )
 
-        # A field parameter may have been emptied (and thus removed); re-expand
-        # so measures depending on it are dropped too.
-        _expand_dependents(
-            dep_df,
-            removed_tables,
-            removed_columns,
-            removed_measures,
-            unsupported,
-            calc_tables,
-        )
         calc_tables -= removed_tables
 
         # --- Calculated tables kept in the new model ---

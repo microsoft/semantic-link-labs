@@ -29,17 +29,10 @@ class _Coll(list):
 
 @pytest.fixture
 def fake_tom_module(monkeypatch):
-    tom = types.ModuleType("Microsoft.AnalysisServices.Tabular")
-    tom.PartitionSourceType = _Enum("Calculated", "M", "Entity")
-    tom.ColumnType = _Enum("Data", "Calculated", "CalculatedTableColumn", "RowNumber")
-    microsoft = types.ModuleType("Microsoft")
-    analysis_services = types.ModuleType("Microsoft.AnalysisServices")
-    microsoft.AnalysisServices = analysis_services
-    analysis_services.Tabular = tom
-    monkeypatch.setitem(sys.modules, "Microsoft", microsoft)
-    monkeypatch.setitem(sys.modules, "Microsoft.AnalysisServices", analysis_services)
-    monkeypatch.setitem(sys.modules, "Microsoft.AnalysisServices.Tabular", tom)
-    return tom
+    modules = _fake_tom_namespace()
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    return modules["Microsoft.AnalysisServices.Tabular"]
 
 
 def _column(name, col_type, **kwargs):
@@ -85,12 +78,28 @@ class _SourceTom:
         return table_name.startswith("LocalDateTable_")
 
 
+_ONELAKE_EXPRESSION = [
+    "11111111-1111-1111-1111-111111111111",
+    "22222222-2222-2222-2222-222222222222",
+    False,
+]
+_SQL_EXPRESSION = ["server.datawarehouse.fabric.microsoft.com", "endpoint-id", True]
+
+
 class _TargetTom:
-    def __init__(self, tables=()):
+    def __init__(self, tables=(), expressions=None):
         self.model = types.SimpleNamespace(Tables=_Coll(tables))
+        self.expressions = (
+            {"DatabaseQuery": _ONELAKE_EXPRESSION}
+            if expressions is None
+            else expressions
+        )
         self.calc_tables = {}
         self.table_columns = []
         self.calc_columns = []
+
+    def _get_direct_lake_expressions(self):
+        return self.expressions
 
     def add_calculated_table(self, name, expression, **kwargs):
         self.calc_tables[name] = expression
@@ -106,18 +115,22 @@ class _TargetTom:
         self.calc_columns.append((table_name, column_name, expression, kwargs))
 
 
-def _run_migrate_calc_tables(source, target):
+def _run_migrate_calc_tables(source, target, on_connect=None, **kwargs):
     from sempy_labs.migration import _migrate_calctables_to_semantic_model as mod
 
     @contextmanager
     def fake_connect(dataset, readonly, workspace):
+        if on_connect is not None:
+            on_connect()
         yield source if dataset == "src" else target
 
     with (
         patch.object(mod, "connect_semantic_model", fake_connect),
         patch.object(mod.fabric, "refresh_tom_cache"),
     ):
-        mod.migrate_calc_tables_to_semantic_model(dataset="src", new_dataset="new")
+        mod.migrate_calc_tables_to_semantic_model(
+            dataset="src", new_dataset="new", **kwargs
+        )
 
 
 def test_migrate_calc_tables_adds_calculated_tables_with_their_columns(
@@ -205,14 +218,120 @@ def test_migrate_calc_tables_skips_field_parameters_auto_date_and_existing_table
     assert list(target.calc_tables) == ["Dates"]
 
 
-def test_migrate_calc_tables_to_lakehouse_is_a_deprecated_no_op(capsys):
+def _fake_tom_namespace():
+    tom = types.ModuleType("Microsoft.AnalysisServices.Tabular")
+    tom.PartitionSourceType = _Enum("Calculated", "M", "Entity")
+    tom.ColumnType = _Enum("Data", "Calculated", "CalculatedTableColumn", "RowNumber")
+    microsoft = types.ModuleType("Microsoft")
+    analysis_services = types.ModuleType("Microsoft.AnalysisServices")
+    microsoft.AnalysisServices = analysis_services
+    analysis_services.Tabular = tom
+    return {
+        "Microsoft": microsoft,
+        "Microsoft.AnalysisServices": analysis_services,
+        "Microsoft.AnalysisServices.Tabular": tom,
+    }
+
+
+def test_migrate_calc_tables_imports_tom_after_connecting(monkeypatch):
+    # Cold start: the Analysis Services namespace is only importable once a TOM
+    # connection has initialized it.
+    for name in _fake_tom_namespace():
+        monkeypatch.setitem(sys.modules, name, None)
+
+    def initialize_analysis_services():
+        for name, module in _fake_tom_namespace().items():
+            if sys.modules.get(name) is None:
+                monkeypatch.setitem(sys.modules, name, module)
+
+    source = _SourceTom(
+        [_table("Dates", "CALENDARAUTO()", [_column("Date", "CalculatedTableColumn")])]
+    )
+    target = _TargetTom()
+
+    _run_migrate_calc_tables(source, target, on_connect=initialize_analysis_services)
+
+    assert list(target.calc_tables) == ["Dates"]
+
+
+def test_migrate_calc_tables_uses_lakehouse_tables_for_direct_lake_on_sql(
+    fake_tom_module,
+):
+    from sempy_labs.migration import _migrate_calctables_to_semantic_model as mod
+
+    source = _SourceTom(
+        [_table("Dates", "CALENDARAUTO()", [_column("Date", "CalculatedTableColumn")])]
+    )
+    target = _TargetTom(expressions={"DatabaseQuery": _SQL_EXPRESSION})
+
+    with patch.object(mod, "_add_lakehouse_calc_tables_to_semantic_model") as legacy:
+        _run_migrate_calc_tables(
+            source, target, lakehouse="lh", lakehouse_workspace="ws"
+        )
+
+    legacy.assert_called_once_with(
+        dataset="src",
+        new_dataset="new",
+        workspace=None,
+        new_dataset_workspace=None,
+        lakehouse="lh",
+        lakehouse_workspace="ws",
+    )
+    assert target.calc_tables == {}
+
+
+def _run_migrate_calc_tables_to_lakehouse(target):
+    import sempy_labs.tom
     from sempy_labs.migration import _migrate_calctables_to_lakehouse as mod
 
-    with patch.object(mod.fabric, "list_partitions") as list_partitions:
-        mod.migrate_calc_tables_to_lakehouse(dataset="src", new_dataset="new")
+    @contextmanager
+    def fake_connect(dataset, readonly, workspace):
+        assert dataset == "new"
+        yield target
+
+    with (
+        patch.object(sempy_labs.tom, "connect_semantic_model", fake_connect),
+        patch.object(mod, "_materialize_calc_tables_in_lakehouse") as materialize,
+        patch.object(mod.fabric, "list_partitions") as list_partitions,
+    ):
+        mod.migrate_calc_tables_to_lakehouse(
+            dataset="src", new_dataset="new", lakehouse="lh"
+        )
 
     list_partitions.assert_not_called()
+    return materialize
+
+
+@pytest.mark.parametrize(
+    "expressions",
+    [{"DatabaseQuery": _ONELAKE_EXPRESSION}, {}],
+    ids=["onelake", "blank"],
+)
+def test_migrate_calc_tables_to_lakehouse_is_a_no_op_unless_direct_lake_on_sql(
+    expressions, capsys
+):
+    materialize = _run_migrate_calc_tables_to_lakehouse(
+        _TargetTom(expressions=expressions)
+    )
+
+    materialize.assert_not_called()
     assert "deprecated" in capsys.readouterr().out
+
+
+def test_migrate_calc_tables_to_lakehouse_materializes_for_direct_lake_on_sql(capsys):
+    materialize = _run_migrate_calc_tables_to_lakehouse(
+        _TargetTom(expressions={"DatabaseQuery": _SQL_EXPRESSION})
+    )
+
+    materialize.assert_called_once_with(
+        dataset="src",
+        new_dataset="new",
+        workspace=None,
+        new_dataset_workspace=None,
+        lakehouse="lh",
+        lakehouse_workspace=None,
+    )
+    assert "Direct Lake on SQL" in capsys.readouterr().out
 
 
 def _dep_df(rows):
@@ -261,6 +380,53 @@ def test_expand_dependents_removes_calc_tables_referencing_removed_objects():
         "Agg Copy",
         "Agg Copy 2",
     }
+
+
+@pytest.mark.parametrize("reverse", [False, True], ids=["a-first", "b-first"])
+def test_field_parameter_removals_iterate_until_stable(reverse):
+    from sempy_labs.semantic_model._direct_lake_migration import (
+        _resolve_field_parameter_removals,
+    )
+
+    # Removing 'Aggregation' empties Parameter A, which removes the calculated
+    # table 'Copy' (which reads Parameter A), which Parameter B references.
+    params = [
+        ("Parameter A", "{\n\t(\"Order\", NAMEOF('Aggregation'[Order]), 0)\n}"),
+        (
+            "Parameter B",
+            "{\n\t(\"Order\", NAMEOF('Copy'[Order]), 0),\n"
+            "\t(\"Amount\", NAMEOF('Sales'[Amount]), 1)\n}",
+        ),
+    ]
+    field_parameters = dict(reversed(params) if reverse else params)
+    dep_df = _dep_df(
+        [
+            ["Copy", "Copy", "Calc Table", "Parameter A", "Order"],
+            ["Sales", "Copy Count", "Measure", "Copy", "Order"],
+        ]
+    )
+    removed_tables = {"Aggregation"}
+    removed_columns, removed_measures, unsupported = set(), set(), []
+
+    rewrites = _resolve_field_parameter_removals(
+        dep_df,
+        field_parameters,
+        removed_tables,
+        removed_columns,
+        removed_measures,
+        unsupported,
+        {"Copy"},
+    )
+
+    assert removed_tables == {"Aggregation", "Parameter A", "Copy"}
+    assert removed_measures == {"Sales|Copy Count"}
+    assert list(field_parameters) == ["Parameter B"]
+    assert "'Copy'" not in field_parameters["Parameter B"]
+    assert "NAMEOF('Sales'[Amount])" in field_parameters["Parameter B"]
+    assert rewrites == {"Parameter B": (dict(params)["Parameter B"], ["'Copy'[Order]"])}
+    # Each removal is reported once.
+    names = [u["name"] for u in unsupported]
+    assert sorted(names) == ["Copy", "Copy Count", "Parameter A"]
 
 
 def test_show_unsupported_objects_allows_relationships_on_calc_columns_in_calc_tables():
