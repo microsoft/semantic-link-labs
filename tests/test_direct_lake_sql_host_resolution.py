@@ -152,3 +152,71 @@ def test_resolve_item_id_by_name_caches_workspace_items():
         tom._resolve_item_id_by_name("LH_Admin", [workspace_id], items_cache)
 
     assert mock_api.call_count == 1
+
+
+class _FakeResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+def _http_error():
+    from sempy.fabric.exceptions import FabricHTTPException
+
+    return FabricHTTPException.__new__(FabricHTTPException)
+
+
+def test_resolve_direct_lake_source_service_principal_fallback():
+    """When the item isn't in the expected workspace and the internal metadata
+    API is not accessible (as for a service principal), the source is
+    resolved by searching the workspaces accessible via the public API."""
+
+    tom = object.__new__(TOMWrapper)
+    source_workspace_id = str(uuid.uuid4())
+    other_workspace_id = str(uuid.uuid4())
+    artifact_id = str(uuid.uuid4())
+
+    def fake_base_api(request, client="fabric", **kwargs):
+        if client == "internal":
+            raise _http_error()
+        if request == "/v1/workspaces":
+            return _paginated_items_response(
+                [{"id": source_workspace_id}, {"id": other_workspace_id}]
+            )
+        if request == f"/v1/workspaces/{other_workspace_id}/items/{artifact_id}":
+            return _FakeResponse(
+                _make_item(artifact_id, "LH", "Lakehouse")
+                | {"workspaceId": other_workspace_id}
+            )
+        raise _http_error()
+
+    with patch("sempy_labs.tom._model._base_api", side_effect=fake_base_api):
+        result = tom._resolve_direct_lake_source(
+            source=source_workspace_id,
+            artifact_id=artifact_id,
+            uses_sql_endpoint=False,
+        )
+
+    assert result == (artifact_id, "LH", "Lakehouse", other_workspace_id)
+
+
+def test_resolve_direct_lake_source_unresolvable_raises():
+    """Raises a ValueError (not a raw 403 FabricHTTPException) when the source
+    cannot be resolved by any API."""
+
+    tom = object.__new__(TOMWrapper)
+
+    def fake_base_api(request, client="fabric", **kwargs):
+        if request == "/v1/workspaces":
+            return _paginated_items_response([])
+        raise _http_error()
+
+    with patch("sempy_labs.tom._model._base_api", side_effect=fake_base_api):
+        with pytest.raises(ValueError, match="Unable to resolve"):
+            tom._resolve_direct_lake_source(
+                source=str(uuid.uuid4()),
+                artifact_id=str(uuid.uuid4()),
+                uses_sql_endpoint=False,
+            )
