@@ -89,4 +89,6 @@ items = {
     "PaginatedReport": "paginatedReports",
     "Plan": "plans",
     "PolicySet": "policySets",
+    "DeploymentPlan": "deploymentPlans",
+    "Montoring": "monitoringItems",
 }
