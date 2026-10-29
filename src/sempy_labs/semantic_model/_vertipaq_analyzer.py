@@ -23,6 +23,7 @@ import sempy_labs._icons as icons
 from pathlib import Path
 from uuid import UUID
 from sempy_labs.directlake._sources import get_direct_lake_sources
+from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs.lakehouse._schemas import is_schema_enabled
 from sempy_labs._ui_components import (
     ICONS as _UI_ICONS,
@@ -1280,7 +1281,16 @@ def vertipaq_analyzer(
         },
     }
 
-    sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)
+    # Direct Lake source details are informational only, so a source which
+    # cannot be resolved (e.g. a service principal without access to the
+    # source's workspace) should not prevent the analysis from running.
+    try:
+        sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)
+    except (ValueError, FabricHTTPException) as e:
+        print(
+            f"{icons.warning} Unable to resolve the Direct Lake source(s) of the '{dataset_name}' semantic model within the '{workspace_name}' workspace. Source details will be omitted.\n{e}"
+        )
+        sources = []
     is_direct_lake = False
     with connect_semantic_model(
         dataset=dataset_id, workspace=workspace_id, readonly=True
@@ -1360,7 +1370,8 @@ def vertipaq_analyzer(
                 elif "AzureStorage.DataLake" in expr:
                     direct_lake_type = "OneLake"
                 s = next(
-                    s for s in sources if s.get("expressionName") == expression_name
+                    (s for s in sources if s.get("expressionName") == expression_name),
+                    {},
                 )
                 source = s.get("itemName")
                 source_type = s.get("itemType")

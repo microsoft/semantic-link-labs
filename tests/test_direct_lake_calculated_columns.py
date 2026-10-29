@@ -190,10 +190,11 @@ def test_migration_wizard_keeps_calculated_columns_with_user_context():
     assert "Calculated (DAX) columns are not supported in Direct Lake." not in source
 
 
-def test_calculated_columns_within_calculated_tables_are_not_migrated():
+def test_calculated_columns_within_calculated_tables_are_migrated_as_is():
     migration = SRC / "migration"
 
-    # Only calculated columns within regular (data) tables are migrated.
+    # Calculated columns within regular (data) tables are migrated by the
+    # tables/columns step (with the 'UserContext' expression context).
     tables_columns = (
         migration / "_migrate_tables_columns_to_semantic_model.py"
     ).read_text(encoding="utf-8")
@@ -202,24 +203,10 @@ def test_calculated_columns_within_calculated_tables_are_not_migrated():
         in tables_columns
     )
 
-    # Calculated tables only bring over their own (calculated table) columns.
+    # Calculated tables bring over their calculated columns as is (no
+    # 'UserContext' expression context as calculated tables are Import).
     calc_tables = (migration / "_migrate_calctables_to_semantic_model.py").read_text(
         encoding="utf-8"
     )
-    assert '& (dfC["Type"] == "CalculatedTableColumn")' in calc_tables
-
-    # Calculated columns are not materialized into the calculated table's delta table.
-    to_lakehouse = (migration / "_migrate_calctables_to_lakehouse.py").read_text(
-        encoding="utf-8"
-    )
-    assert "ADDCOLUMNS(" not in to_lakehouse
-    assert 'daxQuery = f"EVALUATE\\n{query}"' in to_lakehouse
-
-    # The wizard does not keep calculated columns of calculated tables.
-    wizard = (SRC / "semantic_model" / "_direct_lake_migration.py").read_text(
-        encoding="utf-8"
-    )
-    assert (
-        "# Only calculated columns within regular (data) tables are kept; those"
-        in wizard
-    )
+    assert "tom.add_calculated_column(expression=c.Expression, **common)" in calc_tables
+    assert "expression_context=" not in calc_tables
