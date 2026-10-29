@@ -1235,6 +1235,11 @@ function render({ model, el }) {
             out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>${esc(w)}</div></div>`;
         });
 
+        if (r.datasetId && r.targetWorkspaceId) {
+            const modelUrl = `https://app.powerbi.com/groups/${encodeURIComponent(r.targetWorkspaceId)}/modeling/${encodeURIComponent(r.datasetId)}/modelView`;
+            out += `<div><a class="slls-mdl-link" href="${esc(modelUrl)}" target="_blank" rel="noopener noreferrer">${IC.ext}Open the semantic model in Power BI</a></div>`;
+        }
+
         if (r.pqt && r.targetWorkspaceId) {
             out += `<a class="slls-mdl-link" href="https://app.powerbi.com/groups/${esc(r.targetWorkspaceId)}" target="_blank" rel="noopener noreferrer">${IC.ext}Open the workspace in Fabric</a>`;
         }
@@ -1257,7 +1262,15 @@ function render({ model, el }) {
         // Refresh the model — the wizard does not auto-refresh; the user runs
         // this once the data is loaded.
         out += `<div class="slls-mdl-sec-title">Refresh the model</div>`;
-        out += `<div class="slls-mdl-change-detail" style="margin-bottom:8px;">Once the data is loaded, refresh (reframe) the model by running this code:</div>`;
+        // Calculated tables in Direct Lake on OneLake need a cloud connection
+        // which must be set up before the model is refreshed.
+        const calcTables = r.calcTables || [];
+        if (calcTables.length > 0) {
+            const n = calcTables.length;
+            out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>This model contains ${n} calculated table${n === 1 ? "" : "s"}. <b>Before refreshing the model</b>, open the semantic model's settings in the Power BI service and, under <b>Data access</b> &rarr; <b>Gateway and cloud connections</b> &rarr; <b>Cloud connections</b>, create a new connection and select it for use by the semantic model.</div></div>`;
+            out += `<div class="slls-mdl-removed"><span>Calculated table${n === 1 ? "" : "s"}:</span>${calcTables.map((t) => `<span class="slls-mdl-colpill">${esc(t)}</span>`).join("")}</div>`;
+        }
+        out += `<div class="slls-mdl-change-detail" style="margin-bottom:8px;">Once the data is loaded${calcTables.length > 0 ? " and the cloud connection is in use" : ""}, refresh (reframe) the model by running this code:</div>`;
         out += `<div class="slls-mdl-copywrap">` +
             `<button class="slls-mdl-btn slls-mdl-copybtn" data-r="copy-refresh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>` +
             `<div class="slls-mdl-code">${hlCode(r.refreshCode || "", "python")}</div></div>`;
@@ -2683,6 +2696,7 @@ def migrate_to_direct_lake(
         #    they are left unchanged during the conversion.
         field_parameters = {}
         calc_groups = set()
+        calc_tables = []
         try:
             with connect_semantic_model(
                 dataset=dataset_id, workspace=workspace_id, readonly=True
@@ -2690,6 +2704,7 @@ def migrate_to_direct_lake(
                 _plan = _compute_migration_plan(src_tom)
                 field_parameters = _plan["fieldParameters"]
                 calc_groups = set(_plan["calcGroups"])
+                calc_tables = list(_plan["calcTables"])
         except Exception as e:
             warnings.append(f"Resolving model objects: {e}")
 
@@ -2784,10 +2799,12 @@ def migrate_to_direct_lake(
 
         return {
             "createdModel": dataset_name,
+            "datasetId": dataset_id,
             "inPlace": True,
             "sourceType": src_type,
             "targetWorkspaceId": target_ws,
             "convertedTables": converted,
+            "calcTables": calc_tables,
             "backupPath": backup_path,
             "pqt": movement == "pqt",
             "pqtFileName": pqt_file_name,
@@ -2907,6 +2924,7 @@ def migrate_to_direct_lake(
         removed_measures = set()
         removed_columns = set()
         removed_calc_tables = set()
+        kept_calc_tables = set()
         field_parameters = {}
         try:
             with connect_semantic_model(
@@ -2916,6 +2934,7 @@ def migrate_to_direct_lake(
                 removed_measures = _plan["removedMeasures"]
                 removed_columns = _plan["removedColumns"]
                 field_parameters = _plan["fieldParameters"]
+                kept_calc_tables = set(_plan["calcTables"])
                 removed_calc_tables = {
                     n
                     for n in _plan["removedTables"]
@@ -2988,8 +3007,21 @@ def migrate_to_direct_lake(
                             )
                             p.Source.SchemaName = tbl_schema
                             p.Source.EntityName = ent_name
+                # Calculated tables which made it into the new model.
+                created_calc_tables = sorted(
+                    t.Name for t in new_tom.model.Tables if t.Name in kept_calc_tables
+                )
         except Exception as e:
             warnings.append(f"Post-migration cleanup: {e}")
+            created_calc_tables = sorted(kept_calc_tables)
+
+        new_dataset_id = ""
+        try:
+            from sempy_labs._helper_functions import resolve_dataset_id
+
+            new_dataset_id = str(resolve_dataset_id(new_name, target_ws))
+        except Exception as e:
+            warnings.append(f"Resolving the new semantic model's ID: {e}")
 
         # 4) Validate the migration.
         validation = []
@@ -3019,6 +3051,8 @@ def migrate_to_direct_lake(
 
         return {
             "createdModel": new_name,
+            "datasetId": new_dataset_id,
+            "calcTables": created_calc_tables,
             "sourceType": src_type,
             "targetWorkspaceId": target_ws,
             "reportWorkspaceId": workspace_id,

@@ -322,3 +322,28 @@ def test_migration_wizard_keeps_calculated_tables():
     )
     assert "migrate_calc_tables_to_semantic_model," in source
     assert '"Migrate calculated tables",' in source
+
+
+def test_migration_wizard_done_screen_links_to_model_and_flags_calc_tables():
+    source = (SRC / "semantic_model" / "_direct_lake_migration.py").read_text(
+        encoding="utf-8"
+    )
+
+    # The result payload carries the new model's ID and its calculated tables.
+    assert '"datasetId": new_dataset_id,' in source
+    assert '"calcTables": created_calc_tables,' in source
+    assert '"datasetId": dataset_id,' in source
+    assert '"calcTables": calc_tables,' in source
+    # Link to the semantic model in the Power BI service (new tab).
+    assert (
+        "https://app.powerbi.com/groups/${encodeURIComponent(r.targetWorkspaceId)}"
+        "/modeling/${encodeURIComponent(r.datasetId)}/modelView" in source
+    )
+    assert 'href="${esc(modelUrl)}" target="_blank" rel="noopener noreferrer"' in source
+    # Calculated tables require a cloud connection before refreshing.
+    assert "const calcTables = r.calcTables || [];" in source
+    assert (
+        "<b>Data access</b> &rarr; <b>Gateway and cloud connections</b> "
+        "&rarr; <b>Cloud connections</b>" in source
+    )
+    assert "<b>Before refreshing the model</b>" in source
