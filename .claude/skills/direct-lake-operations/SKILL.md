@@ -238,33 +238,37 @@ The library provides migration tools in `src/sempy_labs/migration/`:
 
 ### Migration Workflow
 
-1. **Migrate calculated tables** to lakehouse as Delta tables
-2. **Create Direct Lake model** with same structure
-3. **Migrate measures and other objects**
-4. **Validate and test**
+1. **Create Direct Lake model** with the same tables/columns (`migrate_tables_columns_to_semantic_model`)
+2. **Migrate calculated tables** as calculated tables (`migrate_calc_tables_to_semantic_model`) — supported in Direct Lake on OneLake (preview), including those which reference Direct Lake tables. They are no longer stored as lakehouse tables (`migrate_calc_tables_to_lakehouse` is deprecated and a no-op).
+3. **Migrate measures and other objects** (`migrate_model_objects_to_semantic_model`, `migrate_field_parameters`)
+4. **Refresh, validate and test** (calculated tables use Import storage mode and require a refresh)
 
 ### Example Migration
 
 ```python
 from sempy_labs.migration import (
-    migrate_calctables_to_lakehouse,
+    migrate_tables_columns_to_semantic_model,
+    migrate_calc_tables_to_semantic_model,
     migrate_model_objects_to_semantic_model,
 )
 
-# Step 1: Migrate calculated tables to lakehouse
-migrate_calctables_to_lakehouse(
+# Step 1: Migrate tables/columns
+migrate_tables_columns_to_semantic_model(
     dataset="Source Import Model",
-    workspace="My Workspace",
+    new_dataset="Target Direct Lake Model",
     lakehouse="Target Lakehouse",
-    lakehouse_workspace="Lakehouse Workspace",
 )
 
-# Step 2: Migrate other objects (measures, etc.)
+# Step 2: Migrate calculated tables (as calculated tables)
+migrate_calc_tables_to_semantic_model(
+    dataset="Source Import Model",
+    new_dataset="Target Direct Lake Model",
+)
+
+# Step 3: Migrate other objects (measures, etc.)
 migrate_model_objects_to_semantic_model(
-    source_dataset="Source Import Model",
-    target_dataset="Target Direct Lake Model",
-    source_workspace="My Workspace",
-    target_workspace="My Workspace",
+    dataset="Source Import Model",
+    new_dataset="Target Direct Lake Model",
 )
 ```
 

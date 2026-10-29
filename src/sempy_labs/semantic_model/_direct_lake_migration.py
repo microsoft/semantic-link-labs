@@ -210,12 +210,20 @@ def _rewrite_field_parameter_dax(
 
 
 def _expand_dependents(
-    dep_df, removed_tables, removed_columns, removed_measures, unsupported
+    dep_df,
+    removed_tables,
+    removed_columns,
+    removed_measures,
+    unsupported,
+    calc_tables=None,
 ):
     """Transitively add measures / calculated columns that reference a removed
-    object to the removal sets (mirrors the reference migration tool)."""
+    object to the removal sets (mirrors the reference migration tool). Calculated
+    tables listed in ``calc_tables`` which reference a removed object are removed
+    as well (field parameters are excluded as their DAX is rewritten instead)."""
     if dep_df is None or getattr(dep_df, "empty", True):
         return
+    calc_tables = calc_tables or set()
 
     def _clean(v):
         # Coerce None / NaN (v != v) to an empty string.
@@ -271,6 +279,17 @@ def _expand_dependents(
                         "category": "Dependent object",
                         "table": r["table"],
                         "name": r["object"],
+                        "reason": reason,
+                    }
+                )
+            elif "CALC_TABLE" in r["type"] and r["table"] in calc_tables:
+                removed_tables.add(r["table"])
+                changed = True
+                unsupported.append(
+                    {
+                        "category": "Calculated table",
+                        "table": r["table"],
+                        "name": r["table"],
                         "reason": reason,
                     }
                 )
@@ -606,6 +625,7 @@ function render({ model, el }) {
         fullscreen_exit: `__IC_FULLSCREEN_EXIT__`,
         field_parameter: `__IC_FIELD_PARAMETER__`,
         calculation_group: `__IC_CALCULATION_GROUP__`,
+        calculated_table: `__IC_CALCULATED_TABLE__`,
         database_zap: `__IC_DATABASE_ZAP__`,
         swap: `__IC_SWAP__`,
         refresh: `__IC_REFRESH__`,
@@ -840,6 +860,7 @@ function render({ model, el }) {
         const keptFp = changes.filter((c) => c.category === "kept" && c.kind === "Field parameter");
         const keptCg = changes.filter((c) => c.category === "kept" && c.kind === "Calculation group");
         const keptCc = changes.filter((c) => c.category === "kept" && c.kind === "Calculated column");
+        const keptCt = changes.filter((c) => c.category === "kept" && c.kind === "Calculated table");
 
         // Tables reshaped into a single partition (data preserved).
         if (reshaped.length > 0) {
@@ -852,10 +873,20 @@ function render({ model, el }) {
             });
         }
 
-        // Objects kept in the new model (calculation groups, field parameters
-        // and calculated columns).
-        if (keptFp.length + keptCg.length + keptCc.length > 0) {
-            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculation groups, field parameters and calculated columns are supported in Direct Lake):</div>`;
+        // Objects kept in the new model (calculated tables, calculation groups,
+        // field parameters and calculated columns).
+        if (keptCt.length + keptFp.length + keptCg.length + keptCc.length > 0) {
+            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculated tables, calculation groups, field parameters and calculated columns are supported in Direct Lake on OneLake):</div>`;
+            keptCt.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Calculated table</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                const cols = c.columns || [];
+                if (cols.length > 0) {
+                    out += `<div class="slls-mdl-removed"><span>Calculated column${cols.length === 1 ? "" : "s"}:</span>${cols.map((n) => `<span class="slls-mdl-colpill">${esc(n)}</span>`).join("")}</div>`;
+                }
+                if (c.expression) out += detailsBlock("View DAX", c.expression, "dax");
+                out += `</div>`;
+            });
             keptFp.forEach((c) => {
                 out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Field parameter</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
                 if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
@@ -883,6 +914,9 @@ function render({ model, el }) {
                 }
                 out += `</div>`;
             });
+            if (keptCt.length > 0) {
+                out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.alert}<div>Calculated tables are supported in Direct Lake on OneLake (preview) and use the <b>Import</b> storage mode: refresh the new model to calculate them, and again whenever the data they depend on changes. <a href="https://learn.microsoft.com/fabric/fundamentals/direct-lake-overview#considerations-and-limitations" target="_blank" rel="noopener noreferrer">Learn more</a></div></div>`;
+            }
             if (keptCc.length > 0) {
                 out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.alert}<div>Calculated columns in Direct Lake support the <b>User Context</b> <a href="https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext" target="_blank" rel="noopener noreferrer">expression context</a> only. They are evaluated at query time (not materialized) and cannot be used in relationships. <a href="https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance" target="_blank" rel="noopener noreferrer">Learn more</a></div></div>`;
             }
@@ -1172,6 +1206,7 @@ function render({ model, el }) {
         tables.forEach((t) => {
             const icon = t.kind === "fieldParameter" ? IC.field_parameter
                 : t.kind === "calculationGroup" ? IC.calculation_group
+                : t.kind === "calculatedTable" ? IC.calculated_table
                 : IC.table;
             const countLabel = t.kind === "calculationGroup"
                 ? `${t.columnCount} calculation item${t.columnCount === 1 ? "" : "s"}`
@@ -1711,7 +1746,12 @@ def migrate_to_direct_lake(
     set to 'UserContext' — the only expression context supported for calculated columns in Direct Lake. These columns are evaluated
     at query time (not materialized), so relationships which use calculated columns are not migrated. Migrating calculated columns requires
     a version of the Tabular Object Model which supports the ExpressionContext property (Microsoft.AnalysisServices v19.117.0 or later);
-    otherwise they are reported as not migrated. Calculated columns within calculated tables are not migrated.
+    otherwise they are reported as not migrated.
+
+    `Calculated tables <https://learn.microsoft.com/fabric/fundamentals/direct-lake-overview#considerations-and-limitations>`_ (including those which
+    reference Direct Lake tables) are supported in Direct Lake on OneLake (preview) and are migrated as calculated tables (Import storage mode),
+    including their calculated columns (as is). Calculated tables which reference objects that are not migrated, as well as auto date/time tables,
+    are not migrated. The new model must be refreshed for the calculated tables to be calculated.
 
     Parameters
     ----------
@@ -1831,6 +1871,7 @@ def migrate_to_direct_lake(
         removed_measures = set()
         field_parameters = {}  # table name -> calculated-table DAX expression
         calc_groups = []
+        calc_tables = set()  # calculated (DAX) tables kept as calculated tables
         changes = []
         unsupported = []
 
@@ -1875,17 +1916,27 @@ def migrate_to_direct_lake(
                 field_parameters[tname] = expr
                 continue
 
-            # Other calculated (DAX) tables are not supported.
+            # Other calculated (DAX) tables — including those which reference
+            # Direct Lake tables — are supported in Direct Lake on OneLake
+            # (preview) and are kept as calculated tables (Import storage mode).
+            # Auto date/time tables are not migrated.
             if is_calc:
-                removed_tables.add(tname)
-                unsupported.append(
-                    {
-                        "category": "Calculated table",
-                        "table": tname,
-                        "name": tname,
-                        "reason": "Calculated (DAX) tables are not supported in Direct Lake.",
-                    }
-                )
+                if tom.is_auto_date_table(table_name=tname):
+                    removed_tables.add(tname)
+                    unsupported.append(
+                        {
+                            "category": "Auto date/time table",
+                            "table": tname,
+                            "name": tname,
+                            "reason": (
+                                "Auto date/time tables are not supported in the "
+                                "Direct Lake migration process. Create a proper "
+                                "date table instead."
+                            ),
+                        }
+                    )
+                else:
+                    calc_tables.add(tname)
                 continue
 
             # Aggregation tables are not supported.
@@ -1952,9 +2003,12 @@ def migrate_to_direct_lake(
         supports_expression_context = _supports_expression_context()
         for t in tom.model.Tables:
             tname = t.Name
+            # Calculated tables use the Import storage mode, so their columns
+            # (including calculated columns) are kept as is.
             if (
                 tname in removed_tables
                 or tname in field_parameters
+                or tname in calc_tables
                 or t.CalculationGroup is not None
             ):
                 continue
@@ -1989,9 +2043,14 @@ def migrate_to_direct_lake(
                         }
                     )
 
-        # --- Transitive dependents (measures / calc columns) ---
+        # --- Transitive dependents (measures / calc columns / calc tables) ---
         _expand_dependents(
-            dep_df, removed_tables, removed_columns, removed_measures, unsupported
+            dep_df,
+            removed_tables,
+            removed_columns,
+            removed_measures,
+            unsupported,
+            calc_tables,
         )
 
         # --- Field-parameter DAX rewrite (drop only dead field references) ---
@@ -2050,8 +2109,54 @@ def migrate_to_direct_lake(
         # A field parameter may have been emptied (and thus removed); re-expand
         # so measures depending on it are dropped too.
         _expand_dependents(
-            dep_df, removed_tables, removed_columns, removed_measures, unsupported
+            dep_df,
+            removed_tables,
+            removed_columns,
+            removed_measures,
+            unsupported,
+            calc_tables,
         )
+        calc_tables -= removed_tables
+
+        # --- Calculated tables kept in the new model ---
+        for tname in sorted(calc_tables):
+            t = tom.model.Tables[tname]
+            expr = next(
+                (
+                    p.Source.Expression
+                    for p in t.Partitions
+                    if getattr(p, "SourceType", None)
+                    == TOM.PartitionSourceType.Calculated
+                ),
+                "",
+            )
+            kept_cc = [
+                c.Name
+                for c in t.Columns
+                if c.Type == TOM.ColumnType.Calculated
+                and _mig_key(tname, c.Name) not in removed_columns
+            ]
+            detail = (
+                "Kept as a calculated table (Import storage mode). Calculated "
+                "tables, including those which reference Direct Lake tables, are "
+                "supported in Direct Lake on OneLake (preview)."
+            )
+            if kept_cc:
+                n = len(kept_cc)
+                detail += (
+                    f" Its {n} calculated column{'' if n == 1 else 's'} "
+                    f"{'is' if n == 1 else 'are'} kept as is."
+                )
+            changes.append(
+                {
+                    "table": tname,
+                    "kind": "Calculated table",
+                    "category": "kept",
+                    "detail": detail,
+                    "expression": expr or "",
+                    "columns": kept_cc,
+                }
+            )
 
         # --- Calculated columns kept in the new model ---
         # Only calculated columns within regular (data) tables are kept; those
@@ -2100,7 +2205,8 @@ def migrate_to_direct_lake(
 
         # --- Relationships using calculated columns ---
         # Calculated columns are not materialized in Direct Lake so they cannot
-        # be used in relationships.
+        # be used in relationships. Calculated columns within calculated tables
+        # (Import storage mode) are materialized and can be used.
         try:
             for r in tom.model.Relationships:
                 if (
@@ -2115,6 +2221,7 @@ def migrate_to_direct_lake(
                         (r.ToTable, r.ToColumn),
                     )
                     if col.Type == TOM.ColumnType.Calculated
+                    and tbl.Name not in calc_tables
                 ]
                 if calc_cols:
                     unsupported.append(
@@ -2223,6 +2330,7 @@ def migrate_to_direct_lake(
             "removedMeasures": removed_measures,
             "fieldParameters": field_parameters,
             "calcGroups": calc_groups,
+            "calcTables": sorted(calc_tables),
             "changes": changes,
             "unsupported": unsupported,
         }
@@ -2237,17 +2345,20 @@ def migrate_to_direct_lake(
             # Tables that become Direct Lake entity partitions — the only ones
             # that map to a source schema/table.
             _calc_groups = set(plan["calcGroups"])
+            _calc_tables = set(plan["calcTables"])
             entity_tables = [
                 {"name": t.Name, "entity": _default_entity_name(t.Name)}
                 for t in tom.model.Tables
                 if t.Name not in plan["removedTables"]
                 and t.Name not in plan["fieldParameters"]
                 and t.Name not in _calc_groups
+                and t.Name not in _calc_tables
             ]
 
         # Group the unsupported objects by category (in a stable order).
         order = [
             "Calculated table",
+            "Auto date/time table",
             "Aggregation",
             "Field parameter",
             "Calculated column",
@@ -2329,9 +2440,25 @@ def migrate_to_direct_lake(
             removed_cols = plan["removedColumns"]
             field_params = plan["fieldParameters"]
             calc_groups = set(plan["calcGroups"])
+            calc_tables = set(plan["calcTables"])
             for t in tom.model.Tables:
                 tname = t.Name
                 if tname in removed:
+                    continue
+                if tname in calc_tables:
+                    col_count = sum(
+                        1
+                        for c in t.Columns
+                        if c.Type != TOM.ColumnType.RowNumber
+                        and _mig_key(tname, c.Name) not in removed_cols
+                    )
+                    tables.append(
+                        {
+                            "name": tname,
+                            "columnCount": col_count,
+                            "kind": "calculatedTable",
+                        }
+                    )
                     continue
                 if tname in field_params:
                     col_count = sum(
@@ -2597,7 +2724,7 @@ def migrate_to_direct_lake(
                     continue
                 if t.CalculationGroup is not None:
                     continue
-                # Skip calculated (DAX) tables — none exist in this scenario.
+                # Calculated (DAX) tables are kept as is (Import storage mode).
                 if any(
                     p.SourceType == TOM.PartitionSourceType.Calculated
                     for p in t.Partitions
@@ -2681,6 +2808,9 @@ def migrate_to_direct_lake(
         from sempy_labs.migration._migrate_calctables_to_lakehouse import (
             migrate_field_parameters,
         )
+        from sempy_labs.migration._migrate_calctables_to_semantic_model import (
+            migrate_calc_tables_to_semantic_model,
+        )
         from sempy_labs.migration._migrate_model_objects_to_semantic_model import (
             migrate_model_objects_to_semantic_model,
         )
@@ -2742,6 +2872,15 @@ def migrate_to_direct_lake(
             verbose=False,
         )
         _step(
+            migrate_calc_tables_to_semantic_model,
+            "Migrate calculated tables",
+            dataset=dataset_name,
+            new_dataset=new_name,
+            workspace=workspace_id,
+            new_dataset_workspace=target_ws,
+            verbose=False,
+        )
+        _step(
             migrate_field_parameters,
             "Migrate field parameters",
             dataset=dataset_name,
@@ -2760,13 +2899,14 @@ def migrate_to_direct_lake(
             verbose=False,
         )
 
-        # 3b) Post-process the new model. Calculated tables (other than field
-        #     parameters) are intentionally not migrated, so drop the measures
-        #     that depend on non-migrated objects, apply the rewritten
-        #     field-parameter DAX (dead references removed), and stamp the schema
-        #     onto each Direct Lake entity partition (the helpers leave it blank).
+        # 3b) Post-process the new model. Drop the objects that depend on
+        #     non-migrated objects (measures, calculated columns and calculated
+        #     tables), apply the rewritten field-parameter DAX (dead references
+        #     removed), and stamp the schema onto each Direct Lake entity
+        #     partition (the helpers leave it blank).
         removed_measures = set()
         removed_columns = set()
+        removed_calc_tables = set()
         field_parameters = {}
         try:
             with connect_semantic_model(
@@ -2776,6 +2916,12 @@ def migrate_to_direct_lake(
                 removed_measures = _plan["removedMeasures"]
                 removed_columns = _plan["removedColumns"]
                 field_parameters = _plan["fieldParameters"]
+                removed_calc_tables = {
+                    n
+                    for n in _plan["removedTables"]
+                    if src_tom.is_calculated_table(table_name=n)
+                    and not src_tom.is_field_parameter(table_name=n)
+                }
         except Exception as e:
             warnings.append(f"Resolving non-migrated objects: {e}")
 
@@ -2809,6 +2955,27 @@ def migrate_to_direct_lake(
                     and _mig_key(c.Parent.Name, c.Name) in removed_columns
                 ]:
                     new_tom.remove_object(c)
+                # Drop calculated tables that depend on objects that were not
+                # migrated (along with their relationships and security).
+                for tname in [
+                    t.Name
+                    for t in new_tom.model.Tables
+                    if t.Name in removed_calc_tables
+                ]:
+                    for r in [
+                        r
+                        for r in new_tom.model.Relationships
+                        if r.FromTable.Name == tname or r.ToTable.Name == tname
+                    ]:
+                        new_tom.remove_object(r)
+                    for role in new_tom.model.Roles:
+                        for tp in [
+                            tp
+                            for tp in role.TablePermissions
+                            if tp.Table is not None and tp.Table.Name == tname
+                        ]:
+                            role.TablePermissions.Remove(tp)
+                    new_tom.remove_object(new_tom.model.Tables[tname])
                 # Stamp the schema/entity onto each Direct Lake entity partition.
                 for t in new_tom.model.Tables:
                     for p in t.Partitions:
@@ -3135,6 +3302,7 @@ _WIDGET_JS = (
     .replace("__IC_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
     .replace("__IC_FIELD_PARAMETER__", _UI_ICONS["field_parameter"])
     .replace("__IC_CALCULATION_GROUP__", _UI_ICONS["calculation_group"])
+    .replace("__IC_CALCULATED_TABLE__", _UI_ICONS["calculated_table"])
     .replace("__IC_DATABASE_ZAP__", _UI_ICONS["database_zap"])
     .replace("__IC_SWAP__", _UI_ICONS["swap"])
     .replace("__IC_REFRESH__", _UI_ICONS["refresh"])
