@@ -9,9 +9,6 @@ from ._caching import (
 from ._perspective_editor import (
     perspective_editor,
 )
-from ._direct_lake_manager import (
-    direct_lake_manager,
-)
 from ._lineage_view import (
     lineage_view,
 )
@@ -31,7 +28,6 @@ __all__ = [
     "make_discoverable",
     "enable_query_caching",
     "perspective_editor",
-    "direct_lake_manager",
     "lineage_view",
     "migrate_to_direct_lake",
     "find_unused_objects",
