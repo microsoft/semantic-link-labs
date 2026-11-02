@@ -3,7 +3,7 @@ from .._helper_functions import (
     _is_valid_uuid,
 )
 from uuid import UUID
-from .._tags import list_tags
+from sempy_labs._tags import list_tags
 import sempy_labs._icons as icons
 from typing import List
 from sempy._utils._log import log
@@ -35,7 +35,7 @@ def create_tags(tags: str | List[str]):
 
     Parameters
     ----------
-    tags : str | List[str]
+    tags : str | typing.List[str]
         The name of the tag or tags to create.
     """
 

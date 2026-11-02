@@ -1,13 +1,13 @@
 import sempy.fabric as fabric
 from typing import Optional
 import pandas as pd
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
 )
-from ._reportwrapper import ReportWrapper
-from .._list_functions import list_reports_using_semantic_model
+from sempy_labs.report._reportwrapper import ReportWrapper
+from sempy_labs._list_functions import list_reports_using_semantic_model
 from uuid import UUID
 
 
@@ -35,8 +35,8 @@ def list_unused_objects_in_reports(
 
     # TODO: what about relationships/RLS?
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
 
@@ -83,8 +83,8 @@ def _list_all_report_semantic_model_objects(
         A pandas dataframe.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     dfR = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
     dfs = []
@@ -93,7 +93,7 @@ def _list_all_report_semantic_model_objects(
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
-        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
+        rpt = ReportWrapper(report=r["Report Id"], workspace=r["Report Workspace Id"])
 
         new_data = rpt._list_all_semantic_model_objects()
         new_data["Report Name"] = report_name

@@ -212,8 +212,7 @@ def delta_analyzer_history(
     #  /********************************************************************************************************************
     #      Display Gantt Chart of files
     #  ********************************************************************************************************************/
-    spec: str = (
-        """{
+    spec: str = """{
     "$$schema": 'https://vega.github.io/schema/vega-lite/v2.json',
     "description": "A simple bar chart with ranged data (aka Gantt Chart).",
     "width" : 1024 ,
@@ -245,9 +244,7 @@ def delta_analyzer_history(
             "scale": {"range": ["silver", "#ca8861"]}
             }
     }
-    }"""
-        % (parquet_files)
-    )
+    }""" % (parquet_files)
 
     display(
         HTML(

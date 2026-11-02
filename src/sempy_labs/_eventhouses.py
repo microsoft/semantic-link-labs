@@ -1,17 +1,8 @@
 import pandas as pd
 from typing import Optional
-from sempy_labs._helper_functions import (
-    _base_api,
-    _create_dataframe,
-    _conv_b64,
-    delete_item,
-    create_item,
-    _get_item_definition,
-    resolve_workspace_id,
-)
 from uuid import UUID
-import sempy_labs._icons as icons
 from sempy._utils._log import log
+import sempy_labs.eventhouse as eh
 
 
 @log
@@ -42,29 +33,11 @@ def create_eventhouse(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if definition is not None and not isinstance(definition, dict):
-        raise ValueError(f"{icons.red_dot} The definition must be a dictionary.")
-
-    definition_payload = (
-        {
-            "parts": [
-                {
-                    "path": "EventhouseProperties.json",
-                    "payload": _conv_b64(definition),
-                    "payloadType": "InlineBase64",
-                }
-            ]
-        }
-        if definition is not None
-        else None
-    )
-
-    create_item(
+    eh.create_eventhouse(
         name=name,
-        type="Eventhouse",
-        workspace=workspace,
+        definition=definition,
         description=description,
-        definition=definition_payload,
+        workspace=workspace,
     )
 
 
@@ -90,36 +63,7 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the eventhouses within a workspace.
     """
 
-    columns = {
-        "Eventhouse Name": "string",
-        "Eventhouse Id": "string",
-        "Description": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    workspace_id = resolve_workspace_id(workspace)
-
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventhouses",
-        uses_pagination=True,
-        client="fabric_sp",
-    )
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            rows.append(
-                {
-                    "Eventhouse Name": v.get("displayName"),
-                    "Eventhouse Id": v.get("id"),
-                    "Description": v.get("description"),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    return df
+    return eh.list_eventhouses(workspace=workspace)
 
 
 @log
@@ -141,7 +85,7 @@ def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    delete_item(item=name, type="Eventhouse", workspace=workspace)
+    eh.delete_eventhouse(name=name, workspace=workspace)
 
 
 @log
@@ -174,9 +118,8 @@ def get_eventhouse_definition(
         The eventhouse definition in .json format or as a pandas dataframe.
     """
 
-    return _get_item_definition(
-        item=eventhouse,
-        type="Eventhouse",
+    return eh.get_eventhouse_definition(
+        eventhouse=eventhouse,
         workspace=workspace,
         return_dataframe=return_dataframe,
     )

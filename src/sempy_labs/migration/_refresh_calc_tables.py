@@ -19,6 +19,10 @@ def refresh_calc_tables(dataset: str | UUID, workspace: Optional[str | UUID] = N
     """
     Recreates the delta tables in the lakehouse based on the DAX expressions stored as model annotations in the Direct Lake semantic model.
 
+    This function only applies to Direct Lake semantic models which were migrated before calculated tables were supported in Direct Lake
+    (when calculated tables were stored as lakehouse tables). Calculated tables are now migrated as calculated tables
+    (see :func:`sempy_labs.migration.migrate_calc_tables_to_semantic_model`) and are refreshed along with the semantic model.
+
     Parameters
     ----------
     dataset : str | UUID
@@ -29,8 +33,8 @@ def refresh_calc_tables(dataset: str | UUID, workspace: Optional[str | UUID] = N
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
     icons.sll_tags.append("DirectLakeMigration")
 
     @retry(

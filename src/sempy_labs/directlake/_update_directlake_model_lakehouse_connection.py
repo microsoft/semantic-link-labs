@@ -1,65 +1,14 @@
-from ._generate_shared_expression import generate_shared_expression
-from .._helper_functions import (
+from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
+from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
-from ..tom import connect_semantic_model
-from typing import Optional, List
+from typing import Optional, List, Literal
 import sempy_labs._icons as icons
 from uuid import UUID
-import re
-
-
-@log
-def _extract_expression_list(expression):
-    """
-    Finds the pattern for DL/SQL & DL/OL expressions in the semantic model.
-    """
-
-    pattern_sql = r'Sql\.Database\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)'
-    pattern_no_sql = (
-        r'AzureStorage\.DataLake\(".*?/([0-9a-fA-F\-]{36})/([0-9a-fA-F\-]{36})"'
-    )
-
-    match_sql = re.search(pattern_sql, expression)
-    match_no_sql = re.search(pattern_no_sql, expression)
-
-    result = []
-    if match_sql:
-        value_1, value_2 = match_sql.groups()
-        result = [value_1, value_2, True]
-    elif match_no_sql:
-        value_1, value_2 = match_no_sql.groups()
-        result = [value_1, value_2, False]
-
-    return result
-
-
-@log
-def _get_direct_lake_expressions(
-    dataset: str | UUID, workspace: Optional[str | UUID] = None
-) -> dict:
-    """
-    Extracts a dictionary of all Direct Lake expressions from a semantic model.
-    """
-
-    from sempy_labs.tom import connect_semantic_model
-
-    result = {}
-
-    with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
-        for e in tom.model.Expressions:
-            expr_name = e.Name
-            expr = e.Expression
-
-            list_values = _extract_expression_list(expr)
-            if list_values:
-                result[expr_name] = list_values
-
-    return result
 
 
 @log
@@ -74,16 +23,16 @@ def update_direct_lake_model_lakehouse_connection(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid. UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    lakehouse : str, default=None
+    lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str | UUID, default=None
+    lakehouse_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -102,8 +51,8 @@ def update_direct_lake_model_lakehouse_connection(
 def update_direct_lake_model_connection(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    source: Optional[str] = None,
-    source_type: str = "Lakehouse",
+    source: Optional[str | UUID] = None,
+    source_type: Literal["Lakehouse", "Warehouse"] = "Lakehouse",
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
     tables: Optional[str | List[str]] = None,
@@ -119,10 +68,10 @@ def update_direct_lake_model_connection(
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    source : str, default=None
+    source : str | uuid.UUID, default=None
         The name of the Fabric lakehouse/warehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    source_type : str, default="Lakehouse"
+    source_type : typing.Literal["Lakehouse", "Warehouse"], default="Lakehouse"
         The type of source for the Direct Lake semantic model. Valid options: "Lakehouse", "Warehouse".
     source_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse/warehouse.
@@ -136,6 +85,8 @@ def update_direct_lake_model_connection(
         If None, all tables will be updated (if there is only one expression).
         If multiple tables are specified, they must be provided as a list.
     """
+    from sempy_labs.tom import connect_semantic_model
+
     if use_sql_endpoint:
         icons.sll_tags.append("UpdateDLConnection_SQL")
     else:
@@ -144,8 +95,8 @@ def update_direct_lake_model_connection(
     if isinstance(tables, str):
         tables = [tables]
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     source_type = source_type.capitalize()
 
@@ -158,27 +109,26 @@ def update_direct_lake_model_connection(
         source_workspace = workspace_name
 
     if source_type == "Lakehouse":
-        (source_name, source_id) = resolve_lakehouse_name_and_id(
+        source_name, source_id = resolve_lakehouse_name_and_id(
             lakehouse=source, workspace=source_workspace
         )
     else:
-        (source_name, source_id) = resolve_item_name_and_id(
+        source_name, source_id = resolve_item_name_and_id(
             item=source, type=source_type, workspace=source_workspace
         )
 
     shared_expression = generate_shared_expression(
-        item_name=source_name,
+        item=source_name,
         item_type=source_type,
         workspace=source_workspace,
         use_sql_endpoint=use_sql_endpoint,
     )
 
-    expression_dict = _get_direct_lake_expressions(dataset=dataset, workspace=workspace)
-    expressions = list(expression_dict.keys())
-
     with connect_semantic_model(
         dataset=dataset_id, readonly=False, workspace=workspace_id
     ) as tom:
+        expression_dict = tom._get_direct_lake_expressions()
+        expressions = list(expression_dict.keys())
 
         if not tom.is_direct_lake():
             raise ValueError(
@@ -195,6 +145,14 @@ def update_direct_lake_model_connection(
             expr = expressions[0]
             tom.model.Expressions[expr].Expression = shared_expression
 
+            # Fix for converting to DL on SQL. Without this fix, the measures and relationships will disappear from the model.
+            if use_sql_endpoint:
+                expr_name = "DatabaseQuery"
+                tom.model.Expressions[expr].Name = expr_name
+                tom.set_annotation(
+                    object=tom.model, name="PBI_QueryOrder", value=expr_name
+                )
+
             print(
                 f"{icons.green_dot} The expression in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{source}' {source_type.lower()} in the '{source_workspace}' workspace."
             )
@@ -204,7 +162,7 @@ def update_direct_lake_model_connection(
             sempy.fabric._client._utils._init_analysis_services()
             import Microsoft.AnalysisServices.Tabular as TOM
 
-            expr_list = _extract_expression_list(shared_expression)
+            expr_list = tom._extract_expression_list(shared_expression)
 
             expr_name = next(
                 (name for name, exp in expression_dict.items() if exp == expr_list),

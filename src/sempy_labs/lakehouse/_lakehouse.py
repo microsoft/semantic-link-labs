@@ -6,16 +6,90 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
-    _create_spark_session,
-    _pure_python_notebook,
+    _create_dataframe,
+    _update_dataframe_datatypes,
+    resolve_workspace_id,
 )
 import sempy_labs._icons as icons
 import re
-import time
 import pandas as pd
-from sempy_labs._job_scheduler import (
-    _get_item_job_instance,
-)
+
+
+@log
+def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows the lakehouses within a workspace.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the lakehouses within a workspace.
+    """
+
+    columns = {
+        "Lakehouse Name": "string",
+        "Lakehouse ID": "string",
+        "Description": "string",
+        "OneLake Tables Path": "string",
+        "OneLake Files Path": "string",
+        "SQL Endpoint Connection String": "string",
+        "SQL Endpoint ID": "string",
+        "SQL Endpoint Provisioning Status": "string",
+        "Schema Enabled": "bool",
+        "Default Schema": "string",
+        "Sensitivity Label Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses",
+        uses_pagination=True,
+        client="fabric_sp",
+    )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            prop = v.get("properties", {})
+            sqlEPProp = prop.get("sqlEndpointProperties", {})
+            default_schema = prop.get("defaultSchema", None)
+
+            rows.append(
+                {
+                    "Lakehouse Name": v.get("displayName"),
+                    "Lakehouse ID": v.get("id"),
+                    "Description": v.get("description"),
+                    "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+                    "OneLake Files Path": prop.get("oneLakeFilesPath"),
+                    "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
+                    "SQL Endpoint ID": sqlEPProp.get("id"),
+                    "SQL Endpoint Provisioning Status": sqlEPProp.get(
+                        "provisioningStatus"
+                    ),
+                    "Schema Enabled": True if default_schema else False,
+                    "Default Schema": default_schema,
+                    "Sensitivity Label Id": v.get("sensitivityLabel", {}).get(
+                        "sensitivityLabelId"
+                    ),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
 
 
 @log
@@ -40,32 +114,43 @@ def lakehouse_attached() -> bool:
 
 
 @log
-def _optimize_table(path):
+def _collect_tables(tables, lakehouse, workspace) -> pd.DataFrame:
 
-    if _pure_python_notebook():
-        from deltalake import DeltaTable
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
-        DeltaTable(path).optimize.compact()
+    df = get_lakehouse_tables(
+        lakehouse=lakehouse, workspace=workspace, exclude_shortcuts=True
+    )
+    df_delta = df[df["Format"] == "delta"]
+
+    if isinstance(tables, str):
+        tables = [tables]
+
+    if tables:
+        filters = []
+
+        for t in tables:
+            if "." in t:
+                schema, table = t.split(".", 1)
+                filters.append(
+                    (df_delta["Schema Name"] == schema)
+                    & (df_delta["Table Name"] == table)
+                )
+            else:
+                filters.append(df_delta["Table Name"] == t)
+
+        # Combine all filters with OR
+        combined_filter = filters[0]
+        for f in filters[1:]:
+            combined_filter |= f
+
+        df_tables = df_delta[combined_filter]
     else:
-        from delta import DeltaTable
+        df_tables = df_delta
 
-        spark = _create_spark_session()
-        DeltaTable.forPath(spark, path).optimize().executeCompaction()
+    df_tables.reset_index(drop=True, inplace=True)
 
-
-@log
-def _vacuum_table(path, retain_n_hours):
-
-    if _pure_python_notebook():
-        from deltalake import DeltaTable
-
-        DeltaTable(path).vacuum(retention_hours=retain_n_hours)
-    else:
-        from delta import DeltaTable
-
-        spark = _create_spark_session()
-        spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
-        DeltaTable.forPath(spark, path).vacuum(retain_n_hours)
+    return df_tables
 
 
 @log
@@ -79,9 +164,9 @@ def optimize_lakehouse_tables(
 
     Parameters
     ----------
-    tables : str | List[str], default=None
-        The table(s) to optimize.
-        Defaults to None which resovles to optimizing all tables within the lakehouse.
+    tables : str | typing.List[str], default=None
+        The table(s) to optimize. If the tables have a schema, use the 'schema.table' format.
+        Defaults to None which resolves to optimizing all tables within the lakehouse.
     lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -91,25 +176,23 @@ def optimize_lakehouse_tables(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-
-    df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
-    df_delta = df[df["Format"] == "delta"]
-
-    if isinstance(tables, str):
-        tables = [tables]
-
-    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
-    df_tables.reset_index(drop=True, inplace=True)
+    df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
 
     total = len(df_tables)
     for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
-        path = r["Location"]
+        schema_name = r["Schema Name"]
+        full_table_name = f"{schema_name}.{table_name}"
         bar.set_description(
-            f"Optimizing the '{table_name}' table ({idx + 1}/{total})..."
+            f"Optimizing the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
         )
-        _optimize_table(path=path)
+        run_table_maintenance(
+            table_name=table_name,
+            optimize=True,
+            schema=schema_name,
+            lakehouse=lakehouse,
+            workspace=workspace,
+        )
 
 
 @log
@@ -124,8 +207,9 @@ def vacuum_lakehouse_tables(
 
     Parameters
     ----------
-    tables : str | List[str] | None
-        The table(s) to vacuum. If no tables are specified, all tables in the lakehouse will be vacuumed.
+    tables : str | typing.List[str], default=None
+        The table(s) to vacuum. If the tables have a schema, use the 'schema.table' format.
+        Defaults to None which resolves to vacuuming all tables in the lakehouse.
     lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -140,23 +224,30 @@ def vacuum_lakehouse_tables(
         The default retention period is 168 hours (7 days) unless manually configured via table properties.
     """
 
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
 
-    df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
-    df_delta = df[df["Format"] == "delta"]
-
-    if isinstance(tables, str):
-        tables = [tables]
-
-    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
-    df_tables.reset_index(drop=True, inplace=True)
+    if retain_n_hours is None:
+        retention_period = None
+    else:
+        days, hours = divmod(retain_n_hours, 24)
+        retention_period = f"{days}:{hours:02d}:00:00"
 
     total = len(df_tables)
     for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
-        path = r["Location"]
-        bar.set_description(f"Vacuuming the '{table_name}' table ({idx}/{total})...")
-        _vacuum_table(path=path, retain_n_hours=retain_n_hours)
+        schema_name = r["Schema Name"]
+        full_table_name = f"{schema_name}.{table_name}"
+        bar.set_description(
+            f"Vacuuming the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
+        )
+        run_table_maintenance(
+            table_name=table_name,
+            vacuum=True,
+            retention_period=retention_period,
+            schema=schema_name,
+            lakehouse=lakehouse,
+            workspace=workspace,
+        )
 
 
 @log
@@ -164,6 +255,8 @@ def run_table_maintenance(
     table_name: str,
     optimize: bool = False,
     v_order: bool = False,
+    z_order: Optional[Union[str, List[str]]] = None,
+    purge_deletion_vectors: bool = False,
     vacuum: bool = False,
     retention_period: Optional[str] = None,
     schema: Optional[str] = None,
@@ -183,6 +276,11 @@ def run_table_maintenance(
         If True, the `OPTIMIZE <https://docs.delta.io/latest/optimizations-oss.html>`_ function will be run on the table.
     v_order : bool, default=False
         If True, v-order will be enabled for the table.
+    z_order : str | List[str], default=None
+        If specified, the `Z-Order <https://docs.delta.io/latest/optimizations-oss.html#z-ordering-multi-dimensional-clustering>`_ optimization will be applied on the table using the provided column(s).
+        Accepts a single column name or a list of column names.
+    purge_deletion_vectors : bool, default=False
+        If True, physically removes data marked for deletion by `deletion vectors <https://docs.delta.io/latest/delta-deletion-vectors.html>`_ and rewrites the affected parquet files.
     vacuum : bool, default=False
         If True, the `VACUUM <https://docs.delta.io/latest/delta-utility.html#remove-files-no-longer-referenced-by-a-delta-table>`_ function will be run on the table.
     retention_period : str, default=None
@@ -203,14 +301,20 @@ def run_table_maintenance(
         A DataFrame containing the job instance details of the table maintenance operation.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    lakehouse_name, lakehouse_id = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
-    if not optimize and not vacuum:
+    if (
+        not optimize
+        and not vacuum
+        and not v_order
+        and z_order is None
+        and not purge_deletion_vectors
+    ):
         raise ValueError(
-            f"{icons.warning} At least one of 'optimize' or 'vacuum' must be set to True."
+            f"{icons.warning} At least one of 'optimize', 'v_order', 'z_order', 'purge_deletion_vectors', or 'vacuum' must be specified."
         )
     if not vacuum and retention_period is not None:
         raise ValueError(
@@ -234,35 +338,45 @@ def run_table_maintenance(
     }
     if schema is not None:
         payload["executionData"]["schemaName"] = schema
-    if optimize:
-        payload["executionData"]["optimizeSettings"] = {}
+
+    optimize_settings: dict = {}
     if v_order:
-        payload["executionData"]["optimizeSettings"] = {"vOrder": True}
+        optimize_settings["vOrder"] = True
+    if z_order is not None:
+        if isinstance(z_order, str):
+            z_order_columns = [z_order]
+        else:
+            z_order_columns = list(z_order)
+        if not z_order_columns or any(
+            not isinstance(c, str) or not c for c in z_order_columns
+        ):
+            raise ValueError(
+                f"{icons.red_dot} The 'z_order' parameter must be a non-empty column name or list of non-empty column names."
+            )
+        optimize_settings["zOrderBy"] = z_order_columns
+    if purge_deletion_vectors:
+        optimize_settings["purgeDeletionVectors"] = True
+    if optimize or optimize_settings:
+        payload["executionData"]["optimizeSettings"] = optimize_settings
     if vacuum:
         payload["executionData"]["vacuumSettings"] = {}
     if vacuum and retention_period is not None:
         payload["executionData"]["vacuumSettings"]["retentionPeriod"] = retention_period
 
-    response = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=TableMaintenance",
-        method="post",
-        payload=payload,
-        status_codes=202,
-        client="fabric_sp",
-    )
-
     print(
         f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated."
     )
 
-    status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
-    status = None
-    while status not in ["Completed", "Failed"]:
-        response = _base_api(request=status_url)
-        status = response.json().get("status")
-        time.sleep(3)
+    df = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=TableMaintenance",
+        method="post",
+        payload=payload,
+        status_codes=[200, 202],
+        client="fabric_sp",
+        lro_return_df=True,
+    )
 
-    df = _get_item_job_instance(url=status_url)
+    status = df["Status"].iloc[0]
 
     if status == "Completed":
         print(

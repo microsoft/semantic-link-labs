@@ -4,28 +4,31 @@ import json
 import os
 from typing import Optional, List
 from sempy._utils._log import log
+from sempy_labs._helper_functions import _quiet_if_not_verbose
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    resolve_item_name_and_id,
     _conv_b64,
     _decode_b64,
     _base_api,
     _mount,
-    resolve_workspace_id,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from uuid import UUID
+import time
 
 
+@_quiet_if_not_verbose
 @log
 def create_blank_semantic_model(
     dataset: str,
-    compatibility_level: int = 1702,
+    compatibility_level: int = 1705,
     workspace: Optional[str | UUID] = None,
     overwrite: bool = True,
-):
+) -> UUID:
     """
     Creates a new blank semantic model (no tables/columns etc.).
 
@@ -33,7 +36,7 @@ def create_blank_semantic_model(
     ----------
     dataset : str
         Name of the semantic model.
-    compatibility_level : int, default=1702
+    compatibility_level : int, default=1705
         The compatibility level of the semantic model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -41,13 +44,18 @@ def create_blank_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model in the workspace if it exists.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the created semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
-    if len(dfD_filt) > 0 and not overwrite:
+    if not dfD_filt.empty and not overwrite:
         raise ValueError(
             f"{icons.warning} The '{dataset}' semantic model already exists within the '{workspace_name}' workspace. The 'overwrite' parameter is set to False so the blank new semantic model was not created."
         )
@@ -59,7 +67,7 @@ def create_blank_semantic_model(
         )
 
     # If the model does not exist
-    if len(dfD_filt) == 0:
+    if dfD_filt.empty:
         tmsl = f"""
         {{
             "createOrReplace": {{
@@ -115,9 +123,24 @@ def create_blank_semantic_model(
 
     fabric.execute_tmsl(script=tmsl, workspace=workspace_id)
 
-    return print(
+    print(
         f"{icons.green_dot} The '{dataset}' semantic model was created within the '{workspace_name}' workspace."
     )
+
+    start_time = time.time()
+    timeout = 120  # 2 minutes (in seconds)
+
+    while True:
+        df = fabric.list_datasets(workspace=workspace_id, mode="rest")
+        df_filt = df[df["Dataset Name"] == dataset]
+
+        if not df_filt.empty:
+            return df_filt["Dataset Id"].iloc[0]
+
+        if time.time() - start_time > timeout:
+            raise TimeoutError("Dataset not found within 2 minutes")
+
+        time.sleep(2)
 
 
 @log
@@ -141,7 +164,7 @@ def create_semantic_model_from_bim(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     dfI = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfI_filt = dfI[(dfI["Dataset Name"] == dataset)]
@@ -207,8 +230,8 @@ def update_semantic_model_from_bim(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     defPBIDataset = {"version": "1.0", "settings": {}}
     payloadPBIDefinition = _conv_b64(defPBIDataset)
@@ -254,6 +277,8 @@ def deploy_semantic_model(
     refresh_target_dataset: bool = True,
     overwrite: bool = False,
     perspective: Optional[str] = None,
+    filters: Optional[dict] = None,
+    metadata_only: bool = False,
 ):
     """
     Deploys a semantic model based on an existing semantic model.
@@ -266,8 +291,8 @@ def deploy_semantic_model(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    target_dataset: str
-        Name of the new semantic model to be created.
+    target_dataset: str, default=None
+        Name of the new semantic model to be created. Defaults to None which uses the 'source_dataset' value.
     target_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the new semantic model will be deployed.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -278,33 +303,57 @@ def deploy_semantic_model(
         If set to True, overwrites the existing semantic model in the workspace if it exists.
     perspective : str, default=None
         Set this to the name of a perspective in the model and it will reduce the deployed model down to the tables/columns/measures/hierarchies within that perspective.
-    """
+    filters : dict, default=None
+        Filters to apply to the target semantic model. See the example below. If filters are specified, a perspective must also be specified.
 
-    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+        If filters are applied, you must use a PySpark notebook and the default lakehouse must be in the same workspace as the source lakehouse used by the semantic model.
+
+        Filters are only supported for Direct Lake semantic models where the data is sourced from a single Lakehouse.
+
+        filters = {
+            "Geography": "City = 'Verdery' ",
+            "Sales": "SaleKey > 100",
+        }
+    metadata_only : bool, default=False
+        If set to True, the materialized lake views which back the filtered tables are not (re)created; only the semantic model
+        metadata is deployed. This is useful when the materialized lake views already exist and only the model has changed.
+        Only relevant when filters are specified.
+    """
+    from datetime import datetime
+
+    source_workspace_name, source_workspace_id = resolve_workspace_name_and_id(
         source_workspace
     )
 
-    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+    target_workspace_name, target_workspace_id = resolve_workspace_name_and_id(
         target_workspace
     )
 
     if target_dataset is None:
         target_dataset = source_dataset
 
-    if (
-        target_dataset == source_dataset
-        and target_workspace_name == source_workspace_name
+    if target_dataset == source_dataset and str(target_workspace_id) == str(
+        source_workspace_id
     ):
         raise ValueError(
-            f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' "
+            f"{icons.red_dot} The 'source_dataset' and 'target_dataset' parameters have the same value. And, the 'source_workspace' and 'target_workspace' "
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
+
+    source_dataset_name, source_dataset_id = resolve_item_name_and_id(
+        item=source_dataset, type="SemanticModel", workspace=source_workspace_id
+    )
 
     dfD = fabric.list_datasets(workspace=target_workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == target_dataset]
     if not dfD_filt.empty and not overwrite:
         raise ValueError(
             f"{icons.warning} The '{target_dataset}' semantic model already exists within the '{target_workspace_name}' workspace. The 'overwrite' parameter is set to False so the source semantic model was not deployed to the target destination."
+        )
+
+    if filters is not None and perspective is None:
+        raise ValueError(
+            f"{icons.red_dot} If filters are specified, a perspective must also be specified."
         )
 
     if perspective is not None:
@@ -315,6 +364,15 @@ def deploy_semantic_model(
         ) as tom:
 
             df_added = tom._reduce_model(perspective_name=perspective)
+            if filters is not None:
+                if metadata_only:
+                    queries, _, _ = tom._generate_mlv_queries(
+                        filters=filters, schema=perspective
+                    )
+                else:
+                    queries = tom._create_mlvs_based_on_filters(
+                        filters=filters, schema=perspective
+                    )
             bim = tom.get_bim()
 
     else:
@@ -335,8 +393,104 @@ def deploy_semantic_model(
             dataset=target_dataset, bim_file=bim, workspace=target_workspace_id
         )
 
+    target_dataset_name, target_dataset_id = resolve_item_name_and_id(
+        item=target_dataset, type="SemanticModel", workspace=target_workspace_id
+    )
+
+    now = str(datetime.now())
+    filters_value = filters or {}
+
+    if filters is not None or perspective is not None:
+        with connect_semantic_model(
+            dataset=target_dataset_id, workspace=target_workspace_id, readonly=False
+        ) as tom:
+            if filters is not None:
+                # Update the entities of the partitions in the target semantic model if filters were applied
+                for table_name, items in queries.items():
+                    entity_name = items.get("entityName")
+                    schema_name = items.get("schema")
+                    partition_name = next(
+                        p.Name for p in tom.model.Tables[table_name].Partitions
+                    )
+                    tom.model.Tables[table_name].Partitions[
+                        partition_name
+                    ].Source.EntityName = entity_name
+                    if schema_name:
+                        tom.model.Tables[table_name].Partitions[
+                            partition_name
+                        ].Source.SchemaName = schema_name
+            # Set annotations to mini model
+            source_annotation_value = {
+                "sourceDatasetId": source_dataset_id,
+                "sourceDatasetName": source_dataset_name,
+                "sourceWorkspaceId": source_workspace_id,
+                "sourceWorkspaceName": source_workspace_name,
+                "lastUpdatedDate": now,
+                "perspective": perspective,
+                "filters": filters_value,
+            }
+            tom.set_annotation(
+                object=tom.model,
+                name=icons.prefix_master,
+                value=str(source_annotation_value),
+            )
+
+            # Remove mini model annotations from the master model if they exist (cleanup)
+            # ann_to_remove = [
+            #    a.Name
+            #    for a in tom.model.Annotations
+            #    if a.Name.startswith(icons.prefix_mini)
+            # ]
+            # for ann in ann_to_remove:
+            #    tom.remove_annotation(object=tom.model, name=ann)
+
+    # Set annotations to the master model
+    # if filters is not None or perspective is not None:
+    #    with connect_semantic_model(
+    #        dataset=source_dataset_id, workspace=source_workspace_id, readonly=False
+    #    ) as tom:
+
+    #        ann_name = f"{icons.prefix_mini}_{perspective}"
+
+    # --- Get existing annotation safely ---
+    #        try:
+    #            ann_value = tom.get_annotation_value(object=tom.model, name=ann_name)
+    #            ann_list = ast.literal_eval(ann_value) if ann_value else []
+    #        except Exception:
+    #            ann_list = []
+
+    # --- Build lookup (faster than loop) ---
+    #        index = {a.get("datasetId"): a for a in ann_list}
+
+    #        if target_dataset_id in index:
+    #            # --- Update existing ---
+    #            entry = index[target_dataset_id]
+    #            entry.update(
+    #                {
+    #                    "datasetName": target_dataset_name,
+    #                    "workspaceId": target_workspace_id,
+    #                    "workspaceName": target_workspace_name,
+    #                    "lastUpdatedDate": now,
+    #                    "filters": filters_value,
+    #                }
+    #            )
+    #        else:
+    #            # --- Add new ---
+    #            ann_list.append(
+    #                {
+    #                    "datasetId": target_dataset_id,
+    #                    "datasetName": target_dataset_name,
+    #                    "workspaceId": target_workspace_id,
+    #                    "workspaceName": target_workspace_name,
+    #                    "lastUpdatedDate": now,
+    #                    "filters": filters_value,
+    #                }
+    #            )
+
+    # --- Save once ---
+    #        tom.set_annotation(object=tom.model, name=ann_name, value=str(ann_list))
     if refresh_target_dataset:
-        refresh_semantic_model(dataset=target_dataset, workspace=target_workspace_id)
+        refresh_semantic_model(dataset=target_dataset_id, workspace=target_workspace_id)
 
     if perspective is not None:
         return df_added
@@ -368,8 +522,8 @@ def get_semantic_model_bim(
         The Model.bim file for the semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     bimJson = get_semantic_model_definition(
         dataset=dataset_id,
@@ -441,8 +595,8 @@ def get_semantic_model_definition(
             f"{icons.red_dot} Invalid format. Valid options: {valid_formats}."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
@@ -472,7 +626,7 @@ def get_semantic_model_definition(
 @log
 def get_semantic_model_size(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
-):
+) -> int:
     """
     Gets size of the semantic model in bytes.
 
@@ -488,35 +642,26 @@ def get_semantic_model_size(
     Returns
     -------
     int
-        The size of the semantic model in bytes
+        The size of the semantic model in bytes.
     """
+    dax = """
+    EVALUATE
+    ROW(
+        "TotalSize",
+            SUMX(
+                INFO.STORAGETABLECOLUMNSEGMENTS(),
+                [USED_SIZE]
+            )
+        +
+            SUMX(
+                FILTER(
+                    INFO.STORAGETABLECOLUMNS(),
+                    [COLUMN_TYPE] = "BASIC_DATA"
+                ),
+                [DICTIONARY_SIZE]
+            )
+    )"""
 
-    dict = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
-        dax_string="""
-        EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DICTIONARY_SIZE])
-        """,
-    )
+    result = fabric.evaluate_dax(dataset=dataset, workspace=workspace, dax_string=dax)
 
-    used_size = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
-        dax_string="""
-        EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[USED_SIZE])
-        """,
-    )
-    dict_size = dict["[DICTIONARY_SIZE]"].sum()
-    used_size = used_size["[USED_SIZE]"].sum()
-    model_size = dict_size + used_size
-    # Calculate proper bytes size by dividing by 1024 and multiplying by 1000 - per 1000
-    if model_size >= 10**9:
-        result = model_size / (1024**3) * 10**9
-    elif model_size >= 10**6:
-        result = model_size / (1024**2) * 10**6
-    elif model_size >= 10**3:
-        result = model_size / (1024) * 10**3
-    else:
-        result = model_size
-
-    return result
+    return int(float(result.iloc[0, 0]))

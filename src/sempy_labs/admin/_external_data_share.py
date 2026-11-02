@@ -1,8 +1,8 @@
 from uuid import UUID
 import sempy_labs._icons as icons
 import pandas as pd
-from ._basic_functions import _resolve_workspace_name_and_id
-from .._helper_functions import (
+from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
+from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
@@ -88,7 +88,7 @@ def revoke_external_data_share(
     workspace : str | uuid.UUID
         The Fabric workspace name or id.
     """
-    (workspace, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke",

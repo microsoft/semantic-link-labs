@@ -25,7 +25,7 @@ def provision_workspace_identity(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/provisionIdentity",
@@ -57,7 +57,7 @@ def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/deprovisionIdentity",

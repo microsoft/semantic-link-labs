@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="rm_widget.css">
+<style>
+  body { margin: 0; }
+  #log { position: fixed; bottom: 0; left: 0; right: 0; background: #ffd;
+         font: 12px monospace; white-space: pre-wrap; z-index: 2147483647;
+         max-height: 45vh; overflow: auto; padding: 6px; }
+</style>
+</head>
+<body>
+<div id="host"></div>
+<div id="log">[log]
+</div>
+<script>
+  window.__log = function (m) {
+    document.getElementById("log").textContent += m + "\n";
+  };
+  window.addEventListener("error", function (e) {
+    window.__log("WINDOW ERROR: " + (e.message || e.error));
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__log("UNHANDLED REJECTION: " + (e.reason && e.reason.stack || e.reason));
+  });
+</script>
+<script type="module">
+const log = window.__log;
+const traits = {
+  connected: false,
+  dark_mode: false,
+  workspaces: [{ id: "w1", name: "WS" }],
+  datasets: {},
+  objects: [],
+  busy: false,
+  refresh_status: {},
+  history: [],
+  schedule: {},
+  detail: {},
+  gantt_events: [],
+  workspace_id: "w1",
+  dataset_id: "",
+  dataset_name: "",
+  workspace_name: "WS",
+  objects_loading: false,
+  history_loading: false,
+  schedule_loading: false,
+  history_loaded: false,
+  schedule_loaded: false
+};
+const model = {
+  get: (k) => traits[k],
+  set: (k, v) => { traits[k] = v; },
+  save_changes() {},
+  on() {},
+  off() {},
+  send() {}
+};
+const el = document.getElementById("host");
+try {
+  const mod = await import("./rm_widget.js");
+  log("module imported");
+  await mod.default.render({ model, el });
+  log("render ok, html length = " + el.innerHTML.length);
+
+  const btn = el.querySelector("[data-fullscreen]");
+  log("fullscreen btn = " + !!btn + " label=" + (btn && btn.getAttribute("aria-label")));
+
+  // Exactly what the app does before clicking a tool's fullscreen control.
+  const NEVER = { then: () => NEVER, catch: () => NEVER, finally: () => NEVER };
+  const savedReq = Element.prototype.requestFullscreen;
+  const savedExit = document.exitFullscreen;
+  Element.prototype.requestFullscreen = () => NEVER;
+  document.exitFullscreen = () => NEVER;
+  try {
+    btn.click();
+  } finally {
+    Element.prototype.requestFullscreen = savedReq;
+    document.exitFullscreen = savedExit;
+  }
+
+  log("after click, html length = " + el.innerHTML.length);
+  const btn2 = el.querySelector("[data-fullscreen]");
+  log("after click label = " + (btn2 && btn2.getAttribute("aria-label")));
+  log("root class = " + (el.firstElementChild && el.firstElementChild.className));
+} catch (e) {
+  log("EXCEPTION: " + (e && e.stack || e));
+}
+</script>
+</body>
+</html>

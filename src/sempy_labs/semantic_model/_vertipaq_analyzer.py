@@ -1,0 +1,4156 @@
+import sempy.fabric as fabric
+import pandas as pd
+import zipfile
+import os
+import uuid
+import shutil
+import datetime
+import threading
+from html import escape as html_escape
+from sempy_labs._helper_functions import (
+    format_dax_object_name,
+    save_as_delta_table,
+    resolve_workspace_capacity,
+    _get_column_aggregate,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
+)
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from typing import Optional, Literal
+from sempy._utils._log import log
+import sempy_labs._icons as icons
+from pathlib import Path
+from uuid import UUID
+from sempy_labs.directlake._sources import get_direct_lake_sources
+from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs.lakehouse._schemas import is_schema_enabled
+from sempy_labs._ui_components import (
+    ICONS as _UI_ICONS,
+    LIGHT_THEME_VARS as _UI_LIGHT_VARS,
+    DARK_THEME_VARS as _UI_DARK_VARS,
+    scoped_header_css as _ui_scoped_header_css,
+    scoped_attribution_css as _ui_scoped_attribution_css,
+    scoped_button_press_css as _ui_scoped_button_press_css,
+    render_header_html as _ui_render_header_html,
+    render_attribution_html as _ui_render_attribution_html,
+    theme_toggle_script as _ui_theme_toggle_script,
+    fullscreen_css as _ui_fullscreen_css,
+    fullscreen_toggle_script as _ui_fullscreen_toggle_script,
+    list_picker_datasets as _list_picker_datasets,
+    list_picker_workspaces as _list_picker_workspaces,
+    SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
+    SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+)
+
+# anywidget ESM for the interactive Vertipaq Analyzer (used only when the model
+# has Direct-Lake-over-Lakehouse tables so the "Delta Analyzer" button can run
+# Spark on demand and merge the results). It injects the pre-built static HTML +
+# JS and wires the Delta Analyzer button/dialog to the Python backend.
+_VPX_WIDGET_JS = _UI_SEARCH_SELECT_JS + "\n" + r"""
+function render({ model, el }) {
+    // Refreshed on every draw: switching models re-renders the widget with a
+    // freshly scoped uid.
+    let uid = model.get("uid");
+    let deltaRunning = false;
+    let statusTimer = null;
+    // Workspace / semantic model picker selections (kept across re-renders).
+    let pickWs = "";
+    let pickDs = "";
+    let renderPickerOptions = function () {};
+    let ensurePickerDatasets = function () {};
+
+    function esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function dispatch(action, extra) {
+        model.set("pending_action", Object.assign({ action: action }, extra || {}));
+        model.set("run", (model.get("run") || 0) + 1);
+        model.save_changes();
+    }
+
+    function rootEl() {
+        const c = el.querySelector(".vpx-container");
+        return c ? c.parentElement : null;
+    }
+
+    function statusEl() {
+        const root = rootEl();
+        if (root && root.classList.contains("vpx-picker-only")) {
+            return el.querySelector(".vpx-picker-screen .vpx-delta-status");
+        }
+        return el.querySelector(".vpx-container > .vpx-delta-status")
+            || el.querySelector(".vpx-picker-screen .vpx-delta-status");
+    }
+
+    function setAnalyzing(on) {
+        const root = rootEl();
+        if (root) {
+            if (on) root.classList.remove("vpx-picker-only");
+            root.setAttribute("aria-busy", on ? "true" : "false");
+        }
+        const progress = el.querySelector(".vpx-analysis-progress");
+        if (progress) {
+            progress.classList.toggle("vpx-active", on);
+            progress.setAttribute("aria-hidden", on ? "false" : "true");
+        }
+        if (on) {
+            const picker = el.querySelector(".vpx-picker-dialog");
+            if (picker) picker.style.display = "none";
+        }
+    }
+
+    function draw() {
+        // Re-rendering (e.g. switching semantic models) replaces the whole
+        // markup, so remember the view state and re-apply it afterwards.
+        const prev = rootEl();
+        const wasFs = !!(prev && prev.classList.contains("vpx-fs"));
+        const wasDark = !!(prev && prev.classList.contains("vpx-dark"));
+        uid = model.get("uid");
+        el.innerHTML = model.get("html_content") || "";
+        // innerHTML-injected <script> tags never execute, so run the collected
+        // widget JS (tab switching, sorting, filtering, resizing, theme +
+        // fullscreen toggles) via a dynamically created <script> element.
+        const s = document.createElement("script");
+        s.textContent = model.get("script_content") || "";
+        el.appendChild(s);
+        const root = rootEl();
+        // Only on a re-render (prev exists): on the first draw the markup
+        // already carries the requested theme.
+        if (root && prev) {
+            // Click the wired buttons so the toggles keep their placeholder /
+            // icon bookkeeping in sync.
+            const themeBtn = el.querySelector("#vpx-theme-" + uid);
+            if (themeBtn && wasDark !== root.classList.contains("vpx-dark")) {
+                themeBtn.click();
+            }
+            const fsBtn = el.querySelector("#vpx-fs-" + uid);
+            if (wasFs && fsBtn) fsBtn.click();
+        }
+        wireDelta();
+        wirePicker();
+        mergeDelta();
+        showStatus();
+    }
+
+    // Delta Analyzer merge column definitions (values arrive pre-formatted from
+    // Python).
+    const TABLE_DELTA_COLS = [
+        { k: "deltaTotalSize", l: "Delta Total Size", num: true },
+        { k: "deltaRowCount", l: "Delta Row Count", num: true },
+        { k: "deltaRowGroups", l: "Row Groups", num: true },
+        { k: "deltaParquetFiles", l: "Parquet Files", num: true },
+        { k: "deltaVorder", l: "V-Order", num: false },
+        { k: "deltaZOrder", l: "Z-Order", num: false },
+        { k: "deltaClustering", l: "Liquid Clustering", num: false },
+        { k: "deltaDeletionVectors", l: "Deletion Vectors", num: false },
+        { k: "deltaAutoCompact", l: "Auto-compaction", num: false },
+    ];
+    const COLUMN_DELTA_COLS = [
+        { k: "cardinality", l: "Delta Cardinality", num: true },
+        { k: "compressedSize", l: "Compressed Size", num: true },
+        { k: "uncompressedSize", l: "Uncompressed Size", num: true },
+    ];
+
+    function sortFn() { return window["vpxSort_" + uid]; }
+    function tableByTab(tab) {
+        return el.querySelector('table[data-vpx-tab="' + tab + '"]');
+    }
+
+    function mergeInto(table, colDefs, keyFn, dataMap) {
+        if (!table) return;
+        table.querySelectorAll(".vpx-delta-col").forEach(function (e) { e.remove(); });
+        if (!dataMap || Object.keys(dataMap).length === 0) return;
+        const icon = model.get("delta_icon") || "";
+        const headRow = table.querySelector("thead tr");
+        if (headRow) {
+            colDefs.forEach(function (cd) {
+                const th = document.createElement("th");
+                th.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
+                th.innerHTML = icon + cd.l + ' <span class="vpx-sort-arrow">&#x25B2;</span>';
+                const fn = sortFn();
+                if (fn) th.addEventListener("click", function () { fn(th); });
+                headRow.appendChild(th);
+            });
+        }
+        table.querySelectorAll("tbody tr").forEach(function (tr) {
+            const stat = dataMap[keyFn(tr)] || {};
+            colDefs.forEach(function (cd) {
+                const td = document.createElement("td");
+                td.className = "vpx-delta-col" + (cd.num ? " vpx-numeric" : "");
+                td.textContent = stat[cd.k] != null ? stat[cd.k] : "";
+                // Byte-formatted values ("9 KB", "1.2 MB") carry the raw number
+                // so sorting compares magnitudes instead of the leading digits.
+                const raw = stat[cd.k + "Raw"];
+                if (raw != null) td.setAttribute("data-vpx-sort", raw);
+                tr.appendChild(td);
+            });
+        });
+    }
+
+    function mergeDelta() {
+        const results = model.get("delta_results") || {};
+        const tbls = results.tables || {};
+        const cols = results.columns || {};
+        const loaded = Object.keys(tbls).length > 0;
+        mergeInto(tableByTab("Tables"), TABLE_DELTA_COLS, function (tr) {
+            const c = tr.children[0];
+            return c ? c.textContent.trim() : "";
+        }, tbls);
+        mergeInto(tableByTab("Columns"), COLUMN_DELTA_COLS, function (tr) {
+            const a = tr.children[0], b = tr.children[1];
+            return (a ? a.textContent.trim() : "") + "\u0000" + (b ? b.textContent.trim() : "");
+        }, cols);
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.classList.toggle("vpx-delta-loaded", loaded);
+        });
+    }
+
+    function setRunning(on) {
+        deltaRunning = on;
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.classList.toggle("vpx-delta-running", on);
+            // While running the button acts as a cancel button, so it stays
+            // enabled.
+            btn.disabled = false;
+            btn.title = on
+                ? "Cancel the Delta Analyzer run (stops after the table " +
+                  "currently being analyzed)"
+                : (btn.getAttribute("data-title") || "");
+        });
+        if (!on) setProgress(null);
+    }
+
+    function setProgress(p) {
+        const txt = p && p.total ? p.done + "/" + p.total : "";
+        el.querySelectorAll(".vpx-delta-progress").forEach(function (sp) {
+            sp.textContent = txt;
+        });
+    }
+
+    function showStatus() {
+        const s = model.get("status") || {};
+        const st = statusEl();
+        if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+        if (st) {
+            if (s.message) {
+                st.textContent = s.message;
+                st.className = "vpx-delta-status vpx-delta-status-" + (s.kind || "info");
+                st.style.display = "block";
+                if (s.auto_hide) {
+                    // Transient message (e.g. "complete") - fade it out after a
+                    // few seconds so it does not linger above the results.
+                    statusTimer = setTimeout(function () {
+                        st.style.display = "none";
+                        statusTimer = null;
+                    }, 6000);
+                }
+            } else {
+                st.style.display = "none";
+            }
+        }
+        // Status updates without a progress payload (e.g. "cancelling") keep
+        // the last reported counter.
+        if (s.progress) setProgress(s.progress);
+        if (s.done) {
+            setRunning(false);
+            setAnalyzing(false);
+        }
+    }
+
+    function wireDelta() {
+        const dialog = el.querySelector(".vpx-delta-dialog:not(.vpx-picker-dialog)");
+        function openDialog() { if (dialog) dialog.style.display = "flex"; }
+        function closeDialog() { if (dialog) dialog.style.display = "none"; }
+
+        el.querySelectorAll(".vpx-delta-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                if (deltaRunning) {
+                    // Ask Python to stop after the current table.
+                    el.querySelectorAll(".vpx-delta-btn").forEach(function (b) {
+                        b.disabled = true;
+                    });
+                    model.set("cancel", (model.get("cancel") || 0) + 1);
+                    model.save_changes();
+                    return;
+                }
+                openDialog();
+            });
+        });
+        if (!dialog) return;
+        dialog.addEventListener("click", function (e) {
+            if (e.target === dialog) closeDialog();
+        });
+        dialog.querySelectorAll(".vpx-delta-close, .vpx-delta-cancel").forEach(function (b) {
+            b.addEventListener("click", closeDialog);
+        });
+        const selectAll = dialog.querySelector(".vpx-delta-selectall");
+        const clearAll = dialog.querySelector(".vpx-delta-clear");
+        if (selectAll) selectAll.addEventListener("click", function () {
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) { cb.checked = true; });
+        });
+        if (clearAll) clearAll.addEventListener("click", function () {
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) { cb.checked = false; });
+        });
+        const runBtn = dialog.querySelector(".vpx-delta-run");
+        if (runBtn) runBtn.addEventListener("click", function () {
+            // Send the full delta-table descriptors (table name, lakehouse,
+            // workspace, entity, schema) so the Python side keeps every
+            // property of each selected table.
+            const byName = {};
+            (model.get("delta_tables") || []).forEach(function (t) {
+                if (t && t.tableName) byName[t.tableName] = t;
+            });
+            const selected = [];
+            dialog.querySelectorAll(".vpx-delta-tablecb").forEach(function (cb) {
+                if (!cb.checked) return;
+                const name = cb.getAttribute("data-table");
+                selected.push(byName[name] || { tableName: name });
+            });
+            if (selected.length === 0) return;
+            const skip = dialog.querySelector(".vpx-delta-skipcard");
+            closeDialog();
+            setRunning(true);
+            dispatch("delta", {
+                tables: selected,
+                skip_cardinality: skip ? !!skip.checked : true,
+            });
+        });
+    }
+
+    // ---------- Workspace / semantic model picker ----------
+    function wirePicker() {
+        renderPickerOptions = function () {};
+        ensurePickerDatasets = function () {};
+        const dialog = el.querySelector(".vpx-picker-dialog");
+        if (!dialog) return;
+        const initialPicker = model.get("picker_initial") === true;
+        const btn = el.querySelector(".vpx-picker-btn");
+        const wsHost = dialog.querySelector(".vpx-picker-ws");
+        const dsHost = dialog.querySelector(".vpx-picker-ds");
+        const connectBtn = dialog.querySelector(".vpx-picker-connect");
+        const reloadBtn = dialog.querySelector(".sl-reload-btn");
+        let reloading = false;
+        function closeDialog() {
+            if (!initialPicker) dialog.style.display = "none";
+        }
+
+        const wsPicker = createSearchSelect({
+            placeholder: "Select a workspace\u2026",
+            searchPlaceholder: "Filter workspaces\u2026",
+            ariaLabel: "Workspace",
+            emptyLabel: "Loading workspaces\u2026",
+            onChange: function (option) {
+                pickWs = option.value;
+                pickDs = "";
+                ensureDatasets();
+                renderOptions();
+            },
+        });
+        const dsPicker = createSearchSelect({
+            placeholder: "Select a semantic model\u2026",
+            searchPlaceholder: "Filter semantic models\u2026",
+            ariaLabel: "Semantic model",
+            emptyLabel: "Select a workspace first\u2026",
+            onChange: function (option) {
+                pickDs = option.value;
+                renderOptions();
+            },
+        });
+        wsHost.replaceChildren(wsPicker.el);
+        dsHost.replaceChildren(dsPicker.el);
+
+        // Models already analyzed in this session: selecting one restores its
+        // cached stats instantly instead of re-running the analysis.
+        function renderRecent() {
+            const wrap = dialog.querySelector(".vpx-picker-recent");
+            if (!wrap) return;
+            const items = model.get("recent_models") || [];
+            if (items.length < 2) {
+                wrap.style.display = "none";
+                wrap.innerHTML = "";
+                return;
+            }
+            wrap.style.display = "block";
+            wrap.innerHTML =
+                '<div class="vpx-picker-recent-head">Already analyzed</div>' +
+                '<div class="vpx-picker-recent-list">' +
+                items.map(function (m) {
+                    return '<button type="button" class="vpx-picker-recentitem' +
+                        (m.current ? " vpx-current" : "") + '" data-key="' +
+                        esc(m.key) + '"' + (m.current ? " disabled" : "") + ">" +
+                        esc(m.dataset) +
+                        '<span class="vpx-picker-recentsub">' + esc(m.workspace) +
+                        "</span></button>";
+                }).join("") +
+                "</div>";
+            wrap.querySelectorAll(".vpx-picker-recentitem").forEach(function (b) {
+                b.addEventListener("click", function () {
+                    closeDialog();
+                    dispatch("restore", { key: b.getAttribute("data-key") });
+                });
+            });
+        }
+
+        function renderOptions() {
+            const workspaces = model.get("workspaces") || [];
+            const datasets = (model.get("datasets") || {})[pickWs];
+            wsPicker.setEmptyLabel(
+                workspaces.length ? "No workspaces" : "Loading workspaces\u2026");
+            wsPicker.setOptions(workspaces.map(function (item) {
+                return { value: item.id, label: item.name };
+            }), pickWs);
+            dsPicker.setEmptyLabel(!pickWs
+                ? "Select a workspace first\u2026"
+                : (!datasets ? "Loading semantic models\u2026" : "No semantic models"));
+            dsPicker.setOptions((datasets || []).map(function (item) {
+                return { value: item.id, label: item.name };
+            }), pickDs);
+            dsPicker.setDisabled(!pickWs || !datasets);
+            connectBtn.disabled = !pickDs;
+            if (reloadBtn) {
+                // Re-enabled once the refreshed workspace list comes back.
+                if (workspaces.length) reloading = false;
+                reloadBtn.disabled = reloading;
+            }
+            renderRecent();
+        }
+        renderPickerOptions = renderOptions;
+
+        function ensureDatasets() {
+            if (pickWs && !(model.get("datasets") || {})[pickWs]) {
+                dispatch("list_datasets", { workspace_id: pickWs });
+            }
+        }
+        ensurePickerDatasets = ensureDatasets;
+
+        if (reloadBtn) reloadBtn.addEventListener("click", function () {
+            // Force a fresh fetch of the workspace list and of the semantic
+            // models in the selected workspace.
+            reloading = true;
+            reloadBtn.disabled = true;
+            dispatch("list_workspaces", {});
+            if (pickWs) dispatch("list_datasets", { workspace_id: pickWs });
+        });
+
+        dialog.addEventListener("click", function (e) {
+            if (e.target === dialog) closeDialog();
+        });
+        dialog.querySelectorAll(".vpx-picker-close, .vpx-picker-cancel").forEach(function (b) {
+            b.addEventListener("click", closeDialog);
+        });
+        connectBtn.addEventListener("click", function () {
+            if (!pickDs) return;
+            connectBtn.disabled = true;
+            const wsName = wsPicker.label;
+            const dsName = dsPicker.label;
+            // Reveal the analyzer immediately. Python replaces this shell with
+            // the completed result, while the progress bar remains inside the
+            // same root in both normal and full-screen modes.
+            setAnalyzing(true);
+            const st = statusEl();
+            if (st) {
+                st.textContent = "Running Vertipaq Analyzer on '" + dsName +
+                    "' within the '" + wsName + "' workspace\u2026";
+                st.className = "vpx-delta-status vpx-delta-status-info";
+                st.style.display = "block";
+            }
+            dispatch("connect", {
+                workspace_id: pickWs,
+                dataset_id: pickDs,
+                workspace_name: wsName,
+                dataset_name: dsName,
+            });
+        });
+        if (btn) btn.addEventListener("click", function () {
+            if (!pickWs) pickWs = model.get("workspace_id") || "";
+            dialog.style.display = "flex";
+            if (!(model.get("workspaces") || []).length) dispatch("list_workspaces", {});
+            ensureDatasets();
+            renderOptions();
+        });
+        if (initialPicker) {
+            if (!pickWs) pickWs = model.get("workspace_id") || "";
+            if (!(model.get("workspaces") || []).length) {
+                dispatch("list_workspaces", {});
+            } else {
+                ensureDatasets();
+            }
+            renderOptions();
+        }
+    }
+
+    model.on("change:delta_results", mergeDelta);
+    model.on("change:status", showStatus);
+    model.on("change:workspaces", function () {
+        renderPickerOptions();
+        ensurePickerDatasets();
+    });
+    model.on("change:datasets", function () { renderPickerOptions(); });
+    model.on("change:recent_models", function () { renderPickerOptions(); });
+    model.on("change:html_content", draw);
+
+    draw();
+}
+export default { render };
+"""
+
+
+def get_run_id(lakehouse, schema, workspace, save_table_name):
+    has_schema = is_schema_enabled(lakehouse=lakehouse, workspace=workspace)
+    tables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    if schema and not has_schema:
+        raise ValueError(
+            f"{icons.red_dot} A schema (export_schema) was provided but the lakehouse does not have schemas enabled."
+        )
+    if not schema and not has_schema:
+        tables = tables[(tables["Table Name"] == save_table_name)]
+    elif schema and has_schema:
+        tables = tables[
+            (tables["Schema Name"] == schema)
+            & (tables["Table Name"] == save_table_name)
+        ]
+    else:
+        tables = tables[
+            (tables["Schema Name"] == "dbo") & (tables["Table Name"] == save_table_name)
+        ]
+
+    if tables.empty:
+        run_id = 1
+    else:
+        run_id = (
+            _get_column_aggregate(
+                table_name=save_table_name,
+                lakehouse=lakehouse,
+                workspace=workspace,
+                schema_name=schema,
+            )
+            + 1
+        )
+
+    return run_id
+
+
+def create_sql_query(columns, schema_name, table_name):
+
+    distinct_counts = ", ".join([f"COUNT(DISTINCT {col}) AS {col}" for col in columns])
+
+    return f"""
+    SELECT {distinct_counts}
+    FROM {schema_name}.{table_name}
+    """
+
+
+# Calculate missing rows
+def calc_missing_rows_dax(
+    from_table: str,
+    from_column: str,
+    to_table: str,
+    to_column: str,
+    is_active: bool,
+    dataset_id: UUID,
+    workspace_id: UUID,
+):
+
+    from_object = format_dax_object_name(from_table, from_column)
+    to_object = format_dax_object_name(to_table, to_column)
+
+    query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{from_table}'),isblank({to_object}))\n)"
+
+    if not is_active:
+        query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{from_table}'),userelationship({from_object},{to_object}),isblank({to_object}))\n)"
+
+    missing_rows = 0
+    result = fabric.evaluate_dax(
+        dataset=dataset_id, dax_string=query, workspace=workspace_id
+    )
+    if not result.empty:
+        missing_rows = result.iloc[0, 0]
+
+    return missing_rows
+
+
+# Converting to KB/MB/GB necessitates division by 1024 * 1000.
+def format_bytes(size, decimals=2):
+    """
+    Convert bytes to a human-readable format (KB, MB, GB, etc.)
+
+    :param size: Size in bytes
+    :param decimals: Number of decimal places
+    :return: Formatted string
+    """
+    if size == 0:
+        return "0 B"
+
+    units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]
+    i = 0
+
+    while size >= 1024 and i < len(units) - 1:
+        size /= 1024
+        i += 1
+
+    return f"{round(size, decimals)} {units[i]}"
+
+
+def cast_to_type(value, type_):
+    type_mapping = {
+        "int": lambda v: int(float(v)),
+        "decimal": float,
+        "bool": lambda v: str(v).strip().lower()
+        == "true",  # convert "True"/"False" strings,
+        "timestamp": lambda v: pd.to_datetime(
+            v,
+            format="%Y-%m-%d %H:%M:%S",
+            errors="coerce",
+            utc=True,
+        ),
+    }
+
+    # Handle null / empty values
+    if pd.isna(value) or value in ("nan", "<NA>", None, ""):
+        if type_ == "bool":
+            return False  # default for bool
+        elif type_ == "decimal":
+            return 0.0
+        else:
+            return 0
+
+    return type_mapping[type_](value)
+
+
+def _get_delta_table_metadata(entity, lakehouse, workspace, schema):
+    """Best-effort collection of the delta-table properties that the Delta
+    Analyzer function does not return: liquid-clustering columns, the latest
+    OPTIMIZE Z-Order columns, deletion vectors, and auto-compaction.
+
+    Returns a tuple ``(zorder_cols, clustering_cols, deletion_vectors,
+    auto_compact)``. Any piece that cannot be resolved is returned as its empty
+    default so the caller can still surface the rest of the stats.
+    """
+    zorder: list = []
+    clustering: list = []
+    deletion_vectors = False
+    auto_compact = False
+
+    try:
+        from sempy_labs._helper_functions import (
+            create_abfss_path,
+            resolve_workspace_id,
+            resolve_lakehouse_id,
+            _get_delta_table,
+            _read_delta_table_history,
+        )
+
+        workspace_id = resolve_workspace_id(workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        path = create_abfss_path(lakehouse_id, workspace_id, entity, schema=schema)
+
+        try:
+            detail = _get_delta_table(path).detail().collect()[0].asDict()
+            clustering = list(detail.get("clusteringColumns") or [])
+            props = detail.get("properties") or {}
+            deletion_vectors = (
+                str(props.get("delta.enableDeletionVectors", "")).lower() == "true"
+            )
+            auto_compact = (
+                str(props.get("delta.autoOptimize.autoCompact", "")).lower() == "true"
+            )
+        except Exception:
+            pass
+
+        try:
+            import json
+
+            hist = _read_delta_table_history(path)
+            for _, h in hist.iterrows():
+                if str(h.get("operation")) != "OPTIMIZE":
+                    continue
+                params = h.get("operationParameters") or {}
+                z = params.get("zOrderBy")
+                if z and str(z) not in ("[]", ""):
+                    try:
+                        parsed = json.loads(z) if isinstance(z, str) else list(z)
+                        zorder = [c for c in parsed if c]
+                    except Exception:
+                        zorder = [str(z)]
+                    break
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    return zorder, clustering, deletion_vectors, auto_compact
+
+
+_DELTA_TABLE_STAT_COLUMNS = [
+    "Delta Total Size",
+    "Delta Row Count",
+    "Row Groups",
+    "Parquet Files",
+    "V-Order",
+    "Z-Order",
+    "Liquid Clustering",
+    "Deletion Vectors",
+    "Auto-compaction",
+]
+
+_DELTA_COLUMN_STAT_COLUMNS = [
+    "Delta Cardinality",
+    "Compressed Size",
+    "Uncompressed Size",
+]
+
+
+def _row_text(value):
+    """Normalize a dataframe/dict cell to a non-empty string, or None. Missing
+    values (``None``, ``NaN``, ``pd.NA``) are never strings, so they map to
+    None without triggering pandas' ambiguous-truth-value errors."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _direct_lake_delta_tables(partition_rows) -> list:
+    """Direct-Lake-over-Lakehouse source tables that the Delta Analyzer can run
+    on (it needs the source lakehouse + workspace + entity).
+
+    ``partition_rows`` is an iterable of partition mappings (e.g. the rows of
+    the Vertipaq Analyzer 'Partitions' dataframe).
+    """
+    delta_tables: list = []
+    seen = set()
+    for row in partition_rows:
+        if _row_text(row.get("Mode")) != "DirectLake":
+            continue
+        if _row_text(row.get("Source Type")) != "Lakehouse":
+            continue
+        table_name = _row_text(row.get("Table Name"))
+        lakehouse = _row_text(row.get("Source Name"))
+        entity = _row_text(row.get("Source Table Name"))
+        if not table_name or not lakehouse or not entity or table_name in seen:
+            continue
+        seen.add(table_name)
+        schema = _row_text(row.get("Source Schema Name"))
+        delta_tables.append(
+            {
+                "tableName": table_name,
+                "lakehouse": lakehouse,
+                "workspace": _row_text(row.get("Source Workspace")),
+                "entity": entity,
+                "schema": schema,
+                "deltaTableName": f"{schema}.{entity}" if schema else entity,
+            }
+        )
+    return delta_tables
+
+
+def _column_source_map(column_rows) -> dict:
+    """Map each model column to its source (delta) column name so the Delta
+    Analyzer per-column stats can be matched back to the model columns."""
+    mapping: dict = {}
+    for row in column_rows:
+        table_name = _row_text(row.get("Table Name"))
+        column_name = _row_text(row.get("Column Name"))
+        if not table_name or not column_name:
+            continue
+        mapping.setdefault(table_name, {})[column_name] = (
+            _row_text(row.get("Source Column")) or column_name
+        )
+    return mapping
+
+
+def _compute_table_delta_stats_raw(info, skip_cardinality=True):
+    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
+    table and return its raw (unformatted) stats keyed by display label.
+
+    Returns a tuple ``(table_stats, column_stats_by_source_column)`` keyed by
+    the labels in :data:`_DELTA_TABLE_STAT_COLUMNS` and
+    :data:`_DELTA_COLUMN_STAT_COLUMNS`.
+    """
+    from sempy_labs._delta_analyzer import delta_analyzer
+
+    lakehouse = info.get("lakehouse")
+    workspace = info.get("workspace")
+    # The entity/schema come from the Direct Lake partition's EntityName and
+    # SchemaName properties; the schema is reconciled with the lakehouse so the
+    # delta path resolves for both schema-enabled and non-schema lakehouses.
+    entity = info.get("entity")
+    schema = info.get("schema") or None
+
+    result = delta_analyzer(
+        table_name=entity,
+        lakehouse=lakehouse,
+        workspace=workspace,
+        schema=schema,
+        column_stats=True,
+        skip_cardinality=skip_cardinality,
+        approx_distinct_count=True,
+        visualize=False,
+        export=False,
+        _show_progress=False,
+    )
+
+    summary = result["Summary"].iloc[0]
+
+    def _to_int(v):
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 0
+
+    total_size = _to_int(summary.get("Total Size", 0))
+    row_count = _to_int(summary.get("Row Count", 0))
+    row_groups = _to_int(summary.get("Row Groups", 0))
+    parquet_files = _to_int(summary.get("Parquet Files", 0))
+    vorder = bool(summary.get("VOrder Enabled", False))
+
+    zorder, clustering, deletion_vectors, auto_compact = _get_delta_table_metadata(
+        entity, lakehouse, workspace, schema
+    )
+
+    table_stats = {
+        "Delta Total Size": total_size,
+        "Delta Row Count": row_count,
+        "Row Groups": row_groups,
+        "Parquet Files": parquet_files,
+        "V-Order": "Yes" if vorder else "No",
+        "Z-Order": ", ".join(zorder) if zorder else "No",
+        "Liquid Clustering": ", ".join(clustering) if clustering else "No",
+        "Deletion Vectors": "Yes" if deletion_vectors else "No",
+        "Auto-compaction": "Yes" if auto_compact else "No",
+    }
+
+    column_stats: dict = {}
+    cols_df = result.get("Columns")
+    if cols_df is not None and not cols_df.empty:
+        has_card = "Cardinality" in cols_df.columns and not skip_cardinality
+        for _, cr in cols_df.iterrows():
+            name = cr.get("Column Name")
+            if name is None:
+                continue
+            column_stats[name] = {
+                "Delta Cardinality": (
+                    _to_int(cr.get("Cardinality", 0)) if has_card else None
+                ),
+                "Compressed Size": _to_int(cr.get("Compressed Size", 0)),
+                "Uncompressed Size": _to_int(cr.get("Uncompressed Size", 0)),
+            }
+
+    return table_stats, column_stats
+
+
+def _compute_table_delta_stats(info, skip_cardinality=True):
+    """Run the Delta Analyzer for a single Direct-Lake-over-Lakehouse source
+    table and return the pre-formatted stats to merge into the Vertipaq
+    Analyzer widget.
+
+    Returns a tuple ``(table_stats, column_stats_by_source_column)`` where
+    ``table_stats`` is a dict of formatted table-level values and
+    ``column_stats_by_source_column`` maps each source (delta) column name to a
+    dict of formatted per-column values. Numeric values are accompanied by a
+    ``...Raw`` entry carrying the underlying number so the frontend can sort on
+    magnitude instead of on the formatted text.
+    """
+    raw_table, raw_columns = _compute_table_delta_stats_raw(
+        info, skip_cardinality=skip_cardinality
+    )
+
+    table_stats = {
+        "deltaTotalSize": format_bytes(raw_table["Delta Total Size"]),
+        "deltaTotalSizeRaw": raw_table["Delta Total Size"],
+        "deltaRowCount": f"{raw_table['Delta Row Count']:,}",
+        "deltaRowCountRaw": raw_table["Delta Row Count"],
+        "deltaRowGroups": f"{raw_table['Row Groups']:,}",
+        "deltaRowGroupsRaw": raw_table["Row Groups"],
+        "deltaParquetFiles": f"{raw_table['Parquet Files']:,}",
+        "deltaParquetFilesRaw": raw_table["Parquet Files"],
+        "deltaVorder": raw_table["V-Order"],
+        "deltaZOrder": raw_table["Z-Order"],
+        "deltaClustering": raw_table["Liquid Clustering"],
+        "deltaDeletionVectors": raw_table["Deletion Vectors"],
+        "deltaAutoCompact": raw_table["Auto-compaction"],
+    }
+
+    column_stats: dict = {}
+    for name, raw in raw_columns.items():
+        cardinality = raw["Delta Cardinality"]
+        column_stats[name] = {
+            "compressedSize": format_bytes(raw["Compressed Size"]),
+            "compressedSizeRaw": raw["Compressed Size"],
+            "uncompressedSize": format_bytes(raw["Uncompressed Size"]),
+            "uncompressedSizeRaw": raw["Uncompressed Size"],
+            "cardinality": "" if cardinality is None else f"{cardinality:,}",
+            "cardinalityRaw": cardinality,
+        }
+
+    return table_stats, column_stats
+
+
+@log
+def vertipaq_analyzer(
+    dataset: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+    export: Optional[Literal["table"]] = None,
+    read_stats_from_data: bool = False,
+    export_lakehouse: Optional[str | UUID] = None,
+    export_workspace: Optional[str | UUID] = None,
+    export_schema: Optional[str] = None,
+    dark_mode: bool = False,
+    visualize: bool = True,
+    _widget=None,
+) -> dict[str, pd.DataFrame]:
+    """
+    Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
+
+    `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ is an open-sourced tool built by SQLBI. It provides a detailed analysis of the VertiPaq engine, which is the in-memory engine used by Power BI and Analysis Services Tabular models.
+
+    If the semantic model has any tables in Direct Lake mode which source from a lakehouse, the visualization includes a "Delta Analyzer" button. Clicking it lets you pick which Direct-Lake-over-Lakehouse source tables to analyze on Spark and then merges the resulting `Delta Analyzer <https://github.com/microsoft/Analysis-Services/tree/master/DeltaAnalyzer>`_ statistics (e.g. delta table size, row groups, parquet files, V-Order, Z-Order, liquid clustering, deletion vectors, auto-compaction, and per-column compressed/uncompressed sizes and cardinality) into the Tables and Columns tabs. This interactive feature requires the ``anywidget`` package; if it is not installed the statistics still render without the button.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID, default=None
+        Name or ID of the semantic model. When None and ``visualize=True``, a
+        workspace and semantic model picker is displayed.
+    workspace : str| uuid.UUID, default=None
+        The Fabric workspace name or ID in which the semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    export : typing.Literal['table'], default=None
+        If set to 'table', the vertipaq analyzer statistics will be exported as delta tables to the lakehouse. The tables will be named vertipaqanalyzer_model, vertipaqanalyzer_table, vertipaqanalyzer_partition, vertipaqanalyzer_column, vertipaqanalyzer_relationship, and vertipaqanalyzer_hierarchy. If None, the statistics will just be displayed in the notebook.
+    read_stats_from_data : bool, default=False
+        Setting this parameter to True has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve by querying the delta tables). Missing Rows is not calculated for Direct Lake models.
+    export_lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID to which the vertipaq analyzer statistics tables will be exported if export is set to 'table'.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    export_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse to which the vertipaq analyzer statistics tables will be exported if export is set to 'table'.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    export_schema : str, default=None
+        The schema to which the vertipaq analyzer statistics tables will be exported if export is set to 'table' and the lakehouse has schemas enabled. If the lakehouse does not have schemas enabled, this parameter will be ignored.
+    dark_mode : bool, default=False
+        If True, renders the Vertipaq Analyzer visualization with a dark
+        color theme. If False, renders with a light color theme. A toggle
+        button in the header allows switching between modes at runtime.
+    visualize : bool, default=True
+        If True, displays the Vertipaq Analyzer or, when ``dataset`` is None,
+        a workspace and semantic model picker. If False, ``dataset`` is
+        required and only the dataframes are returned.
+
+    Returns
+    -------
+    dict[str, pandas.DataFrame]
+        A dictionary of pandas dataframes showing the vertipaq analyzer statistics.
+    """
+
+    if export is not None:
+        export = export.lower()
+    if export not in (None, "table"):
+        raise ValueError(
+            f"{icons.red_dot} Invalid value for 'export'. Expected None or 'table'."
+        )
+
+    if dataset is None:
+        if not visualize:
+            raise ValueError("The 'dataset' parameter is required when visualize=False.")
+        if export is not None:
+            raise ValueError("The 'dataset' parameter is required when export='table'.")
+        _show_vertipaq_picker(
+            workspace=workspace,
+            dark_mode=dark_mode,
+            read_stats_from_data=read_stats_from_data,
+        )
+        return {}
+
+    from sempy_labs.tom import connect_semantic_model
+
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+    save_prefix = "vertipaqanalyzer_"
+    save_table_name = f"{save_prefix}model"
+
+    if export == "table":
+        run_id = get_run_id(
+            lakehouse=export_lakehouse,
+            schema=export_schema,
+            workspace=export_workspace,
+            save_table_name=save_table_name,
+        )
+
+    vertipaq_map = {
+        "Model": {
+            "Dataset Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the semantic model",
+            },
+            "Total Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the semantic model (in bytes)",
+            },
+            "Table Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of tables in the semantic model",
+            },
+            "Column Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of columns in the semantic model",
+            },
+            "Compatibility Level": {
+                "data_type": icons.data_type_long,
+                "format": icons.no_format,
+                "tooltip": "The compatibility level of the semantic model",
+            },
+            "Default Mode": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The default query mode of the semantic model",
+            },
+        },
+        "Tables": {
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of table",
+            },
+            "Row Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of rows in the table",
+            },
+            "Total Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)",
+            },
+            "Data Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the data for all the columns in this table (in bytes)",
+            },
+            "Dictionary Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the column's dictionary for all columns in this table (in bytes)",
+            },
+            "Hierarchy Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of hierarchy structures for all columns in this table (in bytes)",
+            },
+            "Relationship Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of relationship structures for this table (in bytes)",
+            },
+            "User Hierarchy Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of user hierarchy structures for this table (in bytes)",
+            },
+            "Partitions": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of partitions in the table",
+            },
+            "Columns": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of columns in the table",
+            },
+            "% DB": {
+                "data_type": icons.data_type_double,
+                "format": icons.pct_format,
+                "tooltip": "The size of the table relative to the size of the semantic model",
+            },
+        },
+        "Partitions": {
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Partition Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the partition within the table",
+            },
+            "Mode": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The query mode of the partition",
+            },
+            "Record Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of rows in the partition",
+            },
+            "Segment Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of segments within the partition",
+            },
+            "Records per Segment": {
+                "data_type": icons.data_type_double,
+                "format": icons.int_format,
+                "tooltip": "The number of rows per segment",
+            },
+            "Direct Lake Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of Direct Lake connection (SQL or OneLake)",
+            },
+            "Source Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the data source for the partition",
+            },
+            "Source Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of data source for the partition",
+            },
+            "Source Workspace": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The workspace of the data source for the partition",
+            },
+            "Source Schema Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The schema name in the source for the partition",
+            },
+            "Source Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table in the source for the partition",
+            },
+        },
+        "Columns": {
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Column Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the column",
+            },
+            "Source Column": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the source column",
+            },
+            "Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of column",
+            },
+            "Cardinality": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of unique rows in the column",
+            },
+            "Total Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)",
+            },
+            "Data Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the data for the column (in bytes)",
+            },
+            "Dictionary Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the column's dictionary (in bytes)",
+            },
+            "Hierarchy Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of hierarchy structures (in bytes)",
+            },
+            "% Table": {
+                "data_type": icons.data_type_double,
+                "format": icons.pct_format,
+                "tooltip": "The size of the column relative to the size of the table",
+            },
+            "% DB": {
+                "data_type": icons.data_type_double,
+                "format": icons.pct_format,
+                "tooltip": "The size of the column relative to the size of the semantic model",
+            },
+            "Data Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The data type of the column",
+            },
+            "Encoding": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The encoding type for the column",
+            },
+            "Is Resident": {
+                "data_type": icons.data_type_bool,
+                "format": icons.no_format,
+                "tooltip": "Indicates whether the column is in memory or not",
+            },
+            "Temperature": {
+                "data_type": icons.data_type_double,
+                "format": icons.data_type_double,
+                "tooltip": "A decimal indicating the frequency and recency of queries against the column",
+            },
+            "Last Accessed": {
+                "data_type": icons.data_type_timestamp,  # icons.data_type_timestamp,
+                "format": icons.data_type_timestamp,
+                "tooltip": "The time the column was last queried",
+            },
+        },
+        "Hierarchies": {
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Hierarchy Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the hierarchy",
+            },
+            "Used Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of user hierarchy structures (in bytes)",
+            },
+            "Levels": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of levels in the hierarchy",
+            },
+        },
+        "Relationships": {
+            "From Object": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The from table/column in the relationship",
+            },
+            "To Object": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The to table/column in the relationship",
+            },
+            "Multiplicity": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The cardinality on each side of the relationship",
+            },
+            "Used Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the relationship (in bytes)",
+            },
+            "Max From Cardinality": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of unique values in the column used in the from side of the relationship",
+            },
+            "Max To Cardinality": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of unique values in the column used in the to side of the relationship",
+            },
+            "Missing Rows": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of rows in the 'from' table which do not map to the key column in the 'to' table",
+            },
+        },
+    }
+
+    # Direct Lake source details are informational only, so a source which
+    # cannot be resolved (e.g. a service principal without access to the
+    # source's workspace) should not prevent the analysis from running.
+    try:
+        sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)
+    except (ValueError, FabricHTTPException) as e:
+        print(
+            f"{icons.warning} Unable to resolve the Direct Lake source(s) of the '{dataset_name}' semantic model within the '{workspace_name}' workspace. Source details will be omitted.\n{e}"
+        )
+        sources = []
+    is_direct_lake = False
+    with connect_semantic_model(
+        dataset=dataset_id, workspace=workspace_id, readonly=True
+    ) as tom:
+        compat_level = tom.model.Model.Database.CompatibilityLevel
+        is_direct_lake = tom.is_direct_lake()
+        def_mode = str(tom.model.DefaultMode)
+        table_count = tom.model.Tables.Count
+        column_count = len(list(tom.all_columns()))
+        if table_count == 0:
+            print(
+                f"{icons.warning} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has no tables. Vertipaq Analyzer can only be run if the semantic model has tables."
+            )
+            return
+
+        # Read Vertipaq DMV stats directly instead of writing them onto the
+        # model as annotations and reading them back. The annotation
+        # round-trip costs N writes + N reads of .NET interop calls per
+        # object; we already have all the data in these DataFrames.
+        from sempy_labs._list_functions import list_tables, list_relationships
+
+        dfT = list_tables(dataset=dataset_id, workspace=workspace_id, extended=True)
+        dfC = fabric.list_columns(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfP = fabric.list_partitions(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfH = fabric.list_hierarchies(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+        dfR = list_relationships(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
+
+        empty_row: dict = {}
+        dfT_idx = {row["Name"]: row for _, row in dfT.iterrows()}
+        dfC_idx = {
+            (row["Table Name"], row["Column Name"]): row for _, row in dfC.iterrows()
+        }
+        dfP_idx = {
+            (row["Table Name"], row["Partition Name"]): row for _, row in dfP.iterrows()
+        }
+        dfH_idx = {
+            (row["Table Name"], row["Hierarchy Name"]): row for _, row in dfH.iterrows()
+        }
+        dfR_idx = {row["Relationship Name"]: row for _, row in dfR.iterrows()}
+
+        model_summary = []
+        tables = []
+        partitions = []
+        columns = []
+        hierarchies = []
+        relationships = []
+
+        for p in tom.all_partitions():
+            mode = str(p.Mode)
+            direct_lake_type = None
+            (
+                source,
+                source_type,
+                source_workspace,
+                source_table_name,
+                source_schema_name,
+            ) = (
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            if mode == "DirectLake":
+                expr = p.Source.ExpressionSource.Expression
+                expression_name = p.Source.ExpressionSource.Name
+                if "Sql.Database" in expr:
+                    direct_lake_type = "SQL"
+                elif "AzureStorage.DataLake" in expr:
+                    direct_lake_type = "OneLake"
+                s = next(
+                    (s for s in sources if s.get("expressionName") == expression_name),
+                    {},
+                )
+                source = s.get("itemName")
+                source_type = s.get("itemType")
+                source_workspace = s.get("workspaceName")
+                source_table_name = p.Source.EntityName
+                source_schema_name = p.Source.SchemaName
+
+            p_row = dfP_idx.get((p.Parent.Name, p.Name), empty_row)
+            partitions.append(
+                {
+                    "Table Name": p.Parent.Name,
+                    "Partition Name": p.Name,
+                    "Mode": mode,
+                    "Record Count": cast_to_type(
+                        p_row.get("Record Count"),
+                        "int",
+                    ),
+                    "Segment Count": cast_to_type(
+                        p_row.get("Segment Count"),
+                        "int",
+                    ),
+                    "Records per Segment": cast_to_type(
+                        p_row.get("Records per Segment"),
+                        "decimal",
+                    ),
+                    "Direct Lake Type": direct_lake_type,
+                    "Source Name": source,
+                    "Source Type": source_type,
+                    "Source Workspace": source_workspace,
+                    "Source Schema Name": source_schema_name,
+                    "Source Table Name": source_table_name,
+                }
+            )
+
+        for h in tom.all_hierarchies():
+            h_row = dfH_idx.get((h.Parent.Name, h.Name), empty_row)
+            hierarchies.append(
+                {
+                    "Table Name": h.Parent.Name,
+                    "Hierarchy Name": h.Name,
+                    "Used Size": cast_to_type(
+                        h_row.get("Used Size"),
+                        "decimal",
+                    ),
+                    "Levels": h.Levels.Count,
+                }
+            )
+
+        for r in tom.model.Relationships:
+            from_object = f"'{r.FromTable.Name}'[{r.FromColumn.Name}]"
+            to_object = f"'{r.ToTable.Name}'[{r.ToColumn.Name}]"
+            missing_rows = 0
+
+            # Use DAX to calculate missing rows for non-DL models; TODO: update this to include DL models
+            if read_stats_from_data and not is_direct_lake:
+                missing_rows = calc_missing_rows_dax(
+                    from_table=r.FromTable.Name,
+                    from_column=r.FromColumn.Name,
+                    to_table=r.ToTable.Name,
+                    to_column=r.ToColumn.Name,
+                    is_active=r.IsActive,
+                    dataset_id=dataset_id,
+                    workspace_id=workspace_id,
+                )
+
+            r_row = dfR_idx.get(r.Name, empty_row)
+            relationships.append(
+                {
+                    "From Object": from_object,
+                    "To Object": to_object,
+                    "Multiplicity": r_row.get("Multiplicity"),
+                    "Used Size": cast_to_type(
+                        r_row.get("Used Size"),
+                        "decimal",
+                    ),
+                    "Max From Cardinality": 0,  # Updated later
+                    "Max To Cardinality": 0,  # Updated later
+                    "Missing Rows": cast_to_type(missing_rows, "int"),
+                }
+            )
+
+        for t in tom.model.Tables:
+            t_row = dfT_idx.get(t.Name, empty_row)
+            table_total_size = cast_to_type(t_row.get("Total Size"), "decimal")
+            table_type = (
+                "Calculation Group"
+                if t.CalculationGroup
+                else (
+                    "Calculated Table"
+                    if tom.is_calculated_table(table_name=t.Name)
+                    else "Table"
+                )
+            )
+            table_direct_lake = (
+                True
+                if next(str(p.Mode) for p in t.Partitions) == "DirectLake"
+                else False
+            )
+            tables.append(
+                {
+                    "Table Name": t.Name,
+                    "Type": table_type,
+                    "Row Count": cast_to_type(
+                        t_row.get("Row Count"),
+                        "int",
+                    ),
+                    "Total Size": table_total_size,
+                    "Dictionary Size": cast_to_type(
+                        t_row.get("Dictionary Size"),
+                        "decimal",
+                    ),
+                    "Data Size": cast_to_type(
+                        t_row.get("Data Size"),
+                        "decimal",
+                    ),
+                    "Hierarchy Size": cast_to_type(
+                        t_row.get("Hierarchy Size"),
+                        "decimal",
+                    ),
+                    "Relationship Size": cast_to_type(
+                        t_row.get("Relationship Size"),
+                        "decimal",
+                    ),
+                    "User Hierarchy Size": cast_to_type(
+                        t_row.get("User Hierarchy Size"),
+                        "decimal",
+                    ),
+                    "Partitions": t.Partitions.Count,
+                    "Columns": t.Columns.Count
+                    - 1,  # Subtracting 1 to exclude the RowNumber column
+                    "% DB": cast_to_type(
+                        t_row.get("% DB"),
+                        "decimal",
+                    ),
+                }
+            )
+            for c in t.Columns:
+                c_row = dfC_idx.get((c.Parent.Name, c.Name), empty_row)
+                column_total_size = cast_to_type(
+                    c_row.get("Total Size"),
+                    "decimal",
+                )
+                last_accessed = c_row.get("Last Accessed")
+                columns.append(
+                    {
+                        "Table Name": c.Parent.Name,
+                        "Column Name": c.Name,
+                        "Source Column": (
+                            c.SourceColumn if str(c.Type) == "Data" else None
+                        ),
+                        "Type": str(c.Type),
+                        "Cardinality": cast_to_type(
+                            c_row.get("Column Cardinality"),
+                            "int",
+                        ),
+                        "Total Size": column_total_size,
+                        "Data Size": cast_to_type(
+                            c_row.get("Data Size"),
+                            "decimal",
+                        ),
+                        "Dictionary Size": cast_to_type(
+                            c_row.get("Dictionary Size"),
+                            "decimal",
+                        ),
+                        "Hierarchy Size": cast_to_type(
+                            c_row.get("Hierarchy Size"),
+                            "decimal",
+                        ),
+                        "% Table": (
+                            round(column_total_size / table_total_size * 100, 2)
+                            if table_total_size > 0
+                            else 0.0
+                        ),
+                        "% DB": 0.0,  # Updated later
+                        "Data Type": str(c.DataType),
+                        "Encoding": str(c.EncodingHint),
+                        "Is Resident": cast_to_type(
+                            c_row.get("Is Resident"),
+                            "bool",
+                        ),
+                        "Temperature": cast_to_type(
+                            c_row.get("Temperature"),
+                            "decimal",
+                        ),
+                        "Last Accessed": last_accessed,
+                    }
+                )
+
+        # Set totals
+        total_db = sum([t["Total Size"] for t in tables])
+        for c in columns:
+            c["% DB"] = (
+                round(c["Total Size"] / total_db * 100, 2) if total_db > 0 else 0.0
+            )
+
+        # Capture cardinality for Direct Lake
+        if read_stats_from_data and table_direct_lake:
+            partitions_by_table = {p["Table Name"]: p for p in partitions}
+
+            for t in tom.model.Tables:
+
+                p = next(iter(t.Partitions), None)
+                if not p or str(p.Mode) != "DirectLake":
+                    continue
+
+                par = partitions_by_table.get(t.Name)
+                if not par:
+                    continue
+
+                entity_name = par.get("Source Table Name")
+                schema_name = par.get("Source Schema Name")
+                source_name = par.get("Source Name")
+                source_type = par.get("Source Type")
+                source_workspace = par.get("Source Workspace")
+                column_list = [
+                    {
+                        "ColumnName": c.Name,
+                        "SourceColumn": c.SourceColumn,
+                        "Cardinality": 0,  # Updated later
+                    }
+                    for c in t.Columns
+                    if str(c.Type) != "RowNumber"
+                ]
+                source_column_list = [c["SourceColumn"] for c in column_list]
+                # Only valid for lakehouse sources
+                if source_type == "Lakehouse":
+                    aggs = _get_column_aggregate(
+                        table_name=entity_name,
+                        column_name=source_column_list,
+                        lakehouse=source_name,
+                        workspace=source_workspace,
+                        function="distinct",
+                        schema_name=schema_name,
+                    )
+                elif source_type == "Warehouse":
+                    from sempy_labs._sql import ConnectBase
+
+                    query = create_sql_query(
+                        columns=source_column_list,
+                        schema_name=schema_name,
+                        table_name=entity_name,
+                    )
+
+                    with ConnectBase(
+                        item=source_name, type=source_type, workspace=source_workspace
+                    ) as sql:
+                        df = sql.query(query)
+
+                    aggs = df.iloc[0].to_dict()
+                else:
+                    continue
+
+                for col in columns:
+                    if col["Table Name"] == t.Name:
+                        col["Cardinality"] = aggs.get(
+                            col["Source Column"], col["Cardinality"]
+                        )
+
+        # Build an index keyed by the same ``'Table'[Column]`` string used
+        # for relationship endpoints so the lookups below are O(1) per
+        # relationship instead of an O(R*C) linear scan of every column
+        # per relationship.
+        col_card_lookup = {
+            f"'{c['Table Name']}'[{c['Column Name']}]": c["Cardinality"]
+            for c in columns
+        }
+        for r in relationships:
+            r["Max From Cardinality"] = col_card_lookup.get(r["From Object"], 0)
+            r["Max To Cardinality"] = col_card_lookup.get(r["To Object"], 0)
+
+        model_summary.append(
+            {
+                "Dataset Name": dataset_name,
+                "Total Size": total_db,
+                "Table Count": table_count,
+                "Column Count": column_count,
+                "Compatibility Level": compat_level,
+                "Default Mode": def_mode,
+            }
+        )
+
+    # Convert lists to dataframes and sort as needed
+    config = {
+        "Model": {
+            "data": model_summary,
+            "sortby": None,
+            "title": "Model Summary",
+            "name": "Model",
+        },
+        "Tables": {
+            "data": tables,
+            "sortby": "Total Size",
+            "title": "Tables",
+            "name": "Table",
+        },
+        "Partitions": {
+            "data": partitions,
+            "sortby": "Record Count",
+            "title": "Partitions",
+            "name": "Partition",
+        },
+        "Relationships": {
+            "data": relationships,
+            "sortby": "Used Size",
+            "title": "Relationships",
+            "name": "Relationship",
+        },
+        "Hierarchies": {
+            "data": hierarchies,
+            "sortby": "Used Size",
+            "title": "Hierarchies",
+            "name": "Hierarchy",
+        },
+        "Columns": {
+            "data": columns,
+            "sortby": "Total Size",
+            "title": "Columns",
+            "name": "Column",
+        },
+    }
+
+    def _style_columns_based_on_types(df: pd.DataFrame, column_type_mapping):
+        format_funcs = {
+            "int": lambda x: f"{int(x):,}" if pd.notna(x) and x != "<NA>" else "",
+            "pct": lambda x: f"{float(x):.2f}%" if pd.notna(x) and x != "<NA>" else "",
+            "double": lambda x: (
+                f"{float(x):.4f}" if pd.notna(x) and x != "<NA>" else ""
+            ),
+            "": lambda x: f"{x}",
+        }
+
+        for col, dt in column_type_mapping.items():
+            if dt in format_funcs and col in df.columns:
+                df[col] = df[col].map(format_funcs[dt])
+
+        return df
+
+    def create_dfs(column_formatting: str = "format"):
+        dfs = {}
+        for name, items in config.items():
+            data = items.get("data")
+            sort_col = items.get("sortby")
+            nm = items.get("name")
+            df = pd.DataFrame(data, columns=list(vertipaq_map[name].keys()))
+
+            if sort_col and sort_col in df.columns:
+                df = df.sort_values(sort_col, ascending=False, ignore_index=True)
+
+            if name == "Columns":
+                df = df[df["Type"] != "RowNumber"]
+                keys_to_remove = ["Source Column"]
+                df.drop(columns=keys_to_remove, inplace=True)
+                for k in keys_to_remove:
+                    vertipaq_map[name].pop(k, None)
+            if name == "Partitions":
+                keys_to_remove = [
+                    "Direct Lake Type",
+                    "Source Name",
+                    "Source Type",
+                    "Source Workspace",
+                    "Source Schema Name",
+                    "Source Table Name",
+                ]
+                if not is_direct_lake:
+                    df.drop(
+                        columns=keys_to_remove,
+                        inplace=True,
+                    )
+
+                    for k in keys_to_remove:
+                        vertipaq_map[name].pop(k, None)
+            if name == "Relationships" and not read_stats_from_data:
+                keys_to_remove = ["Missing Rows"]
+                df.drop(columns=keys_to_remove, inplace=True)
+                for k in keys_to_remove:
+                    vertipaq_map[name].pop(k, None)
+
+            column_type_mapping = {
+                k: v[column_formatting] for k, v in vertipaq_map[name].items()
+            }
+            dataframe = _style_columns_based_on_types(df, column_type_mapping)
+            dfs[name] = {
+                "data": dataframe,
+                "title": items.get("title"),
+                "name": nm,
+            }
+        return dfs
+
+    # Prepare output for returned dictionary of dataframes and for exported dataframes
+    dtype_map = {"string": "string", "long": "int", "double": "float", "bool": "bool"}
+    return_sections = {
+        "Model": "Model Summary",
+        "Tables": "Tables",
+        "Partitions": "Partitions",
+        "Columns": "Columns",
+        "Relationships": "Relationships",
+        "Hierarchies": "Hierarchies",
+    }
+    final_dict = {}
+    for name, title in return_sections.items():
+        items = config[name]
+        data = items.get("data")
+        sort_col = items.get("sortby")
+        df = pd.DataFrame(data, columns=list(vertipaq_map[name].keys()))
+        if sort_col and sort_col in df.columns:
+            df = df.sort_values(by=sort_col, ascending=False).reset_index(drop=True)
+        col_types = {
+            k: dtype_map.get(v["data_type"], "string")
+            for k, v in vertipaq_map[name].items()
+            if k in df.columns
+        }
+        _update_dataframe_datatypes(df, col_types)
+        final_dict[title] = df
+
+    if export is None and visualize:
+        dfs = create_dfs(column_formatting="format")
+        default_sort = {
+            items["title"]: items["sortby"]
+            for items in config.values()
+            if items.get("sortby")
+        }
+
+        # Direct-Lake-over-Lakehouse source tables that the Delta Analyzer can
+        # run on. Only these tables enable the "Delta Analyzer" button in the
+        # widget.
+        delta_tables = _direct_lake_delta_tables(partitions)
+        column_source_map = _column_source_map(columns)
+
+        visualize_vertipaq(
+            dfs,
+            dataset_name,
+            vertipaq_map,
+            default_sort=default_sort,
+            workspace_name=workspace_name,
+            dark_mode=dark_mode,
+            delta_tables=delta_tables,
+            column_source_map=column_source_map,
+            dataset_id=dataset_id,
+            workspace_id=workspace_id,
+            read_stats_from_data=read_stats_from_data,
+            widget=_widget,
+        )
+
+        return final_dict
+
+    if export is None:
+        return final_dict
+
+    # Export vertipaq to delta tables in lakehouse
+    if export == "table":
+        # dfs = create_dfs(column_formatting="data_type")
+
+        print(
+            f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
+        )
+
+        now = datetime.datetime.now()
+
+        # Dataset metadata
+        df_datasets = fabric.list_datasets(workspace=workspace_id, mode="rest")
+        configured_by = df_datasets.loc[
+            df_datasets["Dataset Id"] == dataset_id, "Configured By"
+        ].iloc[0]
+
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
+
+        base_metadata = {
+            "Capacity Name": capacity_name,
+            "Capacity Id": capacity_id,
+            "Workspace Name": workspace_name,
+            "Workspace Id": workspace_id,
+            "Dataset Name": dataset_name,
+            "Dataset Id": dataset_id,
+            "Configured By": configured_by,
+            "RunId": run_id,
+            "Timestamp": now,
+        }
+
+        # df_map = {
+        #    k: final_dict[k]["data"]
+        #    for k in [
+        #        "Columns",
+        #        "Tables",
+        #        "Partitions",
+        #        "Relationships",
+        #        "Hierarchies",
+        #        "Model",
+        #    ]
+        # }
+
+        ordered_prefix = [
+            "Capacity Name",
+            "Capacity Id",
+            "Workspace Name",
+            "Workspace Id",
+            "Dataset Name",
+            "Dataset Id",
+            "Configured By",
+        ]
+
+        for obj, df in final_dict.items():
+            if obj == "Model Summary":
+                obj = "Model"
+
+            # Add metadata columns
+            df = df.assign(**base_metadata)
+
+            # Reorder columns
+            df = df[ordered_prefix + [c for c in df.columns if c not in ordered_prefix]]
+
+            # Normalize column names
+            df.columns = df.columns.str.replace(" ", "_")
+
+            # Build schema
+            schema = {
+                "Capacity_Name": icons.data_type_string,
+                "Capacity_Id": icons.data_type_string,
+                "Workspace_Name": icons.data_type_string,
+                "Workspace_Id": icons.data_type_string,
+                "Dataset_Name": icons.data_type_string,
+                "Dataset_Id": icons.data_type_string,
+                "Configured_By": icons.data_type_string,
+                **{
+                    k.replace(" ", "_"): v["data_type"]
+                    for k, v in vertipaq_map[obj].items()
+                },
+                "RunId": icons.data_type_long,
+                "Timestamp": icons.data_type_timestamp,
+            }
+
+            delta_table_suffix = f"{save_prefix}{obj}".lower()
+            if export_schema:
+                delta_table_name = f"{export_schema}/{delta_table_suffix}"
+            else:
+                delta_table_name = delta_table_suffix
+
+            # Needed to convert from string back to datetime (since the annotation is stored as a string)
+            if obj == "Columns":
+                df["Last_Accessed"] = pd.to_datetime(
+                    df["Last_Accessed"],
+                    format="%Y-%m-%d %H:%M:%S",
+                    errors="coerce",
+                    utc=True,
+                )
+            save_as_delta_table(
+                dataframe=df,
+                delta_table_name=delta_table_name,
+                write_mode="append",
+                schema=schema,
+                merge_schema=True,
+                lakehouse=export_lakehouse,
+                workspace=export_workspace,
+            )
+
+
+def _vpx_model_key(workspace_id, dataset_id) -> str:
+    """Cache key identifying an analyzed semantic model."""
+    return f"{str(workspace_id).lower()}|{str(dataset_id).lower()}"
+
+
+def _vpx_snapshot_model(widget):
+    """Cache the state of the model currently rendered in the widget (HTML/JS
+    plus any merged Delta Analyzer results) so it can be shown again later
+    without re-running the analysis."""
+    key = getattr(widget, "_model_key", "")
+    if not key or getattr(widget, "_cache", None) is None:
+        return
+    widget._cache[key] = {
+        "uid": widget.uid,
+        "html": widget.html_content,
+        "js": widget.script_content,
+        "workspace_id": widget.workspace_id,
+        "delta_tables": list(widget.delta_tables or []),
+        "delta_results": dict(widget.delta_results or {}),
+        "delta_info": dict(getattr(widget, "_delta_info", {}) or {}),
+        "col_src": dict(getattr(widget, "_col_src", {}) or {}),
+        "meta": dict(getattr(widget, "_model_meta", {}) or {}),
+    }
+
+
+def _vpx_sync_recent(widget):
+    """Publish the analyzed models so the picker can offer them for instant
+    switching."""
+    widget.recent_models = [
+        {
+            "key": k,
+            "dataset": (e.get("meta") or {}).get("dataset", ""),
+            "workspace": (e.get("meta") or {}).get("workspace", ""),
+            "current": k == getattr(widget, "_model_key", ""),
+        }
+        for k, e in (getattr(widget, "_cache", None) or {}).items()
+    ]
+
+
+def _vpx_restore_model(widget, key) -> bool:
+    """Re-render a previously analyzed model from the cache. Returns False when
+    that model has not been analyzed in this session."""
+    if key not in (getattr(widget, "_cache", None) or {}):
+        return False
+    # Capture the latest state (e.g. Delta Analyzer results added since the
+    # model was rendered) before switching away from it.
+    _vpx_snapshot_model(widget)
+    entry = widget._cache[key]
+    widget._model_key = key
+    widget._model_meta = dict(entry.get("meta") or {})
+    widget._delta_info = dict(entry.get("delta_info") or {})
+    widget._col_src = dict(entry.get("col_src") or {})
+    widget.workspace_id = entry.get("workspace_id", "")
+    widget.delta_tables = entry.get("delta_tables", [])
+    widget.delta_results = entry.get("delta_results", {})
+    widget.status = {}
+    widget.uid = entry.get("uid", "")
+    widget.script_content = entry.get("js", "")
+    # Set last: the frontend redraws on this trait.
+    widget.html_content = entry.get("html", "")
+    _vpx_sync_recent(widget)
+    return True
+
+
+def _show_vertipaq_picker(
+    workspace: Optional[str | UUID] = None,
+    dark_mode: bool = False,
+    read_stats_from_data: bool = False,
+) -> None:
+    """Display the Vertipaq widget in its initial model-picker state."""
+
+    # Always resolve so the picker opens on the current workspace.
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    empty_sections = {
+        "Model": {"data": pd.DataFrame(columns=["Dataset Name"])},
+        "Tables": {"data": pd.DataFrame()},
+        "Partitions": {"data": pd.DataFrame()},
+        "Columns": {"data": pd.DataFrame()},
+        "Relationships": {"data": pd.DataFrame()},
+        "Hierarchies": {"data": pd.DataFrame()},
+    }
+    visualize_vertipaq(
+        empty_sections,
+        dataset_name=None,
+        workspace_name=workspace_name,
+        dark_mode=dark_mode,
+        workspace_id=workspace_id,
+        read_stats_from_data=read_stats_from_data,
+        picker_initial=True,
+    )
+
+
+def visualize_vertipaq(
+    dataframes,
+    dataset_name,
+    vertipaq_map=None,
+    default_sort=None,
+    workspace_name=None,
+    dark_mode=False,
+    delta_tables=None,
+    column_source_map=None,
+    dataset_id=None,
+    workspace_id=None,
+    read_stats_from_data=False,
+    widget=None,
+    picker_initial=False,
+):
+    """Render the Vertipaq Analyzer visualization.
+
+    ``widget`` is an already-displayed Vertipaq widget to re-render in place
+    (used by the workspace / semantic model picker when switching models)
+    instead of creating and displaying a new one.
+    """
+
+    # Build tooltip lookup from vertipaq_map
+    tooltip_lookup = {}
+    if vertipaq_map:
+        view_name_map = {
+            "Model": "Model",
+            "Tables": "Table",
+            "Partitions": "Partition",
+            "Columns": "Column",
+            "Hierarchies": "Hierarchy",
+            "Relationships": "Relationship",
+        }
+        for section, cols in vertipaq_map.items():
+            vw = view_name_map.get(section, section)
+            for col_name, col_info in cols.items():
+                tt = col_info.get("tooltip", "")
+                if tt:
+                    tooltip_lookup[(vw, col_name)] = tt
+
+    # Model summary cards (shown above tabs)
+    model_df = dataframes["Model"]["data"]
+
+    # define the dictionary with {"Tab name":df}
+    df_dict = {
+        "Tables": (dataframes["Tables"]["data"], "Table"),
+        "Partitions": (dataframes["Partitions"]["data"], "Partition"),
+        "Columns": (dataframes["Columns"]["data"], "Column"),
+        "Relationships": (dataframes["Relationships"]["data"], "Relationship"),
+        "Hierarchies": (dataframes["Hierarchies"]["data"], "Hierarchy"),
+    }
+
+    uid = uuid.uuid4().hex[:8]
+    root_selector = f".vpx-{uid}"
+    theme_btn_id = f"vpx-theme-{uid}"
+    fullscreen_btn_id = f"vpx-fs-{uid}"
+    picker_btn_id = f"vpx-picker-{uid}"
+    # The workspace / semantic model picker re-runs the analysis in Python, so
+    # it is only available on the interactive (anywidget) render, which in turn
+    # needs to know which model is currently shown.
+    can_pick = bool(picker_initial) or (bool(dataset_id) and bool(workspace_id))
+    # Scope the shared header CSS under the root selector so its rules win
+    # against notebook host styles (e.g. Jupyter's ``.jp-RenderedHTMLCommon
+    # button`` rules that would otherwise override the theme toggle
+    # button's shape, color, and layout). The result is interpolated as a
+    # single ``{var}`` placeholder in the f-string below, so its braces
+    # are NOT subject to f-string escaping and don't need doubling.
+    ui_header_css_scoped = _ui_scoped_header_css(root_selector)
+    ui_attribution_css_scoped = _ui_scoped_attribution_css(root_selector)
+    ui_button_press_css_scoped = _ui_scoped_button_press_css(root_selector)
+    ui_fullscreen_css = _ui_fullscreen_css(
+        root_selector,
+        "vpx-fs",
+        container_selector=".vpx-container",
+        bg_var="var(--vpx-bg)",
+    )
+
+    # ── CSS ──────────────────────────────────────────────────────────────
+    # Light theme is the default; the ``.vpx-dark`` modifier on the root
+    # element switches to the dark palette. Both palettes draw their
+    # tokens from the shared :mod:`sempy_labs._ui_components` module so
+    # they stay consistent across widgets.
+    styles = f"""
+    <style>
+    {ui_header_css_scoped}
+    {ui_fullscreen_css}
+    {_UI_SEARCH_SELECT_CSS}
+    .vpx-{uid} {{
+        {_UI_LIGHT_VARS}
+        --vpx-accent: var(--ui-accent);
+        --vpx-accent-hover: var(--ui-accent-hover);
+        --vpx-bg: var(--ui-bg);
+        --vpx-bg-secondary: var(--ui-bg-secondary);
+        --vpx-bg-tertiary: var(--ui-bg-tertiary);
+        --vpx-border: var(--ui-border);
+        --vpx-border-strong: var(--ui-border-strong);
+        --vpx-text: var(--ui-text);
+        --vpx-text-secondary: var(--ui-text-secondary);
+        --vpx-text-tertiary: var(--ui-text-tertiary);
+        --vpx-shadow-sm: var(--ui-shadow-sm);
+        --vpx-shadow-md: var(--ui-shadow-md);
+        --vpx-shadow-lg: var(--ui-shadow-lg);
+        --vpx-radius: 12px;
+        --vpx-radius-sm: 8px;
+        --vpx-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: var(--vpx-text);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }}
+    .vpx-{uid}.vpx-dark {{
+        {_UI_DARK_VARS}
+    }}
+    .vpx-{uid} .vpx-analysis-progress {{
+        display: none;
+        position: relative;
+        height: 3px;
+        overflow: hidden;
+        background: var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-analysis-progress.vpx-active {{
+        display: block;
+    }}
+    .vpx-{uid} .vpx-analysis-progress::after {{
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        left: -35%;
+        width: 35%;
+        border-radius: inherit;
+        background: var(--vpx-accent);
+        animation: vpxAnalysisProgress{uid} 1s ease-in-out infinite;
+    }}
+    @keyframes vpxAnalysisProgress{uid} {{
+        from {{ transform: translateX(0); }}
+        to {{ transform: translateX(390%); }}
+    }}
+    .vpx-{uid}.vpx-picker-only {{
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius);
+        box-shadow: var(--vpx-shadow-lg);
+        overflow: hidden;
+    }}
+    .vpx-{uid}.vpx-picker-only .vpx-container {{
+        order: 1;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }}
+    .vpx-{uid}.vpx-picker-only .vpx-container > :not(.vpx-header) {{
+        display: none;
+    }}
+    .vpx-{uid}.vpx-picker-only .vpx-picker-screen {{
+        order: 2;
+    }}
+    .vpx-{uid}.vpx-picker-only .sl-attribution {{
+        order: 3;
+    }}
+    /* ── Fullscreen overlay ── */
+    .vpx-{uid}.vpx-fs {{
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    /* Native fullscreen (when the host grants it) — fill the screen and drop
+       the framing chrome. */
+    .vpx-{uid}:fullscreen,
+    .vpx-{uid}:-webkit-full-screen {{
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        overflow: auto;
+        background: var(--vpx-bg);
+    }}
+    .vpx-{uid}.vpx-fs .vpx-container {{
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 100%;
+    }}
+    .vpx-{uid}.vpx-fs .vpx-table-wrap {{
+        max-height: calc(100vh - 260px);
+    }}
+    .vpx-{uid}.vpx-picker-only.vpx-fs .vpx-container,
+    .vpx-{uid}.vpx-picker-only:fullscreen .vpx-container,
+    .vpx-{uid}.vpx-picker-only:-webkit-full-screen .vpx-container {{
+        flex: 0 0 auto;
+        min-height: 0;
+    }}
+    .vpx-{uid}.vpx-picker-only.vpx-fs .vpx-picker-screen,
+    .vpx-{uid}.vpx-picker-only:fullscreen .vpx-picker-screen,
+    .vpx-{uid}.vpx-picker-only:-webkit-full-screen .vpx-picker-screen {{
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+    }}
+    .vpx-{uid} *, .vpx-{uid} *::before, .vpx-{uid} *::after {{
+        box-sizing: border-box;
+    }}
+    /* ── Container ── */
+    .vpx-{uid} .vpx-container {{
+        background: var(--vpx-bg);
+        border-radius: var(--vpx-radius);
+        box-shadow: var(--vpx-shadow-lg);
+        overflow: hidden;
+        border: 1px solid var(--vpx-border);
+    }}
+    /* ── Header ── */
+    .vpx-{uid} .vpx-header {{
+        padding: 22px 24px 18px 24px;
+        background: var(--vpx-bg);
+    }}
+    /* ── Model Summary Cards ── */
+    .vpx-{uid} .vpx-cards {{
+        display: flex;
+        gap: 12px;
+        padding: 0 24px 16px 24px;
+        flex-wrap: wrap;
+    }}
+    .vpx-{uid} .vpx-card {{
+        flex: 1 1 0;
+        min-width: 120px;
+        background: var(--vpx-bg-secondary);
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius-sm);
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }}
+    .vpx-{uid} .vpx-card-label {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-card-value {{
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--vpx-text);
+        font-variant-numeric: tabular-nums;
+    }}
+    /* ── Tab Navigation ── */
+    .vpx-{uid} .vpx-tab-bar {{
+        display: flex;
+        gap: 2px;
+        padding: 0 24px;
+        background: var(--vpx-bg);
+        border-bottom: 1px solid var(--vpx-border);
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }}
+    .vpx-{uid} .vpx-tab-bar::-webkit-scrollbar {{
+        display: none;
+    }}
+    .vpx-{uid} .vpx-tab-btn {{
+        position: relative;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--vpx-text-secondary);
+        background: none;
+        border: none;
+        border-radius: 0;
+        cursor: pointer;
+        transition: color var(--vpx-transition);
+        white-space: nowrap;
+        letter-spacing: -0.01em;
+        outline: none;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .vpx-{uid} .vpx-tab-btn .vpx-tab-icon {{
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }}
+    .vpx-{uid} .vpx-tab-btn .vpx-tab-count {{
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--vpx-text-tertiary);
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-tab-btn.vpx-active .vpx-tab-count {{
+        color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-tab-btn::after {{
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--vpx-accent);
+        border-radius: 2px 2px 0 0;
+        transform: scaleX(0);
+        transition: transform var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-tab-btn:hover {{
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-tab-btn.vpx-active {{
+        color: var(--vpx-accent);
+        font-weight: 600;
+    }}
+    .vpx-{uid} .vpx-tab-btn.vpx-active::after {{
+        transform: scaleX(1);
+    }}
+    /* ── Toolbar ── */
+    .vpx-{uid} .vpx-toolbar {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        background: var(--vpx-bg-tertiary);
+        border-bottom: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-search-wrap {{
+        position: relative;
+        width: 260px;
+    }}
+    .vpx-{uid} .vpx-search-icon {{
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        color: var(--vpx-text-tertiary);
+        pointer-events: none;
+    }}
+    .vpx-{uid} .vpx-search {{
+        width: 100%;
+        padding: 7px 12px 7px 32px;
+        font-size: 13px;
+        font-family: inherit;
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border-strong);
+        border-radius: var(--vpx-radius-sm);
+        color: var(--vpx-text);
+        outline: none;
+        transition: border-color var(--vpx-transition), box-shadow var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-search::placeholder {{
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-search:focus {{
+        border-color: var(--vpx-accent);
+        box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    }}
+    .vpx-{uid} .vpx-row-count {{
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--vpx-text-tertiary);
+        letter-spacing: -0.01em;
+    }}
+    .vpx-{uid} .vpx-row-count span {{
+        font-variant-numeric: tabular-nums;
+    }}
+    /* ── Toolbar controls ── */
+    .vpx-{uid} .vpx-toolbar-controls {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }}
+    .vpx-{uid} .vpx-bar-toggle {{
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: inherit;
+        color: var(--vpx-text-secondary);
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border-strong);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: color var(--vpx-transition), border-color var(--vpx-transition);
+        white-space: nowrap;
+    }}
+    .vpx-{uid} .vpx-bar-toggle:hover {{
+        color: var(--vpx-text);
+        border-color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-bar-toggle.vpx-bars-active {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-bar-toggle .vpx-toggle-icon {{
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+    }}
+
+    /* ── Tab Content ── */
+    .vpx-{uid} .vpx-panel {{
+        display: none;
+        animation: vpxFadeIn{uid} 0.3s ease;
+    }}
+    .vpx-{uid} .vpx-panel.vpx-visible {{
+        display: block;
+    }}
+    @keyframes vpxFadeIn{uid} {{
+        from {{ opacity: 0; transform: translateY(4px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    /* ── Table ── */
+    .vpx-{uid} .vpx-table-wrap {{
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 520px;
+    }}
+    .vpx-{uid} table {{
+        width: max-content;
+        min-width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13px;
+        line-height: 1.4;
+    }}
+    .vpx-{uid} thead {{
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }}
+    .vpx-{uid} thead th {{
+        padding: 10px 20px 10px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-secondary);
+        background: var(--vpx-bg-secondary);
+        border-bottom: 1px solid var(--vpx-border-strong);
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+        position: relative;
+        overflow: visible;
+        min-width: fit-content;
+        transition: color var(--vpx-transition), background var(--vpx-transition);
+    }}
+    .vpx-{uid} thead th:hover {{
+        color: var(--vpx-text);
+        /* The header is sticky, so its background must stay opaque - a
+           translucent accent tint would let the scrolled rows underneath show
+           through it. Layer the tint on top of the opaque header color. */
+        background-color: var(--vpx-bg-secondary);
+        background-image: linear-gradient(var(--ui-accent-soft), var(--ui-accent-soft));
+    }}
+    .vpx-{uid} thead th .vpx-sort-arrow {{
+        display: none;
+        margin-left: 4px;
+        font-size: 10px;
+        transition: opacity var(--vpx-transition);
+    }}
+    .vpx-{uid} thead th.vpx-sort-asc .vpx-sort-arrow,
+    .vpx-{uid} thead th.vpx-sort-desc .vpx-sort-arrow {{
+        display: inline-block;
+        opacity: 1;
+        color: var(--vpx-accent);
+    }}
+    .vpx-{uid} tbody td {{
+        padding: 9px 16px;
+        border-bottom: 1px solid var(--vpx-border);
+        color: var(--vpx-text);
+        white-space: nowrap;
+        text-align: left;
+        transition: background var(--vpx-transition);
+    }}
+    .vpx-{uid} tbody td.vpx-bar-cell {{
+        position: relative;
+        overflow: hidden;
+    }}
+    .vpx-{uid} tbody td.vpx-bar-cell .vpx-bar {{
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: rgba(0, 113, 227, 0.08);
+        border-right: 2px solid rgba(0, 113, 227, 0.25);
+        pointer-events: none;
+    }}
+    .vpx-{uid} tbody td.vpx-bar-cell .vpx-bar-value {{
+        position: relative;
+        z-index: 1;
+    }}
+    .vpx-{uid} .vpx-bars-off .vpx-bar {{
+        display: none;
+    }}
+    .vpx-{uid} tbody tr {{
+        background: var(--vpx-bg);
+        transition: background var(--vpx-transition);
+    }}
+    /* Apply zebra striping on the cells with high specificity so we
+       win against host (e.g. Jupyter) default table styles. */
+    .vpx-{uid} tbody tr td {{
+        background: var(--vpx-bg);
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} tbody tr:nth-child(even) td {{
+        background: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} tbody tr:hover td {{
+        background: var(--vpx-accent-soft);
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} tbody td.vpx-numeric {{
+        font-variant-numeric: tabular-nums;
+        text-align: left;
+        font-feature-settings: "tnum";
+    }}
+    .vpx-{uid} thead th.vpx-numeric {{
+        text-align: left;
+    }}
+    /* ── Resize handle ── */
+    .vpx-{uid} thead th .vpx-resize-handle {{
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        cursor: col-resize;
+        background: transparent;
+        z-index: 3;
+    }}
+    .vpx-{uid} thead th .vpx-resize-handle:hover,
+    .vpx-{uid} thead th .vpx-resize-handle.vpx-resizing {{
+        background: var(--vpx-accent);
+        opacity: 0.5;
+    }}
+
+    /* ── Frozen (sticky) leading columns ── */
+    /* Frozen cells must be fully opaque so the columns scrolled underneath
+       them are hidden. The generic row/zebra rule and the translucent hover
+       background would otherwise let the scrolled cells show through, so set
+       solid background-colors here for every row state with a selector that
+       out-specifies the row rules. */
+    .vpx-{uid} th.vpx-freeze,
+    .vpx-{uid} td.vpx-freeze {{
+        position: sticky;
+        left: 0;
+        background-color: var(--vpx-bg);
+    }}
+    .vpx-{uid} tbody tr:nth-child(even) td.vpx-freeze {{
+        background-color: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} tbody tr:hover td.vpx-freeze {{
+        background-color: var(--vpx-bg-secondary);
+    }}
+    /* Above the scrolled body cells (a data-bar cell's .vpx-bar-value uses
+       z-index 1) but below the sticky header (z-index 3) so the top-left
+       corner still stacks correctly. */
+    .vpx-{uid} tbody td.vpx-freeze {{
+        z-index: 2;
+    }}
+    .vpx-{uid} thead th.vpx-freeze {{
+        background-color: var(--vpx-bg-secondary);
+        z-index: 5;
+    }}
+    .vpx-{uid} th.vpx-freeze-edge,
+    .vpx-{uid} td.vpx-freeze-edge {{
+        box-shadow: inset -1px 0 0 var(--vpx-border-strong);
+    }}
+
+    /* ── Empty state ── */
+    .vpx-{uid} .vpx-empty {{
+        text-align: center;
+        padding: 40px 24px;
+        color: var(--vpx-text-tertiary);
+        font-size: 14px;
+    }}
+    /* ── Delta Analyzer button + dialog ── */
+    .vpx-{uid} .vpx-delta-btn {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    /* Keep the accent color on hover (do not fall back to the generic
+       .vpx-bar-toggle:hover color). */
+    .vpx-{uid} .vpx-delta-btn:hover {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-iconbtn {{
+        padding: 4px 6px;
+        gap: 0;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-loaded {{
+        background: var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-btn:disabled {{
+        opacity: 0.6;
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-delta-btn .vpx-toggle-icon {{
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+    }}
+    /* Running state: the button turns into a cancel button with a spinner and
+       a "<done>/<total>" progress counter. */
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running {{
+        color: #d70015;
+        border-color: #d70015;
+        background: transparent;
+        gap: 5px;
+        padding: 4px 8px;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running:hover {{
+        color: #d70015;
+        border-color: #d70015;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running .vpx-toggle-icon {{
+        display: none;
+    }}
+    .vpx-{uid} .vpx-delta-spinner {{
+        display: none;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        flex-shrink: 0;
+    }}
+    .vpx-{uid} .vpx-delta-btn.vpx-delta-running .vpx-delta-spinner {{
+        display: inline-block;
+        animation: vpxSpin{uid} 0.8s linear infinite;
+    }}
+    .vpx-{uid} .vpx-delta-progress {{
+        font-size: 11px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-delta-progress:empty {{
+        display: none;
+    }}
+    @keyframes vpxSpin{uid} {{
+        to {{ transform: rotate(360deg); }}
+    }}
+    .vpx-{uid} .vpx-delta-col .vpx-delta-colicon {{
+        width: 11px;
+        height: 11px;
+        margin-right: 4px;
+        vertical-align: -1px;
+        color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-col.vpx-delta-num {{
+        font-variant-numeric: tabular-nums;
+    }}
+    .vpx-{uid} .vpx-delta-status {{
+        display: none;
+        padding: 8px 24px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--vpx-border);
+        color: var(--vpx-text-secondary);
+        background: var(--vpx-bg-tertiary);
+    }}
+    .vpx-{uid} .vpx-delta-status.vpx-delta-status-error {{
+        color: #d70015;
+    }}
+    .vpx-{uid} .vpx-delta-status.vpx-delta-status-success {{
+        color: #248a3d;
+    }}
+    .vpx-{uid} .vpx-delta-dialog {{
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483100;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 24px;
+    }}
+    .vpx-{uid} .vpx-delta-modal {{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 460px;
+        max-height: 80vh;
+        overflow: hidden;
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius);
+        box-shadow: var(--vpx-shadow-lg);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head .vpx-delta-modal-title {{
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-delta-modal-head .vpx-delta-modal-sub {{
+        font-size: 12px;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-delta-close {{
+        margin-left: auto;
+        border: 1px solid var(--vpx-border-strong);
+        background: var(--vpx-bg);
+        color: var(--vpx-text-secondary);
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body {{
+        overflow: auto;
+        padding: 12px 20px;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body .vpx-delta-listhead {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--vpx-text-tertiary);
+        margin-bottom: 6px;
+    }}
+    .vpx-{uid} .vpx-delta-modal-body .vpx-delta-listhead button {{
+        border: none;
+        background: none;
+        color: var(--vpx-accent);
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        padding: 0 4px;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--vpx-text);
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow:hover {{
+        background: var(--vpx-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-tablerow .vpx-delta-tablename {{
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+    .vpx-{uid} .vpx-delta-tablerow .vpx-delta-tablesrc {{
+        color: var(--vpx-text-tertiary);
+        font-size: 12px;
+    }}
+    .vpx-{uid} .vpx-delta-switch {{
+        position: relative;
+        display: inline-block;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 20px;
+    }}
+    .vpx-{uid} .vpx-delta-switch input {{
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-switch .vpx-delta-slider {{
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: var(--vpx-border-strong);
+        pointer-events: none;
+        transition: background var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-delta-switch .vpx-delta-slider::before {{
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: var(--vpx-shadow-sm);
+        transition: transform var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:checked + .vpx-delta-slider {{
+        background: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:checked + .vpx-delta-slider::before {{
+        transform: translateX(14px);
+    }}
+    .vpx-{uid} .vpx-delta-switch input:focus-visible + .vpx-delta-slider {{
+        box-shadow: 0 0 0 3px var(--ui-accent-soft);
+    }}
+    .vpx-{uid} .vpx-delta-skiprow {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        /* Same horizontal padding as the table rows so this toggle lines up
+           with the ones above it. */
+        padding: 12px 6px 2px 6px;
+        font-size: 13px;
+        color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-delta-skiprow > span:first-child {{
+        flex: 1;
+    }}
+    .vpx-{uid} .vpx-delta-modal-foot {{
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--vpx-border);
+    }}
+    .vpx-{uid} .vpx-delta-modal-foot button {{
+        border-radius: var(--vpx-radius-sm);
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+    }}
+    .vpx-{uid} .vpx-delta-cancel {{
+        border: 1px solid var(--vpx-border-strong);
+        background: var(--vpx-bg);
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-delta-run {{
+        border: 1px solid var(--vpx-accent);
+        background: var(--vpx-accent);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .vpx-{uid} .vpx-delta-run:disabled {{
+        opacity: 0.5;
+        cursor: default;
+    }}
+    /* ── Workspace / semantic model picker ── */
+    .vpx-{uid} .vpx-picker-screen {{
+        display: flex;
+        align-items: flex-start;
+        justify-content: stretch;
+        width: 100%;
+        min-height: 320px;
+        padding: 0 24px 24px;
+        background: var(--vpx-bg);
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-panel {{
+        width: 100%;
+        padding: 16px;
+        border: 1px solid var(--vpx-border);
+        border-radius: 14px;
+        background: var(--ui-surface);
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-headrow {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-head {{
+        min-width: 0;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-title {{
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--vpx-text);
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-subtitle {{
+        margin-top: 3px;
+        font-size: 12.5px;
+        color: var(--vpx-text-secondary);
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-fields {{
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-field {{
+        flex: 1 1 240px;
+        min-width: 0;
+        margin-bottom: 0;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-field .slls-ss-btn {{
+        border-radius: 999px;
+        padding: 7px 12px 7px 15px;
+        background: var(--ui-surface);
+        font-size: 13.5px;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-actions {{
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-picker-connect {{
+        padding: 7px 16px;
+        border-radius: 999px;
+        font-size: 13.5px;
+        font-weight: 500;
+    }}
+    .vpx-{uid} .vpx-picker-screen .vpx-delta-status {{
+        margin-top: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--vpx-border);
+        border-radius: var(--vpx-radius-sm);
+        background: var(--vpx-bg-tertiary);
+    }}
+    @media (max-width: 640px) {{
+        .vpx-{uid} .vpx-picker-screen {{ min-height: 280px; padding: 0 16px 16px; }}
+        .vpx-{uid} .vpx-picker-screen .vpx-picker-fields {{
+            align-items: stretch;
+            flex-direction: column;
+        }}
+        .vpx-{uid} .vpx-picker-screen .vpx-picker-actions {{
+            justify-content: flex-end;
+        }}
+    }}
+    .vpx-{uid} .vpx-picker-modal {{
+        height: min(720px, calc(100vh - 32px));
+        min-height: min(560px, calc(100vh - 32px));
+        max-width: 900px;
+        max-height: calc(100vh - 32px);
+    }}
+    .vpx-{uid} .vpx-picker-modal > .vpx-delta-modal-head,
+    .vpx-{uid} .vpx-picker-modal > .vpx-delta-modal-foot {{
+        flex: 0 0 auto;
+    }}
+    .vpx-{uid} .vpx-picker-modal > .vpx-delta-modal-body {{
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        flex-direction: column;
+        overflow: visible;
+    }}
+    .vpx-{uid} .vpx-picker-modal .vpx-picker-grid {{
+        flex: 1 1 auto;
+        min-height: 260px;
+        align-items: flex-start;
+    }}
+    .vpx-{uid} .vpx-picker-modal .slls-ss-panel {{
+        z-index: 90;
+    }}
+    .vpx-{uid} .vpx-picker-modal .slls-ss-list {{
+        max-height: min(360px, calc(100vh - 300px));
+    }}
+    @media (max-height: 600px), (max-width: 640px) {{
+        .vpx-{uid} .vpx-picker-modal {{
+            height: calc(100vh - 16px);
+            min-height: 0;
+            max-height: calc(100vh - 16px);
+        }}
+        .vpx-{uid} .vpx-picker-modal .vpx-picker-grid {{
+            min-height: 200px;
+        }}
+        .vpx-{uid} .vpx-picker-modal .slls-ss-list {{
+            max-height: max(140px, calc(100vh - 300px));
+        }}
+    }}
+    .vpx-{uid} .vpx-picker-top {{
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 16px;
+    }}
+    .vpx-{uid} .vpx-picker-grid {{
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }}
+    .vpx-{uid} .vpx-picker-grid .vpx-picker-field {{
+        flex: 1 1 260px;
+        margin-bottom: 0;
+    }}
+    .vpx-{uid} .vpx-picker-recent {{
+        display: none;
+        margin-top: 20px;
+    }}
+    .vpx-{uid} .vpx-picker-recent-head {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+        margin-bottom: 8px;
+    }}
+    .vpx-{uid} .vpx-picker-recent-list {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }}
+    .vpx-{uid} .vpx-picker-recentitem {{
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        padding: 6px 12px;
+        font-size: 12.5px;
+        font-family: inherit;
+        color: var(--vpx-text);
+        background: var(--vpx-bg-secondary);
+        border: 1px solid var(--vpx-border);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: color var(--vpx-transition), border-color var(--vpx-transition);
+    }}
+    .vpx-{uid} .vpx-picker-recentitem:hover {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-picker-recentitem.vpx-current {{
+        color: var(--vpx-accent);
+        border-color: var(--vpx-accent);
+        background: var(--ui-accent-soft);
+        cursor: default;
+    }}
+    .vpx-{uid} .vpx-picker-recentsub {{
+        font-size: 11px;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-picker-field {{
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 14px;
+    }}
+    .vpx-{uid} .vpx-picker-field label {{
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--vpx-text-tertiary);
+    }}
+    .vpx-{uid} .vpx-picker-select {{
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-family: inherit;
+        color: var(--vpx-text);
+        background: var(--vpx-bg);
+        border: 1px solid var(--vpx-border-strong);
+        border-radius: var(--vpx-radius-sm);
+        outline: none;
+    }}
+    .vpx-{uid} .vpx-picker-select:focus {{
+        border-color: var(--vpx-accent);
+    }}
+    .vpx-{uid} .vpx-picker-select:disabled {{
+        opacity: 0.6;
+    }}
+    .vpx-{uid}.vpx-dark .vpx-picker-select option {{
+        background: #2c2c2e;
+        color: #f5f5f7;
+    }}
+    {ui_attribution_css_scoped}
+    {ui_button_press_css_scoped}
+    </style>
+    """
+
+    # ── Build HTML ────────────────────────────────────────────────────────
+    search_svg = _UI_ICONS["search"].replace(
+        "<svg ", '<svg class="vpx-search-icon" ', 1
+    )
+
+    # Delta Analyzer availability + button icon. The button is only rendered
+    # (and the widget is only made interactive) when the model has
+    # Direct-Lake-over-Lakehouse source tables to analyze.
+    delta_tables = delta_tables or []
+    has_delta = bool(delta_tables)
+    delta_btn_icon = _UI_ICONS["delta_stats"].replace(
+        "<svg ", '<svg class="vpx-toggle-icon" ', 1
+    )
+    # Same badge, used to mark the Delta-Analyzer-sourced column headers.
+    delta_col_icon = _UI_ICONS["delta_stats"].replace(
+        "<svg ", '<svg class="vpx-delta-colicon" ', 1
+    )
+
+    header_html = _ui_render_header_html(
+        title="Vertipaq Analyzer",
+        dataset_name=dataset_name,
+        workspace_name=workspace_name,
+        theme_btn_id=theme_btn_id,
+        dark_mode=dark_mode,
+        fullscreen_btn_id=fullscreen_btn_id,
+        title_icon=_UI_ICONS["vertipaq"],
+        # The picker calls back into Python to re-run the analysis, so it is
+        # only offered on the interactive (anywidget) render. It sits directly
+        # to the right of the title.
+        extra_buttons=(
+            [
+                {
+                    "id": picker_btn_id,
+                    "base": "sl-change-btn",
+                    "cls": "vpx-picker-btn",
+                    "icon": _UI_ICONS["swap"],
+                    "title": "Change semantic model / workspace",
+                }
+            ]
+            if can_pick and not picker_initial
+            else []
+        ),
+    )
+
+    html_parts = []
+    root_classes = (
+        f"vpx-{uid}"
+        + (" vpx-dark" if dark_mode else "")
+        + (" vpx-picker-only" if picker_initial else "")
+    )
+    html_parts.append(f'<div class="{root_classes}">')
+    html_parts.append('<div class="vpx-container">')
+    html_parts.append(f'<div class="vpx-header">{header_html}</div>')
+    html_parts.append(
+        '<div class="vpx-analysis-progress" role="progressbar" '
+        'aria-label="Running Vertipaq Analyzer" aria-hidden="true"></div>'
+    )
+
+    # Model summary cards
+    if not model_df.empty:
+        html_parts.append('<div class="vpx-cards">')
+        row = model_df.iloc[0]
+        for col in model_df.columns:
+            if col == "Dataset Name":
+                continue
+            val = row[col]
+            if col == "Total Size" and pd.notna(val) and str(val):
+                try:
+                    numeric_val = float(str(val).replace(",", ""))
+                    cell_val = format_bytes(numeric_val)
+                except (ValueError, TypeError):
+                    cell_val = str(val)
+            else:
+                cell_val = "" if pd.isna(val) else str(val)
+            tt = tooltip_lookup.get(("Model", col), "")
+            tip_attr = f' title="{tt}"' if tt else ""
+            html_parts.append(
+                f'<div class="vpx-card"{tip_attr}>'
+                f'<div class="vpx-card-label">{col}</div>'
+                f'<div class="vpx-card-value">{cell_val}</div>'
+                f"</div>"
+            )
+        html_parts.append("</div>")
+
+    # Tab icons (sourced from the shared icon library so they stay in
+    # sync across widgets; ``vpx-tab-icon`` class controls sizing).
+    def _tab_icon(name: str) -> str:
+        return _UI_ICONS[name].replace("<svg ", '<svg class="vpx-tab-icon" ', 1)
+
+    tab_icons = {
+        "Tables": _tab_icon("table"),
+        "Partitions": _tab_icon("partition"),
+        "Columns": _tab_icon("column"),
+        "Relationships": _tab_icon("relationship"),
+        "Hierarchies": _tab_icon("hierarchy"),
+    }
+
+    # Columns that should show data bars per tab
+    data_bar_columns = {
+        "Tables": [
+            "Total Size",
+            "Row Count",
+            "Data Size",
+            "Dictionary Size",
+            "Relationship Size",
+            "Hierarchy Size",
+            "User Hierarchy Size",
+        ],
+        "Columns": [
+            "Cardinality",
+            "Total Size",
+            "Data Size",
+            "Dictionary Size",
+            "Hierarchy Size",
+        ],
+        "Relationships": ["Used Size"],
+        "Partitions": ["Record Count"],
+        "Hierarchies": ["Used Size"],
+    }
+
+    # Leading columns to freeze (sticky) per tab so the key identifier
+    # column(s) stay visible when the table is scrolled horizontally.
+    freeze_columns = {
+        "Tables": ["Table Name"],
+        "Columns": ["Table Name", "Column Name"],
+    }
+
+    # Tab bar
+    html_parts.append(f'<div class="vpx-tab-bar" id="vpx-tabbar-{uid}">')
+    for i, (title, (tab_df, _)) in enumerate(df_dict.items()):
+        active = " vpx-active" if i == 0 else ""
+        icon = tab_icons.get(title, "")
+        html_parts.append(
+            f'<button class="vpx-tab-btn{active}" '
+            f'data-vpx-target="vpx-{uid}-p{i}" '
+            f'onclick="vpxSwitch_{uid}(this)">{icon}{title}'
+            f'<span class="vpx-tab-count">{len(tab_df):,}</span></button>'
+        )
+
+    html_parts.append("</div>")
+
+    # Delta Analyzer / picker status bar (shown across tabs while a run is in
+    # progress or when a run reports an error/summary). Wired by the widget.
+    if has_delta or can_pick:
+        html_parts.append('<div class="vpx-delta-status"></div>')
+
+    # Panels
+    for i, (title, (df, _)) in enumerate(df_dict.items()):
+        visible = " vpx-visible" if i == 0 else ""
+        panel_id = f"vpx-{uid}-p{i}"
+        vw = df_dict.get(title)[1]
+        row_count = len(df)
+
+        html_parts.append(f'<div id="{panel_id}" class="vpx-panel{visible}">')
+
+        has_bars = title in data_bar_columns and any(
+            bc in df.columns for bc in data_bar_columns.get(title, [])
+        )
+
+        # Toolbar with search and row count
+        html_parts.append('<div class="vpx-toolbar">')
+        html_parts.append(
+            f'<div class="vpx-search-wrap">{search_svg}'
+            f'<input type="text" class="vpx-search" '
+            f'placeholder="Filter {title.lower()}\u2026" '
+            f"oninput=\"vpxFilter_{uid}(this, '{panel_id}')\" />"
+            f"</div>"
+        )
+        html_parts.append('<div class="vpx-toolbar-controls">')
+        # Delta Analyzer button — placed to the left of the Bars button, on
+        # every tab, whenever the model has Direct-Lake-over-Lakehouse source
+        # tables. Wired in the anywidget frontend (it must call back into
+        # Python to run Spark).
+        if has_delta:
+            delta_btn_title = (
+                "Run Delta Analyzer stats \u2014 pick which Direct Lake source "
+                "tables to analyze on Spark, then merge the results into the "
+                "Tables and Columns tabs"
+            )
+            html_parts.append(
+                f'<button class="vpx-bar-toggle vpx-delta-btn vpx-delta-iconbtn" '
+                f'type="button" aria-label="Delta Analyzer" '
+                f'data-title="{delta_btn_title}" title="{delta_btn_title}">'
+                f"{delta_btn_icon}"
+                f'<span class="vpx-delta-spinner" aria-hidden="true"></span>'
+                f'<span class="vpx-delta-progress"></span>'
+                f"</button>"
+            )
+
+        if has_bars:
+            bar_toggle_icon = (
+                '<svg class="vpx-toggle-icon" viewBox="0 0 16 16" fill="none" '
+                'stroke="currentColor" stroke-width="1.4" stroke-linecap="round">'
+                '<line x1="3" y1="12" x2="3" y2="6"/>'
+                '<line x1="7" y1="12" x2="7" y2="3"/>'
+                '<line x1="11" y1="12" x2="11" y2="8"/>'
+                '<line x1="1" y1="12" x2="13" y2="12"/></svg>'
+            )
+            html_parts.append(
+                f'<button class="vpx-bar-toggle vpx-bars-active" '
+                f"onclick=\"vpxToggleBars_{uid}(this, '{panel_id}')\" "
+                f'title="Toggle data bars">{bar_toggle_icon}Bars</button>'
+            )
+
+        html_parts.append(
+            f'<div class="vpx-row-count" id="{panel_id}-rc">'
+            f'<span>{row_count:,}</span> row{"s" if row_count != 1 else ""}'
+            f"</div>"
+        )
+        html_parts.append("</div>")  # toolbar-controls
+        html_parts.append("</div>")  # toolbar
+
+        # Table
+        html_parts.append('<div class="vpx-table-wrap">')
+
+        if df.empty:
+            html_parts.append('<div class="vpx-empty">No data available</div>')
+        else:
+            html_parts.append(f'<table data-vpx-tab="{title}">')
+
+            # Determine numeric columns
+            numeric_cols = set()
+            for col in df.columns:
+                if df[col].dtype.kind in ("i", "f", "u"):
+                    numeric_cols.add(col)
+
+            # Leading columns frozen (sticky) for this tab. They must be
+            # contiguous from the left; the last one gets an edge separator.
+            freeze_cols = freeze_columns.get(title, [])
+            freeze_set = [c for c in df.columns if c in freeze_cols]
+            freeze_edge = freeze_set[-1] if freeze_set else None
+
+            def _freeze_classes(col):
+                if col not in freeze_set:
+                    return []
+                cls = ["vpx-freeze"]
+                if col == freeze_edge:
+                    cls.append("vpx-freeze-edge")
+                return cls
+
+            # Header
+            presort_col = default_sort.get(title) if default_sort else None
+            html_parts.append("<thead><tr>")
+            for col in df.columns:
+                tt = tooltip_lookup.get((vw, col), "")
+                num_cls = " vpx-numeric" if col in numeric_cols else ""
+                sort_cls = " vpx-sort-desc" if col == presort_col else ""
+                freeze_cls = "".join(f" {c}" for c in _freeze_classes(col))
+                tip_attr = f' title="{tt}"' if tt else ""
+                arrow = "&#x25BC;" if col == presort_col else "&#x25B2;"
+                html_parts.append(
+                    f'<th class="{(num_cls + sort_cls + freeze_cls).strip()}"{tip_attr} '
+                    f'onclick="vpxSort_{uid}(this)">'
+                    f'{col}<span class="vpx-sort-arrow">{arrow}</span>'
+                    f'<div class="vpx-resize-handle" '
+                    f'onmousedown="vpxResizeStart_{uid}(event, this)"></div></th>'
+                )
+            html_parts.append("</tr></thead>")
+
+            # Body
+            bar_cols = data_bar_columns.get(title, [])
+            bar_maxes = {}
+            for bc in bar_cols:
+                if bc in df.columns:
+                    max_val = 0
+                    for v in df[bc]:
+                        if pd.notna(v) and str(v):
+                            try:
+                                max_val = max(
+                                    max_val,
+                                    float(str(v).replace(",", "").replace("%", "")),
+                                )
+                            except ValueError:
+                                pass
+                    if max_val > 0:
+                        bar_maxes[bc] = max_val
+
+            html_parts.append("<tbody>")
+            for _, row_data in df.iterrows():
+                html_parts.append("<tr>")
+                for col in df.columns:
+                    val = row_data[col]
+                    cell_val = "" if pd.isna(val) else str(val)
+                    is_bar = col in bar_maxes
+                    num = col in numeric_cols
+                    cls_parts = []
+                    if num:
+                        cls_parts.append("vpx-numeric")
+                    if is_bar:
+                        cls_parts.append("vpx-bar-cell")
+                    cls_parts.extend(_freeze_classes(col))
+                    cls_attr = f' class="{" ".join(cls_parts)}"' if cls_parts else ""
+                    if is_bar and cell_val:
+                        try:
+                            num_val = float(cell_val.replace(",", "").replace("%", ""))
+                            pct = (num_val / bar_maxes[col]) * 100
+                        except ValueError:
+                            pct = 0
+                        html_parts.append(
+                            f"<td{cls_attr}>"
+                            f'<div class="vpx-bar" style="width:{pct:.1f}%"></div>'
+                            f'<span class="vpx-bar-value">{cell_val}</span></td>'
+                        )
+                    else:
+                        html_parts.append(f"<td{cls_attr}>{cell_val}</td>")
+                html_parts.append("</tr>")
+            html_parts.append("</tbody>")
+
+            html_parts.append("</table>")
+
+        html_parts.append("</div>")  # table-wrap
+        html_parts.append("</div>")  # panel
+
+    html_parts.append("</div>")  # container
+    html_parts.append(
+        _ui_render_attribution_html(
+            extra_links=[
+                (
+                    "Vertipaq Analyzer",
+                    "https://www.sqlbi.com/tools/vertipaq-analyzer/",
+                )
+            ]
+        )
+    )
+
+    # Delta Analyzer table-picker dialog (hidden until the button is clicked).
+    if has_delta:
+        rows_html = []
+        for t in delta_tables:
+            tname = html_escape(str(t.get("tableName", "")))
+            src = html_escape(str(t.get("deltaTableName", "")))
+            rows_html.append(
+                f'<label class="vpx-delta-tablerow">'
+                f'<span class="vpx-delta-tablename">{tname}</span>'
+                f'<span class="vpx-delta-tablesrc">{src}</span>'
+                f'<span class="vpx-delta-switch">'
+                f'<input type="checkbox" class="vpx-delta-tablecb" checked '
+                f'role="switch" data-table="{tname}" />'
+                f'<span class="vpx-delta-slider"></span>'
+                f"</span>"
+                f"</label>"
+            )
+        delta_dialog_icon = _UI_ICONS["delta_stats"].replace(
+            "<svg ", '<svg class="vpx-toggle-icon" ', 1
+        )
+        html_parts.append(
+            f'<div class="vpx-delta-dialog">'
+            f'<div class="vpx-delta-modal">'
+            f'<div class="vpx-delta-modal-head">{delta_dialog_icon}'
+            f"<div>"
+            f'<div class="vpx-delta-modal-title">Run Delta Analyzer stats</div>'
+            f'<div class="vpx-delta-modal-sub">Choose the Direct Lake source '
+            f"tables to analyze on Spark.</div>"
+            f"</div>"
+            f'<button type="button" class="vpx-delta-close" '
+            f'aria-label="Close">\u00d7</button>'
+            f"</div>"
+            f'<div class="vpx-delta-modal-body">'
+            f'<div class="vpx-delta-listhead">'
+            f"<span>Tables</span>"
+            f"<span>"
+            f'<button type="button" class="vpx-delta-selectall">Select all</button>'
+            f'<button type="button" class="vpx-delta-clear">Clear</button>'
+            f"</span>"
+            f"</div>"
+            f'{"".join(rows_html)}'
+            f'<label class="vpx-delta-skiprow">'
+            f"<span>Skip cardinality (faster; skips per-column distinct "
+            f"counts)</span>"
+            f'<span class="vpx-delta-switch">'
+            f'<input type="checkbox" class="vpx-delta-skipcard" checked '
+            f'role="switch" />'
+            f'<span class="vpx-delta-slider"></span>'
+            f"</span>"
+            f"</label>"
+            f"</div>"
+            f'<div class="vpx-delta-modal-foot">'
+            f'<button type="button" class="vpx-delta-cancel">Cancel</button>'
+            f'<button type="button" class="vpx-delta-run">Run</button>'
+            f"</div>"
+            f"</div>"
+            f"</div>"
+        )
+
+    # Workspace / semantic model picker dialog (hidden until the header's swap
+    # button is clicked). The dropdowns are populated by the widget frontend
+    # from the ``workspaces`` / ``datasets`` traits.
+    if can_pick:
+        picker_dialog_icon = _UI_ICONS["swap"].replace(
+            "<svg ", '<svg class="vpx-toggle-icon" ', 1
+        )
+        picker_reload_icon = _UI_ICONS["refresh"]
+        if picker_initial:
+            html_parts.append(
+                f'<div class="vpx-picker-screen vpx-picker-dialog">'
+                f'<div class="vpx-picker-panel">'
+                f'<div class="vpx-picker-headrow">'
+                f'<div class="vpx-picker-head">'
+                f'<h2 class="vpx-picker-title">Connect to a semantic model</h2>'
+                f'<div class="vpx-picker-subtitle">Select a workspace and '
+                f"semantic model to begin.</div>"
+                f"</div>"
+                f'<button type="button" class="sl-reload-btn" '
+                f'title="Reload workspaces and semantic models" '
+                f'aria-label="Reload workspaces and semantic models">'
+                f"{picker_reload_icon}</button>"
+                f"</div>"
+                f'<div class="vpx-picker-fields">'
+                f'<div class="vpx-picker-field"><label>Workspace</label>'
+                f'<div class="vpx-picker-ws"></div></div>'
+                f'<div class="vpx-picker-field"><label>Semantic model</label>'
+                f'<div class="vpx-picker-ds"></div></div>'
+                f'<div class="vpx-picker-actions">'
+                f'<button type="button" class="vpx-delta-run vpx-picker-connect" '
+                f"disabled>Connect</button>"
+                f"</div>"
+                f"</div>"
+                f'<div class="vpx-picker-recent"></div>'
+                f'<div class="vpx-delta-status"></div>'
+                f"</div>"
+                f"</div>"
+            )
+        else:
+            html_parts.append(
+                f'<div class="vpx-delta-dialog vpx-picker-dialog">'
+                f'<div class="vpx-delta-modal vpx-picker-modal">'
+                f'<div class="vpx-delta-modal-head">{picker_dialog_icon}'
+                f"<div>"
+                f'<div class="vpx-delta-modal-title">Choose a semantic model</div>'
+                f'<div class="vpx-delta-modal-sub">Pick a workspace and semantic '
+                f"model to analyze.</div>"
+                f"</div>"
+                f'<button type="button" class="vpx-delta-close vpx-picker-close" '
+                f'aria-label="Close">\u00d7</button>'
+                f"</div>"
+                f'<div class="vpx-delta-modal-body">'
+                f'<div class="vpx-picker-top">'
+                f'<button type="button" class="sl-reload-btn" '
+                f'title="Reload workspaces and semantic models" '
+                f'aria-label="Reload workspaces and semantic models">'
+                f"{picker_reload_icon}</button>"
+                f"</div>"
+                f'<div class="vpx-picker-grid">'
+                f'<div class="vpx-picker-field"><label>Workspace</label>'
+                f'<div class="vpx-picker-ws"></div></div>'
+                f'<div class="vpx-picker-field"><label>Semantic model</label>'
+                f'<div class="vpx-picker-ds"></div></div>'
+                f"</div>"
+                f'<div class="vpx-picker-recent"></div>'
+                f'<div class="vpx-delta-status"></div>'
+                f"</div>"
+                f'<div class="vpx-delta-modal-foot">'
+                f'<button type="button" class="vpx-delta-cancel vpx-picker-cancel">'
+                f"Cancel</button>"
+                f'<button type="button" class="vpx-delta-run vpx-picker-connect" '
+                f"disabled>Connect</button>"
+                f"</div>"
+                f"</div>"
+                f"</div>"
+            )
+
+    html_parts.append("</div>")  # root
+
+    # ── JavaScript ────────────────────────────────────────────────────────
+    script = f"""
+    <script>
+    (function() {{
+        /* Tab switching */
+        window.vpxSwitch_{uid} = function(btn) {{
+            var bar = btn.parentElement;
+            var container = bar.closest('.vpx-{uid}');
+            bar.querySelectorAll('.vpx-tab-btn').forEach(function(b) {{ b.classList.remove('vpx-active'); }});
+            btn.classList.add('vpx-active');
+            container.querySelectorAll('.vpx-panel').forEach(function(p) {{ p.classList.remove('vpx-visible'); }});
+            var target = container.querySelector('#' + btn.getAttribute('data-vpx-target'));
+            if (target) {{
+                target.classList.add('vpx-visible');
+                var ft = target.querySelector('table');
+                if (ft) requestAnimationFrame(function() {{ window.vpxUpdateFreeze_{uid}(ft); }});
+            }}
+        }};
+
+        /* Filtering */
+        window.vpxFilter_{uid} = function(input, panelId) {{
+            var panel = document.getElementById(panelId);
+            if (!panel) return;
+            var q = input.value.toLowerCase();
+            var rows = panel.querySelectorAll('tbody tr');
+            var shown = 0;
+            rows.forEach(function(tr) {{
+                var text = tr.textContent.toLowerCase();
+                var match = !q || text.indexOf(q) !== -1;
+                tr.style.display = match ? '' : 'none';
+                if (match) shown++;
+            }});
+            var rc = document.getElementById(panelId + '-rc');
+            if (rc) {{
+                var total = rows.length;
+                rc.innerHTML = '<span>' + shown.toLocaleString() + '</span>' +
+                    (shown !== total ? ' of <span>' + total.toLocaleString() + '</span>' : '') +
+                    ' row' + (shown !== 1 ? 's' : '');
+            }}
+        }};
+
+        /* Column resizing */
+        var _vpxResizing_{uid} = false;
+        window.vpxResizeStart_{uid} = function(evt, handle) {{
+            evt.stopPropagation();
+            evt.preventDefault();
+            _vpxResizing_{uid} = true;
+            var th = handle.parentElement;
+            var table = th.closest('table');
+            var startX = evt.pageX;
+            var startW = th.offsetWidth;
+            handle.classList.add('vpx-resizing');
+            /* measure natural header widths before freezing layout */
+            var ths = table.querySelectorAll('thead th');
+            ths.forEach(function(h) {{
+                if (!h.getAttribute('data-vpx-minw')) {{
+                    h.setAttribute('data-vpx-minw', h.scrollWidth);
+                }}
+            }});
+            /* freeze all column widths so layout is stable */
+            ths.forEach(function(h) {{ h.style.width = h.offsetWidth + 'px'; }});
+            table.style.tableLayout = 'fixed';
+            var minW = parseInt(th.getAttribute('data-vpx-minw')) || 40;
+            function onMove(e) {{
+                var diff = e.pageX - startX;
+                var newW = Math.max(minW, startW + diff);
+                th.style.width = newW + 'px';
+                th.style.minWidth = newW + 'px';
+                window.vpxUpdateFreeze_{uid}(table);
+            }}
+            function onUp() {{
+                handle.classList.remove('vpx-resizing');
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                window.vpxUpdateFreeze_{uid}(table);
+                setTimeout(function() {{ _vpxResizing_{uid} = false; }}, 0);
+            }}
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }};
+
+        /* Sorting */
+        window.vpxSort_{uid} = function(th) {{
+            if (_vpxResizing_{uid}) return;
+            var table = th.closest('table');
+            if (!table) return;
+            var idx = Array.from(th.parentElement.children).indexOf(th);
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            var asc = !th.classList.contains('vpx-sort-asc');
+
+            /* Clear sort classes from all headers */
+            th.parentElement.querySelectorAll('th').forEach(function(h) {{
+                h.classList.remove('vpx-sort-asc', 'vpx-sort-desc');
+                h.querySelector('.vpx-sort-arrow').innerHTML = '&#x25B2;';
+            }});
+            th.classList.add(asc ? 'vpx-sort-asc' : 'vpx-sort-desc');
+            th.querySelector('.vpx-sort-arrow').innerHTML = asc ? '&#x25B2;' : '&#x25BC;';
+
+            rows.sort(function(a, b) {{
+                /* Cells can carry a raw numeric value in data-vpx-sort (e.g.
+                   byte-formatted Delta Analyzer columns) - prefer it so the
+                   comparison is not thrown off by the unit suffix. */
+                var aCell = a.children[idx], bCell = b.children[idx];
+                var aRaw = aCell ? aCell.getAttribute('data-vpx-sort') : null;
+                var bRaw = bCell ? bCell.getAttribute('data-vpx-sort') : null;
+                var aVal = aRaw !== null ? aRaw : (aCell ? aCell.textContent.trim() : '');
+                var bVal = bRaw !== null ? bRaw : (bCell ? bCell.textContent.trim() : '');
+                /* Try numeric comparison */
+                var aNum = parseFloat(aVal.replace(/,/g, '').replace(/%/g, ''));
+                var bNum = parseFloat(bVal.replace(/,/g, '').replace(/%/g, ''));
+                if (!isNaN(aNum) && !isNaN(bNum)) {{
+                    return asc ? aNum - bNum : bNum - aNum;
+                }}
+                return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            }});
+            rows.forEach(function(r) {{ tbody.appendChild(r); }});
+        }};
+
+        /* Toggle data bars (synced across all tabs) */
+        window.vpxToggleBars_{uid} = function(btn, panelId) {{
+            var container = btn.closest('.vpx-{uid}');
+            if (!container) return;
+            var panel = document.getElementById(panelId);
+            if (!panel) return;
+            var wrap = panel.querySelector('.vpx-table-wrap');
+            if (!wrap) return;
+            var barsOff = !wrap.classList.contains('vpx-bars-off');
+            container.querySelectorAll('.vpx-panel .vpx-table-wrap').forEach(function(w) {{
+                if (barsOff) {{ w.classList.add('vpx-bars-off'); }}
+                else {{ w.classList.remove('vpx-bars-off'); }}
+            }});
+            container.querySelectorAll('.vpx-bar-toggle').forEach(function(b) {{
+                if (barsOff) {{ b.classList.remove('vpx-bars-active'); }}
+                else {{ b.classList.add('vpx-bars-active'); }}
+            }});
+        }};
+
+        /* Frozen (sticky) leading columns: set each frozen cell's left offset
+           to the cumulative width of the frozen columns before it. Recomputed
+           on tab switch and column resize since widths can change. */
+        window.vpxUpdateFreeze_{uid} = function(table) {{
+            var headRow = table.querySelector('thead tr');
+            if (!headRow) return;
+            var ths = Array.prototype.slice.call(headRow.children);
+            var bodyRows = table.querySelectorAll('tbody tr');
+            var offset = 0;
+            for (var i = 0; i < ths.length; i++) {{
+                var th = ths[i];
+                if (!th.classList.contains('vpx-freeze')) continue;
+                var left = offset + 'px';
+                th.style.left = left;
+                (function(idx, lv) {{
+                    bodyRows.forEach(function(tr) {{
+                        var cell = tr.children[idx];
+                        if (cell) cell.style.left = lv;
+                    }});
+                }})(i, left);
+                offset += th.offsetWidth;
+            }}
+        }};
+
+        /* Initialize frozen columns for the currently visible panel. */
+        requestAnimationFrame(function() {{
+            document.querySelectorAll('.vpx-{uid} .vpx-panel.vpx-visible table').forEach(function(t) {{
+                window.vpxUpdateFreeze_{uid}(t);
+            }});
+        }});
+
+
+    }})();
+    </script>
+    """
+
+    theme_script = _ui_theme_toggle_script(
+        btn_id=theme_btn_id,
+        root_selector=root_selector,
+        dark_class="vpx-dark",
+    )
+
+    fullscreen_script = _ui_fullscreen_toggle_script(
+        btn_id=fullscreen_btn_id,
+        root_selector=root_selector,
+        fullscreen_class="vpx-fs",
+    )
+
+    static_html = styles + "\n".join(html_parts)
+    static_scripts = script + theme_script + fullscreen_script
+
+    # Raw JS (without the <script> wrappers) so the frontend can execute it via
+    # a dynamically created <script> element (innerHTML-injected scripts do not
+    # run).
+    raw_static_js = "\n".join(
+        s.replace("<script>", "").replace("</script>", "")
+        for s in (script, theme_script, fullscreen_script)
+    )
+
+    # Re-render in place (the workspace / semantic model picker switched the
+    # widget to a different model), replacing the pre-built HTML/JS and the
+    # Delta Analyzer metadata the observers rely on.
+    if widget is not None:
+        # Keep the outgoing model's state so the user can switch back to it.
+        _vpx_snapshot_model(widget)
+        widget._delta_info = {t["tableName"]: t for t in delta_tables}
+        widget._col_src = column_source_map or {}
+        widget._model_key = _vpx_model_key(workspace_id, dataset_id)
+        widget._model_meta = {
+            "dataset": dataset_name or "",
+            "workspace": workspace_name or "",
+        }
+        widget.workspace_id = str(workspace_id or "")
+        widget.delta_tables = delta_tables
+        widget.delta_results = {}
+        widget.status = {}
+        widget.picker_initial = False
+        widget.uid = uid
+        widget.script_content = raw_static_js
+        # Set last: the frontend redraws on this trait.
+        widget.html_content = static_html
+        _vpx_snapshot_model(widget)
+        _vpx_sync_recent(widget)
+        return
+
+    # When the model has no Direct-Lake-over-Lakehouse source tables and the
+    # picker is unavailable there is nothing to call back into Python for, so
+    # keep the lightweight static HTML render (no anywidget dependency).
+    if not has_delta and not can_pick:
+        display(HTML(static_html + static_scripts))
+        return
+
+    # Interactive path: the "Delta Analyzer" button must run Spark in Python on
+    # demand and merge the results back into the widget, which requires an
+    # anywidget (a static HTML button cannot call back into Python). Fall back
+    # to the static render if anywidget is unavailable.
+    try:
+        import anywidget
+        import traitlets
+    except ImportError:
+        if picker_initial:
+            raise ImportError(
+                "Selecting a semantic model requires the 'anywidget' package. "
+                "Install it with: pip install anywidget"
+            )
+        display(HTML(static_html + static_scripts))
+        return
+
+    class _VertipaqWidget(anywidget.AnyWidget):
+        _esm = _VPX_WIDGET_JS
+        html_content = traitlets.Unicode("").tag(sync=True)
+        script_content = traitlets.Unicode("").tag(sync=True)
+        uid = traitlets.Unicode("").tag(sync=True)
+        delta_tables = traitlets.List().tag(sync=True)
+        pending_action = traitlets.Dict().tag(sync=True)
+        run = traitlets.Int(0).tag(sync=True)
+        delta_results = traitlets.Dict().tag(sync=True)
+        status = traitlets.Dict().tag(sync=True)
+        cancel = traitlets.Int(0).tag(sync=True)
+        delta_icon = traitlets.Unicode("").tag(sync=True)
+        workspace_id = traitlets.Unicode("").tag(sync=True)
+        workspaces = traitlets.List().tag(sync=True)
+        datasets = traitlets.Dict().tag(sync=True)
+        recent_models = traitlets.List().tag(sync=True)
+        picker_initial = traitlets.Bool(False).tag(sync=True)
+
+    # In a pure-Python (non-Spark) notebook the Delta Analyzer cannot run, so
+    # surface an upfront hint next to the button.
+    from sempy_labs._helper_functions import _pure_python_notebook
+
+    _initial_delta_status = {}
+    if _pure_python_notebook():
+        _initial_delta_status = {
+            "message": (
+                "The Delta Analyzer requires Spark. Run this in a PySpark "
+                "notebook to get the Delta Analyzer stats."
+            ),
+            "kind": "info",
+        }
+
+    widget = _VertipaqWidget(
+        html_content=static_html,
+        script_content=raw_static_js,
+        uid=uid,
+        delta_tables=delta_tables,
+        pending_action={},
+        run=0,
+        delta_results={},
+        status=_initial_delta_status,
+        cancel=0,
+        delta_icon=delta_col_icon,
+        workspace_id=str(workspace_id or ""),
+        workspaces=[],
+        datasets={},
+        recent_models=[],
+        picker_initial=bool(picker_initial),
+    )
+
+    # Delta Analyzer metadata for the model currently shown. Kept on the widget
+    # (not in this closure) so switching models via the picker can refresh it
+    # while the observers below stay bound.
+    widget._delta_info = {t["tableName"]: t for t in delta_tables}
+    widget._col_src = column_source_map or {}
+    # Every analyzed model is cached (rendered HTML/JS + Delta Analyzer
+    # results) so the picker can switch back to it instantly.
+    widget._cache = {}
+    widget._model_key = (
+        "" if picker_initial else _vpx_model_key(workspace_id, dataset_id)
+    )
+    widget._model_meta = {
+        "dataset": dataset_name or "",
+        "workspace": workspace_name or "",
+    }
+    _vpx_snapshot_model(widget)
+    _vpx_sync_recent(widget)
+    # Long-running work (Delta Analyzer, switching models) runs inline on the
+    # kernel thread: Spark/OneLake calls (e.g. mounting the lakehouse) are not
+    # reliable from a background thread in Fabric notebooks. Trait updates sent
+    # while the kernel is busy still reach the frontend, so the progress
+    # counter keeps ticking; a cancel request can only be picked up between
+    # tables if the frontend manages to deliver it during the run.
+    _cancel_event = threading.Event()
+    _running = {"active": False}
+
+    def _run_delta(selected, skip_card):
+        total = len(selected)
+        prior = widget.delta_results or {}
+        results_tables = dict(prior.get("tables", {}))
+        results_columns = dict(prior.get("columns", {}))
+        completed = 0
+        try:
+            for idx, info in enumerate(selected, start=1):
+                if _cancel_event.is_set():
+                    break
+                tname = info.get("tableName")
+                widget.status = {
+                    "message": (
+                        f"Running Delta Analyzer on '{tname}' "
+                        f"({idx}/{total})\u2026 a cold Spark session can take a "
+                        f"few minutes."
+                    ),
+                    "kind": "info",
+                    "progress": {"done": completed, "total": total},
+                }
+                tbl_stats, col_stats_by_src = _compute_table_delta_stats(
+                    info, skip_cardinality=skip_card
+                )
+                results_tables[tname] = tbl_stats
+                src_map = widget._col_src.get(tname, {})
+                for model_col, src_col in src_map.items():
+                    stat = col_stats_by_src.get(src_col) or col_stats_by_src.get(
+                        model_col
+                    )
+                    if stat:
+                        results_columns[f"{tname}\u0000{model_col}"] = stat
+                completed += 1
+                # Reassign (new object) so the traitlet change fires and the
+                # frontend merges progressively after each table.
+                widget.delta_results = {
+                    "tables": dict(results_tables),
+                    "columns": dict(results_columns),
+                }
+            if _cancel_event.is_set():
+                widget.status = {
+                    "message": (
+                        f"Delta Analyzer cancelled after {completed} "
+                        f"table{'s' if completed != 1 else ''}."
+                    ),
+                    "kind": "info",
+                    "done": True,
+                    "auto_hide": True,
+                }
+            else:
+                widget.status = {
+                    "message": (
+                        f"Delta Analyzer complete for {total} "
+                        f"table{'s' if total != 1 else ''}."
+                    ),
+                    "kind": "success",
+                    "done": True,
+                    "auto_hide": True,
+                }
+        except Exception as e:  # noqa: BLE001
+            widget.status = {
+                "message": f"Delta Analyzer error: {e}",
+                "kind": "error",
+                "done": True,
+            }
+
+    def _list_workspaces_payload():
+        return _list_picker_workspaces(workspace_id, workspace_name)
+
+    def _list_datasets_payload(target_workspace_id):
+        return _list_picker_datasets(target_workspace_id)
+
+    def _connect(target_workspace_id, target_dataset_id, target_names=None):
+        """Show the semantic model chosen in the picker: restored from the cache
+        when it was already analyzed, otherwise analyzed now and re-rendered in
+        place."""
+        names = target_names or {}
+        model_label = names.get("dataset") or str(target_dataset_id)
+        ws_label = names.get("workspace") or str(target_workspace_id)
+        try:
+            if _vpx_restore_model(
+                widget, _vpx_model_key(target_workspace_id, target_dataset_id)
+            ):
+                return
+            widget.status = {
+                "message": (
+                    f"Running Vertipaq Analyzer on '{model_label}' within "
+                    f"the '{ws_label}' workspace\u2026"
+                ),
+                "kind": "info",
+            }
+            vertipaq_analyzer(
+                dataset=target_dataset_id,
+                workspace=target_workspace_id,
+                read_stats_from_data=read_stats_from_data,
+                dark_mode=dark_mode,
+                _widget=widget,
+            )
+        except Exception as e:  # noqa: BLE001
+            widget.status = {
+                "message": (
+                    f"Could not analyze '{model_label}' within the "
+                    f"'{ws_label}' workspace: {e}"
+                ),
+                "kind": "error",
+                "done": True,
+            }
+
+    def _on_run(change):
+        action = dict(widget.pending_action or {})
+        action_name = action.get("action")
+
+        if action_name == "list_workspaces":
+            # Clear first so the trait always changes (an identical payload
+            # would not notify the frontend) and the dropdown shows "Loading".
+            widget.workspaces = []
+            widget.workspaces = _list_workspaces_payload()
+            return
+
+        if action_name == "list_datasets":
+            target = str(action.get("workspace_id") or "")
+            if not target:
+                return
+            new_map = dict(widget.datasets or {})
+            new_map.pop(target, None)
+            widget.datasets = new_map
+            refreshed = dict(new_map)
+            refreshed[target] = _list_datasets_payload(target)
+            widget.datasets = refreshed
+            return
+
+        if action_name == "restore":
+            _vpx_restore_model(widget, str(action.get("key") or ""))
+            return
+
+        if action_name == "connect":
+            target_ws = action.get("workspace_id")
+            target_ds = action.get("dataset_id")
+            if not target_ws or not target_ds or _running["active"]:
+                return
+            _running["active"] = True
+            try:
+                _connect(
+                    target_ws,
+                    target_ds,
+                    {
+                        "dataset": action.get("dataset_name"),
+                        "workspace": action.get("workspace_name"),
+                    },
+                )
+            finally:
+                _running["active"] = False
+            return
+
+        if action_name != "delta":
+            return
+
+        # The Delta Analyzer relies on Spark (e.g. reading the delta table
+        # detail/history), so it cannot run in a pure-Python notebook.
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        if _pure_python_notebook():
+            widget.status = {
+                "message": (
+                    "The Delta Analyzer requires Spark. Run this in a PySpark "
+                    "notebook to get the Delta Analyzer stats."
+                ),
+                "kind": "error",
+                "done": True,
+            }
+            return
+
+        if _running["active"]:
+            return
+
+        # The frontend sends the full delta-table descriptors, but the
+        # Python-side ``_delta_info`` (built from the Direct Lake partitions) is
+        # authoritative, so it is preferred when the table is known.
+        selected = []
+        for t in action.get("tables") or []:
+            name = t.get("tableName") if isinstance(t, dict) else t
+            info = widget._delta_info.get(name) or (t if isinstance(t, dict) else None)
+            if info:
+                selected.append(info)
+        skip_card = bool(action.get("skip_cardinality", True))
+        if not selected:
+            widget.status = {"message": "", "kind": "info", "done": True}
+            return
+
+        _cancel_event.clear()
+        _running["active"] = True
+        try:
+            _run_delta(selected, skip_card)
+        finally:
+            _running["active"] = False
+
+    def _on_cancel(change):
+        if not _running["active"]:
+            # The run already finished (the kernel only gets to this handler
+            # once it is free again), so just clear the spinner/status.
+            widget.status = {"message": "", "kind": "info", "done": True}
+            return
+        _cancel_event.set()
+        widget.status = {
+            "message": (
+                "Cancelling the Delta Analyzer\u2026 the table currently being "
+                "analyzed will finish first."
+            ),
+            "kind": "info",
+        }
+
+    widget.observe(_on_run, names=["run"])
+    widget.observe(_on_cancel, names=["cancel"])
+
+    # Keep a reference on the widget so the Python-side observer is not garbage
+    # collected after this function returns. We intentionally do NOT return the
+    # widget to avoid Jupyter auto-displaying it a second time after display().
+    display(widget)
+
+
+@log
+def import_vertipaq_analyzer(folder_path: str, file_name: str):
+    """
+    Imports and visualizes the vertipaq analyzer info from a saved .zip file in your lakehouse.
+
+    Parameters
+    ----------
+    folder_path : str
+        The folder within your lakehouse in which the .zip file containing the vertipaq analyzer info has been saved.
+    file_name : str
+        The file name of the file which contains the vertipaq analyzer info.
+
+    Returns
+    -------
+    str
+       A visualization of the Vertipaq Analyzer statistics.
+    """
+
+    pd.options.mode.copy_on_write = True
+
+    zipFilePath = os.path.join(folder_path, file_name)
+    extracted_dir = os.path.join(folder_path, "extracted_dataframes")
+
+    with zipfile.ZipFile(zipFilePath, "r") as zip_ref:
+        zip_ref.extractall(extracted_dir)
+
+    # Read all CSV files into a dictionary of DataFrames
+    dfs = {}
+    for file_name in zip_ref.namelist():
+        df = pd.read_csv(extracted_dir + "/" + file_name)
+        file_path = Path(file_name)
+        df_name = file_path.stem
+        dfs[df_name] = df
+
+    visualize_vertipaq(dfs, "")
+
+    # Clean up: remove the extracted directory
+    shutil.rmtree(extracted_dir)

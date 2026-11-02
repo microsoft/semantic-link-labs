@@ -1,0 +1,64 @@
+VAR MaxDate =
+    MAX ( 'Date'[Date] )
+
+VAR RollingWindow =
+    DATESINPERIOD (
+        'Date'[Date],
+        MaxDate,
+        -90,
+        DAY
+    )
+
+VAR CustomerSalesTable =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            FILTER (
+                ALL ( Sales ),
+                Sales[OrderDate] IN RollingWindow
+            ),
+            Customer[CustomerKey]
+        ),
+        "RollingSales",
+            CALCULATE (
+                SUMX (
+                    Sales,
+                    Sales[ExtendedAmount] - Sales[DiscountAmount]
+                )
+            ),
+        "OrderCount",
+            CALCULATE (
+                DISTINCTCOUNT ( Sales[OrderNumber] )
+            )
+    )
+
+VAR FilteredCustomers =
+    FILTER (
+        CustomerSalesTable,
+        [RollingSales] > 5000
+            && [OrderCount] >= 3
+    )
+
+VAR RankedCustomers =
+    ADDCOLUMNS (
+        FilteredCustomers,
+        "SalesRank",
+            RANKX (
+                FilteredCustomers,
+                [RollingSales],
+                ,
+                DESC,
+                DENSE
+            )
+    )
+
+VAR Top10Customers =
+    FILTER (
+        RankedCustomers,
+        [SalesRank] <= 10
+    )
+
+RETURN
+SUMX (
+    Top10Customers,
+    [RollingSales]
+)

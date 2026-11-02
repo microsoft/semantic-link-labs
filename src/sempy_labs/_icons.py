@@ -147,3 +147,7 @@ refresh_event_schema = {
     "JobGraph": base_cols,
     "ProgressReportEnd": end_cols,
 }
+
+
+prefix_mini = "SLL_MiniModel"
+prefix_master = "SLL_MasterModel"

@@ -1,12 +1,11 @@
 import sempy.fabric as fabric
 import pandas as pd
-from .._list_functions import list_tables
-from ..tom import connect_semantic_model
+from sempy_labs._list_functions import list_tables
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
 )
@@ -18,6 +17,10 @@ def list_direct_lake_model_calc_tables(
 ) -> pd.DataFrame:
     """
     Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery).
+
+    This function only applies to Direct Lake semantic models which were migrated before calculated tables were supported in Direct Lake
+    (when calculated tables were stored as lakehouse tables and their DAX expressions as model annotations). Calculated tables are now
+    migrated as calculated tables (see :func:`sempy_labs.migration.migrate_calc_tables_to_semantic_model`).
 
     Parameters
     ----------
@@ -33,9 +36,10 @@ def list_direct_lake_model_calc_tables(
     pandas.DataFrame
         A pandas dataframe showing the calculated tables which were migrated to Direct Lake and whose DAX expressions are stored as model annotations.
     """
+    from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = pd.DataFrame(columns=["Table Name", "Source Expression"])
 

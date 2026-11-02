@@ -11,9 +11,9 @@ sys.path.insert(0, os.path.abspath('../../src/'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'semantic-link-labs'
-copyright = '2024, Microsoft and community'
+copyright = '2026, Microsoft and community'
 author = 'Microsoft and community'
-release = '0.12.3'
+release = '0.15.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -41,6 +41,6 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 # List of packages we don't want to install in the environment
-autodoc_mock_imports = ['delta', 'synapse', 'jwt', 'semantic-link-sempy', 'pyspark', 'powerbiclient']
+autodoc_mock_imports = ['delta', 'synapse', 'jwt', 'semantic-link-sempy', 'pyspark', 'anywidget', 'sqlglot', 'powerbiclient']
 
 napoleon_numpy_docstring = True

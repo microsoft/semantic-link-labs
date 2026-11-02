@@ -121,7 +121,7 @@ class ServicePrincipalTokenProvider(TokenCredential):
         """
         Parameters
         ----------
-        audience : Literal["pbi", "storage", "azure", "graph", "asazure", "keyvault"] = "pbi") -> str
+        audience : typing.Literal["pbi", "storage", "azure", "graph", "asazure", "keyvault"] = "pbi") -> str
             Literal if it's for PBI/Fabric API call or OneLake/Storage Account call.
         region : str, default=None
             The region of the Azure Analysis Services. For example: 'westus2'.
@@ -130,7 +130,7 @@ class ServicePrincipalTokenProvider(TokenCredential):
         if audience not in self._shorthand_scopes:
             raise NotImplementedError
 
-        return self.get_token(audience).token
+        return self.get_token(audience, region=region).token
 
     def get_token(self, *scopes, **kwargs) -> AccessToken:
         """

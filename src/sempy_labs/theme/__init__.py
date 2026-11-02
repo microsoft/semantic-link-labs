@@ -4,7 +4,6 @@ from ._org_themes import (
     resolve_theme_id,
 )
 
-
 __all__ = [
     "list_org_themes",
     "get_org_theme_json",

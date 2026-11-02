@@ -1,9 +1,10 @@
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_lakehouse_id,
     _xml_to_dict,
     _create_dataframe,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from sempy._utils._log import log
 from uuid import UUID
@@ -23,35 +24,19 @@ def _request_blob_api(
     uses_pagination: bool = False,
 ):
 
-    import requests
-    import notebookutils
-    from sempy.fabric.exceptions import FabricHTTPException
-
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    token = notebookutils.credentials.getToken("storage")
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/xml",
-        "x-ms-version": "2025-05-05",
-    }
-
-    base_url = "https://onelake.blob.fabric.microsoft.com/"
-    full_url = f"{base_url}{request}"
     results = []
+    full_url = request
 
     while True:
-        response = requests.request(
-            method.upper(),
-            full_url,
-            headers=headers,
-            data=payload if method.lower() != "get" else None,
+        response = _base_api(
+            request=full_url,
+            client="blob",
+            method=method.upper(),
+            payload=payload,
         )
-
-        if response.status_code not in status_codes:
-            raise FabricHTTPException(response)
 
         if not uses_pagination:
             return response
@@ -66,7 +51,7 @@ def _request_blob_api(
 
         # Append the marker to the original request (assuming query string format)
         delimiter = "&" if "?" in request else "?"
-        full_url = f"{base_url}{request}{delimiter}marker={next_marker}"
+        full_url = f"{request}{delimiter}marker={next_marker}"
 
     return results
 
@@ -118,6 +103,7 @@ def list_blobs(
         "Is Deleted": "bool",
         "Deletion Id": "str",
         "Creation Time": "datetime",
+        "Last Modified": "datetime",
         "Expiry Time": "datetime",
         "Etag": "str",
         "Resource Type": "str",
@@ -150,25 +136,29 @@ def list_blobs(
     for root in responses:
         response_json = _xml_to_dict(root)
 
-        blobs = (
-            response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", [])
-        )
+        # An empty XML element parses to None, so a page holding no blobs (or a
+        # blob with no properties) must not be walked with .get().
+        results = response_json.get("EnumerationResults") or {}
+        blobs = (results.get("Blobs") or {}).get("Blob") or []
 
         if isinstance(blobs, dict):
             blobs = [blobs]
 
         for blob in blobs:
-            p = blob.get("Properties", {})
+            p = blob.get("Properties") or {}
             rows.append(
                 {
                     "Blob Name": blob.get("Name"),
                     "Is Deleted": blob.get("Deleted", False),
                     "Deletion Id": blob.get("DeletionId"),
                     "Creation Time": p.get("Creation-Time"),
+                    "Last Modified": p.get("Last-Modified"),
                     "Expiry Time": p.get("Expiry-Time"),
                     "Etag": p.get("Etag"),
                     "Resource Type": p.get("ResourceType"),
-                    "Content Length": p.get("Content-Length"),
+                    # Directory markers and some deleted entries carry no
+                    # length; the column is typed as an int, which has no NA.
+                    "Content Length": p.get("Content-Length") or 0,
                     "Content Type": p.get("Content-Type"),
                     "Content Encoding": p.get("Content-Encoding"),
                     "Content Language": p.get("Content-Language"),
@@ -197,6 +187,7 @@ def recover_lakehouse_object(
     file_path: str,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
+    raise_errors: bool = False,
 ):
     """
     Recovers an object (i.e. table, file, folder) in a lakehouse from a deleted state. Only `soft-deleted objects <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_ can be recovered (deleted for less than 7 days).
@@ -212,6 +203,8 @@ def recover_lakehouse_object(
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    raise_errors : bool, default=False
+        If True, re-raises the error when the recover request fails instead of only printing it.
     """
 
     workspace_id = resolve_workspace_id(workspace)
@@ -237,6 +230,8 @@ def recover_lakehouse_object(
             f"{icons.green_dot} The '{blob_name}' blob recover attempt was successful."
         )
     except FabricHTTPException as e:
+        if raise_errors:
+            raise
         if e.status_code == 404:
             print(
                 f"{icons.warning} The '{blob_name}' blob was not found. No action taken."

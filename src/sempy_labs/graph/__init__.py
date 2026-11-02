@@ -9,6 +9,7 @@ from ._groups import (
     create_group,
     delete_group,
     update_group,
+    list_group_transitive_members,
 )
 from ._users import (
     resolve_user_id,
@@ -24,6 +25,11 @@ from ._teams import (
 )
 from ._sensitivity_labels import (
     list_sensitivity_labels,
+    resolve_sensitivity_label_id,
+)
+from ._user_licenses import (
+    add_user_license,
+    remove_user_license,
 )
 
 __all__ = [
@@ -46,4 +52,8 @@ __all__ = [
     "update_user",
     "update_group",
     "list_sensitivity_labels",
+    "resolve_sensitivity_label_id",
+    "add_user_license",
+    "remove_user_license",
+    "list_group_transitive_members",
 ]

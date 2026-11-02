@@ -55,7 +55,7 @@ def list_groups() -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _base_api(request="groups", client="graph").json()
+    result = _base_api(request="groups", client="graph", uses_pagination=True)
 
     columns = {
         "Group Id": "string",
@@ -76,24 +76,25 @@ def list_groups() -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     rows = []
-    for v in result.get("value"):
-        rows.append(
-            {
-                "Group Id": v.get("id"),
-                "Group Name": v.get("displayName"),
-                "Mail": v.get("mail"),
-                "Description": v.get("description"),
-                "Classification": v.get("classification"),
-                "Mail Enabled": v.get("mailEnabled"),
-                "Security Enabled": v.get("securityEnabled"),
-                "Created Date Time": v.get("createdDateTime"),
-                "Expiration Date Time": v.get("expirationDateTime"),
-                "Renewed Date Time": v.get("renewedDateTime"),
-                "Deleted Date Time": v.get("deletedDateTime"),
-                "Visibility": v.get("visibility"),
-                "Security Identifier": v.get("securityIdentifier"),
-            }
-        )
+    for r in result:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Group Id": v.get("id"),
+                    "Group Name": v.get("displayName"),
+                    "Mail": v.get("mail"),
+                    "Description": v.get("description"),
+                    "Classification": v.get("classification"),
+                    "Mail Enabled": v.get("mailEnabled"),
+                    "Security Enabled": v.get("securityEnabled"),
+                    "Created Date Time": v.get("createdDateTime"),
+                    "Expiration Date Time": v.get("expirationDateTime"),
+                    "Renewed Date Time": v.get("renewedDateTime"),
+                    "Deleted Date Time": v.get("deletedDateTime"),
+                    "Visibility": v.get("visibility"),
+                    "Security Identifier": v.get("securityIdentifier"),
+                }
+            )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
@@ -122,7 +123,7 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _base_api(request=f"groups/{group_id}", client="graph").json()
+    v = _base_api(request=f"groups/{group_id}", client="graph").json()
 
     columns = {
         "Group Id": "string",
@@ -142,24 +143,23 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     rows = []
-    for v in result.get("value"):
-        rows.append(
-            {
-                "Group Id": v.get("id"),
-                "Group Name": v.get("displayName"),
-                "Mail": v.get("mail"),
-                "Description": v.get("description"),
-                "Classification": v.get("classification"),
-                "Mail Enabled": v.get("mailEnabled"),
-                "Security Enabled": v.get("securityEnabled"),
-                "Created Date Time": v.get("createdDateTime"),
-                "Expiration Date Time": v.get("expirationDateTime"),
-                "Deleted Date Time": v.get("deletedDateTime"),
-                "Renewed Date Time": v.get("renewedDateTime"),
-                "Visibility": v.get("visibility"),
-                "Security Identifier": v.get("securityIdentifier"),
-            }
-        )
+    rows.append(
+        {
+            "Group Id": v.get("id"),
+            "Group Name": v.get("displayName"),
+            "Mail": v.get("mail"),
+            "Description": v.get("description"),
+            "Classification": v.get("classification"),
+            "Mail Enabled": v.get("mailEnabled"),
+            "Security Enabled": v.get("securityEnabled"),
+            "Created Date Time": v.get("createdDateTime"),
+            "Expiration Date Time": v.get("expirationDateTime"),
+            "Deleted Date Time": v.get("deletedDateTime"),
+            "Renewed Date Time": v.get("renewedDateTime"),
+            "Visibility": v.get("visibility"),
+            "Security Identifier": v.get("securityIdentifier"),
+        }
+    )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
@@ -190,7 +190,9 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
 
     group_id = resolve_group_id(group)
 
-    result = _base_api(request=f"groups/{group_id}/members", client="graph").json()
+    result = _base_api(
+        request=f"groups/{group_id}/members", client="graph", uses_pagination=True
+    )
 
     columns = {
         "Member Id": "string",
@@ -209,22 +211,86 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     rows = []
-    for v in result.get("value"):
-        rows.append(
-            {
-                "Member Id": v.get("id"),
-                "Member Name": v.get("displayName"),
-                "User Principal Name": v.get("userPrincipalName"),
-                "Mail": v.get("mail"),
-                "Job Title": v.get("jobTitle"),
-                "Office Location": v.get("officeLocation"),
-                "Mobile Phone": v.get("mobilePhone"),
-                "Business Phones": str(v.get("businessPhones")),
-                "Preferred Language": v.get("preferredLanguage"),
-                "Given Name": v.get("givenName"),
-                "Surname": v.get("surname"),
-            }
-        )
+    for r in result:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Member Id": v.get("id"),
+                    "Member Name": v.get("displayName"),
+                    "User Principal Name": v.get("userPrincipalName"),
+                    "Mail": v.get("mail"),
+                    "Job Title": v.get("jobTitle"),
+                    "Office Location": v.get("officeLocation"),
+                    "Mobile Phone": v.get("mobilePhone"),
+                    "Business Phones": str(v.get("businessPhones")),
+                    "Preferred Language": v.get("preferredLanguage"),
+                    "Given Name": v.get("givenName"),
+                    "Surname": v.get("surname"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
+
+
+@log
+def list_group_transitive_members(group: str | UUID) -> pd.DataFrame:
+    """
+    Shows a list of the members of a group. This operation is transitive and returns a flat list of all nested members.
+
+    This is a wrapper function for the following API: `List group transitive members <https://learn.microsoft.com/graph/api/group-list-transitivemembers>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    group : str | uuid.UUID
+        The group name or ID.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the members of a group.
+    """
+
+    group_id = resolve_group_id(group)
+
+    result = _base_api(
+        request=f"groups/{group_id}/transitiveMembers",
+        client="graph",
+        uses_pagination=True,
+    )
+
+    columns = {
+        "Member Id": "string",
+        "Organization Id": "string",
+        "Description": "string",
+        "Member Name": "string",
+        "Group Types": "list",
+        "Mail": "string",
+        "Mail Enabled": "bool",
+        "Mail Nickname": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    rows = []
+    for r in result:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Member Id": v.get("id"),
+                    "Organization Id": v.get("organizationId"),
+                    "Description": v.get("description"),
+                    "Member Name": v.get("displayName"),
+                    "Group Types": v.get("groupTypes"),
+                    "Mail": v.get("mail"),
+                    "Mail Enabled": v.get("mailEnabled"),
+                    "Mail Nickname": v.get("mailNickname"),
+                }
+            )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
@@ -254,7 +320,9 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
 
     group_id = resolve_group_id(group)
 
-    result = _base_api(request=f"groups/{group_id}/owners", client="graph").json()
+    result = _base_api(
+        request=f"groups/{group_id}/owners", client="graph", uses_pagination=True
+    )
 
     columns = {
         "Owner Id": "string",
@@ -273,22 +341,23 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     rows = []
-    for v in result.get("value"):
-        rows.append(
-            {
-                "Owner Id": v.get("id"),
-                "Owner Name": v.get("displayName"),
-                "User Principal Name": v.get("userPrincipalName"),
-                "Mail": v.get("mail"),
-                "Job Title": v.get("jobTitle"),
-                "Office Location": v.get("officeLocation"),
-                "Mobile Phone": v.get("mobilePhone"),
-                "Business Phones": str(v.get("businessPhones")),
-                "Preferred Language": v.get("preferredLanguage"),
-                "Given Name": v.get("givenName"),
-                "Surname": v.get("surname"),
-            }
-        )
+    for r in result:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Owner Id": v.get("id"),
+                    "Owner Name": v.get("displayName"),
+                    "User Principal Name": v.get("userPrincipalName"),
+                    "Mail": v.get("mail"),
+                    "Job Title": v.get("jobTitle"),
+                    "Office Location": v.get("officeLocation"),
+                    "Mobile Phone": v.get("mobilePhone"),
+                    "Business Phones": str(v.get("businessPhones")),
+                    "Preferred Language": v.get("preferredLanguage"),
+                    "Given Name": v.get("givenName"),
+                    "Surname": v.get("surname"),
+                }
+            )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
@@ -311,7 +380,6 @@ def _base_add_to_group(
         object = [object]
 
     group_id = resolve_group_id(group)
-    url = f"groups/{group_id}/{object_type}/$ref"
 
     for m in object:
         if _is_valid_uuid(m):
@@ -327,17 +395,19 @@ def _base_add_to_group(
 
     # Must submit one request for each owner. Members can be sent in a single request.
     if object_type == "members":
+        url = f"groups/{group_id}"
         payload = {"members@odata.bind": object_list}
 
         _base_api(
             request=url,
             client="graph",
             payload=payload,
-            method="post",
+            method="patch",
             status_codes=204,
         )
 
     else:
+        url = f"groups/{group_id}/{object_type}/$ref"
         for o in object_list:
             payload = {"odata.id": o}
             _base_api(
@@ -455,9 +525,9 @@ def create_group(
         Whether the group is security-enabled.
     mail_nickname : str, default=None
         The mail alias for the group.
-    owners : str | uuid.UUID | List[str | uuid.UUID], default=None
+    owners : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The owners of the group.
-    members : str | uuid.UUID | List[str | uuid.UUID], default=None
+    members : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The members of the group.
     """
     from sempy_labs.graph._users import resolve_user_id

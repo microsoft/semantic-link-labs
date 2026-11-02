@@ -1,4 +1,4 @@
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     _build_url,
     _encode_user,
@@ -8,7 +8,7 @@ from .._helper_functions import (
 
 from uuid import UUID
 from typing import Optional
-from ._basic_functions import (
+from sempy_labs.admin._basic_functions import (
     _resolve_workspace_name_and_id,
 )
 import sempy_labs._icons as icons
@@ -28,6 +28,8 @@ def add_user_to_workspace(
 
     This is a wrapper function for the following API: `Admin - Groups AddUserAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-add-user-as-admin>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     user : str | uuid.UUID
@@ -42,7 +44,7 @@ def add_user_to_workspace(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     # Validation
     role = role.capitalize()
@@ -86,6 +88,8 @@ def delete_user_from_workspace(
 
     This is a wrapper function for the following API: `Admin - Groups DeleteUserAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-delete-user-as-admin>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     user : str | uuid.UUID
@@ -100,7 +104,7 @@ def delete_user_from_workspace(
         The service principal profile ID to delete.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     user = _encode_user(user)
     url = f"/v1.0/myorg/admin/groups/{workspace_id}/users/{user}"

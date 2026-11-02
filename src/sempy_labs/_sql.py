@@ -6,7 +6,7 @@ from itertools import chain, repeat
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
 )
 from uuid import UUID
@@ -35,33 +35,33 @@ class ConnectBase:
     def __init__(
         self,
         item: str | UUID,
+        type: Optional[str] = "Warehouse",
         workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
-        endpoint_type: str = "warehouse",
     ):
         from sempy.fabric._credentials import get_access_token
         import pyodbc
 
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        workspace_id = resolve_workspace_id(workspace)
 
         # Resolve the appropriate ID and name (warehouse or lakehouse)
-        if endpoint_type == "sqldatabase":
+        if type == "SQLDatabase":
             # SQLDatabase is has special case for resolving the name and id
-            (resource_name, resource_id) = resolve_item_name_and_id(
-                item=item, type="SQLDatabase", workspace=workspace_id
+            resource_name, resource_id = resolve_item_name_and_id(
+                item=item, type=type, workspace=workspace_id
             )
-        elif endpoint_type == "lakehouse":
-            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
+        elif type == "Lakehouse":
+            resource_name, resource_id = resolve_lakehouse_name_and_id(
                 lakehouse=item,
                 workspace=workspace_id,
             )
         else:
-            (resource_name, resource_id) = resolve_item_name_and_id(
-                item=item, workspace=workspace_id, type=endpoint_type.capitalize()
+            resource_name, resource_id = resolve_item_name_and_id(
+                item=item, workspace=workspace_id, type=type
             )
 
         endpoint_for_url = (
-            "sqlDatabases" if endpoint_type == "sqldatabase" else f"{endpoint_type}s"
+            "sqlDatabases" if type == "SQLDatabase" else f"{type.lower()}s"
         )
 
         # Get the TDS endpoint
@@ -69,9 +69,9 @@ class ConnectBase:
             request=f"v1/workspaces/{workspace_id}/{endpoint_for_url}/{resource_id}"
         )
 
-        if endpoint_type == "warehouse":
+        if type == "Warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")
-        elif endpoint_type == "sqldatabase":
+        elif type == "SQLDatabase":
             tds_endpoint = response.json().get("properties", {}).get("serverFqdn")
         else:
             tds_endpoint = (
@@ -84,7 +84,7 @@ class ConnectBase:
         # Set up the connection string
         access_token = get_access_token("sql").token
         tokenstruct = _bytes2mswin_bstr(access_token.encode())
-        if endpoint_type == "sqldatabase":
+        if type == "SQLDatabase":
             conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name}-{resource_id};Encrypt=Yes;"
         else:
             conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name};Encrypt=Yes;"
@@ -103,12 +103,12 @@ class ConnectBase:
 
         Parameters
         ----------
-        sql : str or List[str]
+        sql : str or typing.List[str]
             A single SQL or T-SQL query, or a list of queries to be executed.
 
         Returns
         -------
-        Union[List[pandas.DataFrame], pandas.DataFrame, None]
+        typing.Union[typing.List[pandas.DataFrame], pandas.DataFrame, None]
             A list of pandas DataFrames if multiple SQL queries return results,
             a single DataFrame if one query is executed and returns results, or None.
         """
@@ -176,9 +176,9 @@ class ConnectWarehouse(ConnectBase):
         """
         super().__init__(
             item=warehouse,
+            type="Warehouse",
             workspace=workspace,
             timeout=timeout,
-            endpoint_type="warehouse",
         )
 
 
@@ -206,9 +206,9 @@ class ConnectLakehouse(ConnectBase):
         """
         super().__init__(
             item=lakehouse,
+            type="Lakehouse",
             workspace=workspace,
             timeout=timeout,
-            endpoint_type="lakehouse",
         )
 
 
@@ -235,7 +235,71 @@ class ConnectSQLDatabase(ConnectBase):
         """
         super().__init__(
             item=sql_database,
+            type="SQLDatabase",
             workspace=workspace,
             timeout=timeout,
-            endpoint_type="sqldatabase",
         )
+
+
+class ConnectMirroredAzureDatabricksCatalog(ConnectBase):
+    def __init__(
+        self,
+        mirrored_azure_databricks_catalog: str | UUID,
+        workspace: Optional[Union[str, UUID]] = None,
+        timeout: int = 30,
+    ):
+        """
+        Run a SQL or T-SQL query against a Mirrored Azure Databricks Catalog.
+
+        Parameters
+        ----------
+        mirrored_azure_databricks_catalog : str | uuid.UUID
+            The name or ID of the Fabric Mirrored Azure Databricks Catalog.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
+        super().__init__(
+            item=mirrored_azure_databricks_catalog,
+            type="MirroredAzureDatabricksCatalog",
+            workspace=workspace,
+            timeout=timeout,
+        )
+
+
+@log
+def get_primary_key(
+    table: str,
+    schema: str,
+    item: str | UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+) -> str | None:
+    """
+    Extracts the primary key column name for a specified table and schema within a Fabric SQLDatabase, Warehouse, or Lakehouse. If no primary key is found, returns None.
+    """
+    with ConnectBase(item=item, type=type, workspace=workspace) as sql:
+
+        df = sql.query(f"""
+        SELECT
+            tc.TABLE_SCHEMA,
+            tc.TABLE_NAME,
+            tc.CONSTRAINT_NAME,
+            kcu.COLUMN_NAME,
+            kcu.ORDINAL_POSITION
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+            ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+            AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+            AND tc.TABLE_NAME = kcu.TABLE_NAME
+        WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+        AND tc.TABLE_NAME = '{table}'
+        AND tc.TABLE_SCHEMA = '{schema}'
+        ORDER BY kcu.ORDINAL_POSITION""")
+        if not df.empty:
+            return df["COLUMN_NAME"].iloc[0]
+        else:
+            return None

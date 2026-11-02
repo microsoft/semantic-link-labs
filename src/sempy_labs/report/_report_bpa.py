@@ -2,9 +2,9 @@ from typing import Optional
 import pandas as pd
 import datetime
 from sempy._utils._log import log
-from ._reportwrapper import connect_report
-from ._report_bpa_rules import report_bpa_rules
-from .._helper_functions import (
+from sempy_labs.report._reportwrapper import connect_report
+from sempy_labs.report._report_bpa_rules import report_bpa_rules
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
     resolve_item_name_and_id,
@@ -12,10 +12,11 @@ from .._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
 )
-from ..lakehouse import get_lakehouse_tables, lakehouse_attached
+from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 import sempy_labs._icons as icons
+from sempy_labs._ui_components import scoped_button_press_css
 from IPython.display import display, HTML
-from uuid import UUID
+from uuid import UUID, uuid4
 
 
 @log
@@ -109,7 +110,7 @@ def run_report_bpa(
 
             for scope in scopes:
                 # common fields for each scope
-                (df, violation_cols_or_func) = scope_to_dataframe[scope]
+                df, violation_cols_or_func = scope_to_dataframe[scope]
 
                 # execute rule and subset df
                 df_violations = df[row["Expression"](df)]
@@ -200,8 +201,8 @@ def run_report_bpa(
             max_run_id = _get_column_aggregate(table_name=delta_table_name)
             runId = max_run_id + 1
 
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        (report_name, report_id) = resolve_item_name_and_id(
+        workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+        report_name, report_id = resolve_item_name_and_id(
             item=report, type="Report", workspace=workspace_id
         )
 
@@ -274,7 +275,8 @@ def run_report_bpa(
         for cat in bpa2["Category"].drop_duplicates().values
     }
 
-    styles = """
+    root_id = f"slls-report-bpa-{uuid4().hex[:8]}"
+    styles = f"<style>{scoped_button_press_css(f'#{root_id}')}</style>" + """
     <style>
         .tab { overflow: hidden; border: 1px solid #ccc; background-color: #f1f1f1; }
         .tab button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
@@ -351,4 +353,5 @@ def run_report_bpa(
     tab_html += "</div>"
 
     # Display the tabs, tab contents, and run the script
-    return display(HTML(styles + tab_html + content_html + script))
+    body = f'<div id="{root_id}">{tab_html}{content_html}</div>'
+    return display(HTML(styles + body + script))

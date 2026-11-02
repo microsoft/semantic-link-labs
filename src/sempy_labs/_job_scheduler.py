@@ -12,6 +12,7 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+import time
 
 
 @log
@@ -28,7 +29,7 @@ def list_item_job_instances(
     Parameters
     ----------
     item : str | uuid.UUID
-        The item name or ID
+        The item name or ID.
     type : str, default=None
         The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
     workspace : str | uuid.UUID, default=None
@@ -43,7 +44,7 @@ def list_item_job_instances(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_id
     )
 
@@ -117,21 +118,21 @@ def _get_item_job_instance(url: str) -> pd.DataFrame:
     response = _base_api(request=url, client="fabric_sp")
 
     rows = []
-    for v in response.json().get("value", []):
-        fail = v.get("failureReason", {})
-        rows.append(
-            {
-                "Job Instance Id": v.get("id"),
-                "Item Id": v.get("itemId"),
-                "Job Type": v.get("jobType"),
-                "Invoke Type": v.get("invokeType"),
-                "Status": v.get("status"),
-                "Root Activity Id": v.get("rootActivityId"),
-                "Start Time UTC": v.get("startTimeUtc"),
-                "End Time UTC": v.get("endTimeUtc"),
-                "Error Message": fail.get("message") if fail is not None else "",
-            }
-        )
+    v = response.json()
+    fail = v.get("failureReason", {})
+    rows.append(
+        {
+            "Job Instance Id": v.get("id"),
+            "Item Id": v.get("itemId"),
+            "Job Type": v.get("jobType"),
+            "Invoke Type": v.get("invokeType"),
+            "Status": v.get("status"),
+            "Root Activity Id": v.get("rootActivityId"),
+            "Start Time UTC": v.get("startTimeUtc"),
+            "End Time UTC": v.get("endTimeUtc"),
+            "Error Message": fail.get("message") if fail is not None else "",
+        }
+    )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
@@ -283,8 +284,8 @@ def run_on_demand_item_job(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -340,8 +341,8 @@ def create_item_schedule_cron(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -398,7 +399,7 @@ def create_item_schedule_daily(
         The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
     local_time_zone: str
         The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
-    times : List[str]
+    times : typing.List[str]
         A list of time slots in hh:mm format, at most 100 elements are allowed. Example: ["00:00", "12:00"].
     job_type : str, default="DefaultJob"
         The job type.
@@ -410,8 +411,8 @@ def create_item_schedule_daily(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -457,6 +458,8 @@ def create_item_schedule_weekly(
 
     This is a wrapper function for the following API: `Job Scheduler - Create Item Schedule <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/create-item-schedule>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     item : str | uuid.UUID
@@ -469,9 +472,9 @@ def create_item_schedule_weekly(
         The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
     local_time_zone: str
         The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
-    times : List[str]
+    times : typing.List[str]
         A list of time slots in hh:mm format, at most 100 elements are allowed. Example: ["00:00", "12:00"].
-    weekdays : List[str]
+    weekdays : typing.List[str]
         A list of weekdays. Example: ["Monday", "Tuesday"].
     job_type : str, default="DefaultJob"
         The job type.
@@ -483,8 +486,8 @@ def create_item_schedule_weekly(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
+    workspace_id = resolve_workspace_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
 
@@ -527,3 +530,80 @@ def create_item_schedule_weekly(
     print(
         f"{icons.green_dot} The schedule for the '{item_name}' {type.lower()} has been created."
     )
+
+
+@log
+def cancel_item_job_instance(
+    item: str | UUID,
+    job_instance_id: UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Cancel an item's job instance.
+
+    This is a wrapper function for the following API: `Job Scheduler - Cancel Item Job Instance <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/cancel-item-job-instance>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID.
+    job_instance_id : uuid.UUID
+        The job instance ID to cancel.
+    type : str
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_name, item_id = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    response = _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}",
+        client="fabric_sp",
+    )
+    current_status = response.json().get("status")
+
+    if current_status not in ["NotStarted", "InProgress"]:
+        print(
+            f"{icons.info} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} is in status '{current_status}' and cannot be cancelled."
+        )
+        return
+    else:
+        # Cancel the job instance
+        response = _base_api(
+            request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}/cancel",
+            method="post",
+            status_codes=202,
+            client="fabric_sp",
+        )
+
+        status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
+        status = None
+        while status not in ["Completed", "Failed", "Cancelled"]:
+            response = _base_api(request=status_url)
+            status = response.json().get("status")
+            time.sleep(3)
+
+        if status == "Cancelled":
+            print(
+                f"{icons.green_dot} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} has been cancelled."
+            )
+            return
+        elif status == "Failed":
+            print(
+                f"{icons.info} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} could not be cancelled and has failed."
+            )
+            return
+        elif status == "Completed":
+            print(
+                f"{icons.info} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} has already completed before it could be cancelled."
+            )
+            return

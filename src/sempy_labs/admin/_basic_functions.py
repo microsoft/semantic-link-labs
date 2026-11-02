@@ -1,10 +1,9 @@
 from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
-    _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
 )
@@ -72,6 +71,8 @@ def list_workspaces(
         "State": "string",
         "Type": "string",
         "Capacity Id": "string",
+        "Tags": "string",
+        "Domain Id": "string",
     }
     df = _create_dataframe(columns=columns)
 
@@ -93,24 +94,27 @@ def list_workspaces(
     url = _build_url(url, params)
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
-    workspaces = []
 
+    if not responses:
+        return df
+
+    rows = []
     for r in responses:
-        workspaces = workspaces + r.get("workspaces", [])
+        for w in r.get("workspaces", []):
+            rows.append(
+                {
+                    "Id": w.get("id"),
+                    "Name": w.get("name"),
+                    "State": w.get("state"),
+                    "Type": w.get("type"),
+                    "Capacity Id": w.get("capacityId"),
+                    "Tags": w.get("tags"),
+                    "Domain Id": w.get("domainId"),
+                }
+            )
 
-    if len(workspaces) > 0:
-        df = pd.DataFrame(workspaces)
-        df.rename(
-            columns={
-                "id": "Id",
-                "name": "Name",
-                "state": "State",
-                "type": "Type",
-                "capacityId": "Capacity Id",
-            },
-            inplace=True,
-        )
-
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         df["Capacity Id"] = df["Capacity Id"].str.lower()
 
         if workspace is not None and _is_valid_uuid(workspace):
@@ -123,7 +127,7 @@ def list_workspaces(
 def assign_workspaces_to_capacity(
     source_capacity: Optional[str | UUID] = None,
     target_capacity: Optional[str | UUID] = None,
-    workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
+    workspace: Optional[str | UUID] | List[str | UUID] = None,
 ):
     """
     Assigns a workspace to a capacity. This function is the admin version.
@@ -136,7 +140,7 @@ def assign_workspaces_to_capacity(
         The name of the source capacity. If the Workspace is not specified, this is parameter mandatory.
     target_capacity : str | uuid.UUID, default=None
         The name of the target capacity.
-    workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
+    workspace : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The name or ID of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
@@ -321,7 +325,7 @@ def list_workspace_access_details(
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and Service Principals) that have access to the specified workspace.
     """
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "User Id": "string",
@@ -337,16 +341,23 @@ def list_workspace_access_details(
         request=f"/v1/admin/workspaces/{workspace_id}/users", client="fabric_sp"
     )
 
+    rows = []
     for v in response.json().get("accessDetails", []):
-        new_data = {
-            "User Id": v.get("principal", {}).get("id"),
-            "User Name": v.get("principal", {}).get("displayName"),
-            "User Type": v.get("principal", {}).get("type"),
-            "Workspace Name": workspace_name,
-            "Workspace Id": workspace_id,
-            "Workspace Role": v.get("workspaceAccessDetails", {}).get("workspaceRole"),
-        }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        rows.append(
+            {
+                "User Id": v.get("principal", {}).get("id"),
+                "User Name": v.get("principal", {}).get("displayName"),
+                "User Type": v.get("principal", {}).get("type"),
+                "Workspace Name": workspace_name,
+                "Workspace Id": workspace_id,
+                "Workspace Role": v.get("workspaceAccessDetails", {}).get(
+                    "workspaceRole"
+                ),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -422,7 +433,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         A pandas dataframe showing a list of users that have access to the specified workspace.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "User Name": "string",
@@ -453,7 +464,5 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

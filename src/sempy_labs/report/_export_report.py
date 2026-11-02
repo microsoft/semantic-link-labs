@@ -12,10 +12,6 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs.report._report_functions import (
-    list_report_visuals,
-    list_report_pages,
-)
 
 
 @log
@@ -68,7 +64,7 @@ def export_report(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     if isinstance(page_name, str):
         page_name = [page_name]
@@ -187,15 +183,7 @@ def export_report(
             request_body = {"format": export_format, "powerBIReportConfiguration": {}}
 
             request_body["powerBIReportConfiguration"]["pages"] = []
-            dfPage = list_report_pages(report=report, workspace=workspace_id)
-
             for page in page_name:
-                dfPage_filt = dfPage[dfPage["Page ID"] == page]
-                if len(dfPage_filt) == 0:
-                    raise ValueError(
-                        f"{icons.red_dot} The '{page}' page does not exist in the '{report}' report within the '{workspace_name}' workspace."
-                    )
-
                 page_dict = {"pageName": page}
                 request_body["powerBIReportConfiguration"]["pages"].append(page_dict)
 
@@ -209,19 +197,9 @@ def export_report(
             request_body = {"format": export_format, "powerBIReportConfiguration": {}}
 
             request_body["powerBIReportConfiguration"]["pages"] = []
-            dfVisual = list_report_visuals(report=report, workspace=workspace_id)
             a = 0
             for page in page_name:
                 visual = visual_name[a]
-
-                dfVisual_filt = dfVisual[
-                    (dfVisual["Page ID"] == page) & (dfVisual["Visual ID"] == visual)
-                ]
-                if len(dfVisual_filt) == 0:
-                    raise ValueError(
-                        f"{icons.red_dot} The '{visual}' visual does not exist on the '{page}' in the '{report}' report within the '{workspace_name}' workspace."
-                    )
-
                 page_dict = {"pageName": page, "visualName": visual}
                 request_body["powerBIReportConfiguration"]["pages"].append(page_dict)
                 a += 1

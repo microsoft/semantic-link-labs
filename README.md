@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.12.3&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.18.1&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -20,6 +20,8 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
 If you encounter any issues, please [raise a bug](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=).
 
 If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
+
+If you would like to see any capabilities from Labs included in Semantic Link, please [submit a vote](https://github.com/microsoft/semantic-link-labs/discussions/991).
 
 Check out the video below for an introduction to Semantic Link, Semantic Link Labs and demos of key features!
 
@@ -69,7 +71,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Analyze delta tables for Direct Lake semantic models using Delta Analyzer](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Delta%20Analyzer.ipynb)
     * [Recover a soft-deleted lakehouse table/file/folder](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#recover-a-lakehouse-object)
 * Notebooks
-    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
+    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)
 * APIs
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), [Azure](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01), and [Microsoft Graph](https://learn.microsoft.com/graph/api/overview?view=graph-rest-1.0) APIs
 * Service Principal Authentication
@@ -77,7 +79,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 
 ## Helper Notebooks
 
-Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started! 
+Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
 Run the code below to load all the helper notebooks to the workspace of your choice at once.
 ```python
 import sempy_labs as labs
@@ -103,7 +105,7 @@ for file_name, file_url in notebook_files.items():
 import sempy_labs as labs
 import sempy_labs.lakehouse as lake
 import sempy_labs.report as rep
-from sempy_labs import migration, directlake, admin, graph, theme, mirrored_azure_databricks_catalog, ml_model, variable_library
+from sempy_labs import admin, deployment_pipeline, directlake, environment, eventstream, graph, graph_model, migration, mirrored_azure_databricks_catalog, ml_model, snowflake_database, sql_database, theme, variable_library, warehouse, semantic_model, eventhouse, dataflow
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs.report import connect_report
 ```
@@ -129,6 +131,28 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.18.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.18.1) (November 2, 2026)
+* [0.18.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.18.0) (October 30, 2026)
+* [0.17.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.17.1) (September 10, 2026)
+* [0.17.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.17.0) (July 29, 2026)
+* [0.16.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.16.0) (July 21, 2026)
+* [0.15.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.2) (July 1, 2026)
+* [0.15.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.1) (May 19, 2026)
+* [0.15.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.15.0) (May 14, 2026)
+* [0.14.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.3) (April 13, 2026)
+* [0.14.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.2) (April 7, 2026)
+* [0.14.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.1) (March 23, 2026)
+* [0.14.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.14.0) (March 18, 2026)
+* [0.13.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.2) (February 27, 2026)
+* [0.13.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.1) (February 12, 2026)
+* [0.13.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.0) (February 10, 2026)
+* [0.12.10](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.10) (January 22, 2026)
+* [0.12.9](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.9) (January 5, 2026)
+* [0.12.8](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.8) (December 15, 2025)
+* [0.12.7](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.7) (November 19, 2025)
+* [0.12.6](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.6) (October 30, 2025)
+* [0.12.5](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.5) (October 30, 2025)
+* [0.12.4](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.4) (October 16, 2025)
 * [0.12.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.3) (September 17, 2025)
 * [0.12.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.2) (September 12, 2025)
 * [0.12.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.1) (September 4, 2025)
@@ -218,15 +242,17 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 * Dataflows Gen2 will create delta tables in your Fabric lakehouse. These tables can then be used for your Direct Lake model.
 * Create a new semantic model in Direct Lake mode containing all the standard tables and columns, calculation groups, measures, relationships, hierarchies, roles, row level security, perspectives, and translations from your original semantic model.
 * Viable calculated tables are migrated to the new semantic model as data tables. Delta tables are dynamically generated in the lakehouse to support the Direct Lake model. The calculated table DAX logic is stored as model annotations in the new semantic model.
-* Field parameters are migrated to the new semantic model as they were in the original semantic model (as calculated tables). Any calculated columns used in field parameters are automatically removed in the new semantic model's field parameter(s).
-* Non-supported objects are not transferred (i.e. calculated columns, relationships using columns with unsupported data types etc.).
+* Calculated columns within regular (data) tables are migrated to the new semantic model as [Direct Lake calculated columns](https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance) (preview) with their [expression context](https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext) set to User Context.
+* Field parameters are migrated to the new semantic model as they were in the original semantic model (as calculated tables). Any references to calculated columns which were not migrated are automatically removed in the new semantic model's field parameter(s).
+* Non-supported objects are not transferred (i.e. relationships using calculated columns or columns with unsupported data types etc.).
 * Reports used by your original semantic model will be rebinded to your new semantic model.
 
 ### Limitations
-* Calculated columns are not migrated.
+* Calculated columns in Direct Lake support the User Context expression context only (`ExpressionContext = UserContext`, requiring compatibility level 1705+). They are evaluated at query time (not materialized) and therefore cannot be used in relationships.
+* Migrating calculated columns requires a version of semantic-link-sempy which includes Microsoft.AnalysisServices v19.117.0 or later. Otherwise, calculated columns are not migrated.
+* Calculated columns within calculated tables are not migrated.
 * Auto date/time tables are not migrated.
-* References to calculated columns in Field Parameters are removed.
-* References to calculated columns in measure expressions or other DAX expressions will break.
+* References to calculated columns which are not migrated are removed from Field Parameters and will break in measure expressions or other DAX expressions.
 * Calculated tables are migrated as possible. The success of this migration depends on the interdependencies and complexity of the calculated table. This part of the migration is a workaround as technically calculated tables are not supported in Direct Lake.
 * See [here](https://learn.microsoft.com/fabric/get-started/direct-lake-overview#considerations-and-limitations) for the rest of the limitations of Direct Lake.
 
@@ -257,12 +283,24 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 8. When prompted to open the cloned repository, click 'Open'.
 9. Open the integrated terminal (View -> Terminal).
 10. Run the following code in the terminal to ensure a virtual environment exists.
-```python
+
+For Windows:
+```cli
 python -m venv venv
 ```
+For Mac:
+```cli
+python3 -m venv venv
+```
 11. Run the following code in the terminal to activate the virtual environment.
-```python
+
+For Windows:
+```cli
 .\venv\Scripts\Activate.ps1
+```
+For Mac:
+```cli
+source venv/bin/activate
 ```
 12. Run the following code in the terminal to install the build module.
 ```
@@ -315,8 +353,8 @@ python -m black src
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

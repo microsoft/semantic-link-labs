@@ -9,6 +9,7 @@ from ._lakehouse import (
     optimize_lakehouse_tables,
     vacuum_lakehouse_tables,
     run_table_maintenance,
+    list_lakehouses,
 )
 from ._shortcuts import (
     # create_shortcut,
@@ -32,6 +33,13 @@ from ._helper import (
 )
 from ._materialized_lake_views import (
     refresh_materialized_lake_views,
+    create_materialized_lake_view,
+)
+from ._schemas import (
+    list_schemas,
+    schema_exists,
+    is_schema_enabled,
+    create_schema,
 )
 
 __all__ = [
@@ -54,4 +62,10 @@ __all__ = [
     "update_lakehouse",
     "load_table",
     "refresh_materialized_lake_views",
+    "list_lakehouses",
+    "list_schemas",
+    "schema_exists",
+    "is_schema_enabled",
+    "create_materialized_lake_view",
+    "create_schema",
 ]

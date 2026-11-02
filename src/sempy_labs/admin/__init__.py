@@ -43,6 +43,7 @@ from ._capacities import (
 )
 from ._tenant import (
     list_tenant_settings,
+    delete_all_capacity_tenant_setting_overrides,
     delete_capacity_tenant_setting_override,
     update_tenant_setting,
     update_capacity_tenant_setting_override,
@@ -50,6 +51,7 @@ from ._tenant import (
     list_capacity_tenant_settings_overrides,
     list_capacities_delegated_tenant_settings,
     list_domain_tenant_settings_overrides,
+    enable_item_recovery,
 )
 from ._basic_functions import (
     assign_workspaces_to_capacity,
@@ -70,6 +72,7 @@ from ._domains import (
     resolve_domain_id,
     unassign_domain_workspaces,
     unassign_all_domain_workspaces,
+    sync_role_assignments_to_subdomains,
 )
 from ._items import (
     list_item_access_details,
@@ -97,6 +100,15 @@ from ._tenant_keys import (
 from ._sharing_links import (
     remove_all_sharing_links,
     remove_sharing_links,
+)
+from ._labels import (
+    bulk_set_labels,
+    bulk_remove_labels,
+)
+from ._policy_set import (
+    activate_policy_set,
+    deactivate_policy_set,
+    get_active_policy_set,
 )
 
 __all__ = [
@@ -137,6 +149,7 @@ __all__ = [
     "patch_capacity",
     "list_workspace_users",
     "list_widely_shared_artifacts",
+    "delete_all_capacity_tenant_setting_overrides",
     "delete_capacity_tenant_setting_override",
     "update_tenant_setting",
     "update_capacity_tenant_setting_override",
@@ -161,4 +174,11 @@ __all__ = [
     "rotate_tenant_key",
     "remove_all_sharing_links",
     "remove_sharing_links",
+    "bulk_set_labels",
+    "bulk_remove_labels",
+    "sync_role_assignments_to_subdomains",
+    "enable_item_recovery",
+    "activate_policy_set",
+    "deactivate_policy_set",
+    "get_active_policy_set",
 ]

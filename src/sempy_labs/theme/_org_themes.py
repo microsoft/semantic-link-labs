@@ -7,7 +7,6 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 
-
 _pbi_url_prefix = None
 _theme_url_prefix = "metadata/v202409/organization/themes"
 

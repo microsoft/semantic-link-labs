@@ -3,9 +3,9 @@ import base64
 import json
 import sempy.fabric as fabric
 import sempy_labs._icons as icons
-from ._generate_report import get_report_definition
-from .._generate_semantic_model import get_semantic_model_definition
-from .._helper_functions import (
+from sempy_labs.report._generate_report import get_report_definition
+from sempy_labs._generate_semantic_model import get_semantic_model_definition
+from sempy_labs._helper_functions import (
     _mount,
     resolve_workspace_name_and_id,
     resolve_item_name,
@@ -52,10 +52,10 @@ def save_report_as_pbip(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+    report_workspace_name, report_workspace_id = resolve_workspace_name_and_id(
         workspace
     )
-    (report_name, report_id) = resolve_item_name_and_id(
+    report_name, report_id = resolve_item_name_and_id(
         item=report, type="Report", workspace=workspace
     )
     indent = 2

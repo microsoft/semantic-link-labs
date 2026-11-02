@@ -38,9 +38,9 @@ def refresh_semantic_model(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    tables : str, List[str], default=None
+    tables : str, typing.List[str], default=None
         A string or a list of tables to refresh.
-    partitions: str, List[str], default=None
+    partitions: str, typing.List[str], default=None
         A string or a list of partitions to refresh. Partitions must be formatted as such: 'Table Name'[Partition Name].
     refresh_type : str, default="full"
         The type of processing to perform. Types align with the TMSL refresh command types: full, clearValues, calculate, dataOnly, automatic, and defragment. The add type isn't supported. Defaults to "full".
@@ -67,8 +67,8 @@ def refresh_semantic_model(
         If 'visualize' is set to True, returns a pandas dataframe showing the SSAS trace output used to generate the visualization.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     if isinstance(tables, str):
         tables = [tables]
@@ -298,8 +298,8 @@ def cancel_dataset_refresh(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     rr = fabric.list_refresh_requests(dataset=dataset_id, workspace=workspace_id)
     rr_filt = rr[rr["Status"] == "Unknown"]
@@ -350,8 +350,8 @@ def get_semantic_model_refresh_history(
         A pandas dataframe showing the semantic model refresh history.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
     df = pd.DataFrame(
         columns=[
             "Request Id",

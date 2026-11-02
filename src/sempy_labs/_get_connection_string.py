@@ -24,7 +24,7 @@ def get_connection_string(
     ----------
     item : str | uuid.UUID
         The name or ID of the item (Lakehouse or MirroredDatabase).
-    type : Literal['Lakehouse', 'Warehouse', 'SQLEndpoint']
+    type : typing.Literal['Lakehouse', 'Warehouse', 'SQLEndpoint']
         The type of the item. Must be 'Lakehouse' or 'MirroredDatabase'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.

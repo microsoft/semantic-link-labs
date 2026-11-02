@@ -30,5 +30,5 @@ def get_shared_expression(
     )
 
     return generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=workspace
+        item=lakehouse, item_type="Lakehouse", workspace=workspace
     )

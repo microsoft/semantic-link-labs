@@ -16,15 +16,15 @@ from sempy_labs._helper_functions import (
     _create_spark_session,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
-from sempy_labs.tom import connect_semantic_model
 from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy_labs._ui_components import scoped_button_press_css
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import os
-from uuid import UUID
+from uuid import UUID, uuid4
 
 
 @log
@@ -73,6 +73,7 @@ def run_model_bpa(
     """
 
     import polib
+    from sempy_labs.tom import connect_semantic_model
 
     if "extend" in kwargs:
         print(
@@ -112,8 +113,8 @@ def run_model_bpa(
         if language is not None:
             language = map_language(language, language_list)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(
         dataset, workspace=workspace_id
     )
 
@@ -300,6 +301,10 @@ def run_model_bpa(
                 tom.all_partitions(),
                 lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
             ),
+            "Function": (
+                tom.all_functions(),
+                lambda obj: obj.Name,
+            ),
         }
 
         for i, r in rules.iterrows():
@@ -320,6 +325,8 @@ def run_model_bpa(
                         x = ["Model"]
                 elif scope == "Measure":
                     x = [nm(obj) for obj in tom.all_measures() if expr(obj, tom)]
+                elif scope == "Function":
+                    x = [nm(obj) for obj in tom.all_functions() if expr(obj, tom)]
                 elif scope == "Column":
                     x = [nm(obj) for obj in tom.all_columns() if expr(obj, tom)]
                 elif scope == "Partition":
@@ -455,7 +462,8 @@ def run_model_bpa(
         for cat in bpa2["Category"].drop_duplicates().values
     }
 
-    styles = """
+    root_id = f"slls-model-bpa-{uuid4().hex[:8]}"
+    styles = f"<style>{scoped_button_press_css(f'#{root_id}')}</style>" + """
     <style>
         .tab { overflow: hidden; border: 1px solid #ccc; background-color: #f1f1f1; }
         .tab button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
@@ -548,4 +556,5 @@ def run_model_bpa(
 
     # Display the tabs, tab contents, and run the script
     if not export:
-        return display(HTML(styles + tab_html + content_html + script))
+        body = f'<div id="{root_id}">{tab_html}{content_html}</div>'
+        return display(HTML(styles + body + script))

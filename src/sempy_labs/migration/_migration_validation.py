@@ -2,9 +2,11 @@ import pandas as pd
 from typing import Optional
 from .._list_functions import list_semantic_model_objects
 from sempy._utils._log import log
+from sempy_labs._helper_functions import _quiet_if_not_verbose
 import sempy_labs._icons as icons
 
 
+@_quiet_if_not_verbose
 @log
 def migration_validation(
     dataset: str,

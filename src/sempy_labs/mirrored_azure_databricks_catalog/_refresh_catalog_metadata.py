@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Optional
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
@@ -23,20 +23,23 @@ def refresh_catalog_metadata(
     ----------
     mirrored_azure_databricks_catalog : str | uuid.UUID
         The name or ID of the mirrored Azure Databricks catalog.
-    workspace : str | uuie.UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (catalog_name, catalog_id) = resolve_item_name_and_id(
-        mirrored_azure_databricks_catalog
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    catalog_name, catalog_id = resolve_item_name_and_id(
+        item=mirrored_azure_databricks_catalog,
+        type="MirroredAzureDatabricksCatalog",
+        workspace=workspace_id,
     )
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredAzureDatabricksCatalogs/{catalog_id}/refreshCatalogMetadata",
         method="post",
+        status_codes=[200, 202],
         lro_return_status_code=True,
     )
 

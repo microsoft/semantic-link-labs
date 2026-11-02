@@ -1,14 +1,12 @@
 import pandas as pd
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
-)
-from uuid import UUID
-from typing import Optional
-from ._basic_functions import (
-    _resolve_workspace_name_and_id,
     _create_dataframe,
     _update_dataframe_datatypes,
 )
+from uuid import UUID
+from typing import Optional
+from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
 from sempy._utils._log import log
 
 
@@ -27,7 +25,7 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
         A pandas dataframe showing a list of datasets, reports, and dashboards that have not been used within 30 days for the specified workspace.
     """
 
-    (_, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    _, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "Artifact Name": "string",

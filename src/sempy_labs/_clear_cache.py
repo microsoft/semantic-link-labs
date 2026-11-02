@@ -6,8 +6,9 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
-from typing import List, Optional
+from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 import pandas as pd
@@ -15,7 +16,11 @@ from uuid import UUID
 
 
 @log
-def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
+def clear_cache(
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    verbose: bool = True,
+) -> None:
     """
     Clears the cache of a semantic model.
     See `here <https://learn.microsoft.com/analysis-services/instances/clear-the-analysis-services-caches?view=asallproducts-allversions>`_ for documentation.
@@ -28,16 +33,18 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    verbose : bool, default=True
+        If True, prints a confirmation message after clearing the cache.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     if is_default_semantic_model(dataset=dataset, workspace=workspace):
         raise ValueError(
             f"{icons.red_dot} Cannot run XMLA operations against a default semantic model. Please choose a different semantic model. "
             "See here for more information: https://learn.microsoft.com/fabric/data-warehouse/semantic-models"
         )
 
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     xmla = f"""
             <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">
@@ -47,9 +54,10 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
             </ClearCache>
             """
     fabric.execute_xmla(dataset=dataset_id, xmla_command=xmla, workspace=workspace_id)
-    print(
-        f"{icons.green_dot} Cache cleared for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
-    )
+    if verbose:
+        print(
+            f"{icons.green_dot} Cache cleared for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+        )
 
 
 @log
@@ -90,8 +98,8 @@ def backup_semantic_model(
             f"{icons.red_dot} The backup file for restoring must be in the .abf format."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     tmsl = {
         "backup": {
@@ -152,7 +160,7 @@ def restore_semantic_model(
             f"{icons.red_dot} The backup file for restoring must be in the .abf format."
         )
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
     tmsl = {
         "restore": {
@@ -277,7 +285,7 @@ def list_backups(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of backup files contained within a workspace's ADLS Gen2 storage account.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     response = _base_api(
         request=f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}"
     )
@@ -316,37 +324,35 @@ def list_storage_account_files(
         A pandas dataframe showing a list of files contained within an ADLS Gen2 storage account.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "File Path",
-            "File Size",
-            "Creation Time",
-            "Last Modified",
-            "Expiry Time",
-            "Encryption Scope",
-        ]
-    )
+    columns = {
+        "File Path": "str",
+        "File Size": "int",
+        "Creation Time": "datetime",
+        "Last Modified": "datetime",
+        "Expiry Time": "datetime",
+        "Encryption Scope": "str",
+    }
 
+    df = _create_dataframe(columns=columns)
     client = _get_adls_client(storage_account)
     fs = client.get_file_system_client(container)
 
+    rows = []
     for x in list(fs.get_paths()):
         if not x.is_directory:
-            new_data = {
-                "File Path": x.name,
-                "File Size": x.content_length,
-                "Creation Time": x.creation_time,
-                "Last Modified": x.last_modified,
-                "Expiry Time": x.expiry_time,
-                "Encryption Scope": x.encryption_scope,
-            }
+            rows.append(
+                {
+                    "File Path": x.name,
+                    "File Size": x.content_length,
+                    "Creation Time": x.creation_time,
+                    "Last Modified": x.last_modified,
+                    "Expiry Time": x.expiry_time,
+                    "Encryption Scope": x.encryption_scope,
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    column_map = {
-        "File Size": "int",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    if rows:
+        df = pd.DataFrame(rows)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

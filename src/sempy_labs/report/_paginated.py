@@ -2,12 +2,15 @@ from typing import Optional
 import pandas as pd
 from uuid import UUID
 from sempy_labs._helper_functions import (
-    resolve_workspace_id,
+    resolve_workspace_name_and_id,
     _base_api,
     resolve_item_id,
     _create_dataframe,
+    _is_valid_uuid,
 )
 from sempy._utils._log import log
+from sempy_labs.report._items import list_reports
+import sempy_labs._icons as icons
 
 
 @log
@@ -23,7 +26,7 @@ def get_report_datasources(
     Parameters
     ----------
     report : str | uuid.UUID
-        Name or ID of the Power BI report.
+        Name or ID of the Paginated report.
     workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -46,10 +49,23 @@ def get_report_datasources(
     }
     df = _create_dataframe(columns=columns)
 
-    workspace_id = resolve_workspace_id(workspace)
-    report_id = resolve_item_id(
-        item=report, type="PaginatedReport", workspace=workspace
-    )
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    df_reports = list_reports(workspace=workspace_id)
+    if _is_valid_uuid(report):
+        df_filt = df_reports[
+            (df_reports["Format"] == "RDL") & (df_reports["Report Id"] == report)
+        ]
+
+    else:
+        df_filt = df_reports[
+            (df_reports["Format"] == "RDL") & (df_reports["Report Name"] == report)
+        ]
+    if df_filt.empty:
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' paginated report does not exist within the '{workspace_name}' workspace."
+        )
+    report_id = df_filt["Report Id"].iloc[0]
+    report_name = df_filt["Report Name"].iloc[0]
 
     response = _base_api(
         request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/datasources",
@@ -61,7 +77,7 @@ def get_report_datasources(
         conn = i.get("connectionDetails", {})
         rows.append(
             {
-                "Report Name": report,
+                "Report Name": report_name,
                 "Report Id": report_id,
                 "Datasource Id": i.get("datasourceId"),
                 "Datasource Type": i.get("datasourceType"),

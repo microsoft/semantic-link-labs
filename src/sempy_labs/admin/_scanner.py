@@ -3,9 +3,9 @@ from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
 import time
 import sempy_labs._icons as icons
-from ._basic_functions import list_workspaces
+from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     _is_valid_uuid,
     _build_url,
@@ -20,7 +20,7 @@ def scan_workspaces(
     dataset_expressions: bool = False,
     lineage: bool = False,
     artifact_users: bool = False,
-    workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
+    workspace: Optional[str | UUID] | List[str | UUID] = None,
 ) -> dict:
     """
     Gets the scan result for the specified scan.
@@ -44,7 +44,7 @@ def scan_workspaces(
         Whether to return lineage info (upstream dataflows, tiles, data source IDs)
     artifact_users : bool, default=False
         Whether to return user details for a Power BI item (such as a report or a dashboard).
-    workspace : str | List[str] | UUID | List[UUID], default=None
+    workspace : str | uuid.UUID | typing.List[str | UUID], default=None
         The required workspace name(s) or id(s) to be scanned. It supports a limit of 100 workspaces and only IDs in GUID format.
 
     Returns

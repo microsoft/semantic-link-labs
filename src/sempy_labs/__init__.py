@@ -44,6 +44,7 @@ from ._job_scheduler import (
     create_item_schedule_cron,
     create_item_schedule_daily,
     create_item_schedule_weekly,
+    cancel_item_job_instance,
 )
 from ._delta_analyzer import (
     delta_analyzer,
@@ -80,6 +81,7 @@ from ._managed_private_endpoints import (
     list_managed_private_endpoints,
     create_managed_private_endpoint,
     delete_managed_private_endpoint,
+    list_managed_private_endpoint_fqdns,
 )
 from ._workloads import (
     list_workloads,
@@ -115,28 +117,12 @@ from ._eventhouses import (
     delete_eventhouse,
     get_eventhouse_definition,
 )
-from ._eventstreams import (
-    list_eventstreams,
-    create_eventstream,
-    delete_eventstream,
-)
 from ._kql_querysets import (
     list_kql_querysets,
     create_kql_queryset,
     delete_kql_queryset,
 )
-from ._kql_databases import (
-    list_kql_databases,
-    # create_kql_database,
-    delete_kql_database,
-)
 from ._mirrored_warehouses import list_mirrored_warehouses
-from ._environments import (
-    create_environment,
-    delete_environment,
-    publish_environment,
-    list_environments,
-)
 from ._clear_cache import (
     clear_cache,
     backup_semantic_model,
@@ -192,6 +178,8 @@ from ._workspaces import (
     delete_workspace,
     get_workspace_network_communication_policy,
     set_workspace_network_communication_policy,
+    get_workspace_git_outbound_policy,
+    set_workspace_git_outbound_policy,
 )
 from ._notebooks import (
     get_notebook_definition,
@@ -205,22 +193,11 @@ from ._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
     ConnectSQLDatabase,
-)
-from ._sqldatabase import (
-    get_sql_database_columns,
-    get_sql_database_tables,
-    create_sql_database,
-    delete_sql_database,
-    list_sql_databases,
+    ConnectMirroredAzureDatabricksCatalog,
 )
 from ._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
-)
-from ._deployment_pipelines import (
-    list_deployment_pipeline_stage_items,
-    list_deployment_pipeline_stages,
-    list_deployment_pipelines,
 )
 from ._git import (
     get_git_connection,
@@ -241,6 +218,7 @@ from ._dataflows import (
     list_upstream_dataflows,
     upgrade_dataflow,
     get_dataflow_definition,
+    discover_dataflow_parameters,
 )
 from ._connections import (
     list_connections,
@@ -284,8 +262,11 @@ from ._list_functions import (
     list_server_properties,
     list_semantic_model_errors,
     list_synonyms,
+    list_user_defined_functions,
 )
 from ._helper_functions import (
+    get_downstream_relations,
+    get_upstream_relations,
     get_item_definition,
     copy_item,
     convert_to_friendly_case,
@@ -312,6 +293,7 @@ from ._helper_functions import (
     get_capacity_name,
     resolve_capacity_name,
     get_tenant_id,
+    update_item_logical_id,
 )
 from ._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -355,12 +337,51 @@ from ._data_access_security import (
 from ._get_connection_string import (
     get_connection_string,
 )
+from ._sql_audit_settings import (
+    get_sql_audit_settings,
+    update_sql_audit_settings,
+    set_audit_actions_and_group,
+)
+from ._domains import (
+    list_domains,
+)
+from ._takeover import (
+    takeover_item_ownership,
+)
+from ._catalog import (
+    list_endorsements,
+    list_favorites,
+)
+from ._item_recovery import (
+    list_recoverable_items,
+    recover_item,
+    permanently_delete_item,
+)
+from ._items import (
+    bulk_export_items,
+    bulk_import_items,
+)
+from ._onelake import (
+    get_onelake_settings,
+    modify_onelake_diagnostics,
+    modify_immutability_policy,
+)
+
 
 __all__ = [
+    "get_onelake_settings",
+    "modify_onelake_diagnostics",
+    "modify_immutability_policy",
+    "bulk_export_items",
+    "bulk_import_items",
+    "list_recoverable_items",
+    "recover_item",
+    "permanently_delete_item",
     "resolve_warehouse_id",
     "ConnectWarehouse",
     "ConnectLakehouse",
     "ConnectSQLDatabase",
+    "ConnectMirroredAzureDatabricksCatalog",
     "update_semantic_model_from_bim",
     "list_connections",
     "get_semantic_model_size",
@@ -447,9 +468,6 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
-    "list_deployment_pipeline_stage_items",
-    "list_deployment_pipeline_stages",
-    "list_deployment_pipelines",
     "get_git_connection",
     "get_git_status",
     "commit_to_git",
@@ -458,9 +476,6 @@ __all__ = [
     "connect_workspace_to_azure_dev_ops",
     "connect_workspace_to_github",
     "disconnect_workspace_from_git",
-    "create_environment",
-    "delete_environment",
-    "publish_environment",
     "resolve_capacity_id",
     "resolve_environment_id",
     "list_item_connections",
@@ -477,18 +492,12 @@ __all__ = [
     "create_fabric_capacity",
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
-    "list_kql_databases",
-    # "create_kql_database",
-    "delete_kql_database",
     "create_eventhouse",
     "list_eventhouses",
     "delete_eventhouse",
     "list_data_pipelines",
     "create_data_pipeline",
     "delete_data_pipeline",
-    "list_eventstreams",
-    "create_eventstream",
-    "delete_eventstream",
     "list_kql_querysets",
     "create_kql_queryset",
     "delete_kql_queryset",
@@ -514,6 +523,7 @@ __all__ = [
     "list_managed_private_endpoints",
     "create_managed_private_endpoint",
     "delete_managed_private_endpoint",
+    "list_managed_private_endpoint_fqdns",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
     "get_mirrored_database_definition",
@@ -571,8 +581,6 @@ __all__ = [
     "get_eventhouse_definition",
     "enable_semantic_model_scheduled_refresh",
     "get_delta_table_history",
-    "get_sql_database_columns",
-    "get_sql_database_tables",
     "create_item_schedule_cron",
     "create_item_schedule_daily",
     "create_item_schedule_weekly",
@@ -583,13 +591,9 @@ __all__ = [
     "delete_mounted_data_factory",
     "delete_semantic_model",
     "delete_workspace",
-    "create_sql_database",
-    "delete_sql_database",
-    "list_sql_databases",
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
-    "list_environments",
     "list_tags",
     "create_vpax",
     "update_semantic_model_refresh_schedule",
@@ -605,10 +609,25 @@ __all__ = [
     "search_notebooks",
     "list_notebooks",
     "get_item_definition",
+    "update_item_logical_id",
     "get_workspace_network_communication_policy",
     "set_workspace_network_communication_policy",
     "get_connection_string",
     "list_data_access_roles",
     "bind_semantic_model_connection",
     "unbind_semantic_model_connection",
+    "list_user_defined_functions",
+    "get_sql_audit_settings",
+    "update_sql_audit_settings",
+    "set_audit_actions_and_group",
+    "discover_dataflow_parameters",
+    "list_domains",
+    "get_workspace_git_outbound_policy",
+    "set_workspace_git_outbound_policy",
+    "cancel_item_job_instance",
+    "takeover_item_ownership",
+    "list_endorsements",
+    "list_favorites",
+    "get_downstream_relations",
+    "get_upstream_relations",
 ]

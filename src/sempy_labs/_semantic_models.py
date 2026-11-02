@@ -41,7 +41,7 @@ def get_semantic_model_refresh_schedule(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace)
 
     columns = {
         "Days": "str",
@@ -101,8 +101,8 @@ def enable_semantic_model_scheduled_refresh(
         If False, disables the scheduled refresh.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace)
 
     df = get_semantic_model_refresh_schedule(dataset=dataset, workspace=workspace)
     status = df["Enabled"].iloc[0]
@@ -171,11 +171,11 @@ def update_semantic_model_refresh_schedule(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    days : str | list[str], default=None
+    days : str | typing.List[str], default=None
         The days of the week to refresh the dataset.
         Valid values are: "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday".
         Defaults to None which means the refresh schedule will not be updated.
-    times : str | list[str], default=None
+    times : str | typing.List[str], default=None
         The times of the day to refresh the dataset.
         Valid format is "HH:MM" (24-hour format).
         Defaults to None which means the refresh schedule will not be updated.
@@ -188,8 +188,8 @@ def update_semantic_model_refresh_schedule(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace)
 
     payload = {"value": {}}
 
@@ -385,8 +385,8 @@ def bind_semantic_model_connection(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(
         dataset=dataset, workspace=workspace_id
     )
 
@@ -441,8 +441,8 @@ def unbind_semantic_model_connection(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(
         dataset=dataset, workspace=workspace_id
     )
 

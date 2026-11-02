@@ -49,8 +49,8 @@ def create_report_from_reportjson(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
     dfI = fabric.list_items(workspace=workspace, type="Report")
     dfI_rpt = dfI[dfI["Display Name"] == report]
@@ -146,7 +146,7 @@ def update_report_from_reportjson(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
     # Get the existing PBIR file
@@ -247,7 +247,7 @@ def create_model_bpa_report(
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
     """
-    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
+    dataset_workspace_name, dataset_workspace_id = resolve_workspace_name_and_id(
         dataset_workspace
     )
 
@@ -333,7 +333,7 @@ def _create_report(
 
     from sempy_labs.report import report_rebind
 
-    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+    report_workspace_name, report_workspace_id = resolve_workspace_name_and_id(
         workspace=report_workspace
     )
 
@@ -388,8 +388,8 @@ def _get_report(
     report: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_item_name_and_id(
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    report_name, report_id = resolve_item_name_and_id(
         item=report, type="Report", workspace=workspace
     )
 
