@@ -25,7 +25,7 @@ import time
 @log
 def create_blank_semantic_model(
     dataset: str,
-    compatibility_level: int = 1702,
+    compatibility_level: int = 1705,
     workspace: Optional[str | UUID] = None,
     overwrite: bool = True,
 ) -> UUID:
@@ -36,7 +36,7 @@ def create_blank_semantic_model(
     ----------
     dataset : str
         Name of the semantic model.
-    compatibility_level : int, default=1702
+    compatibility_level : int, default=1705
         The compatibility level of the semantic model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.

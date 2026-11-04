@@ -52,3 +52,35 @@ def test_vacuum_lakehouse_tables_default_retention_hours(monkeypatch):
     lakehouse.vacuum_lakehouse_tables()
 
     assert captured["retention_period"] is None
+
+
+def _list_blobs(monkeypatch, xml: str) -> pd.DataFrame:
+    import xml.etree.ElementTree as ET
+
+    import sempy_labs.lakehouse._blobs as blobs
+
+    monkeypatch.setattr(blobs, "resolve_workspace_id", lambda *_a, **_k: "ws")
+    monkeypatch.setattr(blobs, "resolve_lakehouse_id", lambda *_a, **_k: "lh")
+    monkeypatch.setattr(
+        blobs, "_request_blob_api", lambda **_kwargs: [ET.fromstring(xml)]
+    )
+
+    return blobs.list_blobs()
+
+
+def test_list_blobs_handles_a_page_with_no_blobs(monkeypatch):
+    # An empty XML element parses to None, which used to raise
+    # "'NoneType' object has no attribute 'get'".
+    df = _list_blobs(monkeypatch, "<EnumerationResults><Blobs /></EnumerationResults>")
+
+    assert df.empty
+
+
+def test_list_blobs_handles_a_blob_without_properties(monkeypatch):
+    df = _list_blobs(
+        monkeypatch,
+        "<EnumerationResults><Blobs><Blob><Name>Tables/sales/part-0.parquet</Name>"
+        "<Properties /></Blob></Blobs></EnumerationResults>",
+    )
+
+    assert list(df["Blob Name"]) == ["Tables/sales/part-0.parquet"]

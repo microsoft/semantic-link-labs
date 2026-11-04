@@ -9,6 +9,10 @@ from ._monitoring import (
     get_mirroring_status,
     list_tables_mirroring_status,
 )
+from ._discovery import (
+    list_scopes,
+    list_tables,
+)
 
 __all__ = [
     "list_mirrored_catalogs",
@@ -16,4 +20,6 @@ __all__ = [
     "refresh_catalog_metadata",
     "get_mirroring_status",
     "list_tables_mirroring_status",
+    "list_scopes",
+    "list_tables",
 ]

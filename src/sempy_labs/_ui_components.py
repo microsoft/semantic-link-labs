@@ -793,6 +793,14 @@ ICONS: dict[str, str] = {
         'stroke-linejoin="round" aria-hidden="true">'
         '<path d="M1.5 8h3l1.8-4.8 3 9.6L11.1 8h3.4"/></svg>'
     ),
+    # Statistics: a bar chart on an axis.
+    "bar_chart": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2 2v10.5A1.5 1.5 0 0 0 3.5 14H14"/>'
+        '<path d="M5.5 11V8.5"/><path d="M8.5 11V4.5"/><path d="M11.5 11V6.5"/></svg>'
+    ),
     "code": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -904,6 +912,24 @@ ICONS: dict[str, str] = {
         '<path d="M15 5.5H7a2 2 0 0 0-2 2V16"/>'
         '<rect x="10" y="10" width="9.5" height="9.5" rx="2"/></svg>'
     ),
+    "warehouse": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M18 21V10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v11"/>'
+        '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 '
+        '1.132-1.803l7.95-3.974a2 2 0 0 1 1.837 0l7.948 3.974A2 2 0 0 1 22 8z"/>'
+        '<path d="M6 13h12"/>'
+        '<path d="M6 17h12"/></svg>'
+    ),
+    "file": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 '
+        '2-2V7z"/>'
+        '<path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>'
+    ),
     "home": (
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
@@ -960,7 +986,10 @@ function sllsInstallColumnResizers(table, config) {
         let widest = minWidth;
         cells.forEach(cell => {
             const style = getComputedStyle(cell);
-            context.font = style.font;
+            // The `font` shorthand reads as "" when a longhand it cannot
+            // express is set (e.g. tabular-nums), so build it from its parts.
+            context.font = style.font
+                || `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
             const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
             const horizontalChrome =
                 (Number.parseFloat(style.paddingLeft) || 0)
@@ -1035,6 +1064,55 @@ function sllsInstallColumnResizers(table, config) {
 
 # Backward-compatible name used by older widget implementations.
 ICONS["builder"] = ICONS["hammer"]
+
+
+# Styles for the handles added by ``sllsInstallColumnResizers`` when it is
+# called with its default class names; inject via
+# :func:`scoped_table_column_resize_css`.
+TABLE_COLUMN_RESIZE_CSS: str = """\
+thead th.slls-resizable {
+    position: sticky;
+}
+.slls-column-resizer {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    /* Kept inside its own header: a sticky neighbour would paint over any overhang. */
+    right: 0;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+}
+.slls-column-resizer::after {
+    content: "";
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: 6px;
+    width: 1px;
+    background: transparent;
+}
+.slls-column-resizer:hover::after, .slls-column-resizer.slls-resizing::after {
+    background: var(--ui-accent);
+}
+"""
+
+
+def scoped_table_column_resize_css(root_selector: str) -> str:
+    """Return :data:`TABLE_COLUMN_RESIZE_CSS` with every rule prefixed by ``root_selector``.
+
+    Parameters
+    ----------
+    root_selector : str
+        A CSS selector for the widget's root container.
+
+    Returns
+    -------
+    str
+        The scoped CSS as a single string.
+    """
+    return _scope_css(root_selector, TABLE_COLUMN_RESIZE_CSS)
 
 
 # ---------------------------------------------------------------------------
@@ -2128,9 +2206,14 @@ def fullscreen_toggle_script(
 # iframe used for raw ``display(HTML)`` output — the webview permits the
 # Fullscreen API, the sandbox iframe does not.
 _FULLSCREEN_BODY: str = r"""
+    // root may be a function, resolved on each use, for widgets whose
+    // full-screen element is not in place yet when the button is wired.
+    function getRoot() {
+        return typeof root === "function" ? root() : root;
+    }
     var cssFullscreen = false;
     function isFullscreen() {
-        return cssFullscreen || document.fullscreenElement === root;
+        return cssFullscreen || document.fullscreenElement === getRoot();
     }
     function renderFullscreenBtn() {
         var on = isFullscreen();
@@ -2138,14 +2221,15 @@ _FULLSCREEN_BODY: str = r"""
         var label = on ? "Exit full screen" : "Full screen";
         btn.title = label;
         btn.setAttribute("aria-label", label);
-        root.classList.toggle(fullscreenClass, cssFullscreen);
+        getRoot().classList.toggle(fullscreenClass, cssFullscreen);
     }
     function enterFullscreen() {
         cssFullscreen = true;
         renderFullscreenBtn();
-        if (root.requestFullscreen) {
+        var target = getRoot();
+        if (target.requestFullscreen) {
             try {
-                var request = root.requestFullscreen();
+                var request = target.requestFullscreen();
                 if (request && typeof request.then === "function") {
                     request.then(function () {
                         cssFullscreen = false;
@@ -2158,7 +2242,7 @@ _FULLSCREEN_BODY: str = r"""
         }
     }
     function exitFullscreen() {
-        if (document.fullscreenElement === root && document.exitFullscreen) {
+        if (document.fullscreenElement === getRoot() && document.exitFullscreen) {
             document.exitFullscreen().catch(function () {});
         }
         cssFullscreen = false;
@@ -2235,7 +2319,9 @@ def fullscreen_setup_js(func_name: str = "sllsSetupFullscreen") -> str:
     Intended for ``anywidget``-style widgets that build their DOM in
     JavaScript. Embed the returned source once at the top of the widget's
     ESM module, then call ``func_name(root, btn, fullscreenClass, enterSvg,
-    exitSvg)`` after creating the toggle button.
+    exitSvg)`` after creating the toggle button. ``root`` may also be a
+    function returning the element, resolved on every toggle, for widgets
+    whose full-screen element is not attached yet when the button is wired.
 
     Parameters
     ----------

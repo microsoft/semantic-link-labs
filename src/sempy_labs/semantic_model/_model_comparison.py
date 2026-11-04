@@ -220,9 +220,8 @@ _WIDGET_CSS = """
 .slls-mc-status.info { background: var(--slls-surface-2); color: var(--slls-text-secondary); }
 
 /* Footer */
-.slls-mc-footer { padding: 8px 20px; border-top: 1px solid var(--slls-border); text-align: right; font-size: 11.5px; color: var(--slls-text-tertiary); }
-.slls-mc-footer a { color: var(--slls-text-tertiary); text-decoration: none; transition: color 120ms ease; }
-.slls-mc-footer a:hover { color: var(--slls-accent); }
+.slls-mc-footer { padding: 8px 20px; border-top: 1px solid var(--slls-border); }
+.slls-mc .slls-mc-footer .sl-attribution { margin: 0; padding: 0; }
 
 .slls-mc-spin { animation: slls-mc-spin 0.8s linear infinite; transform-origin: center; }
 @keyframes slls-mc-spin { to { transform: rotate(360deg); } }
@@ -719,8 +718,7 @@ function render({ model, el }) {
     function buildFooter() {
         const f = document.createElement("div");
         f.className = "slls-mc-footer";
-        f.innerHTML = `Powered by <a href="https://github.com/microsoft/semantic-link-labs" ` +
-            `target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>`;
+        f.innerHTML = `__SLLS_ATTRIBUTION__`;
         return f;
     }
 
@@ -757,6 +755,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
 )
@@ -764,6 +764,8 @@ from sempy_labs._ui_components import (  # noqa: E402
 _WIDGET_CSS += "\n" + _UI_SEARCH_SELECT_CSS
 _WIDGET_CSS += _ui_scoped_header_css(".slls-mc")
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-mc")
+_WIDGET_CSS += _ui_scoped_attribution_css(".slls-mc")
+_WIDGET_JS = _WIDGET_JS.replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
 
 _WIDGET_JS = _UI_SEARCH_SELECT_JS + "\n" + _WIDGET_JS
 
