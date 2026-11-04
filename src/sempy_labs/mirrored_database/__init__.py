@@ -3,11 +3,13 @@ from ._items import (
     get_mirrored_database_definition,
     create_mirrored_database,
     delete_mirrored_database,
+    update_mirrored_database_definition,
+)
+from ._mirroring import (
     get_mirroring_status,
     get_tables_mirroring_status,
     stop_mirroring,
     start_mirroring,
-    update_mirrored_database_definition,
 )
 
 __all__ = [
