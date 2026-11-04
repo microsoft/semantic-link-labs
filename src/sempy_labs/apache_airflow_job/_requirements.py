@@ -115,6 +115,8 @@ def deploy_apache_airflow_job_requirements(
         raise ValueError(
             f"{icons.red_dot} Exactly one of the 'requirements' or 'file_path' parameters must be provided."
         )
+    if file_path is not None and not file_path.strip():
+        raise ValueError(f"{icons.red_dot} The 'file_path' parameter cannot be empty.")
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     item_name, item_id = resolve_item_name_and_id(
@@ -124,7 +126,7 @@ def deploy_apache_airflow_job_requirements(
     )
 
     url = f"/v1/workspaces/{workspace_id}/apacheAirflowJobs/{item_id}/environment/deployRequirements?beta=True"
-    if file_path:
+    if file_path is not None:
         url += f"&filePath={quote(file_path, safe='/')}"
         payload = None
         headers = None

@@ -2365,7 +2365,10 @@ def _base_api(
         )
         if isinstance(payload, (bytes, bytearray)):
             if content_type is None:
-                headers = {**(headers or {}), "Content-Type": "application/octet-stream"}
+                headers = {
+                    **(headers or {}),
+                    "Content-Type": "application/octet-stream",
+                }
                 header_kwargs = {"headers": headers}
             body_kwargs = {"data": payload, **header_kwargs}
         elif content_type is not None and "json" not in content_type.lower():

@@ -163,25 +163,15 @@ def update_apache_airflow_job_settings(
         workspace=workspace_id,
     )
 
-    # The API replaces each list it receives, so settings that were not specified are re-sent with their current values.
-    current = _get_apache_airflow_job_settings(
-        workspace_id=workspace_id, item_id=item_id
-    )
-
-    payload = {
-        "environmentVariables": (
-            _to_name_value_pairs(environment_variables)
-            if environment_variables is not None
-            else current.get("environmentVariables") or []
-        ),
-        "airflowConfigurationOverrides": (
-            _to_name_value_pairs(airflow_configuration_overrides)
-            if airflow_configuration_overrides is not None
-            else current.get("airflowConfigurationOverrides") or []
-        ),
-    }
-    if triggerers is None:
-        triggerers = current.get("triggerers")
+    # Only send the properties the caller supplied; omitted properties are left unchanged by the API.
+    # Each list that is sent replaces the existing set (an empty dict clears it).
+    payload = {}
+    if environment_variables is not None:
+        payload["environmentVariables"] = _to_name_value_pairs(environment_variables)
+    if airflow_configuration_overrides is not None:
+        payload["airflowConfigurationOverrides"] = _to_name_value_pairs(
+            airflow_configuration_overrides
+        )
     if triggerers is not None:
         payload["triggerers"] = triggerers
 
