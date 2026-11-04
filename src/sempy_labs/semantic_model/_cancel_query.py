@@ -20,11 +20,20 @@ _RUNNING_SESSION_STATUSES = [1, 2]
 
 
 def _is_refresh_command(command_text: pd.Series) -> pd.Series:
+    import xml.etree.ElementTree as ET
 
-    text = command_text.fillna("").astype(str)
-    return text.str.contains(_REFRESH_BATCH_TEXT, regex=False) & text.str.contains(
-        _REFRESH_TEXT, regex=False
-    )
+    def is_refresh(text: str) -> bool:
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError:
+            return False
+        return any(
+            element.tag
+            == "{http://schemas.microsoft.com/analysisservices/2014/engine}Refresh"
+            for element in root.iter()
+        )
+
+    return command_text.fillna("").astype(str).map(is_refresh).astype(bool)
 
 
 def _discover_commands(dataset: str | UUID, workspace: str | UUID) -> pd.DataFrame:
