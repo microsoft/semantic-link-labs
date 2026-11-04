@@ -203,7 +203,7 @@ def create_shortcut_onelake(
     source_workspace: Optional[str | UUID] = None,
     enable_query_acceleration: bool = False,
     workspace: Optional[str | UUID] = None,
-):
+) -> None:
     """
     Creates a table shortcut within a KQL database which points to a path within a OneLake item (i.e. a lakehouse table).
 
