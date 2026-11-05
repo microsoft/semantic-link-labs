@@ -11,29 +11,85 @@ from sempy_labs._helper_functions import (
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
-_REFRESH_BATCH_TEXT = '<Batch Transaction="false" xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">'
-_REFRESH_TEXT = (
-    '<Refresh xmlns="http://schemas.microsoft.com/analysisservices/2014/engine">'
-)
 # SESSION_STATUS values (DISCOVER_SESSIONS): 0=Idle, 1=Active, 2=Blocked, 3=Cancelled.
 _RUNNING_SESSION_STATUSES = [1, 2]
+# Expanded (namespace-qualified) XML element names of refresh/processing commands.
+_REFRESH_ELEMENT_TAGS = {
+    "{http://schemas.microsoft.com/analysisservices/2014/engine}Refresh",
+    "{http://schemas.microsoft.com/analysisservices/2003/engine}Process",
+}
+
+
+def _local_name(tag) -> str:
+    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""
+
+
+def _refresh_database_ids(text: str) -> Optional[set]:
+    """
+    Returns the (lower-cased) database identifiers targeted by a refresh command, or None if the
+    command text is not a refresh. Supports XMLA (Refresh/Process elements, identified by their
+    expanded names so attribute order or Batch attributes do not matter) and TMSL (JSON) refreshes.
+    """
+    import json
+    import xml.etree.ElementTree as ET
+
+    text = (text or "").strip()
+    if not text:
+        return None
+
+    if text.startswith("{"):
+        try:
+            command = json.loads(text)
+        except ValueError:
+            return None
+        if not isinstance(command, dict):
+            return None
+        refreshes = [command.get("refresh")]
+        sequence = command.get("sequence")
+        if isinstance(sequence, dict):
+            refreshes += [
+                op.get("refresh")
+                for op in sequence.get("operations", [])
+                if isinstance(op, dict)
+            ]
+        refreshes = [r for r in refreshes if isinstance(r, dict)]
+        if not refreshes:
+            return None
+        return {
+            str(obj["database"]).lower()
+            for r in refreshes
+            for obj in r.get("objects", [])
+            if isinstance(obj, dict) and obj.get("database")
+        }
+
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        return None
+    refresh_elements = [e for e in root.iter() if e.tag in _REFRESH_ELEMENT_TAGS]
+    if not refresh_elements:
+        return None
+    return {
+        child.text.strip().lower()
+        for element in refresh_elements
+        for child in element.iter()
+        if _local_name(child.tag) == "DatabaseID" and child.text
+    }
 
 
 def _is_refresh_command(command_text: pd.Series) -> pd.Series:
-    import xml.etree.ElementTree as ET
 
-    def is_refresh(text: str) -> bool:
-        try:
-            root = ET.fromstring(text)
-        except ET.ParseError:
-            return False
-        return any(
-            element.tag
-            == "{http://schemas.microsoft.com/analysisservices/2014/engine}Refresh"
-            for element in root.iter()
-        )
+    return (
+        command_text.fillna("")
+        .astype(str)
+        .map(lambda text: _refresh_database_ids(text) is not None)
+        .astype(bool)
+    )
 
-    return command_text.fillna("").astype(str).map(is_refresh).astype(bool)
+
+def _is_blank(values: pd.Series) -> pd.Series:
+
+    return values.isna() | (values.astype(str).str.strip().isin(["", "NaT", "None"]))
 
 
 def _discover_commands(dataset: str | UUID, workspace: str | UUID) -> pd.DataFrame:
@@ -51,25 +107,54 @@ def _list_running_commands(
     """
     Returns the currently executing commands against the semantic model, joined to their session metadata.
 
-    DISCOVER_COMMANDS returns the currently executing *or last executed* command per session, so
-    rows for completed commands (non-empty COMMAND_END_TIME) and idle/cancelled sessions are removed.
+    DISCOVER_COMMANDS returns the currently executing *or last executed* command per session, so the
+    running state is derived from the session metadata: the session must be Active or Blocked and its
+    last command must not have ended (SESSION_LAST_COMMAND_END_TIME is empty or precedes
+    SESSION_LAST_COMMAND_START_TIME). COMMAND_END_TIME is optional in the DISCOVER_COMMANDS rowset and
+    is only used when the server returns it.
     """
 
     sessions = list_semantic_model_sessions(dataset=dataset, workspace=workspace)
     commands = _discover_commands(dataset=dataset, workspace=workspace)
 
+    if (
+        sessions.empty
+        or commands.empty
+        or "SESSION_SPID" not in sessions.columns
+        or "SESSION_SPID" not in commands.columns
+    ):
+        return commands.iloc[0:0]
+
     session_cols = [
         c
-        for c in ["SESSION_SPID", "SESSION_USER_NAME", "SESSION_STATUS"]
-        if c in sessions.columns
+        for c in [
+            "SESSION_SPID",
+            "SESSION_USER_NAME",
+            "SESSION_STATUS",
+            "SESSION_LAST_COMMAND_START_TIME",
+            "SESSION_LAST_COMMAND_END_TIME",
+        ]
+        if c in sessions.columns and (c == "SESSION_SPID" or c not in commands.columns)
     ]
     df = commands.merge(sessions[session_cols], on="SESSION_SPID", how="inner")
 
-    end_time = df["COMMAND_END_TIME"]
-    df = df[end_time.isna() | (end_time.astype(str).str.strip() == "")]
     if "SESSION_STATUS" in df.columns:
         status = pd.to_numeric(df["SESSION_STATUS"], errors="coerce")
         df = df[status.isin(_RUNNING_SESSION_STATUSES)]
+
+    if {"SESSION_LAST_COMMAND_START_TIME", "SESSION_LAST_COMMAND_END_TIME"}.issubset(
+        df.columns
+    ):
+        start = pd.to_datetime(
+            df["SESSION_LAST_COMMAND_START_TIME"], errors="coerce", utc=True
+        )
+        end = pd.to_datetime(
+            df["SESSION_LAST_COMMAND_END_TIME"], errors="coerce", utc=True
+        )
+        df = df[_is_blank(df["SESSION_LAST_COMMAND_END_TIME"]) | (end < start)]
+
+    if "COMMAND_END_TIME" in df.columns:
+        df = df[_is_blank(df["COMMAND_END_TIME"])]
 
     return df
 
@@ -211,23 +296,23 @@ def list_semantic_model_commands(
 def _cancel_refresh(dataset: str | UUID, workspace: Optional[str | UUID] = None):
 
     workspace_id = resolve_workspace_id(workspace)
-    dataset_id = resolve_item_id(
-        item=dataset, type="SemanticModel", workspace=workspace_id
-    )
+    dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+    model_identifiers = {str(dataset_name).lower(), str(dataset_id).lower()}
+
+    def targets_model(text) -> bool:
+        database_ids = _refresh_database_ids(text if isinstance(text, str) else "")
+        # Sessions are already scoped to this model, so a refresh without an explicit database targets it.
+        return database_ids is not None and (
+            not database_ids or bool(database_ids & model_identifiers)
+        )
 
     df = _list_running_commands(dataset=dataset_id, workspace=workspace_id)
     # Find refresh operations
-    df_filt = df[
-        _is_refresh_command(df["COMMAND_TEXT"])
-        & (
-            df["COMMAND_TEXT"]
-            .fillna("")
-            .astype(str)
-            .str.contains(f"<DatabaseID>{dataset_id}</DatabaseID>", regex=False)
-        )
-    ]
+    df_filt = (
+        df[df["COMMAND_TEXT"].map(targets_model).astype(bool)] if not df.empty else df
+    )
     if not df_filt.empty:
-        spids = df_filt["SESSION_SPID"].values.tolist()
+        spids = df_filt["SESSION_SPID"].drop_duplicates().tolist()
         for spid in spids:
             cancel_spid(dataset=dataset_id, spid=spid, workspace=workspace_id)
     else:
@@ -270,6 +355,10 @@ def cancel_long_running_queries(
     )
 
     df = _list_running_commands(dataset=dataset_id, workspace=workspace_id)
+    if df.empty:
+        print(f"{icons.info} No long-running queries found to cancel.")
+        return
+
     # Filter out refresh operations unless specified to include
     if not include_refresh_operations:
         df = df[~_is_refresh_command(df["COMMAND_TEXT"])]
