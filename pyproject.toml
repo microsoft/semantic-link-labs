@@ -30,6 +30,7 @@ dependencies = [
     "anywidget",
     "sqlglot",
     "powerbiclient",
+    "PyYAML",
 ]
 
 [tool.setuptools.packages.find]
