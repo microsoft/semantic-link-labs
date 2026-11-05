@@ -2,7 +2,7 @@ import json
 import re
 import yaml
 from uuid import UUID
-from typing import List, Optional, Any, Dict, Literal
+from typing import IO, List, Optional, Any, Dict, Literal
 from sempy_labs.semantic_model._helper import convert_sql_to_dax
 from sempy_labs._helper_functions import (
     resolve_item_id,
@@ -124,7 +124,7 @@ def _convert_snowflake_data_type(data_type: Optional[str]) -> str:
 
 @log
 def convert_from_snowflake(
-    yaml_file: str,
+    yaml_file: str | IO,
     account: str,
     token: str,
     source_item: str | UUID,
@@ -135,7 +135,7 @@ def convert_from_snowflake(
     test_run: bool = True,
 ) -> dict:
     """
-    Converts a Snowflake semantic view YAML definition into the a Power BI semantic model in Direct Lake mode.
+    Converts a Snowflake semantic view YAML definition into a Power BI semantic model in Direct Lake mode.
 
     Limitations:
         * Calculated columns (fields whose 'expr' is not a plain column reference) are not supported. They are
@@ -145,8 +145,9 @@ def convert_from_snowflake(
 
     Parameters
     ----------
-    yaml_file : str
-        A YAML string containing a Snowflake semantic view definition (see here `<https://docs.snowflake.com/en/user-guide/views-semantic/semantic-view-yaml-spec>`_ for the specification).
+    yaml_file : str | typing.IO
+        A YAML string (or a file-like object) containing a Snowflake semantic view definition
+        (see here `<https://docs.snowflake.com/en/user-guide/views-semantic/semantic-view-yaml-spec>`_ for the specification).
     account : str
         The Snowflake account identifier. For example: XXXXXXX-XXX00000.snowflakecomputing.com
     token : str
@@ -174,12 +175,7 @@ def convert_from_snowflake(
         The model.bim file of the Power BI semantic model.
     """
 
-    if hasattr(yaml_file, "read"):
-        data = yaml.safe_load(yaml_file)
-    else:
-        data = yaml.safe_load(yaml_file)
-
-    data = data or {}
+    data = yaml.safe_load(yaml_file) or {}
 
     source_workspace_id = resolve_workspace_id(source_workspace)
     semantic_model_workspace_id = resolve_workspace_id(semantic_model_workspace)

@@ -58,9 +58,11 @@ def convert_sql_to_dax(
     ``'table'[column]`` for a column or ``[Measure Name]`` for a measure
     reference.
 
-    ``BLANK()`` is returned when the SQL cannot be fully translated (it fails
-    to parse, references a column which cannot be resolved, or uses a function
-    with no DAX equivalent) since an incorrect expression is worse than none.
+    ``BLANK()`` preceded by a ``//`` comment explaining why is returned when
+    the SQL cannot be fully translated (it fails to parse, references a column
+    which cannot be resolved, or uses a function with no DAX equivalent) since
+    an incorrect expression is worse than none. The comment distinguishes an
+    unconverted expression from SQL which legitimately translates to ``BLANK()``.
     """
 
     rel_from_to: Set[Tuple[str, str]] = set()
@@ -97,13 +99,44 @@ def convert_sql_to_dax(
 
 
 def _unsupported_dax(sql: str, reasons: list) -> str:
-    """Warn about an untranslatable SQL expression and return ``BLANK()``."""
+    """Warn about an untranslatable SQL expression and return a commented ``BLANK()``."""
 
     detail = "; ".join(dict.fromkeys(reasons)) or "the expression is not supported"
+    detail = " ".join(detail.split())
     print(
         f"{icons.warning} The SQL expression '{' '.join(sql.split())}' could not be converted to DAX ({detail}). 'BLANK()' is used instead."
     )
-    return "BLANK()"
+    return f"// This SQL expression could not be converted to DAX: {detail}.\nBLANK()"
+
+
+# Snowflake date/time part names and abbreviations, mapped to their canonical name.
+_DATE_PART_ALIASES = {
+    **dict.fromkeys(["Y", "YY", "YYY", "YYYY", "YR", "YEARS", "YRS"], "YEAR"),
+    **dict.fromkeys(["Q", "QTR", "QTRS", "QUARTERS"], "QUARTER"),
+    **dict.fromkeys(["MM", "MON", "MONS", "MONTHS"], "MONTH"),
+    **dict.fromkeys(["W", "WK", "WEEKOFYEAR", "WOY", "WY", "WEEKS"], "WEEK"),
+    **dict.fromkeys(["D", "DD", "DAYS", "DAYOFMONTH"], "DAY"),
+    **dict.fromkeys(["H", "HH", "HR", "HOURS", "HRS"], "HOUR"),
+    **dict.fromkeys(["M", "MI", "MIN", "MINUTES", "MINS"], "MINUTE"),
+    **dict.fromkeys(["S", "SEC", "SECONDS", "SECS"], "SECOND"),
+    **dict.fromkeys(["MS", "MSEC", "MILLISECONDS"], "MILLISECOND"),
+    **dict.fromkeys(["US", "USEC", "MICROSECONDS"], "MICROSECOND"),
+    **dict.fromkeys(
+        ["NS", "NSEC", "NANOSEC", "NSECOND", "NANOSECONDS", "NANOSECS", "NSECONDS"],
+        "NANOSECOND",
+    ),
+}
+
+# Sub-day date parts expressed as the number of units per day; a DAX datetime
+# is a number of days, so adding ``n`` of these units adds ``n / units`` days.
+_SUB_DAY_UNITS_PER_DAY = {
+    "HOUR": 24,
+    "MINUTE": 24 * 60,
+    "SECOND": 24 * 60 * 60,
+    "MILLISECOND": 24 * 60 * 60 * 1000,
+    "MICROSECOND": 24 * 60 * 60 * 1000 * 1000,
+    "NANOSECOND": 24 * 60 * 60 * 1000 * 1000 * 1000,
+}
 
 
 _AGG_TO_ITER = {
@@ -521,6 +554,17 @@ class _SqlToDaxConverter:
 
         return re.fullmatch(r"'[^']+'\[[^\]]+\]", dax or "") is not None
 
+    def _emit_with_value(self, value_node, build) -> str:
+        """Emit ``build(<value>)``, binding ``<value>`` to a VAR unless it is cheap to repeat."""
+
+        value = self.emit(value_node)
+        if self._is_column_reference(value) or isinstance(value_node, exp.Literal):
+            return build(value)
+        self._var_index += 1
+        name = f"__value{self._var_index}"
+        # Parenthesized so the VAR block stays valid when nested in another expression.
+        return f"(VAR {name} = {value} RETURN {build(name)})"
+
     def _emit_nullif(self, value_node, other_node) -> str:
         """Emit ``NULLIF(<value>, <other>)`` without evaluating ``<value>`` twice."""
 
@@ -779,6 +823,9 @@ class _SqlToDaxConverter:
     def _emit_function(self, node) -> str:
         """Emit DAX for a scalar SQL function, translating where DAX differs."""
 
+        # DATE_ADD(d, n) / DATE_SUB(d, n) are parsed as TsOrDsAdd, which is not a mere wrapper.
+        if isinstance(node, exp.TsOrDsAdd):
+            return self._emit_date_add(node)
         # Wrappers added by parsing (e.g. CAST(x AS DATE)) carry no meaning in DAX.
         if type(node).__name__.startswith("TsOrDs"):
             return self.emit(node.this)
@@ -822,10 +869,8 @@ class _SqlToDaxConverter:
         if isinstance(node, exp.Round):
             decimals = node.args.get("decimals")
             return f"ROUND({self.emit(node.this)}, {self.emit(decimals) if decimals is not None else 0})"
-        if isinstance(node, exp.Ceil):
-            return f"ROUNDUP({self.emit(node.this)}, 0)"
-        if isinstance(node, exp.Floor):
-            return f"ROUNDDOWN({self.emit(node.this)}, 0)"
+        if isinstance(node, (exp.Ceil, exp.Floor)):
+            return self._emit_ceil_floor(node)
 
         name = type(node).sql_names()[0].upper()
         name = _FUNCTION_NAME_MAP.get(name, name)
@@ -868,7 +913,7 @@ class _SqlToDaxConverter:
         """Return the upper-cased date part of a date function's unit argument."""
 
         unit = cls._literal_text(node).upper().strip("'\"")
-        return unit or None
+        return _DATE_PART_ALIASES.get(unit, unit) or None
 
     def _emit_date_trunc(self, node) -> str:
         unit = self._unit_name(node.args.get("unit")) or "DAY"
@@ -892,23 +937,55 @@ class _SqlToDaxConverter:
         amount = self.emit(node.expression)
         if negate:
             amount = f"-({amount})"
-        if unit.startswith("YEAR"):
+        if unit == "YEAR":
             return f"EDATE({value}, ({amount}) * 12)"
-        if unit.startswith("QUARTER"):
+        if unit == "QUARTER":
             return f"EDATE({value}, ({amount}) * 3)"
-        if unit.startswith("MONTH"):
+        if unit == "MONTH":
             return f"EDATE({value}, {amount})"
-        if unit.startswith("WEEK"):
+        if unit == "WEEK":
             return f"{value} + ({amount}) * 7"
-        return f"{value} + ({amount})"
+        if unit == "DAY":
+            return f"{value} + ({amount})"
+        if unit in _SUB_DAY_UNITS_PER_DAY:
+            return f"{value} + ({amount}) / {_SUB_DAY_UNITS_PER_DAY[unit]}"
+        self.unsupported.append(f"the '{unit}' date part is not supported")
+        return value
+
+    def _emit_ceil_floor(self, node) -> str:
+        """Emit ``CEIL`` / ``FLOOR``, which round toward +/- infinity.
+
+        DAX ``ROUNDUP`` / ``ROUNDDOWN`` round away from / toward zero, so the
+        direction is swapped for negative values.
+        """
+
+        is_ceil = isinstance(node, exp.Ceil)
+        decimals = node.args.get("decimals")
+        if decimals is None:
+            value = self.emit(node.this)
+            # INT rounds toward negative infinity, i.e. FLOOR; CEIL(x) = -FLOOR(-x).
+            return f"-INT(-({value}))" if is_ceil else f"INT({value})"
+        digits = self.emit(decimals)
+        positive, negative = (
+            ("ROUNDUP", "ROUNDDOWN") if is_ceil else ("ROUNDDOWN", "ROUNDUP")
+        )
+        return self._emit_with_value(
+            node.this,
+            lambda v: f"IF({v} < 0, {negative}({v}, {digits}), {positive}({v}, {digits}))",
+        )
 
     def _emit_pad(self, node: "exp.Pad") -> str:
-        value = self.emit(node.this)
         length = self.emit(node.expression)
         fill = node.args.get("fill_pattern")
         fill_dax = self.emit(fill) if fill is not None else '" "'
         if node.args.get("is_left"):
-            return f"RIGHT(REPT({fill_dax}, {length}) & {value}, {length})"
+            # Like Snowflake, a value longer than the length is truncated to its
+            # leftmost characters and the fill pattern is aligned from the left.
+            return self._emit_with_value(
+                node.this,
+                lambda v: f"IF(LEN({v}) >= {length}, LEFT({v}, {length}), LEFT(REPT({fill_dax}, {length}), {length} - LEN({v})) & {v})",
+            )
+        value = self.emit(node.this)
         return f"LEFT({value} & REPT({fill_dax}, {length}), {length})"
 
     def _emit_concat(self, node) -> str:

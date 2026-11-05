@@ -816,19 +816,29 @@ fully qualified — the function itself is never re-rendered as SQL.
 | `DATE_TRUNC('YEAR', d)` | `DATE(YEAR(d), 1, 1)` |
 | `DATE_TRUNC('WEEK', d)` | `d - WEEKDAY(d, 3)` |
 | `DATEDIFF(unit, start, end)` | `DATEDIFF(start, end, unit)` |
-| `DATEADD(DAY, n, d)` | `d + (n)` |
+| `DATEADD(DAY, n, d)` / `DATE_ADD(d, n)` | `d + (n)` |
 | `DATEADD(WEEK, n, d)` | `d + (n) * 7` |
 | `DATEADD(MONTH \| QUARTER \| YEAR, n, d)` | `EDATE(d, n \| n * 3 \| n * 12)` |
+| `DATEADD(HOUR \| MINUTE \| SECOND, n, d)` | `d + (n) / 24 \| 1440 \| 86400` (a DAX datetime is a number of days) |
 | `IFF(c, a, b)` | `IF(c, a, b)` |
 | `ZEROIFNULL(x)` | `IF(ISBLANK(x), 0, x)` |
 | `NULLIFZERO(x)` | `IF(x = 0, BLANK(), x)` |
 | `SPLIT_PART(s, d, n)` | `PATHITEM(SUBSTITUTE(s, d, "\|"), n)` |
-| `LPAD(s, n, p)` | `RIGHT(REPT(p, n) & s, n)` |
+| `LPAD(s, n, p)` | `IF(LEN(s) >= n, LEFT(s, n), LEFT(REPT(p, n), n - LEN(s)) & s)` |
 | `RPAD(s, n, p)` | `LEFT(s & REPT(p, n), n)` |
 | `SUBSTRING(s, start, len)` | `MID(s, start, len)` |
 | `LENGTH(s)` | `LEN(s)` |
-| `CEIL(x)` / `FLOOR(x)` | `ROUNDUP(x, 0)` / `ROUNDDOWN(x, 0)` |
+| `CEIL(x)` / `FLOOR(x)` | `-INT(-(x))` / `INT(x)` |
+| `CEIL(x, s)` / `FLOOR(x, s)` | `IF(x < 0, ROUNDDOWN(x, s), ROUNDUP(x, s))` / `IF(x < 0, ROUNDUP(x, s), ROUNDDOWN(x, s))` |
 | `CAST(x AS <type>)` | `x` |
+
+Date part abbreviations (e.g. `hh`, `mi`, `mm`, `dd`, `yy`) are normalized to
+their full name. `DATEADD` with any other date part is untranslatable.
+
+> **Note:** SQL `CEIL` / `FLOOR` round toward +/- infinity, whereas DAX
+> `ROUNDUP` / `ROUNDDOWN` round away from / toward zero, so they must not be
+> mapped directly. Likewise, `LPAD` truncates an over-length value to its
+> leftmost characters, so `RIGHT(REPT(p, n) & s, n)` is incorrect.
 
 Date format strings are token-translated (`YYYY` → `yyyy`, `MON` → `MMM`,
 `DD` → `dd`, `HH24` → `HH`, `MI` → `mm`, `SS` → `ss`).
@@ -841,7 +851,10 @@ Date format strings are token-translated (`YYYY` → `yyyy`, `MON` → `MMM`,
 # Untranslatable Expressions
 
 An incorrect expression is worse than no expression. When the SQL cannot be
-faithfully translated, emit `BLANK()` (and warn) rather than guessing:
+faithfully translated, emit `BLANK()` preceded by a `//` comment giving the
+reason (and warn) rather than guessing. The comment distinguishes an
+unconverted expression from SQL which legitimately translates to `BLANK()`
+(e.g. `NULL`), so conversion previews can report it:
 
 - The SQL fails to parse.
 - A column reference cannot be resolved through the column map. (Exception:
@@ -849,6 +862,7 @@ faithfully translated, emit `BLANK()` (and warn) rather than guessing:
   qualified to the default table, as described above.)
 - A function has no DAX equivalent (e.g. `REGEXP_COUNT`, `LISTAGG`), i.e. the
   translated name is not a known DAX function.
+- A date part is not supported (e.g. `DATEADD(WEEKDAY, 1, d)`).
 
 ### SQL
 ```sql
@@ -857,6 +871,7 @@ REGEXP_COUNT(customer.last_name, 'a')
 
 ### DAX
 ```dax
+// This SQL expression could not be converted to DAX: the 'REGEXP_COUNT' function has no DAX equivalent.
 BLANK()
 ```
 

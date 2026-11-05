@@ -20,7 +20,7 @@ def list_snowflake_tables(
     schema: str,
     table: Optional[str] = None,
     return_dataframe: bool = True,
-) -> pd.DataFrame:
+) -> pd.DataFrame | dict | list:
 
     columns = {
         "Table Name": "str",
@@ -59,6 +59,7 @@ def list_snowflake_tables(
 
     if rows:
         df = pd.DataFrame(rows, columns=columns.keys())
+        _update_dataframe_datatypes(df, columns)
 
     return df
 
@@ -71,7 +72,7 @@ def list_snowflake_columns(
     schema: str,
     table: str,
     return_dataframe: bool = True,
-) -> pd.DataFrame:
+) -> pd.DataFrame | dict:
 
     columns = {
         "Column Name": "str",
@@ -91,7 +92,7 @@ def list_snowflake_columns(
         return response.json()
 
     rows = []
-    for x in response.json().get('columns', []):
+    for x in response.json().get("columns", []):
         rows.append(
             {
                 "Column Name": x.get("name"),
