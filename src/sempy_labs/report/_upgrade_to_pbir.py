@@ -115,12 +115,18 @@ def upgrade_to_pbir(
             rpt_format = rpt.get("format")
             embed_url = rpt.get("embedUrl")
             dataset_id = rpt.get("datasetId")
+            dataset_workspace_id = rpt.get("datasetWorkspaceId") or workspace_id
             if (
                 rpt_format == "PBIRLegacy"
                 and dataset_id is not None
                 and embed_url is not None
             ):
-                eligible_for_upgrade[rpt_id] = (embed_url, dataset_id, rpt_name)
+                eligible_for_upgrade[rpt_id] = (
+                    embed_url,
+                    dataset_id,
+                    rpt_name,
+                    dataset_workspace_id,
+                )
 
         # Determine which reports to process
         if report is None:
@@ -149,7 +155,9 @@ def upgrade_to_pbir(
             bar := tqdm(report_ids_to_process, desc="Upgrading reports", unit="report"),
             start=1,
         ):
-            embed_url, dataset_id, rpt_name = eligible_for_upgrade[rpt_id]
+            embed_url, dataset_id, rpt_name, dataset_workspace_id = (
+                eligible_for_upgrade[rpt_id]
+            )
             bar.set_description(
                 f"Upgrading the '{rpt_name}' report within the '{workspace_name}' workspace ({idx}/{total_reports})"
             )
@@ -157,6 +165,7 @@ def upgrade_to_pbir(
             access_token = generate_embed_token(
                 dataset_ids=[dataset_id],
                 report_ids=[rpt_id],
+                workspace=dataset_workspace_id,
             )
 
             embed_report_save_in_edit_mode(embed_url, access_token)
