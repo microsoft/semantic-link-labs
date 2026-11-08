@@ -91,4 +91,5 @@ items = {
     "PolicySet": "policySets",
     "DeploymentPlan": "deploymentPlans",
     "Monitoring": "monitoringItems",
+    "CustomStreamConnector": "customStreamConnectors",
 }
