@@ -225,7 +225,7 @@ def test_widget_uses_the_shared_ui_building_blocks():
         "--ui-accent: var(--slls-accent)",
     ):
         assert token in source
-    assert "Powered by <a href=" in source
+    assert "_ui_render_attribution_html()" in source
 
 
 def test_widget_renders_the_reference_layout():

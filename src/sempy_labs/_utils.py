@@ -5,7 +5,7 @@ item_types = {
     "Environment": ["Environment", "environments"],
     "Eventhouse": ["Eventhouse", "eventhouses", "EventhouseProperties.json"],
     "Eventstream": ["Eventstream", "eventstreams", "eventstream.json"],
-    "GraphQLApi": ["GraphQL Api", "GraphQLApis"],
+    "GraphQLApi": ["GraphQL Api", "GraphQLApis", "graphql-definition.json"],
     "KQLDashboard": ["KQL Dashboard", "kqlDashboards", "RealTimeDashboard.json"],
     "KQLDatabase": [
         "KQL Database",
@@ -15,6 +15,7 @@ item_types = {
     "Lakehouse": ["Lakehouse", "lakehouses"],
     "MLExperiment": ["ML Experiment", "mlExperiments"],
     "MLModel": ["ML Model", "mlModels"],
+    "Monitoring": ["Monitoring", "monitoringItems", "MonitoringProperties.json"],
     "MirroredDatabase": [
         "Mirrored Database",
         "mirroredDatabases",
@@ -79,7 +80,7 @@ items = {
     "Ontology": "ontologies",
     "Lakehouse": "lakehouses",
     "EventSchemaSet": "EventSchemaSets",
-    "DataAgent": "DataAgents",
+    "DataAgent": "dataAgents",
     "MirroredCatalog": "mirroredCatalogs",
     "DataBuildToolJob": "dataBuildToolJobs",
     "AppBackend": "appBackends",
@@ -88,4 +89,7 @@ items = {
     "OrgApp": "orgApps",
     "PaginatedReport": "paginatedReports",
     "Plan": "plans",
+    "PolicySet": "policySets",
+    "DeploymentPlan": "deploymentPlans",
+    "Monitoring": "monitoringItems",
 }

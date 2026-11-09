@@ -4,8 +4,10 @@ import pandas as pd
 import re
 import os
 import json
+import base64
 from datetime import datetime
 from decimal import Decimal
+from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     _base_api,
     create_abfss_path,
@@ -17,6 +19,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_item_id,
     resolve_lakehouse_id,
+    _is_valid_uuid,
     _validate_weight,
     _create_dataframe,
     normalize_filter,
@@ -46,6 +49,54 @@ from sempy_labs.directlake._generate_shared_expression import generate_shared_ex
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
     import Microsoft.AnalysisServices.Tabular as TOM
+
+# Minimum compatibility level for the CalculatedColumn.ExpressionContext property
+# (https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext).
+_EXPRESSION_CONTEXT_MIN_COMPAT = 1705
+
+
+def _supports_expression_context() -> bool:
+    """
+    Whether the loaded TOM library exposes the CalculatedColumn.ExpressionContext
+    property (Microsoft.AnalysisServices v19.117.0 or later).
+    """
+    import Microsoft.AnalysisServices.Tabular as TOM
+
+    return hasattr(TOM, "ExpressionContext") and hasattr(
+        TOM.CalculatedColumn, "ExpressionContext"
+    )
+
+
+def _is_direct_lake_table(table) -> bool:
+    """Whether a TOM table has a partition in Direct Lake mode."""
+    import Microsoft.AnalysisServices.Tabular as TOM
+
+    return any(p.Mode == TOM.ModeType.DirectLake for p in table.Partitions)
+
+
+def _set_expression_context(model, column, expression_context: str):
+    """
+    Sets the ExpressionContext of a calculated column, raising the model's
+    compatibility level to the required minimum if necessary.
+    """
+    import Microsoft.AnalysisServices.Tabular as TOM
+    import System
+
+    valid = {"standard": "Standard", "usercontext": "UserContext"}
+    value = valid.get(str(expression_context).replace(" ", "").lower())
+    if value is None:
+        raise ValueError(
+            f"{icons.red_dot} Invalid expression_context '{expression_context}'. Valid options: {list(valid.values())}."
+        )
+    if not _supports_expression_context():
+        raise ValueError(
+            f"{icons.red_dot} The installed version of the Tabular Object Model (TOM) does not support the ExpressionContext property of calculated columns. "
+            "Please upgrade to a version of semantic-link-sempy which includes Microsoft.AnalysisServices v19.117.0 or later."
+        )
+    if model.Database.CompatibilityLevel < _EXPRESSION_CONTEXT_MIN_COMPAT:
+        model.Database.CompatibilityLevel = _EXPRESSION_CONTEXT_MIN_COMPAT
+
+    column.ExpressionContext = System.Enum.Parse(TOM.ExpressionContext, value)
 
 
 class TOMWrapper:
@@ -669,9 +720,14 @@ class TOMWrapper:
         summarize_by: Optional[str] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
+        expression_context: Optional[Literal["Standard", "UserContext"]] = None,
     ):
         """
         Adds a calculated column to a table within a semantic model.
+
+        Calculated columns in `Direct Lake on OneLake <https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance>`_ tables (preview)
+        only support the 'UserContext' `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_.
+        They are evaluated at query time (not materialized) and therefore cannot be used in relationships.
 
         Parameters
         ----------
@@ -702,6 +758,12 @@ class TOMWrapper:
             A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+        expression_context : typing.Literal["Standard", "UserContext"], default=None
+            The `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_ of the calculated column.
+            'UserContext' evaluates the column at query time in the context of the querying user (it is not materialized).
+            Defaults to None which resolves to 'UserContext' if the table is in Direct Lake mode (the only expression context supported in Direct Lake)
+            or otherwise leaves the property unset (the server default, 'Standard').
+            Setting this property requires a compatibility level of 1705 or higher (the compatibility level is raised automatically if needed).
 
         Returns
         -------
@@ -710,6 +772,11 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
+
+        if expression_context is None and _is_direct_lake_table(
+            self.model.Tables[table_name]
+        ):
+            expression_context = "UserContext"
 
         data_type = (
             data_type.capitalize()
@@ -745,6 +812,8 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        if expression_context is not None:
+            _set_expression_context(self.model, obj, expression_context)
         self.model.Tables[table_name].Columns.Add(obj)
         return obj
 
@@ -6129,6 +6198,204 @@ class TOMWrapper:
 
         return result
 
+    @staticmethod
+    def _workspace_ids_from_sql_server(server: str) -> List[str]:
+        """
+        Best-effort decoding of the workspace ID embedded (base32) in the first
+        segment of a Fabric SQL endpoint host name. Returns candidate IDs which
+        must be verified against the API before being used.
+        """
+
+        segments = re.findall(r"[A-Za-z2-7]{26}", server)
+        if len(segments) < 2:
+            return []
+        prefix = segments[1].upper()
+        try:
+            raw = base64.b32decode(prefix[:26] + "======")[:16]
+        except (ValueError, TypeError):
+            return []
+        return list(dict.fromkeys([str(UUID(bytes=raw)), str(UUID(bytes_le=raw))]))
+
+    def _resolve_item_id_by_name(
+        self, display_name: str, workspace_ids: List[str], items_cache: dict
+    ) -> str:
+        """
+        Resolves a Lakehouse/Warehouse item's ID from its display name, searching
+        each of the given candidate workspace IDs in turn. Each workspace's items
+        are fetched once and cached so repeated lookups across multiple Direct
+        Lake expressions avoid redundant API calls. Raises a ValueError if no
+        candidate workspace yields exactly one match.
+        """
+
+        matching_items = []
+        for workspace_id in workspace_ids:
+            if workspace_id not in items_cache:
+                try:
+                    responses = _base_api(
+                        request=f"/v1/workspaces/{workspace_id}/items",
+                        client="fabric_sp",
+                        uses_pagination=True,
+                    )
+                except FabricHTTPException:
+                    items_cache[workspace_id] = None
+                else:
+                    items_cache[workspace_id] = [
+                        v
+                        for r in responses
+                        for v in r.get("value", [])
+                        if v.get("type") in ("Lakehouse", "Warehouse")
+                    ]
+
+            candidate_items = items_cache[workspace_id]
+            if candidate_items is None:
+                # The candidate didn't decode to a real, accessible workspace.
+                continue
+
+            matching_items.extend(
+                v for v in candidate_items if v.get("displayName") == display_name
+            )
+
+        if len(matching_items) != 1:
+            reason = (
+                "could not be resolved to a Lakehouse or Warehouse"
+                if not matching_items
+                else "matched multiple Lakehouses/Warehouses and is ambiguous"
+            )
+            raise ValueError(
+                f"{icons.red_dot} The '{display_name}' item referenced by a Direct "
+                f"Lake expression {reason}."
+            )
+
+        return matching_items[0].get("id")
+
+    def _resolve_direct_lake_source(
+        self,
+        source: str,
+        artifact_id: str,
+        uses_sql_endpoint: bool,
+        items_cache: Optional[dict] = None,
+    ) -> tuple:
+        """
+        Resolves a Direct Lake source to its (item ID, item name, item type, workspace ID).
+
+        Uses public Fabric APIs (which support Service Principal authentication)
+        and only falls back to the internal metadata API (which does not) when
+        the source's workspace cannot be determined otherwise.
+        """
+
+        def _get_item(workspace_id):
+            try:
+                return _base_api(
+                    request=f"/v1/workspaces/{workspace_id}/items/{artifact_id}",
+                    client="fabric_sp",
+                ).json()
+            except FabricHTTPException:
+                return None
+
+        if uses_sql_endpoint:
+            # Sql.Database("<server>", "<id>") does not carry the workspace ID.
+            candidates = [self._workspace_id] + self._workspace_ids_from_sql_server(
+                source
+            )
+        else:
+            # AzureStorage.DataLake(".../<workspace id>/<item id>")
+            candidates = [source]
+
+        candidate_workspace_ids = list(dict.fromkeys(str(c) for c in candidates if c))
+
+        if uses_sql_endpoint and not _is_valid_uuid(artifact_id):
+            # The M expression may reference the item by its friendly display name
+            # (e.g. a Lakehouse/Warehouse connected via a manually-created SQL
+            # Analytics Endpoint connection) rather than by its GUID.
+            artifact_id = self._resolve_item_id_by_name(
+                artifact_id,
+                candidate_workspace_ids,
+                items_cache if items_cache is not None else {},
+            )
+
+        item = None
+        for ws in candidate_workspace_ids:
+            item = _get_item(ws)
+            if item:
+                break
+
+        def _search_accessible_workspaces():
+            # The internal metadata API is not accessible to service principals
+            # ("API is not accessible for application"), so look for the item in
+            # every workspace the caller can access using the public API.
+            try:
+                responses = _base_api(
+                    request="/v1/workspaces",
+                    client="fabric_sp",
+                    uses_pagination=True,
+                )
+            except FabricHTTPException:
+                return None
+            already_checked = {ws.lower() for ws in candidate_workspace_ids}
+            for r in responses:
+                for w in r.get("value", []):
+                    ws_id = str(w.get("id", ""))
+                    if not ws_id or ws_id.lower() in already_checked:
+                        continue
+                    found = _get_item(ws_id)
+                    if found:
+                        return found
+            return None
+
+        if item is None:
+            try:
+                result = _base_api(
+                    request=f"metadata/artifacts/{artifact_id}", client="internal"
+                ).json()
+            except FabricHTTPException as e:
+                item = _search_accessible_workspaces()
+                if item is None:
+                    raise ValueError(
+                        f"{icons.red_dot} Unable to resolve the '{artifact_id}' Direct Lake source. "
+                        "If running as a service principal, ensure it has access to the source's workspace."
+                    ) from e
+            else:
+                item_type = result.get("artifactType")
+                if item_type == "SqlAnalyticsEndpoint":
+                    return (
+                        result.get("parentArtifactObjectId"),
+                        result.get("displayName"),
+                        "Lakehouse",
+                        result.get("folderObjectId"),
+                    )
+                return (
+                    artifact_id,
+                    result.get("displayName"),
+                    item_type,
+                    result.get("folderObjectId"),
+                )
+
+        item_type = item.get("type")
+        item_name = item.get("displayName")
+        item_workspace_id = item.get("workspaceId")
+
+        if item_type == "SQLEndpoint":
+            # Report the lakehouse which owns the SQL analytics endpoint.
+            responses = _base_api(
+                request=f"/v1/workspaces/{item_workspace_id}/lakehouses",
+                uses_pagination=True,
+                client="fabric_sp",
+            )
+            for r in responses:
+                for lh in r.get("value", []):
+                    sql_props = (lh.get("properties") or {}).get(
+                        "sqlEndpointProperties"
+                    ) or {}
+                    if str(sql_props.get("id", "")).lower() == artifact_id.lower():
+                        return (
+                            lh.get("id"),
+                            lh.get("displayName"),
+                            "Lakehouse",
+                            item_workspace_id,
+                        )
+
+        return artifact_id, item_name, item_type, item_workspace_id
+
     def get_direct_lake_sources(self) -> List[dict]:
         """
         Retrieves a list of the Direct Lake sources used in a semantic model, including their type, workspace, and whether they use a SQL endpoint.
@@ -6162,22 +6429,20 @@ class TOMWrapper:
 
         """
 
-        sql = "SqlAnalyticsEndpoint"
         sources = []
         expr = self._get_direct_lake_expressions()
+        workspace_items_cache = {}
         for name, items in expr.items():
             artifact_id = items[1]
             uses_sql_endpoint = items[2]
-            result = _base_api(
-                request=f"metadata/artifacts/{artifact_id}", client="internal"
-            ).json()
-            item_type = result.get("artifactType")
-            item_name = result.get("displayName")
-            item_workspace_id = result.get("folderObjectId")
-            parent_artifact_id = result.get("parentArtifactObjectId")
-
-            type = "Lakehouse" if item_type == sql else item_type
-            item_id = parent_artifact_id if item_type == sql else artifact_id
+            item_id, item_name, type, item_workspace_id = (
+                self._resolve_direct_lake_source(
+                    source=items[0],
+                    artifact_id=artifact_id,
+                    uses_sql_endpoint=uses_sql_endpoint,
+                    items_cache=workspace_items_cache,
+                )
+            )
 
             sources.append(
                 {

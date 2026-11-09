@@ -265,6 +265,8 @@ from ._list_functions import (
     list_user_defined_functions,
 )
 from ._helper_functions import (
+    get_downstream_relations,
+    get_upstream_relations,
     get_item_definition,
     copy_item,
     convert_to_friendly_case,
@@ -291,6 +293,7 @@ from ._helper_functions import (
     get_capacity_name,
     resolve_capacity_name,
     get_tenant_id,
+    update_item_logical_id,
 )
 from ._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -606,6 +609,7 @@ __all__ = [
     "search_notebooks",
     "list_notebooks",
     "get_item_definition",
+    "update_item_logical_id",
     "get_workspace_network_communication_policy",
     "set_workspace_network_communication_policy",
     "get_connection_string",
@@ -624,4 +628,6 @@ __all__ = [
     "takeover_item_ownership",
     "list_endorsements",
     "list_favorites",
+    "get_downstream_relations",
+    "get_upstream_relations",
 ]

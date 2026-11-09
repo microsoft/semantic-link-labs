@@ -1,0 +1,3354 @@
+"""An interactive manager for the contents of a Fabric lakehouse.
+
+Browses the tables, folders and files of a lakehouse (including the
+`soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
+ones), recovers deleted objects, runs table maintenance, collects table stats
+and changes tables' auto-compaction and liquid clustering, all from one widget.
+"""
+
+import json
+import re
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
+
+from sempy._utils._log import log
+
+from sempy_labs._ui_components import (
+    ICONS as _UI_ICONS,
+    DARK_THEME_VARS as _UI_DARK_VARS,
+    LIGHT_THEME_VARS as _UI_LIGHT_VARS,
+    SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
+    SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    TABLE_COLUMN_RESIZE_JS as _UI_TABLE_COLUMN_RESIZE_JS,
+    fullscreen_css as _ui_fullscreen_css,
+    fullscreen_setup_js as _ui_fullscreen_setup_js,
+    list_picker_lakehouses as _ui_list_picker_lakehouses,
+    list_picker_workspaces as _ui_list_picker_workspaces,
+    render_attribution_html as _ui_render_attribution_html,
+    run_widget_task as _ui_run_widget_task,
+    scoped_attribution_css as _ui_scoped_attribution_css,
+    scoped_button_press_css as _ui_scoped_button_press_css,
+    scoped_header_css as _ui_scoped_header_css,
+    scoped_table_column_resize_css as _ui_scoped_table_column_resize_css,
+)
+
+# The two OneLake containers a lakehouse exposes; everything else (system
+# folders such as TableMaintenance) is not part of its contents.
+_CONTAINERS = ("Tables", "Files")
+
+
+# ---------------------------------------------------------------------------
+# Lakehouse contents (pure helpers, so they are testable without Fabric)
+# ---------------------------------------------------------------------------
+def _format_bytes(size: Optional[float]) -> str:
+    """A byte count as a short, human readable string. """
+
+    try:
+        value = float(size or 0)
+    except (TypeError, ValueError):
+        return "—"
+    if value <= 0:
+        return "—"
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if value < 1024 or unit == "TB":
+            return f"{value:,.0f} {unit}" if unit == "B" else f"{value:,.1f} {unit}"
+        value /= 1024
+    return f"{value:,.1f} TB"
+
+
+def _blob_path(blob_name: Any, lakehouse_id: str) -> str:
+    """The path of a blob relative to the lakehouse root, e.g. ``Tables/sales``.
+
+    OneLake returns the name either relative to the lakehouse or prefixed with
+    the lakehouse ID, depending on the container the listing was scoped to.
+    """
+
+    path = str(blob_name or "").strip().strip("/")
+    prefix = f"{str(lakehouse_id)}/"
+    if lakehouse_id:
+        path = path.removeprefix(prefix)
+    return path.strip("/")
+
+
+def _object_of(path: str, schema_enabled: bool) -> Optional[Tuple[str, str, str, bool]]:
+    """The lakehouse object a blob belongs to.
+
+    Returns ``(container, name, schema, is_leaf)`` where ``is_leaf`` is True
+    when the blob *is* the object itself (a file) rather than one of its
+    contents.
+    """
+
+    parts = [part for part in path.split("/") if part]
+    if len(parts) < 2 or parts[0] not in _CONTAINERS:
+        return None
+    container = parts[0]
+    if container == "Tables" and schema_enabled:
+        # Directly beneath Tables is a schema (its folder is listed as a blob
+        # too), never a table.
+        if len(parts) < 3:
+            return None
+        return (container, parts[2], parts[1], len(parts) == 3)
+    return (container, parts[1], "", len(parts) == 2)
+
+
+# Upper bounds (exclusive) of the bands a table's data files are counted in;
+# the last band is everything from 1 GB up. Delta tables read best with data
+# files of roughly 128 MB to 1 GB.
+_MB = 1024 * 1024
+_FILE_SIZE_BANDS: Tuple[Tuple[str, Optional[int]], ...] = (
+    ("< 1 MB", _MB),
+    ("1–16 MB", 16 * _MB),
+    ("16–64 MB", 64 * _MB),
+    ("64–128 MB", 128 * _MB),
+    ("128–256 MB", 256 * _MB),
+    ("256 MB–1 GB", 1024 * _MB),
+    ("≥ 1 GB", None),
+)
+
+
+def _file_size_band(size: int) -> int:
+    """The index of the band in ``_FILE_SIZE_BANDS`` a file size falls in."""
+
+    for index, (_, upper) in enumerate(_FILE_SIZE_BANDS):
+        if upper is None or size < upper:
+            return index
+    return len(_FILE_SIZE_BANDS) - 1
+
+
+def _table_file(inner: List[str]) -> Tuple[str, str]:
+    """What a file inside a delta table's folder is.
+
+    ``inner`` is the file's path relative to the table folder. Returns
+    ``(kind, partition)`` where ``kind`` is ``"data"`` for a parquet data file,
+    ``"dv"`` for a deletion vector file, or ``""`` for anything else, and
+    ``partition`` is the data file's partition folder (``""`` if unpartitioned).
+    """
+
+    if not inner:
+        return "", ""
+    # Delta (like Spark) ignores anything beneath a folder starting with "_"
+    # or ".", which covers _delta_log and its parquet checkpoints.
+    if any(part.startswith(("_", ".")) for part in inner):
+        return "", ""
+    file_name = inner[-1].lower()
+    if file_name.startswith("deletion_vector_") and file_name.endswith(".bin"):
+        return "dv", ""
+    if file_name.endswith(".parquet"):
+        folders = inner[:-1]
+        partition = "/".join(folders) if all("=" in f for f in folders) else ""
+        return "data", partition
+    return "", ""
+
+
+def _file_size_stats(sizes: List[int]) -> dict:
+    """The distribution of a table's data file sizes."""
+
+    bands = [0] * len(_FILE_SIZE_BANDS)
+    for size in sizes:
+        bands[_file_size_band(size)] += 1
+    if not sizes:
+        return {"count": 0, "min": 0, "avg": 0, "max": 0, "bands": bands}
+    smallest, largest = min(sizes), max(sizes)
+    average = sum(sizes) / len(sizes)
+    return {
+        "count": len(sizes),
+        "min": smallest,
+        "avg": average,
+        "max": largest,
+        "min_label": _format_bytes(smallest),
+        "avg_label": _format_bytes(average),
+        "max_label": _format_bytes(largest),
+        "bands": bands,
+    }
+
+
+def _is_file_blob(blob: dict) -> bool:
+    """Whether a blob is a file rather than a folder (directory marker).
+
+    OneLake reports each blob's resource type; when it is missing, a blob
+    holding data is taken to be a file.
+    """
+
+    kind = str(blob.get("Resource Type") or "").strip().lower()
+    if kind:
+        return kind == "file"
+    try:
+        return int(blob.get("Content Length") or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _summarize_blobs(
+    blobs: List[dict],
+    lakehouse_id: str,
+    schema_enabled: bool = False,
+    shortcut_paths: Optional[set] = None,
+) -> List[dict]:
+    """Roll a lakehouse's blobs up into one row per table, folder or file.
+
+    Tables also get the size distribution of their data files, their number of
+    partitions and whether they hold deletion vectors.
+    """
+
+    shortcuts = shortcut_paths or set()
+    objects: Dict[str, dict] = {}
+    data_file_sizes: Dict[str, List[int]] = {}
+    partitions: Dict[str, set] = {}
+
+    for blob in blobs:
+        path = _blob_path(blob.get("Blob Name"), lakehouse_id)
+        located = _object_of(path, schema_enabled)
+        if located is None:
+            continue
+        container, name, schema, is_leaf = located
+        key = "/".join(part for part in (container, schema, name) if part)
+        # A table is a folder; a file where a table would be (e.g. a
+        # schema.json.gz beside the tables) is a file.
+        lone_file = is_leaf and _is_file_blob(blob)
+        record = objects.get(key)
+        if record is None:
+            record = {
+                "path": key,
+                "name": name,
+                "schema": schema,
+                "container": container,
+                "type": (
+                    ("File" if lone_file else "Table")
+                    if container == "Tables"
+                    else ("File" if is_leaf else "Folder")
+                ),
+                "size": 0,
+                "files": 0,
+                "deleted_files": 0,
+                "modified": "",
+                "shortcut": key in shortcuts,
+                "partitions": 0,
+                "deletion_vectors": False,
+                "deletion_vector_files": 0,
+            }
+            objects[key] = record
+        elif not is_leaf and record["type"] == "File":
+            record["type"] = "Table" if container == "Tables" else "Folder"
+        elif is_leaf and not lone_file and record["type"] == "File":
+            # The folder's own marker, listed after a file was taken for it.
+            if container == "Tables":
+                record["type"] = "Table"
+
+        deleted = bool(blob.get("Is Deleted"))
+        if deleted:
+            record["deleted_files"] += 1
+        else:
+            record["files"] += 1
+            try:
+                size = int(blob.get("Content Length") or 0)
+            except (TypeError, ValueError):
+                size = 0
+            record["size"] += size
+            if container == "Tables":
+                parts = [part for part in path.split("/") if part]
+                table_depth = 3 if schema_enabled else 2
+                kind, partition = _table_file(parts[table_depth:])
+                if kind == "data":
+                    data_file_sizes.setdefault(key, []).append(size)
+                    if partition:
+                        partitions.setdefault(key, set()).add(partition)
+                elif kind == "dv":
+                    record["deletion_vector_files"] += 1
+        modified = str(blob.get("Last Modified") or blob.get("Creation Time") or "")
+        if modified > record["modified"]:
+            record["modified"] = modified
+
+    for key, record in objects.items():
+        # Nothing live left: the object itself is in the soft-deleted state.
+        record["deleted"] = record["files"] == 0 and record["deleted_files"] > 0
+        record["file_sizes"] = (
+            _file_size_stats(data_file_sizes.get(key, []))
+            if record["type"] == "Table"
+            else None
+        )
+        record["partitions"] = len(partitions.get(key, ()))
+        record["deletion_vectors"] = record["deletion_vector_files"] > 0
+
+    return sorted(objects.values(), key=lambda row: row["path"].lower())
+
+
+def _summarize_objects(objects: List[dict]) -> dict:
+    """Headline counts for the summary cards."""
+
+    live = [row for row in objects if not row.get("deleted")]
+    return {
+        "tables": sum(1 for row in live if row.get("type") == "Table"),
+        "files": sum(1 for row in live if row["container"] == "Files"),
+        "deleted": sum(1 for row in objects if row.get("deleted")),
+        "recoverable": sum(int(row.get("deleted_files") or 0) for row in objects),
+        "size": sum(int(row.get("size") or 0) for row in objects),
+        "size_label": _format_bytes(sum(int(row.get("size") or 0) for row in objects)),
+    }
+
+
+def _shortcut_paths(lakehouse_id: str, workspace_id: str) -> set:
+    """The paths of the lakehouse's OneLake shortcuts (``Tables/my_shortcut``)."""
+
+    from sempy_labs.lakehouse._shortcuts import list_shortcuts
+
+    try:
+        df = list_shortcuts(lakehouse=lakehouse_id, workspace=workspace_id)
+    except Exception:
+        return set()
+    paths = set()
+    for _, row in df.iterrows():
+        parent = str(row.get("Shortcut Path") or "").strip("/")
+        name = str(row.get("Shortcut Name") or "").strip("/")
+        if name:
+            paths.add("/".join(part for part in (parent, name) if part))
+    return paths
+
+
+def _node_type(
+    depth: int, container: str, schema_enabled: bool, has_children: bool
+) -> str:
+    """What a tree node at this depth represents."""
+
+    if depth == 0:
+        return "Container"
+    if container == "Tables":
+        if schema_enabled:
+            # Even an empty schema is a schema, not a table.
+            if depth == 1:
+                return "Schema"
+            if depth == 2:
+                return "Table"
+        elif depth == 1:
+            return "Table"
+    return "Folder" if has_children else "File"
+
+
+def _build_tree(
+    blobs: List[dict],
+    lakehouse_id: str,
+    schema_enabled: bool = False,
+    shortcut_paths: Optional[set] = None,
+    max_children: int = 200,
+) -> List[dict]:
+    """The lakehouse's blobs as a Tables / Files tree, aggregated bottom-up.
+
+    ``max_children`` bounds the payload: a delta table can hold thousands of
+    parquet files, and the extras are collapsed into a single summary node.
+    """
+
+    shortcuts = shortcut_paths or set()
+    roots: Dict[str, dict] = {}
+
+    for blob in blobs:
+        path = _blob_path(blob.get("Blob Name"), lakehouse_id)
+        parts = [part for part in path.split("/") if part]
+        if len(parts) < 2 or parts[0] not in _CONTAINERS:
+            continue
+        deleted = bool(blob.get("Is Deleted"))
+        try:
+            size = 0 if deleted else int(blob.get("Content Length") or 0)
+        except (TypeError, ValueError):
+            size = 0
+
+        children = roots
+        walked: List[str] = []
+        for index, part in enumerate(parts):
+            walked.append(part)
+            node = children.get(part)
+            if node is None:
+                node = {
+                    "name": part,
+                    "path": "/".join(walked),
+                    "size": 0,
+                    "files": 0,
+                    "deleted_files": 0,
+                    "children": {},
+                    "is_file": False,
+                }
+                children[part] = node
+            if index == len(parts) - 1 and _is_file_blob(blob):
+                node["is_file"] = True
+            node["size"] += size
+            if deleted:
+                node["deleted_files"] += 1
+            else:
+                node["files"] += 1
+            children = node["children"]
+
+    def _finalize(node: dict, depth: int, container: str, schema: str) -> dict:
+        raw_children = list(node["children"].values())
+        node_type = _node_type(depth, container, schema_enabled, bool(raw_children))
+        # A file where a table would be (e.g. a schema.json.gz) is a file.
+        if node_type == "Table" and not raw_children and node.get("is_file"):
+            node_type = "File"
+        child_schema = node["name"] if node_type == "Schema" else schema
+        # Folders and tables first, then files; each group by name.
+        raw_children.sort(key=lambda c: (not c["children"], c["name"].lower()))
+        kept = raw_children[:max_children]
+        children = [
+            _finalize(child, depth + 1, container, child_schema) for child in kept
+        ]
+        if len(raw_children) > len(kept):
+            children.append(
+                {
+                    "name": f"+{len(raw_children) - len(kept)} more",
+                    "path": f"{node['path']}/...",
+                    "type": "More",
+                    "size": 0,
+                    "size_label": "",
+                    "files": 0,
+                    "deleted_files": 0,
+                    "deleted": False,
+                    "shortcut": False,
+                    "schema": "",
+                    "children": [],
+                }
+            )
+        return {
+            "name": node["name"],
+            "path": node["path"],
+            "type": node_type,
+            "size": node["size"],
+            "size_label": _format_bytes(node["size"]),
+            "files": node["files"],
+            "deleted_files": node["deleted_files"],
+            "deleted": node["files"] == 0 and node["deleted_files"] > 0,
+            "shortcut": node["path"] in shortcuts,
+            "schema": schema if node_type == "Table" else "",
+            "children": children,
+        }
+
+    return [
+        _finalize(roots[container], 0, container, "")
+        for container in _CONTAINERS
+        if container in roots
+    ]
+
+
+def _lakehouse_objects(
+    workspace_id: str, lakehouse_id: str
+) -> Tuple[List[dict], List[dict], bool]:
+    """The contents of a lakehouse, flat and as a tree, plus its schema mode."""
+
+    from sempy_labs.lakehouse._blobs import list_blobs
+    from sempy_labs.lakehouse._schemas import is_schema_enabled
+
+    try:
+        schema_enabled = bool(
+            is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
+        )
+    except Exception:
+        schema_enabled = False
+
+    df = list_blobs(lakehouse=lakehouse_id, workspace=workspace_id)
+    blobs = df.to_dict("records") if df is not None and not df.empty else []
+    shortcuts = _shortcut_paths(lakehouse_id, workspace_id)
+    objects = _summarize_blobs(
+        blobs,
+        lakehouse_id=str(lakehouse_id),
+        schema_enabled=schema_enabled,
+        shortcut_paths=shortcuts,
+    )
+    tree = _build_tree(
+        blobs,
+        lakehouse_id=str(lakehouse_id),
+        schema_enabled=schema_enabled,
+        shortcut_paths=shortcuts,
+    )
+    return objects, tree, schema_enabled
+
+
+# ---------------------------------------------------------------------------
+# Widget assets
+# ---------------------------------------------------------------------------
+_LHM_CSS = (
+    """
+.slls-lhm {
+    __LIGHT_VARS__
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; position: relative; display: flex; flex-direction: column;
+    min-height: min(680px, calc(100vh - 32px)); max-width: 1200px; margin: 16px auto;
+    color: var(--ui-text); background: var(--ui-bg); border: 1px solid var(--ui-border);
+    border-radius: 12px; box-shadow: var(--ui-shadow-lg); overflow: hidden;
+}
+.slls-lhm.slls-lhm-dark { __DARK_VARS__ }
+.slls-lhm *, .slls-lhm *::before, .slls-lhm *::after { box-sizing: border-box; }
+.slls-lhm-head { flex: 0 0 auto; padding: 20px 22px 16px; }
+.slls-lhm-body { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 14px; padding: 0 22px 20px; }
+.slls-lhm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.slls-lhm-card { padding: 12px 14px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary); }
+.slls-lhm-card-label { color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.slls-lhm-card-value { margin-top: 6px; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.slls-lhm-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.slls-lhm-search {
+    flex: 1 1 220px; min-width: 160px; height: 32px; padding: 0 12px;
+    border: 1px solid var(--ui-border-strong); border-radius: 999px;
+    background: var(--ui-surface); color: var(--ui-text); font: inherit; font-size: 13px;
+}
+.slls-lhm-search:focus { outline: none; border-color: var(--ui-accent); }
+.slls-lhm-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.slls-lhm-pill {
+    padding: 5px 12px; border: 1px solid var(--ui-border-strong); border-radius: 999px;
+    background: var(--ui-surface); color: var(--ui-text-secondary);
+    font: inherit; font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.slls-lhm-pill:hover { background: var(--ui-surface-2); color: var(--ui-text); }
+.slls-lhm-pill.slls-lhm-on { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-on-accent); }
+.slls-lhm-seg { display: inline-flex; gap: 2px; margin-left: auto; padding: 2px; border: 1px solid var(--ui-border-strong); border-radius: 8px; background: var(--ui-surface); }
+.slls-lhm-seg button {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px;
+    border: none; border-radius: 6px; background: transparent; color: var(--ui-text-secondary);
+    font: inherit; font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.slls-lhm-seg button svg { display: block; width: 14px; height: 14px; }
+.slls-lhm-seg button:hover { color: var(--ui-text); }
+.slls-lhm-seg button.slls-lhm-on { background: var(--ui-accent); color: var(--ui-on-accent); }
+/* ---------------- Tree view ---------------- */
+.slls-lhm-tree {
+    padding: 6px 0; font-size: 13px;
+    font-family: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system,
+        BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+}
+.slls-lhm-node {
+    display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; min-width: 0;
+}
+.slls-lhm-node:hover { background: var(--ui-surface-2); }
+.slls-lhm-caret {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex: 0 0 auto; padding: 0; border: none;
+    border-radius: 4px; background: transparent; color: var(--ui-text-tertiary); cursor: pointer;
+}
+.slls-lhm-caret svg { display: block; width: 14px; height: 14px; transition: transform 120ms ease; }
+.slls-lhm-caret.slls-lhm-open svg { transform: rotate(90deg); }
+.slls-lhm-caret.slls-lhm-leaf { visibility: hidden; cursor: default; }
+.slls-lhm-node-icon { display: inline-flex; flex: 0 0 auto; color: var(--ui-text-tertiary); }
+.slls-lhm-node-icon svg { display: block; width: 15px; height: 15px; }
+.slls-lhm-node-name {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 13px;
+}
+.slls-lhm-node-check { width: 15px; height: 15px; flex: 0 0 auto; margin: 0; accent-color: var(--ui-accent); }
+.slls-lhm-node-check-slot { width: 15px; flex: 0 0 auto; }
+.slls-lhm-selection { display: flex; align-items: center; gap: 8px; }
+.slls-lhm-selected { color: var(--ui-text-secondary); font-size: 12px; white-space: nowrap; }
+.slls-lhm-iconbtn.slls-lhm-danger { border-color: var(--ui-danger-border); color: var(--ui-danger-text); }
+.slls-lhm-iconbtn.slls-lhm-danger:hover:not(:disabled) { border-color: var(--ui-danger); background: var(--ui-danger-bg); color: var(--ui-danger-text); }
+.slls-lhm-run.slls-lhm-danger { border-color: var(--ui-danger); background: var(--ui-danger); color: #ffffff; }
+.slls-lhm-node.slls-lhm-root .slls-lhm-node-name { font-weight: 600; }
+.slls-lhm-node-spacer { flex: 1 1 auto; }
+.slls-lhm-bar {
+    position: relative; width: 150px; height: 20px; flex: 0 0 auto; border-radius: 4px;
+    background: transparent; overflow: hidden;
+}
+.slls-lhm-bar-fill { position: absolute; inset: 0 auto 0 0; background: var(--ui-accent-soft); }
+.slls-lhm-bar-text {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 8px; color: var(--ui-text-secondary); font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.slls-lhm-node-more { color: var(--ui-text-tertiary); font-size: 12px; font-style: italic; }
+/* Capped so the list scrolls itself and its column headers stay in view. */
+.slls-lhm-list {
+    flex: 1 1 auto; min-height: 220px; max-height: min(640px, calc(100vh - 160px));
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg); overflow: auto;
+}
+.slls-lhm.slls-lhm-fullscreen .slls-lhm-list, .slls-lhm:fullscreen .slls-lhm-list { max-height: none; }
+.slls-lhm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* A collapsed border scrolls away from a sticky header, so it is drawn as a shadow. */
+.slls-lhm-table th {
+    position: sticky; top: 0; z-index: 1; padding: 9px 12px;
+    border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border); background: var(--ui-bg-secondary);
+    color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-align: left;
+    text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
+.slls-lhm-table td { padding: 3px 12px; border-bottom: 1px solid var(--ui-border); vertical-align: middle; }
+.slls-lhm-table tr:last-child td { border-bottom: none; }
+.slls-lhm-table tr:hover td { background: var(--ui-surface-2); }
+/* The checkbox, schema and name columns stay in view when scrolling sideways.
+   Their left offsets are set by the script; above the cells scrolling under them. */
+.slls-lhm-table th { z-index: 2; }
+.slls-lhm-table th.slls-lhm-frozen { position: sticky; z-index: 3; }
+.slls-lhm-table td.slls-lhm-frozen {
+    position: sticky; z-index: 1; background: var(--ui-bg);
+    border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border);
+}
+.slls-lhm-table tr:hover td.slls-lhm-frozen {
+    background: linear-gradient(var(--ui-surface-2), var(--ui-surface-2)), var(--ui-bg);
+}
+.slls-lhm-table tr:last-child td.slls-lhm-frozen { box-shadow: none; }
+.slls-lhm-table th.slls-lhm-frozen-last { box-shadow: inset 0 -1px 0 var(--ui-border), inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-table td.slls-lhm-frozen-last { box-shadow: inset 0 -1px 0 var(--ui-border), inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-table tr:last-child td.slls-lhm-frozen-last { box-shadow: inset -1px 0 0 var(--ui-border-strong); }
+.slls-lhm-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.slls-lhm-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slls-lhm-name svg { display: block; width: 15px; height: 15px; flex: 0 0 auto; color: var(--ui-text-tertiary); }
+.slls-lhm-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-table th.slls-lhm-num { text-align: right; }
+.slls-lhm-table td.slls-lhm-barcell { padding-top: 3px; padding-bottom: 3px; }
+.slls-lhm-table .slls-lhm-checkcell { padding-right: 0; text-overflow: clip; }
+.slls-lhm-table .slls-lhm-checkcell .slls-lhm-node-check { display: block; }
+.slls-lhm-table .slls-lhm-iconbtn { width: 24px; height: 24px; border-radius: 6px; }
+.slls-lhm-table .slls-lhm-iconbtn svg { width: 13px; height: 13px; }
+.slls-lhm-table .slls-lhm-bar { display: block; width: 100%; }
+.slls-lhm-muted { color: var(--ui-text-tertiary); }
+.slls-lhm-table td.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-cellwrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.slls-lhm-cell-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-cellbtn {
+    width: 22px; height: 22px; flex: 0 0 auto; border-color: transparent;
+    background: transparent; color: var(--ui-text-tertiary);
+}
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-cellbtn svg { width: 13px; height: 13px; }
+.slls-lhm-table tr:hover .slls-lhm-iconbtn.slls-lhm-cellbtn:not(:disabled) { border-color: var(--ui-border-strong); color: var(--ui-text); }
+.slls-lhm-cluster-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; margin-top: 12px; overflow: auto; }
+.slls-lhm-cluster-col {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+    border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface);
+    color: var(--ui-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.slls-lhm-cluster-col:hover:not(:disabled) { background: var(--ui-surface-2); }
+.slls-lhm-cluster-col.slls-lhm-on { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.slls-lhm-cluster-col:disabled { opacity: .5; cursor: not-allowed; }
+.slls-lhm-cluster-badge {
+    display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+    flex: 0 0 auto; border: 1px solid var(--ui-border-strong); border-radius: 5px;
+    font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.slls-lhm-cluster-col.slls-lhm-on .slls-lhm-cluster-badge { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-on-accent); }
+.slls-lhm-cluster-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-cluster-type { flex: 0 0 auto; color: var(--ui-text-tertiary); font-size: 11.5px; }
+.slls-lhm-cluster-summary { margin-top: 12px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-lhm-cluster-state { padding: 12px 2px 4px; color: var(--ui-text-secondary); font-size: 13px; }
+.slls-lhm-cluster-state.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-dialog:focus { outline: none; }
+.slls-lhm-batch {
+    display: none; align-items: center; gap: 10px; padding: 6px 8px 6px 14px;
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
+    color: var(--ui-text-secondary); font-size: 12.5px;
+}
+.slls-lhm-batch-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-batch .slls-lhm-ghost { flex: 0 0 auto; padding: 4px 14px; font-size: 12px; }
+.slls-lhm-dist { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slls-lhm-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: 0 0 auto; }
+.slls-lhm-spark-bar { width: 6px; min-height: 2px; border-radius: 1px 1px 0 0; background: var(--ui-accent); }
+.slls-lhm-spark-bar.slls-lhm-zero { height: 1px; min-height: 1px; background: var(--ui-border-strong); }
+.slls-lhm-sort { all: unset; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; cursor: pointer; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
+.slls-lhm-sort:hover { color: var(--ui-text); }
+.slls-lhm-sort:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; border-radius: 3px; }
+.slls-lhm-table th[aria-sort="ascending"] .slls-lhm-sort, .slls-lhm-table th[aria-sort="descending"] .slls-lhm-sort { color: var(--ui-accent); }
+.slls-lhm-sort-icon svg { display: block; width: 12px; height: 12px; }
+.slls-lhm-badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+    border: 1px solid var(--ui-border); border-radius: 999px;
+    background: var(--ui-surface-2); color: var(--ui-text-secondary);
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.slls-lhm-badge.slls-lhm-deleted { border-color: var(--ui-danger-border); background: var(--ui-danger-bg); color: var(--ui-danger-text); }
+.slls-lhm-badge svg { display: block; width: 12px; height: 12px; }
+.slls-lhm-rowbtns { display: flex; justify-content: flex-end; gap: 6px; }
+.slls-lhm-iconbtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: 1px solid var(--ui-border-strong);
+    border-radius: 8px; background: var(--ui-surface); color: var(--ui-text); cursor: pointer;
+}
+.slls-lhm-iconbtn svg { display: block; width: 15px; height: 15px; }
+.slls-lhm-iconbtn:hover:not(:disabled) { border-color: var(--ui-accent); color: var(--ui-accent); }
+.slls-lhm-iconbtn:disabled { opacity: .45; cursor: not-allowed; }
+.slls-lhm-empty { padding: 48px 16px; color: var(--ui-text-secondary); font-size: 13px; text-align: center; }
+.slls-lhm-note { display: none; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary); font-size: 12.5px; }
+.slls-lhm-note.slls-lhm-show { display: flex; }
+.slls-lhm-note.slls-lhm-bad { border-color: var(--ui-danger-border); background: var(--ui-danger-bg); color: var(--ui-danger-text); }
+.slls-lhm-progress { display: none; position: relative; height: 3px; overflow: hidden; background: var(--ui-accent-soft); }
+.slls-lhm-progress.slls-lhm-show { display: block; }
+.slls-lhm-progress::after { content: ""; position: absolute; inset-block: 0; left: -35%; width: 35%; background: var(--ui-accent); animation: sllsLhmProgress 1s ease-in-out infinite; }
+@keyframes sllsLhmProgress { from { transform: translateX(0); } to { transform: translateX(390%); } }
+.slls-lhm-backdrop { display: flex; flex: 1 1 auto; }
+.slls-lhm-backdrop.slls-lhm-modal {
+    position: absolute; inset: 0; z-index: 120; align-items: center; justify-content: center;
+    padding: 24px; overflow: auto;
+    background: color-mix(in srgb, var(--ui-bg) 72%, transparent); backdrop-filter: blur(8px);
+}
+.slls-lhm-panel { flex: 1 1 auto; padding: 4px 22px 24px; }
+.slls-lhm-backdrop.slls-lhm-modal .slls-lhm-panel {
+    flex: 0 1 720px; padding: 20px; border: 1px solid var(--ui-border-strong);
+    border-radius: 12px; background: var(--ui-bg); box-shadow: var(--ui-shadow-lg);
+}
+.slls-lhm-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.slls-lhm-panel-title { margin: 0; font-size: 14px; font-weight: 600; }
+.slls-lhm-panel-sub { margin-top: 3px; color: var(--ui-text-secondary); font-size: 12.5px; }
+.slls-lhm-close {
+    display: none; align-items: center; justify-content: center; width: 32px; height: 32px;
+    padding: 0; border: 1px solid var(--ui-border-strong); border-radius: 50%;
+    background: var(--ui-surface); color: var(--ui-text); cursor: pointer;
+}
+.slls-lhm-close svg { display: block; width: 16px; height: 16px; }
+.slls-lhm-backdrop.slls-lhm-modal .slls-lhm-close, .slls-lhm-dialog .slls-lhm-close { display: inline-flex; }
+.slls-lhm-fields { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.slls-lhm-field { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; gap: 5px; }
+.slls-lhm-field label { padding-left: 4px; color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.slls-lhm-field .slls-ss-btn { border-radius: 999px; padding: 7px 12px 7px 15px; background: var(--ui-surface); font-size: 13.5px; }
+.slls-lhm-run {
+    border: 1px solid var(--ui-accent); border-radius: 999px; padding: 7px 18px;
+    background: var(--ui-accent); color: var(--ui-on-accent);
+    font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer;
+}
+.slls-lhm-run:disabled { opacity: .5; cursor: default; }
+.slls-lhm-ghost {
+    border: 1px solid var(--ui-border-strong); border-radius: 999px; padding: 7px 16px;
+    background: var(--ui-surface); color: var(--ui-text);
+    font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.slls-lhm-overlay {
+    position: absolute; inset: 0; z-index: 140; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+    background: color-mix(in srgb, var(--ui-bg) 72%, transparent); backdrop-filter: blur(8px);
+}
+.slls-lhm-dialog { width: min(460px, 100%); padding: 20px; border: 1px solid var(--ui-border-strong); border-radius: 12px; background: var(--ui-bg); box-shadow: var(--ui-shadow-lg); }
+.slls-lhm-check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+.slls-lhm-check input { width: 15px; height: 15px; accent-color: var(--ui-accent); }
+.slls-lhm-text {
+    width: 100%; height: 32px; margin-top: 6px; padding: 0 10px;
+    border: 1px solid var(--ui-border-strong); border-radius: 8px;
+    background: var(--ui-surface); color: var(--ui-text); font: inherit; font-size: 13px;
+}
+.slls-lhm-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.slls-lhm-attr { padding: 0 22px 16px; }
+@media (max-width: 700px) {
+    .slls-lhm { min-height: calc(100vh - 16px); margin: 8px; }
+    .slls-lhm-fields { align-items: stretch; flex-direction: column; }
+}
+__HEADER_CSS__
+__SEARCH_CSS__
+""".replace("__LIGHT_VARS__", _UI_LIGHT_VARS)
+    .replace("__DARK_VARS__", _UI_DARK_VARS)
+    .replace("__HEADER_CSS__", "")
+    .replace("__SEARCH_CSS__", _UI_SEARCH_SELECT_CSS)
+)
+
+_LHM_CSS += _ui_scoped_header_css(".slls-lhm")
+_LHM_CSS += _ui_scoped_button_press_css(".slls-lhm")
+_LHM_CSS += _ui_scoped_attribution_css(".slls-lhm")
+_LHM_CSS += _ui_scoped_table_column_resize_css(".slls-lhm")
+_LHM_CSS += "\n" + _ui_fullscreen_css(
+    ".slls-lhm", "slls-lhm-fullscreen", bg_var="var(--ui-bg)"
+)
+
+
+_LHM_JS = (
+    _UI_SEARCH_SELECT_JS
+    + "\n"
+    + _UI_TABLE_COLUMN_RESIZE_JS
+    + "\n"
+    + _ui_fullscreen_setup_js("sllsLhmSetupFullscreen")
+    + r"""
+function render({ model, el }) {
+    const root = document.createElement("div");
+    root.className = "slls-lhm" + (model.get("dark_mode") ? " slls-lhm-dark" : "");
+    el.appendChild(root);
+
+    // ---------------- Header ----------------
+    const headWrap = document.createElement("div"); headWrap.className = "slls-lhm-head";
+    const header = document.createElement("div"); header.className = "sl-header";
+    const titleIcon = document.createElement("span"); titleIcon.className = "sl-title-icon"; titleIcon.innerHTML = `__ICON_LAKEHOUSE__`;
+    const titleWrap = document.createElement("div"); titleWrap.className = "sl-titlewrap";
+    const title = document.createElement("div"); title.className = "sl-title"; title.textContent = "Lakehouse Manager";
+    const subtitle = document.createElement("div"); subtitle.className = "sl-subtitle";
+    titleWrap.append(title, subtitle);
+    const spacer = document.createElement("div"); spacer.className = "sl-head-spacer";
+    const changeBtn = document.createElement("button"); changeBtn.type = "button"; changeBtn.className = "sl-change-btn"; changeBtn.innerHTML = `__ICON_SWAP__`;
+    changeBtn.title = "Change lakehouse"; changeBtn.setAttribute("aria-label", changeBtn.title);
+    const reloadBtn = document.createElement("button"); reloadBtn.type = "button"; reloadBtn.className = "sl-reload-btn"; reloadBtn.innerHTML = `__ICON_REFRESH__`;
+    reloadBtn.title = "Reload the lakehouse contents"; reloadBtn.setAttribute("aria-label", reloadBtn.title);
+    const fsBtn = document.createElement("button"); fsBtn.type = "button"; fsBtn.className = "sl-theme-btn";
+    const themeBtn = document.createElement("button"); themeBtn.type = "button"; themeBtn.className = "sl-theme-btn";
+    header.append(titleIcon, titleWrap, changeBtn, spacer, reloadBtn, fsBtn, themeBtn);
+    headWrap.appendChild(header);
+    const progress = document.createElement("div"); progress.className = "slls-lhm-progress";
+    progress.setAttribute("role", "progressbar"); progress.setAttribute("aria-label", "Working");
+
+    function renderTheme() {
+        const dark = root.classList.contains("slls-lhm-dark");
+        themeBtn.innerHTML = dark ? `__ICON_SUN__` : `__ICON_MOON__`;
+        const label = dark ? "Switch to light mode" : "Switch to dark mode";
+        themeBtn.title = label; themeBtn.setAttribute("aria-label", label);
+    }
+    themeBtn.addEventListener("click", () => {
+        root.classList.toggle("slls-lhm-dark");
+        model.set("dark_mode", root.classList.contains("slls-lhm-dark")); model.save_changes();
+        renderTheme();
+    });
+    sllsLhmSetupFullscreen(root, fsBtn, "slls-lhm-fullscreen", `__ICON_FS__`, `__ICON_FS_EXIT__`);
+    renderTheme();
+
+    // ---------------- Picker ----------------
+    const backdrop = document.createElement("div"); backdrop.className = "slls-lhm-backdrop";
+    const panel = document.createElement("div"); panel.className = "slls-lhm-panel";
+    const panelHead = document.createElement("div"); panelHead.className = "slls-lhm-panel-head";
+    panelHead.innerHTML = '<div><h2 class="slls-lhm-panel-title">Connect to a lakehouse</h2>'
+        + '<div class="slls-lhm-panel-sub">Select a workspace and lakehouse to browse its tables, folders and files.</div></div>';
+    const closePicker = document.createElement("button"); closePicker.type = "button"; closePicker.className = "slls-lhm-close";
+    closePicker.innerHTML = `__ICON_CLOSE__`; closePicker.title = "Close"; closePicker.setAttribute("aria-label", "Close the lakehouse picker");
+    panelHead.appendChild(closePicker);
+    const fields = document.createElement("div"); fields.className = "slls-lhm-fields";
+    function field(label, picker) {
+        const wrap = document.createElement("div"); wrap.className = "slls-lhm-field";
+        const lab = document.createElement("label"); lab.textContent = label;
+        wrap.append(lab, picker.el); return wrap;
+    }
+    // Returns the action's number, which action_done reports once it finished.
+    function act(action, extra) {
+        const trigger = (model.get("action_trigger") || 0) + 1;
+        model.set("pending_action", Object.assign({ action: action }, extra || {}));
+        model.set("action_trigger", trigger);
+        model.save_changes();
+        return trigger;
+    }
+    const ws = createSearchSelect({
+        placeholder: "Select a workspace…", searchPlaceholder: "Filter workspaces…",
+        ariaLabel: "Workspace", emptyLabel: "Loading workspaces…",
+        onChange: (option) => {
+            model.set("selected_workspace_id", option.value);
+            model.set("selected_lakehouse_id", "");
+            model.set("available_lakehouses", []);
+            act("workspace", { workspace: option.value });
+        },
+    });
+    const lh = createSearchSelect({
+        placeholder: "Select a lakehouse…", searchPlaceholder: "Filter lakehouses…",
+        ariaLabel: "Lakehouse", emptyLabel: "Select a workspace first…",
+        onChange: (option) => {
+            model.set("selected_lakehouse_id", option.value); model.save_changes(); renderState();
+        },
+    });
+    const openBtn = document.createElement("button"); openBtn.type = "button"; openBtn.className = "slls-lhm-run"; openBtn.textContent = "Connect";
+    fields.append(field("Workspace", ws), field("Lakehouse", lh), openBtn);
+    panel.append(panelHead, fields); backdrop.appendChild(panel);
+
+    // ---------------- Contents ----------------
+    const body = document.createElement("div"); body.className = "slls-lhm-body";
+    const cards = document.createElement("div"); cards.className = "slls-lhm-cards";
+    const cardValues = {};
+    for (const [key, label] of [["tables", "Tables"], ["files", "Files"], ["deleted", "Deleted"], ["size_label", "Size"]]) {
+        const card = document.createElement("div"); card.className = "slls-lhm-card";
+        const lab = document.createElement("div"); lab.className = "slls-lhm-card-label"; lab.textContent = label;
+        const val = document.createElement("div"); val.className = "slls-lhm-card-value"; val.textContent = "—";
+        card.append(lab, val); cards.appendChild(card); cardValues[key] = val;
+    }
+    const toolbar = document.createElement("div"); toolbar.className = "slls-lhm-toolbar";
+    const search = document.createElement("input"); search.type = "search"; search.className = "slls-lhm-search";
+    search.setAttribute("aria-label", "Filter objects by name");
+    const pills = document.createElement("div"); pills.className = "slls-lhm-pills"; pills.setAttribute("role", "group");
+    pills.setAttribute("aria-label", "Filter objects");
+    let filter = "All";
+    const pillButtons = ["All", "Deleted"].map((name) => {
+        const pill = document.createElement("button"); pill.type = "button"; pill.className = "slls-lhm-pill"; pill.textContent = name;
+        pill.addEventListener("click", () => { filter = name; renderRows(); });
+        pills.appendChild(pill); return { name: name, el: pill };
+    });
+    let view = "Tree";
+    const selection = document.createElement("div"); selection.className = "slls-lhm-selection";
+    const selectedText = document.createElement("span"); selectedText.className = "slls-lhm-selected";
+    const recoverSelected = document.createElement("button"); recoverSelected.type = "button";
+    recoverSelected.className = "slls-lhm-iconbtn"; recoverSelected.innerHTML = `__ICON_UNDO__`;
+    recoverSelected.title = "Recover the selected objects";
+    recoverSelected.setAttribute("aria-label", recoverSelected.title);
+    const deleteSelected = document.createElement("button"); deleteSelected.type = "button";
+    deleteSelected.className = "slls-lhm-iconbtn slls-lhm-danger"; deleteSelected.innerHTML = `__ICON_TRASH__`;
+    deleteSelected.title = "Delete the selected objects";
+    deleteSelected.setAttribute("aria-label", deleteSelected.title);
+    selection.append(selectedText, recoverSelected, deleteSelected);
+    // Tables ticked in the table view for a bulk table maintenance run.
+    const tableSelection = document.createElement("div"); tableSelection.className = "slls-lhm-selection";
+    const tableSelectedText = document.createElement("span"); tableSelectedText.className = "slls-lhm-selected";
+    const maintainSelected = document.createElement("button"); maintainSelected.type = "button";
+    maintainSelected.className = "slls-lhm-iconbtn"; maintainSelected.innerHTML = `__ICON_WRENCH__`;
+    maintainSelected.title = "Run table maintenance on the selected tables";
+    maintainSelected.setAttribute("aria-label", maintainSelected.title);
+    const statsSelected = document.createElement("button"); statsSelected.type = "button";
+    statsSelected.className = "slls-lhm-iconbtn"; statsSelected.innerHTML = `__ICON_STATS__`;
+    statsSelected.title = "Collect stats for the selected tables (columns, rows, row groups, "
+        + "Z-Order, liquid clustering, auto-compaction and V-Order)";
+    statsSelected.setAttribute("aria-label", "Collect stats for the selected tables");
+    const autoOnSelected = document.createElement("button"); autoOnSelected.type = "button";
+    autoOnSelected.className = "slls-lhm-iconbtn"; autoOnSelected.innerHTML = `__ICON_AUTO_ON__`;
+    autoOnSelected.setAttribute("aria-label", "Turn auto-compaction on for the selected tables");
+    const autoOffSelected = document.createElement("button"); autoOffSelected.type = "button";
+    autoOffSelected.className = "slls-lhm-iconbtn"; autoOffSelected.innerHTML = `__ICON_AUTO_OFF__`;
+    autoOffSelected.setAttribute("aria-label", "Turn auto-compaction off for the selected tables");
+    tableSelection.append(maintainSelected, statsSelected, autoOnSelected, autoOffSelected, tableSelectedText);
+    const segment = document.createElement("div"); segment.className = "slls-lhm-seg";
+    segment.setAttribute("role", "group"); segment.setAttribute("aria-label", "View");
+    const viewButtons = [["Tree", `__ICON_TREE__`], ["Table", `__ICON_TABLE__`]].map(([name, icon]) => {
+        const button = document.createElement("button"); button.type = "button";
+        button.innerHTML = icon;
+        const label = document.createElement("span"); label.textContent = name;
+        button.appendChild(label);
+        button.addEventListener("click", () => { view = name; renderRows(); });
+        segment.appendChild(button); return { name: name, el: button };
+    });
+    toolbar.append(search, selection, pills, tableSelection, segment);
+    const listWrap = document.createElement("div"); listWrap.className = "slls-lhm-list";
+    const note = document.createElement("div"); note.className = "slls-lhm-note";
+    const noteIcon = document.createElement("span"); const noteText = document.createElement("span");
+    note.append(noteIcon, noteText);
+    // The running batch of table actions, which can be cancelled; it stops
+    // after the table in progress.
+    const batchBar = document.createElement("div"); batchBar.className = "slls-lhm-batch";
+    batchBar.setAttribute("role", "status");
+    const batchText = document.createElement("span"); batchText.className = "slls-lhm-batch-text";
+    const batchCancel = document.createElement("button"); batchCancel.type = "button";
+    batchCancel.className = "slls-lhm-ghost"; batchCancel.textContent = "Cancel";
+    batchBar.append(batchText, batchCancel);
+    body.append(cards, toolbar, batchBar, listWrap, note);
+
+    const attribution = document.createElement("div"); attribution.className = "slls-lhm-attr";
+    attribution.innerHTML = `__ATTRIBUTION__`;
+    root.append(headWrap, progress, backdrop, body, attribution);
+
+    // ---------------- Maintenance dialog ----------------
+    let maintenanceTargets = [];
+    const overlay = document.createElement("div"); overlay.className = "slls-lhm-overlay"; overlay.style.display = "none";
+    const dialog = document.createElement("div"); dialog.className = "slls-lhm-dialog";
+    const dialogHead = document.createElement("div"); dialogHead.className = "slls-lhm-panel-head";
+    const dialogTitle = document.createElement("div");
+    dialogTitle.innerHTML = '<h2 class="slls-lhm-panel-title">Table maintenance</h2>'
+        + '<div class="slls-lhm-panel-sub"></div>';
+    const dialogClose = document.createElement("button"); dialogClose.type = "button"; dialogClose.className = "slls-lhm-close";
+    dialogClose.innerHTML = `__ICON_CLOSE__`; dialogClose.title = "Close"; dialogClose.setAttribute("aria-label", "Close table maintenance");
+    dialogHead.append(dialogTitle, dialogClose);
+    function check(label, checked) {
+        const wrap = document.createElement("label"); wrap.className = "slls-lhm-check";
+        const input = document.createElement("input"); input.type = "checkbox"; input.checked = checked;
+        const text = document.createElement("span"); text.textContent = label;
+        wrap.append(input, text); return { el: wrap, input: input };
+    }
+    const optimizeChk = check("Optimize (compact small files)", true);
+    const vorderChk = check("Apply V-Order", true);
+    const vacuumChk = check("Vacuum (remove unreferenced files)", false);
+    const retention = document.createElement("input"); retention.type = "text"; retention.className = "slls-lhm-text";
+    retention.placeholder = "Retention period, e.g. 7:00:00:00"; retention.setAttribute("aria-label", "Vacuum retention period");
+    retention.style.display = "none";
+    vacuumChk.input.addEventListener("change", () => { retention.style.display = vacuumChk.input.checked ? "" : "none"; });
+    const dialogActions = document.createElement("div"); dialogActions.className = "slls-lhm-dialog-actions";
+    const cancelBtn = document.createElement("button"); cancelBtn.type = "button"; cancelBtn.className = "slls-lhm-ghost"; cancelBtn.textContent = "Cancel";
+    const runBtn = document.createElement("button"); runBtn.type = "button"; runBtn.className = "slls-lhm-run"; runBtn.textContent = "Run";
+    dialogActions.append(cancelBtn, runBtn);
+    dialog.append(dialogHead, optimizeChk.el, vorderChk.el, vacuumChk.el, retention, dialogActions);
+    overlay.appendChild(dialog); root.appendChild(overlay);
+
+    // A maintenance or stats run started from the table view's selection
+    // clears the selection once it has finished.
+    let clearTablesAfter = 0;
+    let maintenanceFromSelection = false;
+    function openMaintenance(rows, fromSelection = false) {
+        if (!rows.length) return;
+        maintenanceTargets = rows;
+        maintenanceFromSelection = fromSelection;
+        dialogTitle.querySelector(".slls-lhm-panel-sub").textContent = rows.length === 1
+            ? rows[0].path
+            : `${rows.length} tables: ` + rows.slice(0, 10).map((row) => row.path).join(", ")
+                + (rows.length > 10 ? `, +${rows.length - 10} more` : "");
+        retention.style.display = vacuumChk.input.checked ? "" : "none";
+        overlay.style.display = "flex";
+    }
+    function closeDialog() { maintenanceTargets = []; overlay.style.display = "none"; }
+    cancelBtn.addEventListener("click", closeDialog);
+    dialogClose.addEventListener("click", closeDialog);
+    overlay.addEventListener("click", (event) => { if (event.target === overlay) closeDialog(); });
+    runBtn.addEventListener("click", () => {
+        if (!maintenanceTargets.length) return;
+        const payload = {
+            paths: maintenanceTargets.map((row) => row.path),
+            optimize: optimizeChk.input.checked, v_order: vorderChk.input.checked,
+            vacuum: vacuumChk.input.checked, retention_period: retention.value.trim(),
+        };
+        const fromSelection = maintenanceFromSelection;
+        closeDialog();
+        const trigger = act("maintenance", payload);
+        if (fromSelection) clearTablesAfter = trigger;
+    });
+
+    // ---------------- Liquid clustering dialog ----------------
+    // Lists the table's columns (loaded by the kernel) as numbered picks; the
+    // order of the picks is the clustering columns' order.
+    const MAX_CLUSTERING_COLUMNS = 4;
+    let clusterTarget = null;
+    let clusterRequest = 0;
+    let clusterChoice = null;
+    const clusterOverlay = document.createElement("div"); clusterOverlay.className = "slls-lhm-overlay";
+    clusterOverlay.style.display = "none";
+    const clusterDialog = document.createElement("div"); clusterDialog.className = "slls-lhm-dialog";
+    clusterDialog.setAttribute("role", "dialog"); clusterDialog.setAttribute("aria-label", "Liquid clustering");
+    clusterDialog.tabIndex = -1;
+    const clusterHead = document.createElement("div"); clusterHead.className = "slls-lhm-panel-head";
+    const clusterTitle = document.createElement("div");
+    clusterTitle.innerHTML = '<h2 class="slls-lhm-panel-title">Liquid clustering</h2>'
+        + '<div class="slls-lhm-panel-sub"></div>';
+    const clusterClose = document.createElement("button"); clusterClose.type = "button"; clusterClose.className = "slls-lhm-close";
+    clusterClose.innerHTML = `__ICON_CLOSE__`; clusterClose.title = "Close";
+    clusterClose.setAttribute("aria-label", "Close liquid clustering");
+    clusterHead.append(clusterTitle, clusterClose);
+    const clusterIntro = document.createElement("div"); clusterIntro.className = "slls-lhm-panel-sub";
+    clusterIntro.textContent = `Choose up to ${MAX_CLUSTERING_COLUMNS} columns to cluster the table by; `
+        + "the order sets their priority. Clear every column to remove liquid clustering.";
+    const clusterBody = document.createElement("div"); clusterBody.className = "slls-lhm-cluster-list";
+    const clusterSummary = document.createElement("div"); clusterSummary.className = "slls-lhm-cluster-summary";
+    const clusterActions = document.createElement("div"); clusterActions.className = "slls-lhm-dialog-actions";
+    const clusterCancel = document.createElement("button"); clusterCancel.type = "button";
+    clusterCancel.className = "slls-lhm-ghost"; clusterCancel.textContent = "Cancel";
+    const clusterApply = document.createElement("button"); clusterApply.type = "button"; clusterApply.className = "slls-lhm-run";
+    clusterActions.append(clusterCancel, clusterApply);
+    clusterDialog.append(clusterHead, clusterIntro, clusterBody, clusterSummary, clusterActions);
+    clusterOverlay.appendChild(clusterDialog); root.appendChild(clusterOverlay);
+
+    function openClustering(row) {
+        clusterTarget = row; clusterChoice = null;
+        clusterTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
+        clusterOverlay.style.display = "flex";
+        clusterDialog.focus({ preventScroll: true });
+        clusterRequest = act("cluster_columns", { path: row.path });
+        renderClustering();
+    }
+    function closeClustering() { clusterTarget = null; clusterOverlay.style.display = "none"; }
+
+    // The table's columns once the kernel has read them, else null.
+    function clusterInfo() {
+        if (!clusterTarget || (model.get("action_done") || 0) < clusterRequest) return null;
+        const info = model.get("cluster_info") || {};
+        if (info.path !== clusterTarget.path) {
+            return { error: model.get("error_message") || "Could not read the table's columns." };
+        }
+        return info;
+    }
+
+    function clusterState(text, bad) {
+        const state = document.createElement("div");
+        state.className = "slls-lhm-cluster-state" + (bad ? " slls-lhm-failed" : "");
+        state.textContent = text; return state;
+    }
+
+    function renderClustering() {
+        if (!clusterTarget) return;
+        clusterBody.innerHTML = "";
+        const info = clusterInfo();
+        const current = (info && info.clustering) || [];
+        const columns = (info && info.columns) || [];
+        if (info && !info.error && clusterChoice === null) {
+            const known = new Set(columns.map((column) => column.name));
+            clusterChoice = current.filter((name) => known.has(name));
+        }
+        const choice = clusterChoice || [];
+        if (!info) clusterBody.appendChild(clusterState("Reading the table's columns…"));
+        else if (info.error) clusterBody.appendChild(clusterState(info.error, true));
+        else if (!columns.length) clusterBody.appendChild(clusterState("The table has no columns."));
+        for (const column of (info && !info.error) ? columns : []) {
+            const order = choice.indexOf(column.name);
+            const pick = document.createElement("button"); pick.type = "button";
+            pick.className = "slls-lhm-cluster-col" + (order >= 0 ? " slls-lhm-on" : "");
+            pick.setAttribute("aria-pressed", String(order >= 0));
+            pick.disabled = busy() || (order < 0 && (!column.clusterable || choice.length >= MAX_CLUSTERING_COLUMNS));
+            if (!column.clusterable) pick.title = "Columns of this type cannot be clustering columns";
+            const badge = document.createElement("span"); badge.className = "slls-lhm-cluster-badge";
+            badge.textContent = order >= 0 ? String(order + 1) : "";
+            const name = document.createElement("span"); name.className = "slls-lhm-cluster-name"; name.textContent = column.name;
+            const type = document.createElement("span"); type.className = "slls-lhm-cluster-type"; type.textContent = column.type || "";
+            pick.append(badge, name, type);
+            pick.dataset.column = column.name;
+            pick.addEventListener("click", () => {
+                clusterChoice = order >= 0 ? choice.filter((c) => c !== column.name) : choice.concat([column.name]);
+                renderClustering();
+                // The list is rebuilt, so focus returns to the same column.
+                for (const button of clusterBody.querySelectorAll(".slls-lhm-cluster-col")) {
+                    if (button.dataset.column === column.name) { button.focus({ preventScroll: true }); break; }
+                }
+            });
+            clusterBody.appendChild(pick);
+        }
+        const unchanged = choice.length === current.length && choice.every((c, i) => c === current[i]);
+        const removing = !choice.length && current.length > 0;
+        clusterSummary.textContent = !info || info.error ? ""
+            : choice.length ? "Cluster by: " + choice.join(", ")
+            : removing ? "No columns are chosen, so liquid clustering will be removed."
+            : "The table is not clustered. Choose the columns to cluster it by.";
+        clusterApply.textContent = removing ? "Remove clustering" : "Apply";
+        clusterApply.classList.toggle("slls-lhm-danger", removing);
+        clusterApply.disabled = !info || Boolean(info.error) || busy() || unchanged || !sparkAvailable();
+    }
+
+    clusterCancel.addEventListener("click", closeClustering);
+    clusterClose.addEventListener("click", closeClustering);
+    clusterOverlay.addEventListener("click", (event) => { if (event.target === clusterOverlay) closeClustering(); });
+    clusterApply.addEventListener("click", () => {
+        if (!clusterTarget || clusterChoice === null) return;
+        const payload = { path: clusterTarget.path, columns: clusterChoice.slice() };
+        closeClustering();
+        act("clustering", payload);
+    });
+
+    // ---------------- Delete confirmation ----------------
+    const confirmOverlay = document.createElement("div"); confirmOverlay.className = "slls-lhm-overlay";
+    confirmOverlay.style.display = "none";
+    const confirmDialog = document.createElement("div"); confirmDialog.className = "slls-lhm-dialog";
+    const confirmHead = document.createElement("div"); confirmHead.className = "slls-lhm-panel-head";
+    const confirmTitle = document.createElement("div");
+    confirmTitle.innerHTML = '<h2 class="slls-lhm-panel-title">Delete objects</h2>'
+        + '<div class="slls-lhm-panel-sub"></div>';
+    const confirmClose = document.createElement("button"); confirmClose.type = "button"; confirmClose.className = "slls-lhm-close";
+    confirmClose.innerHTML = `__ICON_CLOSE__`; confirmClose.title = "Close";
+    confirmClose.setAttribute("aria-label", "Close the delete confirmation");
+    confirmHead.append(confirmTitle, confirmClose);
+    const confirmList = document.createElement("div"); confirmList.className = "slls-lhm-panel-sub";
+    const confirmActions = document.createElement("div"); confirmActions.className = "slls-lhm-dialog-actions";
+    const confirmCancel = document.createElement("button"); confirmCancel.type = "button";
+    confirmCancel.className = "slls-lhm-ghost"; confirmCancel.textContent = "Cancel";
+    const confirmDelete = document.createElement("button"); confirmDelete.type = "button";
+    confirmDelete.className = "slls-lhm-run slls-lhm-danger"; confirmDelete.textContent = "Delete";
+    confirmActions.append(confirmCancel, confirmDelete);
+    confirmDialog.append(confirmHead, confirmList, confirmActions);
+    confirmOverlay.appendChild(confirmDialog); root.appendChild(confirmOverlay);
+
+    function closeConfirm() { confirmOverlay.style.display = "none"; }
+    confirmCancel.addEventListener("click", closeConfirm);
+    confirmClose.addEventListener("click", closeConfirm);
+    confirmOverlay.addEventListener("click", (event) => {
+        if (event.target === confirmOverlay) closeConfirm();
+    });
+    confirmDelete.addEventListener("click", () => {
+        const paths = [...selected];
+        closeConfirm();
+        if (paths.length) act("delete", { paths: paths });
+    });
+
+    // ---------------- State ----------------
+    let pickerOpen = !(model.get("selected_lakehouse_id") || "") || !(model.get("objects") || []).length;
+    // Tree objects ticked for a bulk recover or delete.
+    const selected = new Set();
+    // Table paths ticked in the table view for table maintenance.
+    const tableSelected = new Set();
+
+    function busy() {
+        return model.get("loading") === true || model.get("busy") === true
+            || model.get("picker_loading") === true;
+    }
+
+    // Names seen in the pickers, so the loaded lakehouse stays labelled after
+    // the picker moves on to another workspace.
+    const knownNames = new Map();
+    function nameOf(list, id) {
+        for (const item of model.get(list) || []) knownNames.set(item.id, item.name);
+        return knownNames.get(id) || "";
+    }
+
+    // Tree nodes which are open; both containers start expanded.
+    const expanded = new Set(["Tables", "Files"]);
+
+    // Shortcuts point at another source's data, so they are never maintained here.
+    function maintainable(row) {
+        return row.type === "Table" && !row.deleted && !row.shortcut;
+    }
+
+    // In the table view tables are maintained in bulk from the toolbar, so the
+    // row only offers recovery.
+    function rowActions(row, withMaintenance = true) {
+        const buttons = document.createElement("div"); buttons.className = "slls-lhm-rowbtns";
+        // Containers and schemas are groupings, not objects which can be restored.
+        const grouping = row.type === "Container" || row.type === "Schema";
+        if ((row.deleted || row.deleted_files) && !grouping) {
+            const recover = document.createElement("button"); recover.type = "button"; recover.className = "slls-lhm-iconbtn";
+            recover.innerHTML = `__ICON_UNDO__`; recover.title = "Recover this object";
+            recover.setAttribute("aria-label", "Recover " + row.path);
+            recover.disabled = busy();
+            recover.addEventListener("click", () => act("recover", { path: row.path }));
+            buttons.appendChild(recover);
+        }
+        if (withMaintenance && maintainable(row)) {
+            const maintain = document.createElement("button"); maintain.type = "button"; maintain.className = "slls-lhm-iconbtn";
+            maintain.innerHTML = `__ICON_WRENCH__`; maintain.title = "Run table maintenance";
+            maintain.setAttribute("aria-label", "Run table maintenance on " + row.path);
+            maintain.disabled = busy();
+            maintain.addEventListener("click", () => openMaintenance([row]));
+            buttons.appendChild(maintain);
+        }
+        return buttons;
+    }
+
+    // What the list last showed, so a re-render of the same list keeps its
+    // scroll position (e.g. after ticking a box) but a new list starts at the top.
+    let renderedList = "";
+
+    function renderRows() {
+        for (const entry of pillButtons) entry.el.classList.toggle("slls-lhm-on", entry.name === filter);
+        for (const entry of viewButtons) entry.el.classList.toggle("slls-lhm-on", entry.name === view);
+        // The tree already groups by container, so the pills only apply to the table.
+        pills.style.display = view === "Tree" ? "none" : "";
+        selection.style.display = view === "Tree" ? "flex" : "none";
+        tableSelection.style.display = view === "Tree" ? "none" : "flex";
+        search.placeholder = view === "Tree" ? "Search tree…" : "Search tables…";
+        renderSelection();
+        renderTableSelection();
+        const listKey = [view, filter, search.value.trim().toLowerCase(), model.get("loaded_lakehouse_id") || ""].join("|");
+        const scrollTop = listKey === renderedList ? listWrap.scrollTop : 0;
+        renderedList = listKey;
+        listWrap.innerHTML = "";
+        if (!(model.get("objects") || []).length) {
+            listWrap.appendChild(emptyState(model.get("loading")
+                ? "Reading the lakehouse…" : "This lakehouse is empty."));
+            return;
+        }
+        if (view === "Tree") renderTree(); else renderTable();
+        listWrap.scrollTop = scrollTop;
+    }
+
+    // Selectable: everything the user can act on, so not the containers
+    // (groupings) nor the "+N more" placeholders. A schema is picked as a
+    // whole; a table only as a whole, never the files inside it.
+    function selectable(node) {
+        if (node.type === "Container" || node.type === "More") return false;
+        indexTree();
+        for (let parent = parentOf.get(node.path); parent; parent = parentOf.get(parent.path)) {
+            if (parent.type === "Table") return false;
+        }
+        return true;
+    }
+
+    // `selected` holds only the topmost picked objects: a picked schema, folder
+    // or table stands for everything inside it, so its contents show as
+    // selected and an action targets it once rather than each object in it.
+    let indexedTree = null;
+    const parentOf = new Map();
+    function indexTree() {
+        const tree = model.get("tree") || [];
+        if (tree === indexedTree) return;
+        indexedTree = tree;
+        parentOf.clear();
+        const walk = (nodes, parent) => {
+            for (const node of nodes) { parentOf.set(node.path, parent); walk(node.children || [], node); }
+        };
+        walk(tree, null);
+    }
+
+    function selectedAncestor(node) {
+        indexTree();
+        for (let parent = parentOf.get(node.path); parent; parent = parentOf.get(parent.path)) {
+            if (selected.has(parent.path)) return parent;
+        }
+        return null;
+    }
+
+    function isChecked(node) {
+        return selected.has(node.path) || selectedAncestor(node) !== null;
+    }
+
+    // Paths holding some, but not all, selected objects.
+    function partialPaths() {
+        indexTree();
+        const partial = new Set();
+        for (const path of selected) {
+            for (let parent = parentOf.get(path); parent; parent = parentOf.get(parent.path)) partial.add(parent.path);
+        }
+        return partial;
+    }
+
+    function unselectWithin(node) {
+        for (const child of node.children || []) { selected.delete(child.path); unselectWithin(child); }
+    }
+
+    function setChecked(node, on) {
+        indexTree();
+        if (on) {
+            unselectWithin(node);
+            selected.add(node.path);
+            // A branch whose objects are now all selected becomes selected as a
+            // whole, unless it holds objects which are not listed (+N more).
+            for (let parent = parentOf.get(node.path); parent && selectable(parent); parent = parentOf.get(parent.path)) {
+                const children = parent.children || [];
+                if (!children.every((child) => selectable(child) && selected.has(child.path))) break;
+                for (const child of children) selected.delete(child.path);
+                selected.add(parent.path);
+            }
+            return;
+        }
+        if (selected.has(node.path)) { selected.delete(node.path); return; }
+        const ancestor = selectedAncestor(node);
+        if (!ancestor) return;
+        // Unpicking one object inside a picked branch keeps the rest of it.
+        selected.delete(ancestor.path);
+        for (let current = node; current.path !== ancestor.path; current = parentOf.get(current.path)) {
+            for (const sibling of parentOf.get(current.path).children || []) {
+                if (sibling.path !== current.path && selectable(sibling)) selected.add(sibling.path);
+            }
+        }
+    }
+
+    function selectedNodes() {
+        const found = [];
+        const walk = (nodes) => {
+            for (const node of nodes) {
+                if (selected.has(node.path)) found.push(node);
+                walk(node.children || []);
+            }
+        };
+        walk(model.get("tree") || []);
+        return found;
+    }
+
+    function renderSelection() {
+        const nodes = selectedNodes();
+        // Selections made before a reload may no longer exist.
+        if (nodes.length !== selected.size) {
+            selected.clear();
+            for (const node of nodes) selected.add(node.path);
+        }
+        selectedText.textContent = nodes.length
+            ? `${nodes.length} item${nodes.length === 1 ? "" : "s"} selected`
+            : "No items selected";
+        const recoverable = nodes.some((node) => node.deleted || node.deleted_files);
+        recoverSelected.disabled = busy() || !recoverable;
+        deleteSelected.disabled = busy() || !nodes.length;
+    }
+
+    recoverSelected.addEventListener("click", () => {
+        const paths = selectedNodes()
+            .filter((node) => node.deleted || node.deleted_files)
+            .map((node) => node.path);
+        if (paths.length) act("recover", { paths: paths });
+    });
+    deleteSelected.addEventListener("click", () => {
+        const nodes = selectedNodes();
+        if (!nodes.length) return;
+        confirmTitle.querySelector(".slls-lhm-panel-sub").textContent =
+            `${nodes.length} object${nodes.length === 1 ? "" : "s"} will be deleted from the lakehouse.`;
+        confirmList.textContent = nodes.slice(0, 10).map((node) => node.path).join(", ")
+            + (nodes.length > 10 ? `, +${nodes.length - 10} more` : "");
+        confirmOverlay.style.display = "flex";
+    });
+
+    function selectedTables() {
+        return (model.get("objects") || []).filter((row) => tableSelected.has(row.path) && maintainable(row));
+    }
+
+    function renderTableSelection() {
+        const rows = selectedTables();
+        // Tables picked before a reload may have gone or become unmaintainable.
+        if (rows.length !== tableSelected.size) {
+            tableSelected.clear();
+            for (const row of rows) tableSelected.add(row.path);
+        }
+        tableSelectedText.textContent = rows.length
+            ? `${rows.length} table${rows.length === 1 ? "" : "s"} selected`
+            : "No tables selected";
+        maintainSelected.disabled = busy() || !rows.length;
+        statsSelected.disabled = busy() || !rows.length;
+        const spark = sparkAvailable();
+        autoOnSelected.disabled = busy() || !rows.length || !spark;
+        autoOffSelected.disabled = busy() || !rows.length || !spark;
+        autoOnSelected.title = spark
+            ? "Turn auto-compaction on for the selected tables (delta.autoOptimize.autoCompact = true)"
+            : "Turning auto-compaction on requires a PySpark notebook";
+        autoOffSelected.title = spark
+            ? "Turn auto-compaction off for the selected tables (delta.autoOptimize.autoCompact = false)"
+            : "Turning auto-compaction off requires a PySpark notebook";
+    }
+
+    // Changing a table's properties runs Spark SQL, which a Python notebook lacks.
+    function sparkAvailable() { return model.get("spark_available") !== false; }
+
+    maintainSelected.addEventListener("click", () => openMaintenance(selectedTables(), true));
+    statsSelected.addEventListener("click", () => {
+        const paths = selectedTables().map((row) => row.path);
+        if (paths.length) clearTablesAfter = act("stats", { paths: paths });
+    });
+    for (const [button, enable] of [[autoOnSelected, true], [autoOffSelected, false]]) {
+        button.addEventListener("click", () => {
+            const paths = selectedTables().map((row) => row.path);
+            if (paths.length) clearTablesAfter = act("auto_compaction", { paths: paths, enable: enable });
+        });
+    }
+
+    function emptyState(text) {
+        const empty = document.createElement("div"); empty.className = "slls-lhm-empty";
+        empty.textContent = text; return empty;
+    }
+
+    function collectNodes(nodes, depth, out, term) {
+        let matched = false;
+        for (const node of nodes) {
+            const children = node.children || [];
+            const buffer = [];
+            const childMatch = collectNodes(children, depth + 1, buffer, term);
+            const selfMatch = !term || node.name.toLowerCase().indexOf(term) >= 0;
+            if (!selfMatch && !childMatch) continue;
+            matched = true;
+            // A search opens the branches it matched inside.
+            const open = children.length > 0
+                && ((term && childMatch) || expanded.has(node.path));
+            out.push({ node: node, depth: depth, open: open, hasChildren: children.length > 0 });
+            if (open) for (const row of buffer) out.push(row);
+        }
+        return matched;
+    }
+
+    function treeIcon(type) {
+        if (type === "Table") return `__ICON_TABLE__`;
+        if (type === "Schema") return `__ICON_SCHEMA__`;
+        if (type === "File") return `__ICON_FILE__`;
+        return `__ICON_FOLDER__`;
+    }
+
+    function renderTree() {
+        const rows = [];
+        collectNodes(model.get("tree") || [], 0, rows, search.value.trim().toLowerCase());
+        if (!rows.length) { listWrap.appendChild(emptyState("No objects match this search.")); return; }
+        const largest = rows.reduce((max, row) => Math.max(max, row.node.size || 0), 0) || 1;
+        const partial = partialPaths();
+        const wrap = document.createElement("div"); wrap.className = "slls-lhm-tree";
+        for (const row of rows) {
+            const node = row.node;
+            const el = document.createElement("div");
+            el.className = "slls-lhm-node" + (row.depth === 0 ? " slls-lhm-root" : "");
+            el.style.paddingLeft = (6 + row.depth * 18) + "px";
+
+            const caret = document.createElement("button"); caret.type = "button";
+            caret.className = "slls-lhm-caret" + (row.hasChildren ? (row.open ? " slls-lhm-open" : "") : " slls-lhm-leaf");
+            caret.innerHTML = `__ICON_CARET__`;
+            if (row.hasChildren) {
+                const label = (row.open ? "Collapse " : "Expand ") + node.path;
+                caret.title = row.open ? "Collapse" : "Expand";
+                caret.setAttribute("aria-label", label);
+                caret.setAttribute("aria-expanded", String(row.open));
+                caret.addEventListener("click", () => {
+                    if (expanded.has(node.path)) expanded.delete(node.path); else expanded.add(node.path);
+                    renderRows();
+                });
+            } else {
+                caret.tabIndex = -1; caret.setAttribute("aria-hidden", "true");
+            }
+            el.appendChild(caret);
+
+            if (node.type === "More") {
+                const more = document.createElement("span"); more.className = "slls-lhm-node-more";
+                more.textContent = node.name; el.appendChild(more); wrap.appendChild(el); continue;
+            }
+
+            if (selectable(node)) {
+                const check = document.createElement("input"); check.type = "checkbox";
+                check.className = "slls-lhm-node-check"; check.checked = isChecked(node);
+                check.indeterminate = !check.checked && partial.has(node.path);
+                check.setAttribute("aria-label", "Select " + node.path);
+                check.dataset.path = node.path;
+                check.addEventListener("change", () => {
+                    setChecked(node, check.checked);
+                    // Ticking a branch changes the boxes above and below it.
+                    renderRows();
+                    for (const box of listWrap.querySelectorAll(".slls-lhm-node-check")) {
+                        if (box.dataset.path === node.path) { box.focus(); break; }
+                    }
+                });
+                el.appendChild(check);
+            } else {
+                const slot = document.createElement("span"); slot.className = "slls-lhm-node-check-slot";
+                el.appendChild(slot);
+            }
+
+            const icon = document.createElement("span"); icon.className = "slls-lhm-node-icon";
+            icon.innerHTML = treeIcon(node.type);
+            const name = document.createElement("span"); name.className = "slls-lhm-node-name";
+            name.textContent = node.name; name.title = node.path;
+            el.append(icon, name);
+            if (node.deleted) el.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
+            else if (node.deleted_files) el.appendChild(badge(node.deleted_files + " deleted", `__ICON_TRASH__`, true));
+            if (node.shortcut) el.appendChild(badge("Shortcut", `__ICON_LINK__`, false));
+
+            const gap = document.createElement("span"); gap.className = "slls-lhm-node-spacer";
+            el.append(gap, rowActions(node));
+
+            const bar = document.createElement("span"); bar.className = "slls-lhm-bar";
+            const fill = document.createElement("span"); fill.className = "slls-lhm-bar-fill";
+            fill.style.width = Math.min(100, ((node.size || 0) / largest) * 100) + "%";
+            const barText = document.createElement("span"); barText.className = "slls-lhm-bar-text";
+            barText.textContent = node.size_label || "";
+            bar.append(fill, barText); el.appendChild(bar);
+            wrap.appendChild(el);
+        }
+        listWrap.appendChild(wrap);
+    }
+
+    // The table view lists the lakehouse's tables only; files are browsed in
+    // the tree. The schema column is shown for schema-enabled lakehouses.
+    const FILE_SIZE_BANDS = __FILE_SIZE_BANDS__;
+    const TABLE_COLUMNS = [
+        { key: "schema", label: "Schema", text: true, schemaOnly: true },
+        { key: "name", label: "Name", text: true },
+        { key: "size", label: "Size", num: true, width: 160 },
+        { key: "file_sizes", label: "File Sizes", width: 190,
+          title: "The distribution of the table's data file sizes; sorts by the average file size" },
+        { key: "files", label: "Files", num: true },
+        { key: "partitions", label: "Partitions", num: true },
+        { key: "deletion_vectors", label: "Deletion Vectors" },
+        // Collected on demand for the selected tables; shown once any are.
+        { key: "columns", label: "Columns", num: true, stats: true,
+          title: "The number of columns in the table" },
+        { key: "row_groups", label: "Row Groups", num: true, stats: true,
+          title: "The number of parquet row groups in the table's data files" },
+        { key: "rows", label: "Rows", num: true, stats: true,
+          title: "The number of rows in the table" },
+        { key: "z_order", label: "Z-Order", stats: true,
+          title: "The columns of the table's most recent Z-Ordered OPTIMIZE" },
+        { key: "liquid_clustering", label: "Liquid Clustering", stats: true,
+          title: "The table's liquid clustering columns" },
+        { key: "auto_compaction", label: "Auto-compaction", stats: true,
+          title: "Whether the table compacts small files automatically (delta.autoOptimize.autoCompact)" },
+        { key: "v_order", label: "V-Order", stats: true,
+          title: "Whether the table's data files are V-Ordered" },
+        { key: "modified", label: "Last modified" },
+        { key: "", label: "", num: true },
+    ];
+    const STAT_KEYS = new Set(TABLE_COLUMNS.filter((column) => column.stats).map((column) => column.key));
+    let tableSort = { key: "name", dir: 1 };
+    // Column widths the user set, kept across re-renders.
+    const tableWidths = new Map();
+
+    function statsOf(row) {
+        return (model.get("table_stats") || {})[row.path] || null;
+    }
+
+    function sortValue(row, key) {
+        if (STAT_KEYS.has(key)) {
+            // Tables without stats sort below every table which has them.
+            const stats = statsOf(row);
+            if (!stats || stats.error) return -1;
+            const value = stats[key];
+            if (Array.isArray(value)) return value.length;
+            if (typeof value === "boolean") return value ? 1 : 0;
+            return Number(value) || 0;
+        }
+        if (key === "file_sizes") return (row.file_sizes && row.file_sizes.avg) || 0;
+        if (key === "deletion_vectors") return row.deletion_vectors ? 1 : 0;
+        return row[key] || 0;
+    }
+
+    function compareTables(a, b) {
+        const byText = (x, y) => String(x || "").toLowerCase().localeCompare(String(y || "").toLowerCase());
+        const key = tableSort.key;
+        const column = TABLE_COLUMNS.find((c) => c.key === key) || {};
+        const order = column.text || key === "modified"
+            ? byText(a[key], b[key])
+            : sortValue(a, key) - sortValue(b, key);
+        return order * tableSort.dir || byText(a.schema, b.schema) || byText(a.name, b.name);
+    }
+
+    function textCell(text, className, title) {
+        const td = document.createElement("td");
+        if (className) td.className = className;
+        td.textContent = text;
+        if (title) td.title = title;
+        return td;
+    }
+
+    function sizeCell(row, largest) {
+        const td = document.createElement("td"); td.className = "slls-lhm-num slls-lhm-barcell";
+        const bar = document.createElement("span"); bar.className = "slls-lhm-bar";
+        const fill = document.createElement("span"); fill.className = "slls-lhm-bar-fill";
+        fill.style.width = Math.min(100, ((row.size || 0) / largest) * 100) + "%";
+        const text = document.createElement("span"); text.className = "slls-lhm-bar-text";
+        text.textContent = row.size_label || "—";
+        bar.append(fill, text); td.appendChild(bar);
+        return td;
+    }
+
+    // A mini histogram of the table's data files across the size bands, with
+    // the full breakdown (including the average file size) on hover.
+    function fileSizesCell(row) {
+        const stats = row.file_sizes || {};
+        if (!stats.count) return textCell("—", "slls-lhm-muted", "No data files");
+        const td = document.createElement("td");
+        const dist = document.createElement("div"); dist.className = "slls-lhm-dist";
+        const spark = document.createElement("span"); spark.className = "slls-lhm-spark";
+        spark.setAttribute("aria-hidden", "true");
+        const bands = stats.bands || [];
+        const peak = Math.max(1, ...bands);
+        bands.forEach((count) => {
+            const bar = document.createElement("span");
+            bar.className = "slls-lhm-spark-bar" + (count ? "" : " slls-lhm-zero");
+            if (count) bar.style.height = Math.max(12, (count / peak) * 100) + "%";
+            spark.appendChild(bar);
+        });
+        dist.appendChild(spark); td.appendChild(dist);
+        const lines = [
+            `${stats.count} data file${stats.count === 1 ? "" : "s"}`,
+            `Min ${stats.min_label} · Avg ${stats.avg_label} · Max ${stats.max_label}`,
+            "",
+        ];
+        bands.forEach((count, index) => lines.push(`${FILE_SIZE_BANDS[index]}: ${count}`));
+        td.title = lines.join("\n");
+        return td;
+    }
+
+    // A collected stat; the liquid clustering cell also offers changing it.
+    function statCell(row, column) {
+        const cell = statValueCell(row, column);
+        const pending = (model.get("stats_pending") || []).indexOf(row.path) >= 0;
+        if (column.key !== "liquid_clustering" || !maintainable(row) || pending) return cell;
+        const text = document.createElement("span"); text.className = "slls-lhm-cell-text";
+        text.textContent = cell.textContent; cell.textContent = "";
+        const edit = document.createElement("button"); edit.type = "button";
+        edit.className = "slls-lhm-iconbtn slls-lhm-cellbtn"; edit.innerHTML = `__ICON_PENCIL__`;
+        edit.title = sparkAvailable()
+            ? "Add, change or remove the table's liquid clustering columns"
+            : "Changing liquid clustering requires a PySpark notebook";
+        edit.setAttribute("aria-label", "Change the liquid clustering of " + row.path);
+        edit.disabled = busy() || !sparkAvailable();
+        edit.addEventListener("click", () => openClustering(row));
+        const wrap = document.createElement("div"); wrap.className = "slls-lhm-cellwrap";
+        wrap.append(text, edit); cell.appendChild(wrap);
+        return cell;
+    }
+
+    // A collected stat; "…" while the table is being read, "—" before.
+    function statValueCell(row, column) {
+        const num = column.num ? "slls-lhm-num " : "";
+        if ((model.get("stats_pending") || []).indexOf(row.path) >= 0) {
+            return textCell("…", num + "slls-lhm-muted", "Collecting stats…");
+        }
+        const stats = statsOf(row);
+        if (!stats) {
+            return textCell("—", num + "slls-lhm-muted",
+                maintainable(row) ? "Not collected; select the table and collect its stats" : "");
+        }
+        if (stats.error) {
+            const failed = textCell(column.key === "columns" ? "Failed" : "—", num + "slls-lhm-muted", stats.error);
+            if (column.key === "columns") failed.classList.add("slls-lhm-failed");
+            return failed;
+        }
+        const value = stats[column.key];
+        if (Array.isArray(value)) {
+            return value.length
+                ? textCell(value.join(", "), "", value.join(", "))
+                : textCell("No", "slls-lhm-muted");
+        }
+        if (typeof value === "boolean") return value ? textCell("Yes") : textCell("No", "slls-lhm-muted");
+        const cell = textCell(Number(value || 0).toLocaleString(), "slls-lhm-num");
+        if (column.key === "row_groups" && stats.unread_files) {
+            cell.title = `${stats.unread_files} data file${stats.unread_files === 1 ? "" : "s"} could not be read`;
+        }
+        return cell;
+    }
+
+    function renderTable() {
+        const term = search.value.trim().toLowerCase();
+        const tables = (model.get("objects") || []).filter((row) => row.type === "Table");
+        const rows = tables.filter((row) => {
+            if (filter === "Deleted" && !row.deleted && !row.deleted_files) return false;
+            return !term || row.path.toLowerCase().indexOf(term) >= 0;
+        });
+        if (!rows.length) {
+            listWrap.appendChild(emptyState(tables.length ? "No tables match this filter." : "This lakehouse has no tables."));
+            return;
+        }
+        const showSchema = model.get("schema_enabled") === true || tables.some((row) => row.schema);
+        const showStats = Object.keys(model.get("table_stats") || {}).length > 0
+            || (model.get("stats_pending") || []).length > 0;
+        const columns = TABLE_COLUMNS.filter((column) =>
+            (showSchema || !column.schemaOnly) && (showStats || !column.stats));
+        if (!columns.some((column) => column.key === tableSort.key)) tableSort = { key: "name", dir: 1 };
+        rows.sort(compareTables);
+        const largest = rows.reduce((max, row) => Math.max(max, row.size || 0), 0) || 1;
+        const table = document.createElement("table"); table.className = "slls-lhm-table";
+        const thead = document.createElement("thead"); const headRow = document.createElement("tr");
+        // Ticks every visible table which can be maintained.
+        const eligible = rows.filter(maintainable);
+        const allTicked = eligible.length > 0 && eligible.every((row) => tableSelected.has(row.path));
+        const checkHead = document.createElement("th"); checkHead.className = "slls-lhm-checkcell";
+        checkHead.dataset.columnWidth = "36";
+        const checkAll = document.createElement("input"); checkAll.type = "checkbox"; checkAll.className = "slls-lhm-node-check";
+        checkAll.checked = allTicked;
+        checkAll.indeterminate = !allTicked && eligible.some((row) => tableSelected.has(row.path));
+        checkAll.disabled = !eligible.length;
+        checkAll.title = "Select all tables shown";
+        checkAll.setAttribute("aria-label", checkAll.title);
+        checkAll.addEventListener("change", () => {
+            for (const row of eligible) {
+                if (allTicked) tableSelected.delete(row.path); else tableSelected.add(row.path);
+            }
+            renderRows();
+        });
+        checkHead.appendChild(checkAll); headRow.appendChild(checkHead);
+        for (const column of columns) {
+            const th = document.createElement("th"); if (column.num) th.className = "slls-lhm-num";
+            // Bars have no intrinsic width, so their columns start at a set
+            // width (the resizers read it from data-column-width).
+            if (column.width) {
+                th.style.width = column.width + "px";
+                th.dataset.columnWidth = String(column.width);
+            }
+            if (column.key) {
+                const active = tableSort.key === column.key;
+                th.setAttribute("aria-sort", active ? (tableSort.dir > 0 ? "ascending" : "descending") : "none");
+                const sortBtn = document.createElement("button"); sortBtn.type = "button"; sortBtn.className = "slls-lhm-sort";
+                sortBtn.textContent = column.label;
+                sortBtn.title = column.title || ("Sort by " + column.label.toLowerCase());
+                if (active) {
+                    const arrow = document.createElement("span"); arrow.className = "slls-lhm-sort-icon";
+                    arrow.innerHTML = tableSort.dir > 0 ? `__ICON_SORT_ASC__` : `__ICON_SORT_DESC__`;
+                    sortBtn.appendChild(arrow);
+                }
+                sortBtn.addEventListener("click", () => {
+                    // Text starts A to Z; sizes, counts, flags and dates start with the largest.
+                    if (active) tableSort = { key: column.key, dir: -tableSort.dir };
+                    else tableSort = { key: column.key, dir: column.text ? 1 : -1 };
+                    renderRows();
+                });
+                th.appendChild(sortBtn);
+            }
+            headRow.appendChild(th);
+        }
+        thead.appendChild(headRow); table.appendChild(thead);
+        const tbody = document.createElement("tbody");
+        for (const row of rows) {
+            const tr = document.createElement("tr");
+            const checkCell = document.createElement("td"); checkCell.className = "slls-lhm-checkcell";
+            if (maintainable(row)) {
+                const check = document.createElement("input"); check.type = "checkbox";
+                check.className = "slls-lhm-node-check"; check.checked = tableSelected.has(row.path);
+                check.setAttribute("aria-label", "Select " + row.path);
+                check.dataset.path = row.path;
+                check.addEventListener("change", () => {
+                    if (check.checked) tableSelected.add(row.path); else tableSelected.delete(row.path);
+                    // The select-all box and the toolbar count follow the tick.
+                    renderRows();
+                    for (const box of listWrap.querySelectorAll(".slls-lhm-node-check")) {
+                        if (box.dataset.path === row.path) { box.focus({ preventScroll: true }); break; }
+                    }
+                });
+                checkCell.appendChild(check);
+            }
+            tr.appendChild(checkCell);
+            if (showSchema) tr.appendChild(textCell(row.schema || "—", row.schema ? "" : "slls-lhm-muted"));
+
+            const nameCell = document.createElement("td");
+            const name = document.createElement("div"); name.className = "slls-lhm-name";
+            const icon = document.createElement("span");
+            icon.innerHTML = row.shortcut ? `__ICON_LINK__` : `__ICON_TABLE__`;
+            if (row.shortcut) { icon.title = "Shortcut"; icon.setAttribute("aria-label", "Shortcut"); }
+            const label = document.createElement("span"); label.className = "slls-lhm-name-text";
+            label.textContent = row.name;
+            label.title = row.path;
+            name.append(icon, label);
+            if (row.deleted) name.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
+            else if (row.deleted_files) name.appendChild(badge(row.deleted_files + " deleted", `__ICON_TRASH__`, true));
+            nameCell.appendChild(name); tr.appendChild(nameCell);
+
+            tr.appendChild(sizeCell(row, largest));
+            tr.appendChild(fileSizesCell(row));
+            tr.appendChild(textCell(String(row.files || 0), "slls-lhm-num"));
+            tr.appendChild(row.partitions
+                ? textCell(String(row.partitions), "slls-lhm-num")
+                : textCell("—", "slls-lhm-num slls-lhm-muted", "Not partitioned"));
+            const dvFiles = row.deletion_vector_files || 0;
+            tr.appendChild(row.deletion_vectors
+                ? textCell("Yes", "", `${dvFiles} deletion vector file${dvFiles === 1 ? "" : "s"}`)
+                : textCell("No", "slls-lhm-muted"));
+            if (showStats) {
+                for (const column of columns) if (column.stats) tr.appendChild(statCell(row, column));
+            }
+            tr.appendChild(textCell(row.modified_label || "—"));
+
+            const actionsCell = document.createElement("td");
+            actionsCell.appendChild(rowActions(row, false)); tr.appendChild(actionsCell);
+            tbody.appendChild(tr);
+        }
+        table.appendChild(tbody); listWrap.appendChild(table);
+        // The checkbox, schema (when shown) and name columns are frozen.
+        const frozen = showSchema ? 3 : 2;
+        for (const tr of table.rows) {
+            for (let i = 0; i < frozen; i++) {
+                tr.cells[i].classList.add("slls-lhm-frozen");
+                if (i === frozen - 1) tr.cells[i].classList.add("slls-lhm-frozen-last");
+            }
+        }
+        // Measured once in the DOM, so the columns start out filling the list.
+        sllsInstallColumnResizers(table, {
+            widths: tableWidths, minWidth: 56,
+            key: (showSchema ? "tables-schema" : "tables") + (showStats ? "-stats" : ""),
+            // Each frozen column sits right after the ones before it, so its
+            // offset follows their widths as they are resized.
+            onWidthsChanged: (resized, widths) => {
+                let left = 0;
+                for (let i = 0; i < frozen; i++) {
+                    for (const tr of resized.rows) tr.cells[i].style.left = left + "px";
+                    left += widths[i];
+                }
+            },
+        });
+    }
+
+    function badge(text, iconSvg, bad) {
+        const span = document.createElement("span");
+        span.className = "slls-lhm-badge" + (bad ? " slls-lhm-deleted" : "");
+        span.innerHTML = iconSvg; span.appendChild(document.createTextNode(text));
+        return span;
+    }
+
+    function renderState() {
+        const loading = model.get("picker_loading") === true;
+        const working = busy();
+        const workspaceId = model.get("selected_workspace_id") || "";
+        const lakehouseId = model.get("selected_lakehouse_id") || "";
+        ws.setEmptyLabel(loading ? "Loading workspaces…" : "No workspaces");
+        ws.setOptions((model.get("available_workspaces") || []).map((x) => ({ value: x.id, label: x.name })), workspaceId);
+        lh.setEmptyLabel(!workspaceId ? "Select a workspace first…" : (loading ? "Loading lakehouses…" : "No lakehouses"));
+        lh.setOptions((model.get("available_lakehouses") || []).map((x) => ({ value: x.id, label: x.name })), lakehouseId);
+        ws.setDisabled(working); lh.setDisabled(!workspaceId || working);
+        openBtn.disabled = !lakehouseId || working;
+
+        // Contents and actions belong to the loaded lakehouse, not the picker selection.
+        const loadedWorkspaceId = model.get("loaded_workspace_id") || "";
+        const loadedLakehouseId = model.get("loaded_lakehouse_id") || "";
+        const hasContents = Boolean(loadedLakehouseId || lakehouseId) && !pickerOpen;
+        backdrop.style.display = pickerOpen ? "flex" : "none";
+        backdrop.classList.toggle("slls-lhm-modal", pickerOpen && Boolean((model.get("objects") || []).length));
+        closePicker.style.display = (model.get("objects") || []).length ? "" : "none";
+        body.style.display = hasContents ? "flex" : "none";
+        changeBtn.style.display = hasContents ? "" : "none";
+        reloadBtn.style.display = hasContents ? "" : "none";
+        reloadBtn.disabled = working;
+        reloadBtn.classList.toggle("sl-spinning", model.get("loading") === true);
+        progress.classList.toggle("slls-lhm-show", working);
+
+        const lakehouseName = nameOf("available_lakehouses", loadedLakehouseId);
+        const workspaceName = nameOf("available_workspaces", loadedWorkspaceId);
+        subtitle.innerHTML = "";
+        if (hasContents && lakehouseName) {
+            const b = document.createElement("b"); b.textContent = lakehouseName;
+            const sep = document.createElement("span"); sep.className = "sl-sep"; sep.textContent = "·";
+            subtitle.append(b, sep, document.createTextNode(workspaceName));
+            if (model.get("schema_enabled") === true) {
+                const sep2 = document.createElement("span"); sep2.className = "sl-sep"; sep2.textContent = "·";
+                subtitle.append(sep2, document.createTextNode("Schema-enabled"));
+            }
+        }
+
+        const summary = model.get("summary") || {};
+        for (const key of Object.keys(cardValues)) {
+            const value = summary[key];
+            cardValues[key].textContent = value === undefined || value === null || value === "" ? "—" : String(value);
+        }
+
+        const error = model.get("error_message") || "";
+        const status = statusShown ? (model.get("status_message") || "") : "";
+        noteText.textContent = error || status;
+        noteIcon.innerHTML = error ? `__ICON_ALERT__` : `__ICON_CHECK__`;
+        noteIcon.style.display = (error || status) ? "" : "none";
+        note.classList.toggle("slls-lhm-show", Boolean(error || status));
+        note.classList.toggle("slls-lhm-bad", Boolean(error));
+    }
+
+    openBtn.addEventListener("click", () => {
+        if (!model.get("selected_lakehouse_id")) return;
+        pickerOpen = false; renderState();
+        act("open", { workspace: model.get("selected_workspace_id"), lakehouse: model.get("selected_lakehouse_id") });
+    });
+    closePicker.addEventListener("click", () => { pickerOpen = false; renderState(); });
+    changeBtn.addEventListener("click", () => { pickerOpen = true; renderState(); });
+    reloadBtn.addEventListener("click", () => act("reload", {}));
+    backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop && backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
+    });
+    root.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (confirmOverlay.style.display !== "none") closeConfirm();
+        else if (clusterOverlay.style.display !== "none") closeClustering();
+        else if (overlay.style.display !== "none") closeDialog();
+        else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
+    });
+    search.addEventListener("input", renderRows);
+
+    // An action's outcome is shown for a few seconds, then hidden; errors stay
+    // until the next action so they are not missed. Registered before the
+    // re-render below so a new message is never hidden by the previous timer.
+    const STATUS_VISIBLE_MS = 5000;
+    let statusShown = true;
+    let statusTimer = null;
+    function scheduleStatusHide() {
+        clearTimeout(statusTimer);
+        statusShown = true;
+        if (!model.get("status_message")) return;
+        statusTimer = setTimeout(() => { statusShown = false; renderState(); }, STATUS_VISIBLE_MS);
+    }
+    model.on("change:status_message", scheduleStatusHide);
+    scheduleStatusHide();
+
+    for (const name of ["available_workspaces", "available_lakehouses", "selected_workspace_id",
+        "selected_lakehouse_id", "picker_loading", "loading", "busy", "summary",
+        "schema_enabled", "status_message", "error_message", "tree", "table_stats", "stats_pending",
+        "spark_available"]) {
+        model.on("change:" + name, () => { renderState(); renderRows(); });
+    }
+    model.on("change:cluster_info", renderClustering);
+    model.on("change:busy", renderClustering);
+    // A different lakehouse was loaded: selections made in the previous one
+    // must never carry over to it.
+    model.on("change:loaded_lakehouse_id", () => {
+        selected.clear(); tableSelected.clear();
+        expanded.clear(); expanded.add("Tables"); expanded.add("Files");
+        renderState(); renderRows();
+    });
+    model.on("change:action_done", () => {
+        renderClustering();
+        pumpBatch();
+        if (!clearTablesAfter || (model.get("action_done") || 0) < clearTablesAfter) return;
+        // A batch's first request finishes with its first table.
+        if (batchActive()) return;
+        clearTablesAfter = 0;
+        tableSelected.clear();
+        renderRows();
+    });
+    model.on("change:objects", () => {
+        if ((model.get("objects") || []).length) pickerOpen = false;
+        renderState(); renderRows();
+    });
+
+    // The kernel runs a batch one table per request; the next is asked for
+    // once the kernel is idle, or the batch is cancelled instead.
+    let cancelRequested = false;
+    function batchActive() { return Boolean((model.get("batch") || {}).total); }
+    function pumpBatch() {
+        if (!batchActive()) { cancelRequested = false; renderBatch(); return; }
+        if ((model.get("action_done") || 0) < (model.get("action_trigger") || 0)) return;
+        act(cancelRequested ? "batch_cancel" : "batch_next");
+    }
+    function renderBatch() {
+        const info = model.get("batch") || {};
+        batchBar.style.display = batchActive() ? "flex" : "none";
+        if (!batchActive()) return;
+        batchText.textContent = `${info.title}: ${info.done} of ${info.total} table${info.total === 1 ? "" : "s"} done`
+            + (cancelRequested ? " · stopping after the table in progress…"
+                : info.current ? ` · ${info.current}…` : "");
+        batchCancel.disabled = cancelRequested;
+        batchCancel.textContent = cancelRequested ? "Cancelling…" : "Cancel";
+    }
+    batchCancel.addEventListener("click", () => {
+        cancelRequested = true;
+        renderBatch();
+        pumpBatch();
+    });
+    model.on("change:batch", renderBatch);
+
+    renderState(); renderRows(); renderBatch();
+    pumpBatch();
+}
+export default { render };
+""".replace("__ICON_LAKEHOUSE__", _UI_ICONS["warehouse"])
+    .replace("__ICON_SWAP__", _UI_ICONS["swap"])
+    .replace("__ICON_REFRESH__", _UI_ICONS["refresh"])
+    .replace("__ICON_SUN__", _UI_ICONS["sun"])
+    .replace("__ICON_MOON__", _UI_ICONS["moon"])
+    .replace("__ICON_FS_EXIT__", _UI_ICONS["fullscreen_exit"])
+    .replace("__ICON_FS__", _UI_ICONS["fullscreen"])
+    .replace("__ICON_CLOSE__", _UI_ICONS["close"])
+    .replace("__ICON_TABLE__", _UI_ICONS["table"])
+    .replace("__ICON_TREE__", _UI_ICONS["list_tree"])
+    .replace("__ICON_CARET__", _UI_ICONS["chevron_right"])
+    .replace("__ICON_SCHEMA__", _UI_ICONS["database"])
+    .replace("__ICON_FOLDER__", _UI_ICONS["folder"])
+    .replace("__ICON_FILE__", _UI_ICONS["file"])
+    .replace("__ICON_TRASH__", _UI_ICONS["trash"])
+    .replace("__ICON_LINK__", _UI_ICONS["link"])
+    .replace("__ICON_SORT_ASC__", _UI_ICONS["sort_asc"])
+    .replace("__ICON_SORT_DESC__", _UI_ICONS["sort_desc"])
+    .replace("__ICON_UNDO__", _UI_ICONS["undo"])
+    .replace("__ICON_WRENCH__", _UI_ICONS["wrench"])
+    .replace("__ICON_STATS__", _UI_ICONS["bar_chart"])
+    .replace("__ICON_AUTO_ON__", _UI_ICONS["collapse_diagonal"])
+    .replace("__ICON_AUTO_OFF__", _UI_ICONS["expand_diagonal"])
+    .replace("__ICON_PENCIL__", _UI_ICONS["pencil"])
+    .replace("__ICON_ALERT__", _UI_ICONS["alert"])
+    .replace("__ICON_CHECK__", _UI_ICONS["check_circle"])
+    .replace("__ATTRIBUTION__", _ui_render_attribution_html())
+    .replace(
+        "__FILE_SIZE_BANDS__",
+        json.dumps([label for label, _ in _FILE_SIZE_BANDS], ensure_ascii=False),
+    )
+)
+
+
+def _display_rows(objects: List[dict]) -> List[dict]:
+    """The object rows as sent to the frontend, with display labels resolved."""
+
+    rows = []
+    for row in objects:
+        display = dict(row)
+        display["size_label"] = _format_bytes(row.get("size"))
+        display["modified_label"] = str(row.get("modified") or "")[:19].replace(
+            "T", " "
+        )
+        rows.append(display)
+    return rows
+
+
+def _action_paths(data: dict) -> List[str]:
+    """The object paths an action applies to (one row, or a tree selection)."""
+
+    paths = [str(path).strip("/") for path in (data.get("paths") or [])]
+    single = str(data.get("path") or "").strip("/")
+    if single and single not in paths:
+        paths.append(single)
+    return [path for path in paths if path]
+
+
+def _is_safe_object_path(path: str) -> bool:
+    """Whether a path is confined beneath the lakehouse's Tables or Files.
+
+    Paths come from the browser, so any form which could escape the lakehouse
+    once appended to its ABFSS URI (``..`` segments, percent-encoding,
+    backslashes, query strings, fragments, control characters) is refused.
+    """
+
+    if not isinstance(path, str) or not path:
+        return False
+    if any(ch in path for ch in "\\?#%") or any(ord(ch) < 32 for ch in path):
+        return False
+    parts = path.split("/")
+    if len(parts) < 2 or parts[0] not in _CONTAINERS:
+        return False
+    return all(part not in ("", ".", "..") for part in parts)
+
+
+def _actionable_paths(objects: List[dict], tree: List[dict]) -> set:
+    """The paths of the loaded objects which recover / delete may target.
+
+    Containers are groupings and the "+N more" nodes are not objects, so
+    neither can be targeted. A schema can, which acts on all of its tables.
+    """
+
+    allowed = {str(row.get("path") or "") for row in objects}
+    groupings = set()
+
+    def _walk(nodes: List[dict]):
+        for node in nodes:
+            path = str(node.get("path") or "")
+            if node.get("type") in ("Container", "More"):
+                groupings.add(path)
+            else:
+                allowed.add(path)
+            _walk(node.get("children") or [])
+
+    _walk(tree)
+    return {path for path in allowed - groupings if _is_safe_object_path(path)}
+
+
+def _maintainable_tables(objects: List[dict]) -> Dict[str, Tuple[str, str]]:
+    """The loaded tables which table maintenance may target, by path.
+
+    Maps each table's path to its ``(schema, name)``. Shortcuts point at
+    another source's data and deleted tables have no data, so neither is
+    included.
+    """
+
+    return {
+        str(row["path"]): (str(row.get("schema") or ""), str(row.get("name") or ""))
+        for row in objects
+        if row.get("type") == "Table"
+        and not row.get("shortcut")
+        and not row.get("deleted")
+        and _is_safe_object_path(str(row.get("path") or ""))
+    }
+
+
+# ---------------------------------------------------------------------------
+# Table stats (columns, rows, row groups and the table's layout features)
+# ---------------------------------------------------------------------------
+def _relative_data_file(uri: str, table_rel: str) -> Optional[str]:
+    """A data file's path relative to its table folder, or None.
+
+    Spark reports a table's files as full (possibly percent-encoded) URIs;
+    ``table_rel`` is the table's folder in the lakehouse, e.g. ``Tables/dbo/sales``.
+    """
+
+    from urllib.parse import unquote
+
+    text = unquote(str(uri or ""))
+    marker = "/" + table_rel.strip("/") + "/"
+    index = text.find(marker)
+    if index < 0:
+        return None
+    start = index + len(marker)
+    return text[start:] or None
+
+
+def _parse_column_list(value: Any) -> List[str]:
+    """The columns of a history parameter such as ``zOrderBy`` or ``clusterBy``.
+
+    Delta records them as a JSON array (sometimes of nested name parts); an
+    unparsable value is read as a comma-separated list.
+    """
+
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except ValueError:
+            return [part.strip() for part in text.split(",") if part.strip()]
+    else:
+        parsed = value
+    if isinstance(parsed, str):
+        return [parsed] if parsed else []
+    columns = []
+    for item in parsed or []:
+        if isinstance(item, (list, tuple)):
+            name = ".".join(str(part) for part in item if part is not None)
+        else:
+            name = str(item) if item is not None else ""
+        if name:
+            columns.append(name)
+    return columns
+
+
+def _history_entries(history: Any) -> List[dict]:
+    """A table's history entries, newest first, as plain dicts."""
+
+    if history is None:
+        return []
+    if hasattr(history, "to_dict"):
+        entries = history.to_dict("records")
+    else:
+        entries = [dict(entry) for entry in history]
+    if any("version" in entry for entry in entries):
+        entries.sort(key=lambda entry: entry.get("version") or 0, reverse=True)
+    return entries
+
+
+def _operation_parameters(entry: dict) -> dict:
+    params = entry.get("operationParameters")
+    return params if isinstance(params, dict) else {}
+
+
+def _history_zorder(history: Any) -> List[str]:
+    """The Z-Order columns of the table's most recent Z-Ordered OPTIMIZE.
+
+    Z-Order is not a table property; each OPTIMIZE records it in the history.
+    """
+
+    for entry in _history_entries(history):
+        if str(entry.get("operation") or "") != "OPTIMIZE":
+            continue
+        columns = _parse_column_list(_operation_parameters(entry).get("zOrderBy"))
+        if columns:
+            return columns
+    return []
+
+
+def _history_clustering(history: Any) -> List[str]:
+    """The liquid clustering columns, as last set in the table's history.
+
+    Set when the table is created (``clusterBy``) or altered with
+    ``CLUSTER BY`` (``newClusteringColumns``); an empty list means removed.
+    """
+
+    for entry in _history_entries(history):
+        params = _operation_parameters(entry)
+        for key in ("newClusteringColumns", "clusterBy"):
+            if key in params:
+                return _parse_column_list(params.get(key))
+    return []
+
+
+def _is_true(value: Any) -> bool:
+    return str(value).strip().lower() == "true"
+
+
+def _is_fatal(error: BaseException) -> bool:
+    """Whether an error must stop the kernel's work rather than be reported."""
+
+    return isinstance(error, (KeyboardInterrupt, SystemExit, GeneratorExit))
+
+
+def _error_text(error: BaseException) -> str:
+    return str(error) or type(error).__name__
+
+
+def _job_status(result: Any) -> str:
+    """The status of a finished Fabric job, from its result dataframe."""
+
+    try:
+        return str(result["Status"].iloc[0] or "")
+    except Exception:
+        return ""
+
+
+def _footer_stats(table_dir: str, files: List[str]) -> Tuple[int, int, bool, int]:
+    """Read the parquet footers of a table's live data files.
+
+    Returns ``(row_groups, rows, v_ordered, unread_files)``. A file is V-Ordered
+    when its footer carries a ``vorder`` key.
+    """
+
+    import os
+    import pyarrow.parquet as pq
+
+    row_groups = rows = unread = 0
+    v_ordered = False
+    for file in files:
+        local = os.path.join(table_dir, *str(file).split("/"))
+        try:
+            metadata = pq.read_metadata(local)
+        except Exception:
+            unread += 1
+            continue
+        row_groups += metadata.num_row_groups
+        rows += metadata.num_rows
+        if not v_ordered:
+            v_ordered = any(
+                b"vorder" in key.lower() for key in (metadata.metadata or {})
+            )
+    return row_groups, rows, v_ordered, unread
+
+
+def _delta_details_spark(path: str, table_rel: str) -> dict:
+    """Columns, rows, live files, properties and clustering, read with Spark."""
+
+    from sempy_labs._helper_functions import _get_delta_table
+
+    delta_table = _get_delta_table(path)
+    detail = delta_table.detail().collect()[0].asDict()
+    df = delta_table.toDF()
+    return {
+        "columns": len(df.columns),
+        # Counted by Spark, so rows removed by deletion vectors are excluded.
+        "rows": int(df.count()),
+        "files": [
+            rel
+            for rel in (_relative_data_file(uri, table_rel) for uri in df.inputFiles())
+            if rel
+        ],
+        "properties": dict(detail.get("properties") or {}),
+        "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Table settings (auto-compaction and liquid clustering), changed with Spark SQL
+# ---------------------------------------------------------------------------
+_SPARK_REQUIRED = (
+    "{what} requires a PySpark notebook, as it runs Spark SQL; this is a "
+    "Python notebook."
+)
+# Delta allows at most four clustering columns.
+_MAX_CLUSTERING_COLUMNS = 4
+# Delta clusters on columns it keeps min/max statistics for, which these lack.
+_UNCLUSTERABLE_TYPES = ("array", "map", "struct", "binary")
+
+
+def _quote_identifier(name: str) -> str:
+    """A Spark SQL identifier, back-quoted so any name is taken literally."""
+
+    return "`" + str(name).replace("`", "``") + "`"
+
+
+def _delta_path_table(path: str) -> str:
+    """A Spark SQL reference to the delta table at ``path``.
+
+    The path is used rather than the table's name so the table need not be in
+    the lakehouse attached to the notebook.
+    """
+
+    return "delta." + _quote_identifier(path)
+
+
+def _auto_compaction_sql(path: str, enable: bool) -> str:
+    value = "true" if enable else "false"
+    return (
+        f"ALTER TABLE {_delta_path_table(path)} SET TBLPROPERTIES "
+        f"('delta.autoOptimize.autoCompact' = '{value}')"
+    )
+
+
+def _clustering_sql(path: str, columns: List[str]) -> str:
+    """``CLUSTER BY`` the given columns, or ``CLUSTER BY NONE`` to remove it."""
+
+    if columns:
+        clause = "CLUSTER BY (" + ", ".join(_quote_identifier(c) for c in columns) + ")"
+    else:
+        clause = "CLUSTER BY NONE"
+    return f"ALTER TABLE {_delta_path_table(path)} {clause}"
+
+
+def _table_columns_spark(path: str) -> dict:
+    """A delta table's columns and current liquid clustering columns."""
+
+    from sempy_labs._helper_functions import _get_delta_table
+
+    delta_table = _get_delta_table(path)
+    detail = delta_table.detail().collect()[0].asDict()
+    columns = []
+    for field in delta_table.toDF().schema.fields:
+        data_type = field.dataType.simpleString()
+        columns.append(
+            {
+                "name": field.name,
+                "type": data_type,
+                "clusterable": not data_type.startswith(_UNCLUSTERABLE_TYPES),
+            }
+        )
+    return {
+        "columns": columns,
+        "clustering": [str(c) for c in (detail.get("clusteringColumns") or [])],
+    }
+
+
+def _spark_available() -> bool:
+    """Whether the notebook runs Spark (a PySpark, not a Python, notebook)."""
+
+    try:
+        from sempy_labs._helper_functions import _pure_python_notebook
+
+        return not _pure_python_notebook()
+    except Exception:
+        return True
+
+
+_COMMIT_FILE = re.compile(r"^(\d{20})\.json$")
+# A classic checkpoint, whole or in parts: <version>.checkpoint[.<part>.<parts>].parquet
+_CHECKPOINT_FILE = re.compile(
+    r"^(\d{20})\.checkpoint(?:\.(\d{10})\.(\d{10}))?\.parquet$"
+)
+_LOG_UNREADABLE = (
+    "The table's delta log uses a format which can only be read with Spark; "
+    "collect its stats in a PySpark notebook."
+)
+
+
+def _as_dict(value: Any) -> dict:
+    """A delta map (a dict in JSON, key/value pairs in a parquet checkpoint)."""
+
+    if isinstance(value, dict):
+        return dict(value)
+    result = {}
+    for item in value or []:
+        if isinstance(item, dict):
+            result[item.get("key")] = item.get("value")
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            result[item[0]] = item[1]
+    return result
+
+
+def _log_files(log_dir: str) -> Tuple[Dict[int, str], Dict[int, List[str]]]:
+    """A delta log's commit files and complete classic checkpoints, by version."""
+
+    import os
+
+    commits: Dict[int, str] = {}
+    parts: Dict[int, Dict[int, str]] = {}
+    totals: Dict[int, int] = {}
+    for name in os.listdir(log_dir):
+        match = _COMMIT_FILE.match(name)
+        if match:
+            commits[int(match.group(1))] = name
+            continue
+        match = _CHECKPOINT_FILE.match(name)
+        if match:
+            version = int(match.group(1))
+            parts.setdefault(version, {})[int(match.group(2) or 1)] = name
+            totals[version] = int(match.group(3) or 1)
+    checkpoints = {
+        version: [found[index] for index in sorted(found)]
+        for version, found in parts.items()
+        if len(found) == totals[version]
+    }
+    return commits, checkpoints
+
+
+def _read_checkpoint_actions(file: str):
+    """Yield ``(action, value)`` for the actions in a parquet checkpoint file."""
+
+    import pyarrow.parquet as pq
+
+    present = set(pq.read_schema(file).names)
+    columns = [
+        name
+        for name in ("add", "metaData", "protocol", "domainMetadata")
+        if name in present
+    ]
+    table = pq.read_table(file, columns=columns)
+    for name in columns:
+        for value in table.column(name).to_pylist():
+            if value is not None:
+                yield name, value
+
+
+def _read_commit_actions(file: str):
+    """Yield ``(action, value)`` for the actions in a JSON commit file."""
+
+    with open(file, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            for name, value in json.loads(line).items():
+                yield name, value
+
+
+def _physical_names(schema: dict) -> Dict[str, str]:
+    """Map column mapping's physical column names to the columns' names."""
+
+    names: Dict[str, str] = {}
+
+    def _walk(fields: list):
+        for field in fields or []:
+            physical = (field.get("metadata") or {}).get(
+                "delta.columnMapping.physicalName"
+            )
+            if physical:
+                names[str(physical)] = str(field.get("name"))
+            nested = field.get("type")
+            if isinstance(nested, dict):
+                _walk(nested.get("fields"))
+
+    _walk(schema.get("fields"))
+    return names
+
+
+def _log_zorder(log_dir: str, commits: Dict[int, str]) -> List[str]:
+    """The Z-Order columns of the most recent Z-Ordered OPTIMIZE in the log."""
+
+    import os
+
+    for version in sorted(commits, reverse=True):
+        try:
+            with open(
+                os.path.join(log_dir, commits[version]), "r", encoding="utf-8"
+            ) as handle:
+                for line in handle:
+                    if '"commitInfo"' not in line:
+                        continue
+                    info = json.loads(line).get("commitInfo") or {}
+                    if info.get("operation") != "OPTIMIZE":
+                        continue
+                    params = info.get("operationParameters") or {}
+                    columns = _parse_column_list(params.get("zOrderBy"))
+                    if columns:
+                        return columns
+        except (OSError, ValueError):
+            continue
+    return []
+
+
+def _delta_log_details(table_dir: str) -> dict:
+    """Columns, rows, live files, properties, clustering and Z-Order of a table.
+
+    Read straight from the table's delta log (JSON commits on top of its latest
+    usable parquet checkpoint), so neither Spark nor the deltalake package is
+    needed.
+    """
+
+    import os
+    from urllib.parse import unquote
+
+    log_dir = os.path.join(table_dir, "_delta_log")
+    commits, checkpoints = _log_files(log_dir)
+    latest = max(list(commits) + list(checkpoints), default=None)
+    if latest is None:
+        raise ValueError("The table has no delta log.")
+    # Replay from the newest checkpoint followed by every later commit; with
+    # no usable checkpoint, from the first commit.
+    start = next(
+        (
+            version
+            for version in sorted(checkpoints, reverse=True)
+            if all(v in commits for v in range(version + 1, latest + 1))
+        ),
+        None,
+    )
+    if start is None:
+        if not all(v in commits for v in range(0, latest + 1)):
+            raise ValueError(_LOG_UNREADABLE)
+        start = -1
+
+    live: Dict[str, dict] = {}
+    state: Dict[str, Any] = {"metaData": None, "protocol": None}
+    domains: Dict[str, Any] = {}
+
+    def _apply(name: str, value: Any):
+        if name == "add":
+            live[value["path"]] = value
+        elif name == "remove":
+            live.pop(value.get("path"), None)
+        elif name in state:
+            state[name] = value
+        elif name == "domainMetadata":
+            if value.get("removed"):
+                domains.pop(value.get("domain"), None)
+            else:
+                domains[value.get("domain")] = value.get("configuration")
+
+    if start >= 0:
+        for name in checkpoints[start]:
+            for action, value in _read_checkpoint_actions(os.path.join(log_dir, name)):
+                _apply(action, value)
+    for version in range(start + 1, latest + 1):
+        for action, value in _read_commit_actions(
+            os.path.join(log_dir, commits[version])
+        ):
+            _apply(action, value)
+
+    protocol = state["protocol"] or {}
+    if protocol.get("minReaderVersion", 1) > 3:
+        raise ValueError(_LOG_UNREADABLE)
+    metadata = state["metaData"] or {}
+    schema = json.loads(metadata.get("schemaString") or "{}")
+
+    files = []
+    rows: Optional[int] = 0
+    deleted_rows = 0
+    for path, add in live.items():
+        # Files outside the table folder (e.g. a shallow clone's) are not read.
+        if "://" not in path:
+            files.append(unquote(path))
+        records = None
+        stats = add.get("stats")
+        if isinstance(stats, str) and stats:
+            try:
+                records = json.loads(stats).get("numRecords")
+            except ValueError:
+                records = None
+        if records is None and isinstance(add.get("stats_parsed"), dict):
+            records = add["stats_parsed"].get("numRecords")
+        if records is None:
+            rows = None
+        elif rows is not None:
+            rows += int(records)
+        vector = add.get("deletionVector") or {}
+        deleted_rows += int(vector.get("cardinality") or 0)
+
+    clustering = []
+    config = domains.get("delta.clustering")
+    if config:
+        try:
+            parsed = json.loads(config) if isinstance(config, str) else config
+            physical = _physical_names(schema)
+            clustering = [
+                (
+                    ".".join(physical.get(str(part), str(part)) for part in column)
+                    if isinstance(column, (list, tuple))
+                    else physical.get(str(column), str(column))
+                )
+                for column in parsed.get("clusteringColumns") or []
+            ]
+        except (ValueError, AttributeError):
+            clustering = []
+
+    return {
+        "columns": len(schema.get("fields") or []),
+        # Rows marked deleted by deletion vectors are still in the files.
+        "rows": None if rows is None else rows - deleted_rows,
+        "deleted_rows": deleted_rows,
+        "files": files,
+        "properties": _as_dict(metadata.get("configuration")),
+        "clustering": clustering,
+        "z_order": _log_zorder(log_dir, commits),
+    }
+
+
+def _table_stats(
+    workspace_id: str, lakehouse_id: str, schema: str, table: str, local_root: str
+) -> dict:
+    """Collect a delta table's stats.
+
+    ``local_root`` is the lakehouse mounted on the notebook, from which the
+    data files' parquet footers are read for the row groups and V-Order. A
+    PySpark notebook reads the table with Spark; a Python notebook reads its
+    delta log directly.
+    """
+
+    import os
+    from sempy_labs._helper_functions import (
+        _pure_python_notebook,
+        _read_delta_table_history,
+        create_abfss_path,
+    )
+
+    table_rel = "/".join(part for part in ("Tables", schema, table) if part)
+    table_dir = os.path.join(local_root, *table_rel.split("/"))
+    if _pure_python_notebook():
+        details = _delta_log_details(table_dir)
+    else:
+        path = create_abfss_path(
+            lakehouse_id, workspace_id, table, schema=schema or None
+        )
+        details = _delta_details_spark(path, table_rel)
+        try:
+            history = _read_delta_table_history(path)
+        except Exception:
+            history = None
+        details["z_order"] = _history_zorder(history)
+        if details["clustering"] is None:
+            details["clustering"] = _history_clustering(history)
+
+    row_groups, footer_rows, v_ordered, unread = _footer_stats(
+        table_dir, details["files"]
+    )
+    properties = details["properties"]
+    if not details["files"]:
+        v_ordered = _is_true(properties.get("delta.parquet.vorder.enabled"))
+
+    rows = details["rows"]
+    if rows is None:
+        rows = footer_rows - int(details.get("deleted_rows") or 0)
+    return {
+        "columns": int(details["columns"]),
+        "rows": int(rows),
+        "row_groups": int(row_groups),
+        "z_order": list(details["z_order"]),
+        "liquid_clustering": list(details["clustering"] or []),
+        "auto_compaction": str(properties.get("delta.autoOptimize.autoCompact") or "")
+        .strip()
+        .lower()
+        in ("true", "auto", "legacy"),
+        "v_order": bool(v_ordered),
+        "unread_files": int(unread),
+    }
+
+
+def _authorized_paths(paths: List[str], allowed: set) -> Tuple[List[str], List[str]]:
+    """Split requested paths into those which may be acted on and the rest."""
+
+    accepted, rejected = [], []
+    for path in paths:
+        if _is_safe_object_path(path) and path in allowed:
+            accepted.append(path)
+        else:
+            rejected.append(path)
+    return accepted, rejected
+
+
+@log
+def lakehouse_manager(
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+    dark_mode: bool = False,
+):
+    """
+    Displays an interactive manager for the contents of a lakehouse.
+
+    Browses the lakehouse's tables, folders and files, flags OneLake shortcuts
+    and `soft-deleted <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_
+    objects, recovers those deleted objects, runs table maintenance
+    (optimize, V-Order, vacuum) on one or more tables, collects table stats
+    (columns, rows, row groups, Z-Order, liquid clustering, auto-compaction and
+    V-Order), turns auto-compaction on or off, and changes a table's liquid
+    clustering columns. Changing auto-compaction or liquid clustering runs
+    Spark SQL, so it requires a PySpark notebook.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook,
+        or opens the tool on its lakehouse picker.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    dark_mode : bool, default=False
+        If True, renders the widget with a dark color theme.
+    """
+
+    try:
+        import anywidget
+        import traitlets
+    except ImportError as e:
+        raise ImportError(
+            "The Lakehouse Manager requires the 'anywidget' package. "
+            "Install it with: pip install anywidget"
+        ) from e
+
+    from IPython.display import display
+    from sempy_labs._helper_functions import (
+        resolve_lakehouse_name_and_id,
+        resolve_workspace_name_and_id,
+    )
+
+    workspace_id = ""
+    workspace_name = ""
+    try:
+        workspace_name, resolved_workspace_id = resolve_workspace_name_and_id(workspace)
+        workspace_id = str(resolved_workspace_id)
+    except Exception:
+        pass
+
+    lakehouse_id = ""
+    if workspace_id:
+        try:
+            _, resolved_lakehouse_id = resolve_lakehouse_name_and_id(
+                lakehouse=lakehouse, workspace=workspace_id
+            )
+            lakehouse_id = str(resolved_lakehouse_id)
+        except Exception:
+            lakehouse_id = ""
+
+    # Seeded as initial widget state: a picker list assigned after display()
+    # races the comm handshake and never reaches a Fabric PySpark notebook.
+    initial_workspaces = _ui_list_picker_workspaces(workspace_id, workspace_name)
+    initial_lakehouses = (
+        _ui_list_picker_lakehouses(workspace_id) if workspace_id else []
+    )
+
+    class LakehouseManagerWidget(anywidget.AnyWidget):
+        _esm = _LHM_JS
+        _css = _LHM_CSS
+
+        available_workspaces = traitlets.List([]).tag(sync=True)
+        available_lakehouses = traitlets.List([]).tag(sync=True)
+        selected_workspace_id = traitlets.Unicode("").tag(sync=True)
+        selected_lakehouse_id = traitlets.Unicode("").tag(sync=True)
+        # The lakehouse whose contents are shown (display only; see `loaded`).
+        loaded_workspace_id = traitlets.Unicode("").tag(sync=True)
+        loaded_lakehouse_id = traitlets.Unicode("").tag(sync=True)
+        objects = traitlets.List([]).tag(sync=True)
+        tree = traitlets.List([]).tag(sync=True)
+        summary = traitlets.Dict({}).tag(sync=True)
+        schema_enabled = traitlets.Bool(False).tag(sync=True)
+        picker_loading = traitlets.Bool(False).tag(sync=True)
+        loading = traitlets.Bool(False).tag(sync=True)
+        busy = traitlets.Bool(False).tag(sync=True)
+        status_message = traitlets.Unicode("").tag(sync=True)
+        error_message = traitlets.Unicode("").tag(sync=True)
+        dark_mode = traitlets.Bool(False).tag(sync=True)
+        pending_action = traitlets.Dict({}).tag(sync=True)
+        action_trigger = traitlets.Int(0).tag(sync=True)
+        # The action_trigger of the last action which finished.
+        action_done = traitlets.Int(0).tag(sync=True)
+        # Stats collected per table path, and the tables still being read.
+        table_stats = traitlets.Dict({}).tag(sync=True)
+        stats_pending = traitlets.List([]).tag(sync=True)
+        # Whether Spark SQL can run, which changing a table's settings needs.
+        spark_available = traitlets.Bool(True).tag(sync=True)
+        # The columns of the table whose liquid clustering is being changed.
+        cluster_info = traitlets.Dict({}).tag(sync=True)
+        # The running batch of table actions: title, total, done and current.
+        batch = traitlets.Dict({}).tag(sync=True)
+
+    widget = LakehouseManagerWidget(
+        available_workspaces=initial_workspaces,
+        available_lakehouses=initial_lakehouses,
+        selected_workspace_id=workspace_id,
+        selected_lakehouse_id=lakehouse_id,
+        dark_mode=bool(dark_mode),
+        spark_available=_spark_available(),
+    )
+
+    def _load_lakehouses(data: dict):
+        widget.picker_loading = True
+        widget.error_message = ""
+        try:
+            widget.available_lakehouses = _ui_list_picker_lakehouses(
+                widget.selected_workspace_id
+            )
+        except Exception as e:
+            widget.error_message = f"Could not list the lakehouses: {e}"
+        finally:
+            widget.picker_loading = False
+
+    # The lakehouse whose contents are shown. Every action targets it, never
+    # the picker selection, which can change without a Connect (the picker can
+    # be closed after choosing another lakehouse). Held on the kernel only, so
+    # the browser cannot redirect an action to another lakehouse.
+    loaded: Dict[str, Any] = {
+        "workspace_id": "",
+        "lakehouse_id": "",
+        "paths": set(),
+        "tables": {},
+        "local_root": "",
+    }
+
+    def _read_lakehouse(workspace_id: str, lakehouse_id: str) -> bool:
+        """Load a lakehouse's contents into the widget; True when it succeeded."""
+
+        widget.loading = True
+        try:
+            objects, tree, schema_enabled = _lakehouse_objects(
+                workspace_id, lakehouse_id
+            )
+        except Exception as e:
+            message = f"Could not read the lakehouse: {e}"
+            widget.error_message = "; ".join(
+                part for part in (widget.error_message, message) if part
+            )
+            return False
+        finally:
+            widget.loading = False
+        # Stats and the mount belong to the lakehouse they were made for.
+        if lakehouse_id != loaded["lakehouse_id"]:
+            widget.table_stats = {}
+            loaded["local_root"] = ""
+        loaded.update(
+            workspace_id=workspace_id,
+            lakehouse_id=lakehouse_id,
+            paths=_actionable_paths(objects, tree),
+            tables=_maintainable_tables(objects),
+        )
+        widget.schema_enabled = schema_enabled
+        widget.summary = _summarize_objects(objects)
+        widget.objects = _display_rows(objects)
+        widget.tree = tree
+        widget.loaded_workspace_id = workspace_id
+        widget.loaded_lakehouse_id = lakehouse_id
+        return True
+
+    def _load_objects(data: dict):
+        workspace_id = str(data.get("workspace") or widget.selected_workspace_id)
+        lakehouse_id = str(data.get("lakehouse") or widget.selected_lakehouse_id)
+        if not (workspace_id and lakehouse_id):
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        _read_lakehouse(workspace_id, lakehouse_id)
+
+    def _reload(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        _read_lakehouse(loaded["workspace_id"], loaded["lakehouse_id"])
+
+    def _refresh_after_action():
+        """Reload the contents, keeping the action's outcome messages."""
+
+        if loaded["lakehouse_id"]:
+            _read_lakehouse(loaded["workspace_id"], loaded["lakehouse_id"])
+
+    def _target_paths(data: dict, verb: str) -> List[str]:
+        """The requested paths which belong to the loaded lakehouse."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), loaded["paths"])
+        if rejected:
+            widget.error_message = (
+                f"Could not {verb} " + ", ".join(rejected) + ": not an object "
+                "of the loaded lakehouse."
+            )
+        return paths
+
+    def _recover(data: dict):
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _target_paths(data, "recover")
+        if not paths:
+            return
+        widget.busy = True
+        failures = []
+        try:
+            from sempy_labs.lakehouse._blobs import recover_lakehouse_object
+
+            for path in paths:
+                try:
+                    recover_lakehouse_object(
+                        file_path=path,
+                        lakehouse=loaded["lakehouse_id"],
+                        workspace=loaded["workspace_id"],
+                    )
+                except Exception as e:
+                    failures.append(f"{path}: {e}")
+            widget.status_message = (
+                f"Recovery was requested for {len(paths) - len(failures)} object(s)."
+            )
+        except Exception as e:
+            failures.append(f"the selected objects: {e}")
+        finally:
+            widget.busy = False
+        if failures:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    "Could not recover " + "; ".join(failures),
+                )
+                if part
+            )
+        _refresh_after_action()
+
+    def _delete(data: dict):
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _target_paths(data, "delete")
+        if not paths:
+            return
+        widget.busy = True
+        failures = []
+        deleted = 0
+        try:
+            import notebookutils
+            from sempy_labs._helper_functions import create_abfss_path_from_path
+
+            for path in paths:
+                try:
+                    removed = notebookutils.fs.rm(
+                        create_abfss_path_from_path(
+                            loaded["lakehouse_id"],
+                            loaded["workspace_id"],
+                            path,
+                        ),
+                        True,
+                    )
+                except Exception as e:
+                    failures.append(f"{path}: {e}")
+                    continue
+                # fs.rm reports some failures by returning False, not raising.
+                if removed is False:
+                    failures.append(f"{path}: the object was not deleted")
+                else:
+                    deleted += 1
+            widget.status_message = f"Deleted {deleted} object(s)."
+        except Exception as e:
+            failures.append(f"the selected objects: {e}")
+        finally:
+            widget.busy = False
+        if failures:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    "Could not delete " + "; ".join(failures),
+                )
+                if part
+            )
+        _refresh_after_action()
+
+    def _local_root() -> str:
+        """The loaded lakehouse mounted on the notebook (mounted once)."""
+
+        if not loaded.get("local_root"):
+            from sempy_labs._helper_functions import _mount
+
+            loaded["local_root"] = _mount(
+                lakehouse=loaded["lakehouse_id"], workspace=loaded["workspace_id"]
+            )
+        return loaded["local_root"]
+
+    def _require_spark(what: str) -> bool:
+        if widget.spark_available:
+            return True
+        widget.error_message = _SPARK_REQUIRED.format(what=what)
+        return False
+
+    def _table_label(path: str) -> str:
+        schema, table = loaded["tables"][path]
+        return f"{schema}.{table}" if schema else table
+
+    def _table_abfss_path(path: str) -> str:
+        from sempy_labs._helper_functions import create_abfss_path
+
+        schema, table = loaded["tables"][path]
+        return create_abfss_path(
+            loaded["lakehouse_id"], loaded["workspace_id"], table, schema=schema or None
+        )
+
+    def _update_stats(path: str, **values):
+        """Reflect a changed setting in a table's collected stats, if any."""
+
+        stats = widget.table_stats.get(path)
+        if isinstance(stats, dict) and not stats.get("error"):
+            widget.table_stats = {**widget.table_stats, path: {**stats, **values}}
+
+    # Stats, table maintenance and auto-compaction act on the selected tables
+    # in a batch, one table per request: the browser asks for each next table
+    # once the previous one finished, so a Cancel it sends meanwhile is seen.
+    # (While a request runs the kernel reads no messages from the browser, and
+    # widget updates made off the kernel thread never reach a Fabric notebook.)
+    batch: Dict[str, Any] = {}
+
+    def _bulk_tables(data: dict, verb: str) -> List[str]:
+        """The requested paths which are tables of the loaded lakehouse."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected:
+            widget.error_message = (
+                f"Could not {verb} " + ", ".join(rejected) + ": not a table of "
+                "the loaded lakehouse."
+            )
+        return paths
+
+    def _publish_batch(current: str = ""):
+        widget.batch = (
+            {
+                "title": batch["messages"]["title"],
+                "total": batch["total"],
+                "done": batch["processed"],
+                "current": current,
+            }
+            if batch
+            else {}
+        )
+
+    def _start_batch(kind: str, paths: List[str], step, messages: dict, **options):
+        batch.clear()
+        batch.update(
+            kind=kind,
+            step=step,
+            messages=messages,
+            options=options,
+            paths=list(paths),
+            total=len(paths),
+            processed=0,
+            succeeded=0,
+            failures=[],
+            last="",
+        )
+        widget.busy = True
+        if kind == "stats":
+            widget.stats_pending = list(paths)
+        _batch_step()
+
+    def _batch_step():
+        if not batch:
+            return
+        if batch["paths"]:
+            path = batch["paths"].pop(0)
+            label = _table_label(path)
+            batch["last"] = label
+            _publish_batch(current=label)
+            try:
+                batch["step"](path, **batch["options"])
+                batch["succeeded"] += 1
+            except BaseException as e:
+                # Native readers can fail with errors outside Exception (e.g.
+                # a Rust panic); those must not end the whole batch.
+                if _is_fatal(e):
+                    raise
+                batch["failures"].append(f"'{label}': {_error_text(e)}")
+            batch["processed"] += 1
+            if batch["kind"] == "stats":
+                widget.stats_pending = list(batch["paths"])
+        if batch["paths"]:
+            _publish_batch()
+        else:
+            _finish_batch(cancelled=False)
+
+    def _finish_batch(cancelled: bool):
+        messages = batch["messages"]
+        processed, total = batch["processed"], batch["total"]
+        if cancelled:
+            widget.status_message = messages["cancelled"](processed, total)
+        elif total == 1:
+            if batch["succeeded"]:
+                widget.status_message = messages["one"](batch["last"])
+        else:
+            widget.status_message = messages["many"](batch["succeeded"], total)
+        if batch["failures"]:
+            widget.error_message = "; ".join(
+                part
+                for part in (
+                    widget.error_message,
+                    messages["failed"] + "; ".join(batch["failures"]),
+                )
+                if part
+            )
+        refresh = batch["kind"] == "maintenance" and processed > 0
+        batch.clear()
+        widget.batch = {}
+        widget.stats_pending = []
+        widget.busy = False
+        if refresh:
+            _refresh_after_action()
+
+    def _next_in_batch(data: dict):
+        _batch_step()
+
+    def _cancel_batch(data: dict):
+        if batch:
+            _finish_batch(cancelled=True)
+
+    def _stats_step(path: str):
+        schema, table = loaded["tables"][path]
+        try:
+            stats = _table_stats(
+                loaded["workspace_id"],
+                loaded["lakehouse_id"],
+                schema,
+                table,
+                _local_root(),
+            )
+        except BaseException as e:
+            if not _is_fatal(e):
+                widget.table_stats = {
+                    **widget.table_stats,
+                    path: {"error": _error_text(e)},
+                }
+            raise
+        widget.table_stats = {**widget.table_stats, path: stats}
+
+    def _collect_stats(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        paths = _bulk_tables(data, "collect stats for")
+        if paths:
+            _start_batch(
+                "stats",
+                paths,
+                _stats_step,
+                {
+                    "title": "Collecting stats",
+                    "one": lambda label: f"Collected the stats for '{label}'.",
+                    "many": lambda ok, total: (
+                        f"Collected the stats for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Stopped collecting stats after {done} of {total} tables."
+                    ),
+                    "failed": "Could not collect the stats for ",
+                },
+            )
+
+    def _maintenance_step(
+        path: str,
+        optimize: bool,
+        v_order: bool,
+        vacuum: bool,
+        retention: str,
+    ):
+        from sempy_labs.lakehouse._lakehouse import run_table_maintenance
+
+        schema, table = loaded["tables"][path]
+        # Maintenance rewrites the files, so the table's stats no longer hold.
+        widget.table_stats = {
+            p: stats for p, stats in widget.table_stats.items() if p != path
+        }
+        result = run_table_maintenance(
+            table_name=table,
+            optimize=optimize,
+            v_order=v_order,
+            vacuum=vacuum,
+            retention_period=retention if (vacuum and retention) else None,
+            schema=schema or None,
+            lakehouse=loaded["lakehouse_id"],
+            workspace=loaded["workspace_id"],
+        )
+        # A job which did not succeed is reported, not raised.
+        status = _job_status(result)
+        if status and status != "Completed":
+            raise RuntimeError(f"the maintenance job ended as '{status}'.")
+
+    def _maintenance(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        optimize = bool(data.get("optimize"))
+        v_order = bool(data.get("v_order"))
+        vacuum = bool(data.get("vacuum"))
+        if not (optimize or v_order or vacuum):
+            widget.error_message = "Select at least one maintenance operation."
+            return
+        # Only the loaded lakehouse's own tables; never a name from the browser.
+        paths = _bulk_tables(data, "run table maintenance on")
+        if paths:
+            _start_batch(
+                "maintenance",
+                paths,
+                _maintenance_step,
+                {
+                    "title": "Running table maintenance",
+                    "one": lambda label: f"Table maintenance finished for '{label}'.",
+                    "many": lambda ok, total: (
+                        f"Table maintenance finished for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Cancelled table maintenance after {done} of {total} tables."
+                    ),
+                    "failed": "Table maintenance failed for ",
+                },
+                optimize=optimize,
+                v_order=v_order,
+                vacuum=vacuum,
+                retention=str(data.get("retention_period") or "").strip(),
+            )
+
+    def _auto_compaction_step(path: str, enable: bool):
+        from sempy_labs._helper_functions import _run_spark_sql_query
+
+        _run_spark_sql_query(_auto_compaction_sql(_table_abfss_path(path), enable))
+        _update_stats(path, auto_compaction=enable)
+
+    def _auto_compaction(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        enable = bool(data.get("enable"))
+        state = "on" if enable else "off"
+        if not _require_spark(f"Turning auto-compaction {state}"):
+            return
+        paths = _bulk_tables(data, f"turn auto-compaction {state} for")
+        if paths:
+            _start_batch(
+                "auto_compaction",
+                paths,
+                _auto_compaction_step,
+                {
+                    "title": f"Turning auto-compaction {state}",
+                    "one": lambda label: (
+                        f"Turned auto-compaction {state} for '{label}'."
+                    ),
+                    "many": lambda ok, total: (
+                        f"Turned auto-compaction {state} for {ok} of {total} tables."
+                    ),
+                    "cancelled": lambda done, total: (
+                        f"Cancelled turning auto-compaction {state} after {done} "
+                        f"of {total} tables."
+                    ),
+                    "failed": f"Could not turn auto-compaction {state} for ",
+                },
+                enable=enable,
+            )
+
+    def _single_table(data: dict, verb: str) -> Optional[str]:
+        """The one loaded table an action targets, or None (with an error)."""
+
+        paths, rejected = _authorized_paths(_action_paths(data), set(loaded["tables"]))
+        if rejected or len(paths) != 1:
+            widget.error_message = (
+                f"Could not {verb} "
+                + (", ".join(rejected) or "the table")
+                + ": not a table of the loaded lakehouse."
+            )
+            return None
+        return paths[0]
+
+    def _cluster_columns(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        path = _single_table(data, "read the columns of")
+        if path is None:
+            return
+        if not widget.spark_available:
+            widget.cluster_info = {
+                "path": path,
+                "error": _SPARK_REQUIRED.format(what="Changing liquid clustering"),
+            }
+            return
+        widget.busy = True
+        try:
+            widget.cluster_info = {
+                "path": path,
+                **_table_columns_spark(_table_abfss_path(path)),
+            }
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            widget.cluster_info = {
+                "path": path,
+                "error": f"Could not read the table's columns: {_error_text(e)}",
+            }
+        finally:
+            widget.busy = False
+
+    def _set_clustering(data: dict):
+        if not loaded["lakehouse_id"]:
+            return
+        widget.error_message = ""
+        widget.status_message = ""
+        if not _require_spark("Changing liquid clustering"):
+            return
+        path = _single_table(data, "change the liquid clustering of")
+        if path is None:
+            return
+        columns = data.get("columns")
+        if not isinstance(columns, list) or not all(
+            isinstance(c, str) and c for c in columns
+        ):
+            widget.error_message = "The clustering columns are not valid."
+            return
+        if len(columns) > _MAX_CLUSTERING_COLUMNS or len(set(columns)) != len(columns):
+            widget.error_message = (
+                f"Choose up to {_MAX_CLUSTERING_COLUMNS} different clustering columns."
+            )
+            return
+        label = _table_label(path)
+        widget.busy = True
+        try:
+            from sempy_labs._helper_functions import _run_spark_sql_query
+
+            table_path = _table_abfss_path(path)
+            # Only the table's own clusterable columns are accepted.
+            known = {
+                column["name"]
+                for column in _table_columns_spark(table_path)["columns"]
+                if column["clusterable"]
+            }
+            unknown = [c for c in columns if c not in known]
+            if unknown:
+                widget.error_message = (
+                    f"Could not cluster '{label}' by " + ", ".join(unknown) + ": "
+                    "not a column of the table which can be clustered."
+                )
+                return
+            _run_spark_sql_query(_clustering_sql(table_path, columns))
+            _update_stats(path, liquid_clustering=list(columns))
+            widget.cluster_info = {}
+            if columns:
+                widget.status_message = (
+                    f"Clustered '{label}' by {', '.join(columns)}. Run table "
+                    "maintenance (optimize) to recluster its existing data."
+                )
+            else:
+                widget.status_message = f"Removed liquid clustering from '{label}'."
+        except BaseException as e:
+            if _is_fatal(e):
+                raise
+            widget.error_message = (
+                f"Could not change the liquid clustering of '{label}': "
+                f"{_error_text(e)}"
+            )
+        finally:
+            widget.busy = False
+
+    handlers = {
+        "workspace": _load_lakehouses,
+        "open": _load_objects,
+        "reload": _reload,
+        "recover": _recover,
+        "delete": _delete,
+        "maintenance": _maintenance,
+        "stats": _collect_stats,
+        "auto_compaction": _auto_compaction,
+        "cluster_columns": _cluster_columns,
+        "clustering": _set_clustering,
+        "batch_next": _next_in_batch,
+        "batch_cancel": _cancel_batch,
+    }
+
+    def _on_action(change):
+        if change["new"] == change["old"]:
+            return
+        data = dict(widget.pending_action or {})
+        handler = handlers.get(str(data.get("action") or ""))
+        if handler is None:
+            return
+        try:
+            _ui_run_widget_task(handler, (data,))
+        except BaseException as e:
+            # An error escaping a widget callback leaves the widget unable to
+            # handle further actions, so it is reported instead.
+            widget.picker_loading = False
+            widget.loading = False
+            widget.busy = False
+            widget.stats_pending = []
+            batch.clear()
+            widget.batch = {}
+            if _is_fatal(e):
+                raise
+            widget.error_message = f"The action failed: {_error_text(e)}"
+        finally:
+            widget.action_done = change["new"]
+
+    widget.observe(_on_action, names="action_trigger")
+    display(widget)
