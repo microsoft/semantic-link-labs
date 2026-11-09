@@ -10,6 +10,10 @@ from ._pubstage import (
     list_published_libraries,
     list_staging_libraries,
 )
+from ._pool_activations import (
+    list_pool_activations,
+    get_pool_activation,
+)
 
 __all__ = [
     "list_environments",
@@ -20,4 +24,6 @@ __all__ = [
     "get_staging_spark_compute",
     "list_published_libraries",
     "list_staging_libraries",
+    "list_pool_activations",
+    "get_pool_activation",
 ]
