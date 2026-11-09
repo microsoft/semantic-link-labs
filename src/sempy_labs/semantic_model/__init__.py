@@ -20,6 +20,7 @@ from ._find_unused_objects import (
 )
 from ._snowflake import (
     convert_from_snowflake,
+)
 from ._refresh_manager import (
     refresh_manager,
 )
