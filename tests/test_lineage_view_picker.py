@@ -75,3 +75,10 @@ def test_lineage_picker_gray_surface_is_limited_to_picker_card():
         ".slls-lv-graphwrap { position: relative; flex: 1; min-width: 0; "
         "background: var(--slls-bg-secondary); }" in source
     )
+
+
+def test_lineage_fullscreen_button_exposes_its_current_state():
+    source = _source()
+
+    assert 'title="${isFullscreen() ? "Exit full screen" : "Full screen"}"' in source
+    assert 'aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}"' in source

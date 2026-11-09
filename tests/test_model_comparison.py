@@ -16,6 +16,13 @@ def _source() -> str:
     return SOURCE_PATH.read_text(encoding="utf-8")
 
 
+def test_fullscreen_button_exposes_its_current_state():
+    source = _source()
+
+    assert 'title="${isFullscreen() ? "Exit full screen" : "Full screen"}"' in source
+    assert 'aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}"' in source
+
+
 def _module():
     """Load the module in isolation.
 
@@ -218,7 +225,7 @@ def test_widget_uses_the_shared_ui_building_blocks():
         "--ui-accent: var(--slls-accent)",
     ):
         assert token in source
-    assert "Powered by <a href=" in source
+    assert "_ui_render_attribution_html()" in source
 
 
 def test_widget_renders_the_reference_layout():

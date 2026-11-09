@@ -18,6 +18,10 @@ def list_direct_lake_model_calc_tables(
     """
     Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery).
 
+    This function only applies to Direct Lake semantic models which were migrated before calculated tables were supported in Direct Lake
+    (when calculated tables were stored as lakehouse tables and their DAX expressions as model annotations). Calculated tables are now
+    migrated as calculated tables (see :func:`sempy_labs.migration.migrate_calc_tables_to_semantic_model`).
+
     Parameters
     ----------
     dataset : str | uuid.UUID

@@ -60,7 +60,7 @@ _WIDGET_CSS = """
 }
 @media (prefers-color-scheme: dark) {
     .slls-mc.slls-mc-auto {
-        --slls-bg-solid: #1e1e22; --slls-bg-secondary: #2a2a30;
+        --slls-bg-solid: #0e1116; --slls-bg-secondary: #2a2a30;
         --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03);
         --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16);
         --slls-text: #f5f5f7; --slls-text-secondary: #b8b8bf; --slls-text-tertiary: #8e8e94;
@@ -72,7 +72,7 @@ _WIDGET_CSS = """
     }
 }
 .slls-mc.slls-mc-dark {
-    --slls-bg-solid: #1e1e22; --slls-bg-secondary: #2a2a30;
+    --slls-bg-solid: #0e1116; --slls-bg-secondary: #2a2a30;
     --slls-surface: rgba(255,255,255,0.04); --slls-surface-2: rgba(255,255,255,0.03);
     --slls-border: rgba(255,255,255,0.08); --slls-border-strong: rgba(255,255,255,0.16);
     --slls-text: #f5f5f7; --slls-text-secondary: #b8b8bf; --slls-text-tertiary: #8e8e94;
@@ -220,9 +220,8 @@ _WIDGET_CSS = """
 .slls-mc-status.info { background: var(--slls-surface-2); color: var(--slls-text-secondary); }
 
 /* Footer */
-.slls-mc-footer { padding: 8px 20px; border-top: 1px solid var(--slls-border); text-align: right; font-size: 11.5px; color: var(--slls-text-tertiary); }
-.slls-mc-footer a { color: var(--slls-text-tertiary); text-decoration: none; transition: color 120ms ease; }
-.slls-mc-footer a:hover { color: var(--slls-accent); }
+.slls-mc-footer { padding: 8px 20px; border-top: 1px solid var(--slls-border); }
+.slls-mc .slls-mc-footer .sl-attribution { margin: 0; padding: 0; }
 
 .slls-mc-spin { animation: slls-mc-spin 0.8s linear infinite; transform-origin: center; }
 @keyframes slls-mc-spin { to { transform: rotate(360deg); } }
@@ -410,7 +409,7 @@ function render({ model, el }) {
                     `title="Reload both models' metadata" aria-label="Reload both models' metadata" ` +
                     `${working() ? "disabled" : ""}>${ICON.refresh}</button>`
                 : "") +
-            `<button class="sl-theme-btn" data-act="fullscreen" title="Toggle full screen">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
+            `<button class="sl-theme-btn" data-act="fullscreen" title="${isFullscreen() ? "Exit full screen" : "Full screen"}" aria-label="${isFullscreen() ? "Exit full screen" : "Full screen"}">${isFullscreen() ? ICON.fullscreen_exit : ICON.fullscreen}</button>` +
             `<button class="sl-theme-btn" data-act="theme" title="Toggle theme">${dm ? ICON.sun : ICON.moon}</button>`;
 
         const rl = h.querySelector('[data-act="reload"]');
@@ -719,8 +718,7 @@ function render({ model, el }) {
     function buildFooter() {
         const f = document.createElement("div");
         f.className = "slls-mc-footer";
-        f.innerHTML = `Powered by <a href="https://github.com/microsoft/semantic-link-labs" ` +
-            `target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>`;
+        f.innerHTML = `__SLLS_ATTRIBUTION__`;
         return f;
     }
 
@@ -757,6 +755,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
     SEARCH_SELECT_JS as _UI_SEARCH_SELECT_JS,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
 )
@@ -764,6 +764,8 @@ from sempy_labs._ui_components import (  # noqa: E402
 _WIDGET_CSS += "\n" + _UI_SEARCH_SELECT_CSS
 _WIDGET_CSS += _ui_scoped_header_css(".slls-mc")
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-mc")
+_WIDGET_CSS += _ui_scoped_attribution_css(".slls-mc")
+_WIDGET_JS = _WIDGET_JS.replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
 
 _WIDGET_JS = _UI_SEARCH_SELECT_JS + "\n" + _WIDGET_JS
 

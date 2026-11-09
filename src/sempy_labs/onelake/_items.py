@@ -187,3 +187,43 @@ def modify_default_tier(default_tier: Literal["Hot", "Cool", "Cold"], workspace:
     _base_api(request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyDefaultTier?defaultTier={default_tier}", method="post")
 
     print(f"{icons.green_dot} The default tier for OneLake has been set to '{default_tier}' in the '{workspace_name}' workspace.")
+
+
+@log
+def modify_access_time_tracking(
+    enabled: bool = True,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Enables or disables OneLake access time tracking for a workspace.
+
+    Enables or disables Azure Storage LastAccessTime tracking for OneLake files in the workspace.
+    When enabled, file reads and writes update the file's last access timestamp; metadata-only operations do not. Changes take effect immediately.
+
+    This is a wrapper function for the following API: `OneLake Settings - Modify Access Time Tracking <https://learn.microsoft.com/rest/api/fabric/core/onelake-settings/modify-access-time-tracking>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    enabled : bool, default=True
+        Whether to enable or disable OneLake access time tracking.
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    status = "Enabled" if enabled else "Disabled"
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyAccessTimeTracking",
+        client="fabric_sp",
+        method="post",
+        payload={"status": status},
+    )
+
+    print(
+        f"{icons.green_dot} OneLake access time tracking has been {status.lower()} in the '{workspace_name}' workspace."
+    )

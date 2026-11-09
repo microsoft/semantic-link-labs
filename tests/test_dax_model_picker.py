@@ -679,6 +679,27 @@ def test_fullscreen_uses_viewport_height_for_panes_and_query_editor():
     assert source.count("    overflow: hidden;\n    background: var(--ui-bg);") >= 1
 
 
+def test_hosted_in_the_app_full_screen_uses_viewport_height():
+    # The app shell owns full screen, so the tool's own :fullscreen rules never
+    # match; the shared marker class re-applies the same layout.
+    source = _source()
+
+    for rule in (
+        ".dtx.slls-app-fs-tool .dtx-container {{",
+        ".dtx.slls-app-fs-tool .dtx-body {{",
+        ".dtx.slls-app-fs-tool .dtx-main {{",
+    ):
+        assert rule in source
+    assert (
+        ".dtx.slls-app-fs-tool .dtx-query {{ min-height: 300px; max-height: 60vh; }}"
+        in source
+    )
+    # Layout only: a second full-viewport overlay inside the shell hides the tool.
+    block = source[source.index(".dtx.slls-app-fs-tool {{") :]
+    block = block[: block.index(".dtx *, .dtx *::before")]
+    assert "position: fixed" not in block
+
+
 def test_fullscreen_container_has_no_later_shape_override():
     source = _source()
 

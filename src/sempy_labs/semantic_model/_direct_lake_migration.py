@@ -21,6 +21,25 @@ def _mig_key(table_name: str, object_name: str) -> str:
     return f"{table_name}|{object_name}"
 
 
+def _default_entity_name(table_name: str) -> str:
+    """Name of the delta table a model table maps to when no override is given."""
+    import sempy_labs._icons as icons
+
+    name = table_name
+    for char in icons.special_characters:
+        name = name.replace(char, "")
+    return name
+
+
+def _table_mapping(table_mappings, table_name, default_schema, default_entity):
+    """Resolve the (schema, entity) a model table maps to, applying any
+    per-table override captured on the wizard's Configure screen."""
+    override = (table_mappings or {}).get(table_name) or {}
+    schema = (override.get("schema") or "").strip() or default_schema
+    entity = (override.get("table") or "").strip() or default_entity
+    return schema, entity
+
+
 def _split_top_level(text: str):
     """Split a string on commas that sit at the top level (outside any
     parentheses, braces, brackets, or string literal)."""
@@ -191,12 +210,20 @@ def _rewrite_field_parameter_dax(
 
 
 def _expand_dependents(
-    dep_df, removed_tables, removed_columns, removed_measures, unsupported
+    dep_df,
+    removed_tables,
+    removed_columns,
+    removed_measures,
+    unsupported,
+    calc_tables=None,
 ):
     """Transitively add measures / calculated columns that reference a removed
-    object to the removal sets (mirrors the reference migration tool)."""
+    object to the removal sets (mirrors the reference migration tool). Calculated
+    tables listed in ``calc_tables`` which reference a removed object are removed
+    as well (field parameters are excluded as their DAX is rewritten instead)."""
     if dep_df is None or getattr(dep_df, "empty", True):
         return
+    calc_tables = calc_tables or set()
 
     def _clean(v):
         # Coerce None / NaN (v != v) to an empty string.
@@ -255,6 +282,85 @@ def _expand_dependents(
                         "reason": reason,
                     }
                 )
+            elif "CALC_TABLE" in r["type"] and r["table"] in calc_tables:
+                removed_tables.add(r["table"])
+                changed = True
+                unsupported.append(
+                    {
+                        "category": "Calculated table",
+                        "table": r["table"],
+                        "name": r["table"],
+                        "reason": reason,
+                    }
+                )
+
+
+def _resolve_field_parameter_removals(
+    dep_df,
+    field_parameters,
+    removed_tables,
+    removed_columns,
+    removed_measures,
+    unsupported,
+    calc_tables=None,
+):
+    """Alternate dependency expansion and field-parameter rewriting until the
+    removal sets stabilize.
+
+    Emptying a field parameter removes it, which may remove calculated tables
+    (and measures / calculated columns) depending on it, which may in turn
+    invalidate references in other field parameters. Each field parameter is
+    therefore rewritten from its original DAX on every pass.
+
+    ``field_parameters`` (table name -> DAX) is updated in place: emptied field
+    parameters are deleted (and added to ``removed_tables``) and the surviving
+    ones are set to their rewritten DAX. Returns a dict mapping each surviving
+    field parameter to a tuple of its original DAX and the list of removed
+    field references.
+    """
+    originals = dict(field_parameters)
+    removed_refs_by_table = {}
+    while True:
+        _expand_dependents(
+            dep_df,
+            removed_tables,
+            removed_columns,
+            removed_measures,
+            unsupported,
+            calc_tables,
+        )
+        emptied = False
+        for tname in list(field_parameters.keys()):
+            rewritten, removed_refs = _rewrite_field_parameter_dax(
+                originals[tname],
+                removed_tables,
+                removed_columns,
+                removed_measures,
+            )
+            if rewritten is None or not rewritten.strip():
+                # Every field referenced a dropped object — drop the table.
+                del field_parameters[tname]
+                removed_refs_by_table.pop(tname, None)
+                removed_tables.add(tname)
+                unsupported.append(
+                    {
+                        "category": "Field parameter",
+                        "table": tname,
+                        "name": tname,
+                        "reason": "Every field references an object that is not migrated.",
+                    }
+                )
+                emptied = True
+                continue
+            field_parameters[tname] = rewritten
+            removed_refs_by_table[tname] = removed_refs
+        if not emptied:
+            break
+
+    return {
+        tname: (originals[tname], removed_refs_by_table[tname])
+        for tname in field_parameters
+    }
 
 
 _WIDGET_CSS = """
@@ -508,6 +614,7 @@ _WIDGET_CSS = """
 .slls-mdl-chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--slls-accent-soft); color: var(--slls-accent); white-space: nowrap; }
 .slls-mdl-removed { font-size: 12.5px; color: var(--slls-text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .slls-mdl-refpill { font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; background: var(--slls-danger-soft); color: var(--slls-danger); padding: 1px 6px; border-radius: 4px; }
+.slls-mdl-colpill { font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; background: var(--slls-accent-soft); color: var(--slls-accent); padding: 1px 6px; border-radius: 4px; }
 .slls-mdl-details { margin-top: 8px; }
 .slls-mdl-details > summary { cursor: pointer; list-style: none; color: var(--slls-accent); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
 .slls-mdl-details > summary::-webkit-details-marker { display: none; }
@@ -519,6 +626,18 @@ _WIDGET_CSS = """
 .slls-mdl-cat > summary::-webkit-details-marker { display: none; }
 .slls-mdl-cat > summary::before { content: "\\25B6"; font-size: 9px; color: var(--slls-text-tertiary); }
 .slls-mdl-cat[open] > summary::before { content: "\\25BC"; }
+.slls-mdl-cat-sub { font-weight: 400; font-size: 12px; color: var(--slls-text-tertiary); margin-left: auto; }
+
+/* Per-table source schema / table mapping */
+.slls-mdl-map { padding: 12px 14px; }
+.slls-mdl-map-note { font-size: 12.5px; color: var(--slls-text-secondary); line-height: 1.45; margin-bottom: 10px; }
+.slls-mdl-map-head, .slls-mdl-map-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; align-items: center; }
+.slls-mdl-map-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slls-text-tertiary); font-weight: 600; }
+.slls-mdl-map-head { padding-bottom: 6px; border-bottom: 1px solid var(--slls-border); margin-bottom: 8px; }
+.slls-mdl-map-row + .slls-mdl-map-row { margin-top: 6px; }
+.slls-mdl-map-name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-mdl-map .slls-mdl-input { font-size: 12.5px; padding: 5px 8px; }
+.slls-mdl-map-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
 
 /* Copy-to-clipboard code block */
 .slls-mdl-copywrap { position: relative; }
@@ -574,6 +693,7 @@ function render({ model, el }) {
         fullscreen_exit: `__IC_FULLSCREEN_EXIT__`,
         field_parameter: `__IC_FIELD_PARAMETER__`,
         calculation_group: `__IC_CALCULATION_GROUP__`,
+        calculated_table: `__IC_CALCULATED_TABLE__`,
         database_zap: `__IC_DATABASE_ZAP__`,
         swap: `__IC_SWAP__`,
         refresh: `__IC_REFRESH__`,
@@ -682,6 +802,8 @@ function render({ model, el }) {
     let pickerReopen = false;
     let pickWs = "";
     let pickDs = "";
+    // Kept outside the model so re-renders don't collapse the mapping panel.
+    let mapOpen = false;
     const showPicker = () => !connected() || pickerReopen;
 
     function openPicker() {
@@ -805,6 +927,8 @@ function render({ model, el }) {
         const reshaped = changes.filter((c) => c.category === "reshape");
         const keptFp = changes.filter((c) => c.category === "kept" && c.kind === "Field parameter");
         const keptCg = changes.filter((c) => c.category === "kept" && c.kind === "Calculation group");
+        const keptCc = changes.filter((c) => c.category === "kept" && c.kind === "Calculated column");
+        const keptCt = changes.filter((c) => c.category === "kept" && c.kind === "Calculated table");
 
         // Tables reshaped into a single partition (data preserved).
         if (reshaped.length > 0) {
@@ -817,9 +941,20 @@ function render({ model, el }) {
             });
         }
 
-        // Objects kept in the new model (calculation groups + field parameters).
-        if (keptFp.length + keptCg.length > 0) {
-            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculation groups and field parameters are supported in Direct Lake):</div>`;
+        // Objects kept in the new model (calculated tables, calculation groups,
+        // field parameters and calculated columns).
+        if (keptCt.length + keptFp.length + keptCg.length + keptCc.length > 0) {
+            out += `<div class="slls-mdl-lead">These objects are <b>kept in the new model</b> (calculated tables, calculation groups, field parameters and calculated columns are supported in Direct Lake on OneLake):</div>`;
+            keptCt.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Calculated table</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                const cols = c.columns || [];
+                if (cols.length > 0) {
+                    out += `<div class="slls-mdl-removed"><span>Calculated column${cols.length === 1 ? "" : "s"}:</span>${cols.map((n) => `<span class="slls-mdl-colpill">${esc(n)}</span>`).join("")}</div>`;
+                }
+                if (c.expression) out += detailsBlock("View DAX", c.expression, "dax");
+                out += `</div>`;
+            });
             keptFp.forEach((c) => {
                 out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Field parameter</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
                 if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
@@ -838,6 +973,21 @@ function render({ model, el }) {
                 if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
                 out += `</div>`;
             });
+            keptCc.forEach((c) => {
+                out += `<div class="slls-mdl-change"><div class="slls-mdl-change-head"><span class="slls-mdl-chip">Calculated column</span><span class="slls-mdl-change-title">${esc(c.table)}</span></div>`;
+                if (c.detail) out += `<div class="slls-mdl-change-detail">${esc(c.detail)}</div>`;
+                const cols = c.columns || [];
+                if (cols.length > 0) {
+                    out += `<div class="slls-mdl-removed"><span>Column${cols.length === 1 ? "" : "s"}:</span>${cols.map((n) => `<span class="slls-mdl-colpill">${esc(n)}</span>`).join("")}</div>`;
+                }
+                out += `</div>`;
+            });
+            if (keptCt.length > 0) {
+                out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.alert}<div>Calculated tables are supported in Direct Lake on OneLake (preview) and use the <b>Import</b> storage mode: refresh the new model to calculate them, and again whenever the data they depend on changes. <a href="https://learn.microsoft.com/fabric/fundamentals/direct-lake-overview#considerations-and-limitations" target="_blank" rel="noopener noreferrer">Learn more</a></div></div>`;
+            }
+            if (keptCc.length > 0) {
+                out += `<div class="slls-mdl-note slls-mdl-note-info">${IC.alert}<div>Calculated columns in Direct Lake support the <b>User Context</b> <a href="https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext" target="_blank" rel="noopener noreferrer">expression context</a> only. They are evaluated at query time (not materialized) and cannot be used in relationships. <a href="https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance" target="_blank" rel="noopener noreferrer">Learn more</a></div></div>`;
+            }
         }
 
         // Objects that won't be migrated — one collapsible section per category.
@@ -856,9 +1006,15 @@ function render({ model, el }) {
         return out;
     }
 
-    function optionsHtml(list, selected, placeholder) {
+    function optionsHtml(list, selected, placeholder, lockPlaceholder) {
         let out = "";
-        if (placeholder) out += `<option value="">${esc(placeholder)}</option>`;
+        if (placeholder) {
+            // A locked placeholder is a prompt, not a value: it shows until
+            // something is picked but is kept out of the dropdown list.
+            const hasSelection = (list || []).some((it) => it.id === selected);
+            const attrs = lockPlaceholder ? ` disabled hidden${hasSelection ? "" : " selected"}` : "";
+            out += `<option value=""${attrs}>${esc(placeholder)}</option>`;
+        }
         (list || []).forEach((it) => {
             out += `<option value="${esc(it.id)}"${it.id === selected ? " selected" : ""}>${esc(it.name)}</option>`;
         });
@@ -884,6 +1040,98 @@ function render({ model, el }) {
 
     function isInPlace() {
         return canConvertInPlace() && model.get("conversion_mode") === "in_place";
+    }
+
+    // Per-table source schema / table overrides are only meaningful for a
+    // Warehouse or a schema-enabled Lakehouse.
+    function schemaSupported() {
+        const type = model.get("source_type") || "Lakehouse";
+        return !(type === "Lakehouse" && model.get("lakehouse_schema_enabled") === false);
+    }
+
+    function entityTables() {
+        return (model.get("analysis") || {}).entityTables || [];
+    }
+
+    function tableMappings() {
+        return model.get("table_mappings") || {};
+    }
+
+    function mappingsPayload() {
+        return schemaSupported() ? tableMappings() : {};
+    }
+
+    function defaultSchema() {
+        return (model.get("schema") || "").trim();
+    }
+
+    // A row counts as customized only when its effective schema/table differs
+    // from the default, so changing the schema above doesn't mark every row.
+    function mappingOverrideCount() {
+        const maps = tableMappings();
+        const defSchema = defaultSchema();
+        return entityTables().filter((t) => {
+            const m = maps[t.name] || {};
+            const s = (m.schema || "").trim();
+            const tbl = (m.table || "").trim();
+            return (s && s !== defSchema) || (tbl && tbl !== t.entity);
+        }).length;
+    }
+
+    function tableMappingHtml() {
+        const rows = entityTables();
+        if (!schemaSupported() || rows.length === 0) return "";
+        const maps = tableMappings();
+        const defSchema = defaultSchema();
+        const overrides = mappingOverrideCount();
+
+        let out = `<details class="slls-mdl-cat" data-r="map-details"${mapOpen ? " open" : ""} style="margin-top:8px;">`;
+        out += `<summary>Table mapping (optional)<span class="slls-mdl-cat-sub" data-r="map-sub">${mappingSubText(overrides, rows.length)}</span></summary>`;
+        out += `<div class="slls-mdl-map">`;
+        out += `<div class="slls-mdl-map-note">Every row is pre-filled with the schema above and the model table's default source table name.`;
+        out += ` Edit a row to point that table at a different schema or source table.</div>`;
+        out += `<div class="slls-mdl-map-head"><span>Model table</span><span>Source schema</span><span>Source table</span></div>`;
+        rows.forEach((t, i) => {
+            const m = maps[t.name] || {};
+            const s = (m.schema || "").trim() || defSchema;
+            const tbl = (m.table || "").trim() || t.entity;
+            out += `<div class="slls-mdl-map-row">
+                <span class="slls-mdl-map-name" title="${esc(t.name)}">${esc(t.name)}</span>
+                <input class="slls-mdl-input" data-map-idx="${i}" data-map-kind="schema" value="${esc(s)}" placeholder="${esc(defSchema || "dbo")}" />
+                <input class="slls-mdl-input" data-map-idx="${i}" data-map-kind="table" value="${esc(tbl)}" placeholder="${esc(t.entity)}" />
+            </div>`;
+        });
+        out += `<div class="slls-mdl-map-actions"><button class="slls-mdl-btn" data-r="map-reset"${overrides === 0 ? " disabled" : ""}>Reset to defaults</button></div>`;
+        out += `</div></details>`;
+        return out;
+    }
+
+    function mappingSubText(overrides, total) {
+        return overrides === 0 ? "Using defaults" : `${overrides} of ${total} customized`;
+    }
+
+    // The mapping inputs deliberately don't re-render (that would steal focus),
+    // so the summary and Reset button are refreshed in place instead.
+    function refreshMappingChrome() {
+        const overrides = mappingOverrideCount();
+        const sub = root.querySelector('[data-r="map-sub"]');
+        if (sub) sub.textContent = mappingSubText(overrides, entityTables().length);
+        const btn = root.querySelector('[data-r="map-reset"]');
+        if (btn) btn.disabled = overrides === 0;
+    }
+
+    // Rows without a schema override follow the schema box above as it's typed.
+    function syncMappingSchemas() {
+        const rows = entityTables();
+        const maps = tableMappings();
+        const defSchema = defaultSchema();
+        root.querySelectorAll('[data-map-kind="schema"]').forEach((node) => {
+            const row = rows[Number(node.getAttribute("data-map-idx"))];
+            if (!row) return;
+            if (!((maps[row.name] || {}).schema || "").trim()) node.value = defSchema;
+            node.placeholder = defSchema || "dbo";
+        });
+        refreshMappingChrome();
     }
 
     function configureHtml() {
@@ -939,22 +1187,31 @@ function render({ model, el }) {
             </div>
         </div>`;
 
-        const itemsPlaceholder = srcItems === undefined ? "Loading…" : `No ${typeLower}s`;
+        const itemsPlaceholder = srcItems === undefined
+            ? "Loading…"
+            : (srcItems.length === 0 ? `No ${typeLower}s found` : `Select a ${typeLower}…`);
+        const srcOptions = optionsHtml(srcItems || [], model.get("source_item_id"), itemsPlaceholder, true);
         out += `<div class="slls-mdl-grid">
             <div class="slls-mdl-field">
                 <span class="slls-mdl-label">${esc(type)}</span>
-                <select class="slls-mdl-select" data-r="src_item"${srcItems === undefined ? " disabled" : ""}>${optionsHtml(srcItems || [], model.get("source_item_id"), itemsPlaceholder)}</select>
+                <select class="slls-mdl-select" data-r="src_item"${srcItems === undefined ? " disabled" : ""}>${srcOptions}</select>
             </div>
             <div class="slls-mdl-field">
                 <span class="slls-mdl-label">Schema ${schemaDisabled ? "(not used)" : "(required)"}</span>
                 <input class="slls-mdl-input" data-r="schema" value="${esc(schemaDisabled ? "" : schema)}"${schemaDisabled ? " disabled" : ""} placeholder="${schemaDisabled ? "Not a schema-enabled lakehouse" : "dbo"}" />
+                ${schemaDisabled ? "" : `<span class="slls-mdl-radio-desc">Applied to every table, unless a table is given its own schema in the table mapping below.</span>`}
             </div>
         </div>`;
+
+        out += tableMappingHtml();
 
         // Backup destination for the in-place conversion.
         if (inPlace) {
             const backupItems = currentBackupItems();
-            const backupPlaceholder = backupItems === undefined ? "Loading…" : "No lakehouses";
+            const backupPlaceholder = backupItems === undefined
+                ? "Loading…"
+                : (backupItems.length === 0 ? "No lakehouses found" : "Select a lakehouse…");
+            const backupOptions = optionsHtml(backupItems || [], model.get("backup_lakehouse_id"), backupPlaceholder, true);
             out += `<div class="slls-mdl-sec-title" style="margin-top:8px;">Backup of the existing model</div>`;
             out += `<div class="slls-mdl-grid">
                 <div class="slls-mdl-field">
@@ -963,7 +1220,7 @@ function render({ model, el }) {
                 </div>
                 <div class="slls-mdl-field">
                     <span class="slls-mdl-label">Backup lakehouse</span>
-                    <select class="slls-mdl-select" data-r="backup_lh"${backupItems === undefined ? " disabled" : ""}>${optionsHtml(backupItems || [], model.get("backup_lakehouse_id"), backupPlaceholder)}</select>
+                    <select class="slls-mdl-select" data-r="backup_lh"${backupItems === undefined ? " disabled" : ""}>${backupOptions}</select>
                 </div>
             </div>`;
             out += `<div class="slls-mdl-field">
@@ -1017,6 +1274,7 @@ function render({ model, el }) {
         tables.forEach((t) => {
             const icon = t.kind === "fieldParameter" ? IC.field_parameter
                 : t.kind === "calculationGroup" ? IC.calculation_group
+                : t.kind === "calculatedTable" ? IC.calculated_table
                 : IC.table;
             const countLabel = t.kind === "calculationGroup"
                 ? `${t.columnCount} calculation item${t.columnCount === 1 ? "" : "s"}`
@@ -1045,6 +1303,11 @@ function render({ model, el }) {
             out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>${esc(w)}</div></div>`;
         });
 
+        if (r.datasetId && r.targetWorkspaceId) {
+            const modelUrl = `https://app.powerbi.com/groups/${encodeURIComponent(r.targetWorkspaceId)}/modeling/${encodeURIComponent(r.datasetId)}/modelView`;
+            out += `<div><a class="slls-mdl-link" href="${esc(modelUrl)}" target="_blank" rel="noopener noreferrer">${IC.ext}Open the semantic model in Power BI</a></div>`;
+        }
+
         if (r.pqt && r.targetWorkspaceId) {
             out += `<a class="slls-mdl-link" href="https://app.powerbi.com/groups/${esc(r.targetWorkspaceId)}" target="_blank" rel="noopener noreferrer">${IC.ext}Open the workspace in Fabric</a>`;
         }
@@ -1067,7 +1330,15 @@ function render({ model, el }) {
         // Refresh the model — the wizard does not auto-refresh; the user runs
         // this once the data is loaded.
         out += `<div class="slls-mdl-sec-title">Refresh the model</div>`;
-        out += `<div class="slls-mdl-change-detail" style="margin-bottom:8px;">Once the data is loaded, refresh (reframe) the model by running this code:</div>`;
+        // Calculated tables in Direct Lake on OneLake need a cloud connection
+        // which must be set up before the model is refreshed.
+        const calcTables = r.calcTables || [];
+        if (calcTables.length > 0) {
+            const n = calcTables.length;
+            out += `<div class="slls-mdl-note slls-mdl-note-warn">${IC.alert}<div>This model contains ${n} calculated table${n === 1 ? "" : "s"}. <b>Before refreshing the model</b>, open the semantic model's settings in the Power BI service and, under <b>Data access</b> &rarr; <b>Gateway and cloud connections</b> &rarr; <b>Cloud connections</b>, create a new connection and select it for use by the semantic model.</div></div>`;
+            out += `<div class="slls-mdl-removed"><span>Calculated table${n === 1 ? "" : "s"}:</span>${calcTables.map((t) => `<span class="slls-mdl-colpill">${esc(t)}</span>`).join("")}</div>`;
+        }
+        out += `<div class="slls-mdl-change-detail" style="margin-bottom:8px;">Once the data is loaded${calcTables.length > 0 ? " and the cloud connection is in use" : ""}, refresh (reframe) the model by running this code:</div>`;
         out += `<div class="slls-mdl-copywrap">` +
             `<button class="slls-mdl-btn slls-mdl-copybtn" data-r="copy-refresh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>` +
             `<div class="slls-mdl-code">${hlCode(r.refreshCode || "", "python")}</div></div>`;
@@ -1160,9 +1431,13 @@ function render({ model, el }) {
             </div>`;
         }
         if (screen === "configure") {
+            const noSource = !model.get("source_item_id");
+            const srcLabel = (model.get("source_type") || "Lakehouse").toLowerCase();
+            const previewAttrs = (b || noSource ? " disabled" : "")
+                + (noSource ? ` title="Select a ${esc(srcLabel)} first"` : "");
             return `<div class="slls-mdl-footer">
                 <button class="slls-mdl-btn" data-r="to-analyze">${IC.back} Back</button>
-                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="to-preview"${b ? " disabled" : ""}>${b ? spin : ""} Preview model</button>
+                <button class="slls-mdl-btn slls-mdl-btn-primary" data-r="to-preview"${previewAttrs}>${b ? spin : ""} Preview model</button>
             </div>`;
         }
         if (screen === "preview") {
@@ -1389,7 +1664,30 @@ function render({ model, el }) {
                 route();
             }
         });
-        on('[data-r="schema"]', "input", (e) => { model.set("schema", e.target.value); model.save_changes(); });
+        on('[data-r="schema"]', "input", (e) => { model.set("schema", e.target.value); model.save_changes(); syncMappingSchemas(); });
+        on('[data-r="map-details"]', "toggle", (e) => { mapOpen = e.target.open; });
+        on('[data-r="map-reset"]', "click", () => { model.set("table_mappings", {}); model.save_changes(); route(); });
+        root.querySelectorAll("[data-map-idx]").forEach((node) => {
+            node.addEventListener("input", (e) => {
+                const rows = entityTables();
+                const row = rows[Number(e.target.getAttribute("data-map-idx"))];
+                if (!row) return;
+                const kind = e.target.getAttribute("data-map-kind");
+                const value = e.target.value.trim();
+                const isDefault = kind === "schema" ? value === defaultSchema() : value === row.entity;
+                const maps = Object.assign({}, model.get("table_mappings") || {});
+                const entry = Object.assign({}, maps[row.name] || {});
+                // Only deviations from the default are stored, so an empty or
+                // default-valued box falls back to the schema box above.
+                if (!value || isDefault) delete entry[kind];
+                else entry[kind] = value;
+                if (!entry.schema && !entry.table) delete maps[row.name];
+                else maps[row.name] = entry;
+                model.set("table_mappings", maps);
+                model.save_changes();
+                refreshMappingChrome();
+            });
+        });
         on('[data-r="mv-manual"]', "change", () => { model.set("data_movement", "manual"); model.save_changes(); route(); });
         on('[data-r="mv-pqt"]', "change", () => { model.set("data_movement", "pqt"); model.save_changes(); route(); });
         on('[data-r="template"]', "input", (e) => { model.set("template_name", e.target.value); model.save_changes(); });
@@ -1435,6 +1733,7 @@ function render({ model, el }) {
                 source_workspace_id: model.get("source_workspace_id"),
                 source_item_id: item,
                 schema: model.get("schema") || "",
+                table_mappings: mappingsPayload(),
                 data_movement: model.get("data_movement") || "manual",
                 backup_workspace_id: model.get("backup_workspace_id"),
                 backup_lakehouse_id: model.get("backup_lakehouse_id"),
@@ -1451,6 +1750,7 @@ function render({ model, el }) {
                 source_workspace_id: model.get("source_workspace_id"),
                 source_item_id: model.get("source_item_id"),
                 schema: model.get("schema") || "",
+                table_mappings: mappingsPayload(),
                 data_movement: model.get("data_movement") || "manual",
                 backup_workspace_id: model.get("backup_workspace_id"),
                 backup_lakehouse_id: model.get("backup_lakehouse_id"),
@@ -1520,6 +1820,19 @@ def migrate_to_direct_lake(
     :func:`sempy_labs.create_blank_semantic_model`,
     :func:`sempy_labs.migration.migrate_tables_columns_to_semantic_model` and the
     related ``migrate_*`` helpers) under the hood.
+
+    Calculated columns within regular (data) tables are migrated as
+    `Direct Lake on OneLake calculated columns <https://learn.microsoft.com/power-bi/transform-model/desktop-calculated-columns#materialization-and-performance>`_ (preview)
+    with their `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_
+    set to 'UserContext' — the only expression context supported for calculated columns in Direct Lake. These columns are evaluated
+    at query time (not materialized), so relationships which use calculated columns are not migrated. Migrating calculated columns requires
+    a version of the Tabular Object Model which supports the ExpressionContext property (Microsoft.AnalysisServices v19.117.0 or later);
+    otherwise they are reported as not migrated.
+
+    `Calculated tables <https://learn.microsoft.com/fabric/fundamentals/direct-lake-overview#considerations-and-limitations>`_ (including those which
+    reference Direct Lake tables) are supported in Direct Lake on OneLake (preview) and are migrated as calculated tables (Import storage mode),
+    including their calculated columns (as is). Calculated tables which reference objects that are not migrated, as well as auto date/time tables,
+    are not migrated. The new model must be refreshed for the calculated tables to be calculated.
 
     Parameters
     ----------
@@ -1618,6 +1931,7 @@ def migrate_to_direct_lake(
         field-parameter / calculation-group dependencies. Mirrors the reference
         migration tool (m-kovalsky/Two)."""
         import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs.tom._model import _supports_expression_context
 
         # Calculation dependencies drive the transitive removal of measures /
         # calculated columns. Best-effort: skip the expansion if unavailable.
@@ -1638,6 +1952,7 @@ def migrate_to_direct_lake(
         removed_measures = set()
         field_parameters = {}  # table name -> calculated-table DAX expression
         calc_groups = []
+        calc_tables = set()  # calculated (DAX) tables kept as calculated tables
         changes = []
         unsupported = []
 
@@ -1682,17 +1997,27 @@ def migrate_to_direct_lake(
                 field_parameters[tname] = expr
                 continue
 
-            # Other calculated (DAX) tables are not supported.
+            # Other calculated (DAX) tables — including those which reference
+            # Direct Lake tables — are supported in Direct Lake on OneLake
+            # (preview) and are kept as calculated tables (Import storage mode).
+            # Auto date/time tables are not migrated.
             if is_calc:
-                removed_tables.add(tname)
-                unsupported.append(
-                    {
-                        "category": "Calculated table",
-                        "table": tname,
-                        "name": tname,
-                        "reason": "Calculated (DAX) tables are not supported in Direct Lake.",
-                    }
-                )
+                if tom.is_auto_date_table(table_name=tname):
+                    removed_tables.add(tname)
+                    unsupported.append(
+                        {
+                            "category": "Auto date/time table",
+                            "table": tname,
+                            "name": tname,
+                            "reason": (
+                                "Auto date/time tables are not supported in the "
+                                "Direct Lake migration process. Create a proper "
+                                "date table instead."
+                            ),
+                        }
+                    )
+                else:
+                    calc_tables.add(tname)
                 continue
 
             # Aggregation tables are not supported.
@@ -1753,11 +2078,18 @@ def migrate_to_direct_lake(
                 continue
 
         # --- Column-level unsupported features (within surviving tables) ---
+        # Calculated columns are supported in Direct Lake on OneLake (preview)
+        # with the 'UserContext' expression context only. Setting that property
+        # requires a TOM version which exposes CalculatedColumn.ExpressionContext.
+        supports_expression_context = _supports_expression_context()
         for t in tom.model.Tables:
             tname = t.Name
+            # Calculated tables use the Import storage mode, so their columns
+            # (including calculated columns) are kept as is.
             if (
                 tname in removed_tables
                 or tname in field_parameters
+                or tname in calc_tables
                 or t.CalculationGroup is not None
             ):
                 continue
@@ -1765,15 +2097,22 @@ def migrate_to_direct_lake(
                 if c.Type == TOM.ColumnType.RowNumber:
                     continue
                 if c.Type == TOM.ColumnType.Calculated:
-                    removed_columns.add(_mig_key(tname, c.Name))
-                    unsupported.append(
-                        {
-                            "category": "Calculated column",
-                            "table": tname,
-                            "name": c.Name,
-                            "reason": "Calculated (DAX) columns are not supported in Direct Lake.",
-                        }
-                    )
+                    if not supports_expression_context:
+                        removed_columns.add(_mig_key(tname, c.Name))
+                        unsupported.append(
+                            {
+                                "category": "Calculated column",
+                                "table": tname,
+                                "name": c.Name,
+                                "reason": (
+                                    "Calculated columns in Direct Lake require the "
+                                    "'User Context' expression context, which is not "
+                                    "supported by the installed version of the "
+                                    "Tabular Object Model (requires "
+                                    "Microsoft.AnalysisServices v19.117.0 or later)."
+                                ),
+                            }
+                        )
                 elif c.DataType == TOM.DataType.Binary:
                     removed_columns.add(_mig_key(tname, c.Name))
                     unsupported.append(
@@ -1785,35 +2124,21 @@ def migrate_to_direct_lake(
                         }
                     )
 
-        # --- Transitive dependents (measures / calc columns) ---
-        _expand_dependents(
-            dep_df, removed_tables, removed_columns, removed_measures, unsupported
+        # --- Transitive dependents + field-parameter DAX rewrite ---
+        # Repeated until the removal sets stabilize, as emptying a field
+        # parameter can remove calculated tables referenced by other field
+        # parameters (and vice versa).
+        field_parameter_rewrites = _resolve_field_parameter_removals(
+            dep_df,
+            field_parameters,
+            removed_tables,
+            removed_columns,
+            removed_measures,
+            unsupported,
+            calc_tables,
         )
-
-        # --- Field-parameter DAX rewrite (drop only dead field references) ---
-        for tname in list(field_parameters.keys()):
-            original = field_parameters[tname]
-            rewritten, removed_refs = _rewrite_field_parameter_dax(
-                original,
-                removed_tables,
-                removed_columns,
-                removed_measures,
-            )
-            if rewritten is None or not rewritten.strip():
-                # Every field referenced a dropped object — drop the table.
-                del field_parameters[tname]
-                removed_tables.add(tname)
-                unsupported.append(
-                    {
-                        "category": "Field parameter",
-                        "table": tname,
-                        "name": tname,
-                        "reason": "Every field references an object that is not migrated.",
-                    }
-                )
-                continue
-
-            field_parameters[tname] = rewritten
+        for tname, (original, removed_refs) in field_parameter_rewrites.items():
+            rewritten = field_parameters[tname]
             if removed_refs:
                 n = len(removed_refs)
                 detail = (
@@ -1843,11 +2168,131 @@ def migrate_to_direct_lake(
                     }
                 )
 
-        # A field parameter may have been emptied (and thus removed); re-expand
-        # so measures depending on it are dropped too.
-        _expand_dependents(
-            dep_df, removed_tables, removed_columns, removed_measures, unsupported
-        )
+        calc_tables -= removed_tables
+
+        # --- Calculated tables kept in the new model ---
+        for tname in sorted(calc_tables):
+            t = tom.model.Tables[tname]
+            expr = next(
+                (
+                    p.Source.Expression
+                    for p in t.Partitions
+                    if getattr(p, "SourceType", None)
+                    == TOM.PartitionSourceType.Calculated
+                ),
+                "",
+            )
+            kept_cc = [
+                c.Name
+                for c in t.Columns
+                if c.Type == TOM.ColumnType.Calculated
+                and _mig_key(tname, c.Name) not in removed_columns
+            ]
+            detail = (
+                "Kept as a calculated table (Import storage mode). Calculated "
+                "tables, including those which reference Direct Lake tables, are "
+                "supported in Direct Lake on OneLake (preview)."
+            )
+            if kept_cc:
+                n = len(kept_cc)
+                detail += (
+                    f" Its {n} calculated column{'' if n == 1 else 's'} "
+                    f"{'is' if n == 1 else 'are'} kept as is."
+                )
+            changes.append(
+                {
+                    "table": tname,
+                    "kind": "Calculated table",
+                    "category": "kept",
+                    "detail": detail,
+                    "expression": expr or "",
+                    "columns": kept_cc,
+                }
+            )
+
+        # --- Calculated columns kept in the new model ---
+        # Only calculated columns within regular (data) tables are kept; those
+        # within calculated tables (incl. field parameters) are not migrated.
+        # Direct Lake calculated columns only support the 'UserContext'
+        # expression context: they are evaluated at query time (not materialized)
+        # and respect RLS/OLS.
+        if supports_expression_context:
+            for t in tom.model.Tables:
+                tname = t.Name
+                if (
+                    tname in removed_tables
+                    or tname in field_parameters
+                    or t.CalculationGroup is not None
+                    or any(
+                        getattr(p, "SourceType", None)
+                        == TOM.PartitionSourceType.Calculated
+                        for p in t.Partitions
+                    )
+                ):
+                    continue
+                kept_cc = [
+                    c.Name
+                    for c in t.Columns
+                    if c.Type == TOM.ColumnType.Calculated
+                    and _mig_key(tname, c.Name) not in removed_columns
+                ]
+                if not kept_cc:
+                    continue
+                n = len(kept_cc)
+                changes.append(
+                    {
+                        "table": tname,
+                        "kind": "Calculated column",
+                        "category": "kept",
+                        "detail": (
+                            f"Kept {n} calculated column{'' if n == 1 else 's'} "
+                            "with the Expression Context set to User Context (the "
+                            "only expression context supported in Direct Lake). "
+                            "They are evaluated at query time, are not "
+                            "materialized and respect RLS/OLS."
+                        ),
+                        "columns": kept_cc,
+                    }
+                )
+
+        # --- Relationships using calculated columns ---
+        # Calculated columns are not materialized in Direct Lake so they cannot
+        # be used in relationships. Calculated columns within calculated tables
+        # (Import storage mode) are materialized and can be used.
+        try:
+            for r in tom.model.Relationships:
+                if (
+                    r.FromTable.Name in removed_tables
+                    or r.ToTable.Name in removed_tables
+                ):
+                    continue
+                calc_cols = [
+                    f"'{tbl.Name}'[{col.Name}]"
+                    for tbl, col in (
+                        (r.FromTable, r.FromColumn),
+                        (r.ToTable, r.ToColumn),
+                    )
+                    if col.Type == TOM.ColumnType.Calculated
+                    and tbl.Name not in calc_tables
+                ]
+                if calc_cols:
+                    unsupported.append(
+                        {
+                            "category": "Relationship",
+                            "table": r.FromTable.Name,
+                            "name": (
+                                f"'{r.FromTable.Name}'[{r.FromColumn.Name}] → "
+                                f"'{r.ToTable.Name}'[{r.ToColumn.Name}]"
+                            ),
+                            "reason": (
+                                f"Uses the calculated column {', '.join(calc_cols)}. "
+                                "Calculated columns in Direct Lake are not "
+                                "materialized and cannot be used in relationships."
+                            ),
+                        }
+                    )
+        except Exception:
+            pass
 
         # --- Security (RLS / OLS) referencing removed objects ---
         # Roles, RLS, OLS and role members are copied to the migrated model. The
@@ -1937,6 +2382,7 @@ def migrate_to_direct_lake(
             "removedMeasures": removed_measures,
             "fieldParameters": field_parameters,
             "calcGroups": calc_groups,
+            "calcTables": sorted(calc_tables),
             "changes": changes,
             "unsupported": unsupported,
         }
@@ -1948,15 +2394,29 @@ def migrate_to_direct_lake(
         ) as tom:
             is_dl = tom.is_direct_lake()
             plan = _compute_migration_plan(tom)
+            # Tables that become Direct Lake entity partitions — the only ones
+            # that map to a source schema/table.
+            _calc_groups = set(plan["calcGroups"])
+            _calc_tables = set(plan["calcTables"])
+            entity_tables = [
+                {"name": t.Name, "entity": _default_entity_name(t.Name)}
+                for t in tom.model.Tables
+                if t.Name not in plan["removedTables"]
+                and t.Name not in plan["fieldParameters"]
+                and t.Name not in _calc_groups
+                and t.Name not in _calc_tables
+            ]
 
         # Group the unsupported objects by category (in a stable order).
         order = [
             "Calculated table",
+            "Auto date/time table",
             "Aggregation",
             "Field parameter",
             "Calculated column",
             "Binary column",
             "Dependent object",
+            "Relationship",
             "Security (RLS)",
             "Security (OLS)",
         ]
@@ -2001,6 +2461,7 @@ def migrate_to_direct_lake(
             "canConvertInPlace": can_in_place,
             "changes": plan["changes"],
             "unsupportedGroups": groups,
+            "entityTables": entity_tables,
             "reports": _list_bindable_reports(),
             "docsUrl": _DIRECT_LAKE_DOCS_URL,
         }
@@ -2031,9 +2492,25 @@ def migrate_to_direct_lake(
             removed_cols = plan["removedColumns"]
             field_params = plan["fieldParameters"]
             calc_groups = set(plan["calcGroups"])
+            calc_tables = set(plan["calcTables"])
             for t in tom.model.Tables:
                 tname = t.Name
                 if tname in removed:
+                    continue
+                if tname in calc_tables:
+                    col_count = sum(
+                        1
+                        for c in t.Columns
+                        if c.Type != TOM.ColumnType.RowNumber
+                        and _mig_key(tname, c.Name) not in removed_cols
+                    )
+                    tables.append(
+                        {
+                            "name": tname,
+                            "columnCount": col_count,
+                            "kind": "calculatedTable",
+                        }
+                    )
                     continue
                 if tname in field_params:
                     col_count = sum(
@@ -2065,7 +2542,6 @@ def migrate_to_direct_lake(
                     1
                     for c in t.Columns
                     if c.Type != TOM.ColumnType.RowNumber
-                    and c.Type != TOM.ColumnType.Calculated
                     and _mig_key(tname, c.Name) not in removed_cols
                 )
                 tables.append(
@@ -2211,6 +2687,7 @@ def migrate_to_direct_lake(
         src_id = data.get("source_item_id")
         movement = data.get("data_movement") or "manual"
         schema = (data.get("schema") or "").strip()
+        table_mappings = data.get("table_mappings") or {}
         template_name = (
             data.get("template_name") or ""
         ).strip() or "PowerQueryTemplate"
@@ -2258,6 +2735,7 @@ def migrate_to_direct_lake(
         #    they are left unchanged during the conversion.
         field_parameters = {}
         calc_groups = set()
+        calc_tables = []
         try:
             with connect_semantic_model(
                 dataset=dataset_id, workspace=workspace_id, readonly=True
@@ -2265,6 +2743,7 @@ def migrate_to_direct_lake(
                 _plan = _compute_migration_plan(src_tom)
                 field_parameters = _plan["fieldParameters"]
                 calc_groups = set(_plan["calcGroups"])
+                calc_tables = list(_plan["calcTables"])
         except Exception as e:
             warnings.append(f"Resolving model objects: {e}")
 
@@ -2272,6 +2751,7 @@ def migrate_to_direct_lake(
         #    partition. Field parameters and calculation groups are kept as-is.
         converted = 0
         import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs.tom._model import _set_expression_context
 
         with connect_semantic_model(
             dataset=dataset_id, workspace=workspace_id, readonly=False
@@ -2298,16 +2778,16 @@ def migrate_to_direct_lake(
                     continue
                 if t.CalculationGroup is not None:
                     continue
-                # Skip calculated (DAX) tables — none exist in this scenario.
+                # Calculated (DAX) tables are kept as is (Import storage mode).
                 if any(
                     p.SourceType == TOM.PartitionSourceType.Calculated
                     for p in t.Partitions
                 ):
                     continue
 
-                ent_name = tname
-                for char in icons.special_characters:
-                    ent_name = ent_name.replace(char, "")
+                tbl_schema, ent_name = _table_mapping(
+                    table_mappings, tname, schema, _default_entity_name(tname)
+                )
 
                 # An incremental-refresh policy references the import partitions;
                 # remove it before converting to a Direct Lake entity partition.
@@ -2327,6 +2807,12 @@ def migrate_to_direct_lake(
                     if src:
                         c.SourceColumn = src
 
+                # Calculated columns in Direct Lake only support the
+                # 'UserContext' expression context (compat level >= 1705).
+                for c in t.Columns:
+                    if c.Type == TOM.ColumnType.Calculated:
+                        _set_expression_context(tom.model, c, "UserContext")
+
                 # Replace the existing partition(s) with a single entity
                 # partition in Direct Lake mode.
                 for p in list(t.Partitions):
@@ -2334,7 +2820,7 @@ def migrate_to_direct_lake(
                 tom.add_entity_partition(
                     table_name=tname,
                     entity_name=ent_name,
-                    schema_name=schema or None,
+                    schema_name=tbl_schema or None,
                 )
                 converted += 1
 
@@ -2352,10 +2838,12 @@ def migrate_to_direct_lake(
 
         return {
             "createdModel": dataset_name,
+            "datasetId": dataset_id,
             "inPlace": True,
             "sourceType": src_type,
             "targetWorkspaceId": target_ws,
             "convertedTables": converted,
+            "calcTables": calc_tables,
             "backupPath": backup_path,
             "pqt": movement == "pqt",
             "pqtFileName": pqt_file_name,
@@ -2376,6 +2864,9 @@ def migrate_to_direct_lake(
         from sempy_labs.migration._migrate_calctables_to_lakehouse import (
             migrate_field_parameters,
         )
+        from sempy_labs.migration._migrate_calctables_to_semantic_model import (
+            migrate_calc_tables_to_semantic_model,
+        )
         from sempy_labs.migration._migrate_model_objects_to_semantic_model import (
             migrate_model_objects_to_semantic_model,
         )
@@ -2388,6 +2879,7 @@ def migrate_to_direct_lake(
         src_id = data.get("source_item_id")
         movement = data.get("data_movement") or "manual"
         schema = (data.get("schema") or "").strip()
+        table_mappings = data.get("table_mappings") or {}
         template_name = (
             data.get("template_name") or ""
         ).strip() or "PowerQueryTemplate"
@@ -2436,6 +2928,15 @@ def migrate_to_direct_lake(
             verbose=False,
         )
         _step(
+            migrate_calc_tables_to_semantic_model,
+            "Migrate calculated tables",
+            dataset=dataset_name,
+            new_dataset=new_name,
+            workspace=workspace_id,
+            new_dataset_workspace=target_ws,
+            verbose=False,
+        )
+        _step(
             migrate_field_parameters,
             "Migrate field parameters",
             dataset=dataset_name,
@@ -2454,12 +2955,15 @@ def migrate_to_direct_lake(
             verbose=False,
         )
 
-        # 3b) Post-process the new model. Calculated tables (other than field
-        #     parameters) are intentionally not migrated, so drop the measures
-        #     that depend on non-migrated objects, apply the rewritten
-        #     field-parameter DAX (dead references removed), and stamp the schema
-        #     onto each Direct Lake entity partition (the helpers leave it blank).
+        # 3b) Post-process the new model. Drop the objects that depend on
+        #     non-migrated objects (measures, calculated columns and calculated
+        #     tables), apply the rewritten field-parameter DAX (dead references
+        #     removed), and stamp the schema onto each Direct Lake entity
+        #     partition (the helpers leave it blank).
         removed_measures = set()
+        removed_columns = set()
+        removed_calc_tables = set()
+        kept_calc_tables = set()
         field_parameters = {}
         try:
             with connect_semantic_model(
@@ -2467,7 +2971,15 @@ def migrate_to_direct_lake(
             ) as src_tom:
                 _plan = _compute_migration_plan(src_tom)
                 removed_measures = _plan["removedMeasures"]
+                removed_columns = _plan["removedColumns"]
                 field_parameters = _plan["fieldParameters"]
+                kept_calc_tables = set(_plan["calcTables"])
+                removed_calc_tables = {
+                    n
+                    for n in _plan["removedTables"]
+                    if src_tom.is_calculated_table(table_name=n)
+                    and not src_tom.is_field_parameter(table_name=n)
+                }
         except Exception as e:
             warnings.append(f"Resolving non-migrated objects: {e}")
 
@@ -2478,7 +2990,7 @@ def migrate_to_direct_lake(
                 dataset=new_name, workspace=target_ws, readonly=False
             ) as new_tom:
                 # Apply the rewritten field-parameter DAX so references to
-                # objects that were not migrated (e.g. a calculated column) are
+                # objects that were not migrated (e.g. a calculated table) are
                 # removed — otherwise the field parameter fails on refresh.
                 for t in new_tom.model.Tables:
                     new_expr = field_parameters.get(t.Name)
@@ -2492,13 +3004,63 @@ def migrate_to_direct_lake(
                     for mname in [m.Name for m in t.Measures]:
                         if _mig_key(t.Name, mname) in removed_measures:
                             t.Measures.Remove(t.Measures[mname])
-                # Stamp the schema onto each Direct Lake entity partition.
+                # Drop calculated columns that depend on objects that were not
+                # migrated.
+                for c in [
+                    c
+                    for c in new_tom.all_columns()
+                    if c.Type == TOM.ColumnType.Calculated
+                    and _mig_key(c.Parent.Name, c.Name) in removed_columns
+                ]:
+                    new_tom.remove_object(c)
+                # Drop calculated tables that depend on objects that were not
+                # migrated (along with their relationships and security).
+                for tname in [
+                    t.Name
+                    for t in new_tom.model.Tables
+                    if t.Name in removed_calc_tables
+                ]:
+                    for r in [
+                        r
+                        for r in new_tom.model.Relationships
+                        if r.FromTable.Name == tname or r.ToTable.Name == tname
+                    ]:
+                        new_tom.remove_object(r)
+                    for role in new_tom.model.Roles:
+                        for tp in [
+                            tp
+                            for tp in role.TablePermissions
+                            if tp.Table is not None and tp.Table.Name == tname
+                        ]:
+                            role.TablePermissions.Remove(tp)
+                    new_tom.remove_object(new_tom.model.Tables[tname])
+                # Stamp the schema/entity onto each Direct Lake entity partition.
                 for t in new_tom.model.Tables:
                     for p in t.Partitions:
                         if p.SourceType == TOM.PartitionSourceType.Entity:
-                            p.Source.SchemaName = schema
+                            tbl_schema, ent_name = _table_mapping(
+                                table_mappings,
+                                t.Name,
+                                schema,
+                                p.Source.EntityName or _default_entity_name(t.Name),
+                            )
+                            p.Source.SchemaName = tbl_schema
+                            p.Source.EntityName = ent_name
+                # Calculated tables which made it into the new model.
+                created_calc_tables = sorted(
+                    t.Name for t in new_tom.model.Tables if t.Name in kept_calc_tables
+                )
         except Exception as e:
             warnings.append(f"Post-migration cleanup: {e}")
+            created_calc_tables = sorted(kept_calc_tables)
+
+        new_dataset_id = ""
+        try:
+            from sempy_labs._helper_functions import resolve_dataset_id
+
+            new_dataset_id = str(resolve_dataset_id(new_name, target_ws))
+        except Exception as e:
+            warnings.append(f"Resolving the new semantic model's ID: {e}")
 
         # 4) Validate the migration.
         validation = []
@@ -2528,6 +3090,8 @@ def migrate_to_direct_lake(
 
         return {
             "createdModel": new_name,
+            "datasetId": new_dataset_id,
+            "calcTables": created_calc_tables,
             "sourceType": src_type,
             "targetWorkspaceId": target_ws,
             "reportWorkspaceId": workspace_id,
@@ -2571,6 +3135,7 @@ def migrate_to_direct_lake(
         source_item_id = traitlets.Unicode("").tag(sync=True)
         schema = traitlets.Unicode("").tag(sync=True)
         lakehouse_schema_enabled = traitlets.Bool(True).tag(sync=True)
+        table_mappings = traitlets.Dict().tag(sync=True)
         data_movement = traitlets.Unicode("manual").tag(sync=True)
         template_name = traitlets.Unicode("").tag(sync=True)
         workspaces = traitlets.List().tag(sync=True)
@@ -2607,6 +3172,7 @@ def migrate_to_direct_lake(
         source_item_id="",
         schema="",
         lakehouse_schema_enabled=True,
+        table_mappings={},
         data_movement="manual",
         template_name=f"{dataset_name} data load",
         workspaces=workspaces_payload,
@@ -2689,6 +3255,7 @@ def migrate_to_direct_lake(
                 widget.source_workspace_id = workspace_id
                 widget.backup_workspace_id = workspace_id
                 widget.source_item_id = ""
+                widget.table_mappings = {}
                 widget.conversion_mode = "new"
                 widget.preview = {}
                 widget.result = {}
@@ -2808,6 +3375,7 @@ _WIDGET_JS = (
     .replace("__IC_FULLSCREEN_EXIT__", _UI_ICONS["fullscreen_exit"])
     .replace("__IC_FIELD_PARAMETER__", _UI_ICONS["field_parameter"])
     .replace("__IC_CALCULATION_GROUP__", _UI_ICONS["calculation_group"])
+    .replace("__IC_CALCULATED_TABLE__", _UI_ICONS["calculated_table"])
     .replace("__IC_DATABASE_ZAP__", _UI_ICONS["database_zap"])
     .replace("__IC_SWAP__", _UI_ICONS["swap"])
     .replace("__IC_REFRESH__", _UI_ICONS["refresh"])

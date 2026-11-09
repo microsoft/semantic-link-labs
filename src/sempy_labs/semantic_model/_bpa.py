@@ -9,7 +9,9 @@ from sempy_labs._ui_components import (
     DARK_THEME_VARS as _UI_DARK_VARS,
     list_picker_datasets as _list_picker_datasets,
     list_picker_workspaces as _list_picker_workspaces,
+    render_attribution_html as _ui_render_attribution_html,
     run_widget_task as _run_widget_task,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
 )
@@ -120,8 +122,15 @@ _WIDGET_CSS = (
 .slls-bpa-titlewrap { display: flex; flex-direction: column; min-width: 0; }
 .slls-bpa-head-spacer { flex: 1 1 auto; }
 .slls-bpa-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 10px; }
-.slls-bpa-title .slls-bpa-title-icon { color: var(--ui-accent); display: inline-flex; flex-shrink: 0; }
-.slls-bpa-title .slls-bpa-title-icon svg { width: 27px; height: 27px; stroke-width: 1.5; }
+.slls-bpa-title-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; flex: 0 0 auto;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: var(--ui-surface-2);
+    color: var(--ui-accent);
+}
+.slls-bpa-title-icon svg { display: block; width: 27px; height: 27px; stroke-width: 1.5; }
 .slls-bpa-subtitle { font-size: 12.5px; color: var(--ui-text-secondary); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 640px; }
 .slls-bpa-subtitle b { color: var(--ui-text); font-weight: 500; }
 .slls-bpa-subtitle .slls-bpa-sep { color: var(--ui-text-tertiary); margin: 0 6px; }
@@ -542,9 +551,6 @@ _WIDGET_CSS = (
 /* Reserve vertical room under the pickers so their dropdowns have somewhere to
    open without pushing past the bottom of the notebook output area. */
 .slls-bpa-screen.slls-bpa-screen-select.show { min-height: 420px; }
-.slls-bpa-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--ui-text-tertiary); }
-.slls-bpa-attribution a { color: var(--ui-text-tertiary); text-decoration: none; transition: color 120ms ease; }
-.slls-bpa-attribution a:hover { color: var(--ui-accent); }
 .slls-bpa-searchwrap { position: relative; display: inline-flex; align-items: center; }
 .slls-bpa-searchwrap .slls-bpa-searchicon { position: absolute; left: 12px; color: var(--ui-text-tertiary); display: inline-flex; pointer-events: none; }
 .slls-bpa-searchwrap .slls-bpa-input { padding-left: 32px; min-width: 240px; }
@@ -552,6 +558,7 @@ _WIDGET_CSS = (
 )
 _WIDGET_CSS += _ui_scoped_header_css(".slls-bpa")
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-bpa")
+_WIDGET_CSS += _ui_scoped_attribution_css(".slls-bpa")
 
 
 _WIDGET_JS = r"""
@@ -1081,13 +1088,14 @@ function render({ model, el }) {
     header.className = "slls-bpa-header";
     root.appendChild(header);
 
+    header.appendChild(iconSpan(ICON.shield, "slls-bpa-title-icon"));
+
     const titleWrap = document.createElement("div");
     titleWrap.className = "slls-bpa-titlewrap";
     header.appendChild(titleWrap);
 
     const title = document.createElement("div");
     title.className = "slls-bpa-title";
-    title.appendChild(iconSpan(ICON.shield, "slls-bpa-title-icon"));
     const titleText = document.createElement("span");
     titleText.textContent = "Best Practice Analyzer";
     title.appendChild(titleText);
@@ -1931,12 +1939,7 @@ function render({ model, el }) {
     // ------------------------------------------------------------------
     // Attribution
     // ------------------------------------------------------------------
-    const attribution = document.createElement("div");
-    attribution.className = "slls-bpa-attribution";
-    attribution.innerHTML =
-        'Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>' +
-        ' &bull; <a href="https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules" target="_blank" rel="noopener noreferrer">Best Practice Rules</a>';
-    root.appendChild(attribution);
+    root.insertAdjacentHTML("beforeend", `__SLLS_ATTRIBUTION__`);
 
     // ==================================================================
     // Client-side view state
@@ -3603,7 +3606,18 @@ export default { render };
 
 
 _WIDGET_JS = (
-    _WIDGET_JS.replace("__SLLS_ICON_SHIELD_CHECK__", _UI_ICONS["shield_check"])
+    _WIDGET_JS.replace(
+        "__SLLS_ATTRIBUTION__",
+        _ui_render_attribution_html(
+            extra_links=[
+                (
+                    "Best Practice Rules",
+                    "https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules",
+                )
+            ]
+        ),
+    )
+    .replace("__SLLS_ICON_SHIELD_CHECK__", _UI_ICONS["shield_check"])
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
     .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
