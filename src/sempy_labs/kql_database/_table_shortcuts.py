@@ -280,11 +280,11 @@ def create_shortcut(
     bucket: Optional[str] = None,
     enable_query_acceleration: bool = False,
     workspace: Optional[str | UUID] = None,
-):
+) -> None:
     """
     Creates a table shortcut within a KQL database which points to an external storage location (i.e. ADLS Gen2, Amazon S3).
 
-    For shortcuts to OneLake items, see :func:`create_kql_database_table_shortcut_onelake`.
+    For shortcuts to OneLake items, see :func:`create_shortcut_onelake`.
 
     This is a wrapper function for the following API: `Table Shortcuts - Create Shortcut <https://learn.microsoft.com/rest/api/fabric/kqldatabase/table-shortcuts/create-shortcut>`_.
 
@@ -351,7 +351,7 @@ def delete_shortcut(
     kql_database: str | UUID,
     shortcut_name: str,
     workspace: Optional[str | UUID] = None,
-):
+) -> None:
     """
     Deletes a table shortcut from a KQL database.
 

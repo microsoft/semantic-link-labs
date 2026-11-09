@@ -141,7 +141,7 @@ def get_tables_mirroring_status(
 @log
 def start_mirroring(
     mirrored_database: str | UUID, workspace: Optional[str | UUID] = None
-):
+) -> None:
     """
     Starts the mirroring for a database.
 
@@ -178,7 +178,7 @@ def start_mirroring(
 @log
 def stop_mirroring(
     mirrored_database: str | UUID, workspace: Optional[str | UUID] = None
-):
+) -> None:
     """
     Stops the mirroring for a database.
 
