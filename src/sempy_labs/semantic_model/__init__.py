@@ -21,6 +21,12 @@ from ._find_unused_objects import (
 from ._refresh_manager import (
     refresh_manager,
 )
+from ._cancel_query import (
+    cancel_spid,
+    list_semantic_model_sessions,
+    list_semantic_model_commands,
+    cancel_long_running_queries,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -32,4 +38,8 @@ __all__ = [
     "migrate_to_direct_lake",
     "find_unused_objects",
     "refresh_manager",
+    "cancel_spid",
+    "list_semantic_model_sessions",
+    "list_semantic_model_commands",
+    "cancel_long_running_queries",
 ]
