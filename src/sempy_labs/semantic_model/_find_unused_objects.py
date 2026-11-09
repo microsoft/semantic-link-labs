@@ -519,9 +519,9 @@ def _score_reports(
 
     When ``selected`` is provided (a set of ``(report name, report workspace)``
     tuples), only those reports are analyzed; otherwise every downstream report
-    is analyzed.
+    is analyzed. Downstream reports are discovered across all workspaces.
     """
-    from sempy_labs._list_functions import list_report_semantic_model_objects
+    from sempy_labs.report import ReportWrapper
 
     tables_lower = context[_CTX_TABLES]
     columns_by_table = context[_CTX_COLUMNS]
@@ -534,16 +534,17 @@ def _score_reports(
     # so the same object referenced by several visuals is counted several times.
     # The keys a reference expands to never change, so they are computed once.
     expanded: Dict[Tuple[str, str, str], Set[str]] = {}
-    df_reports = list_report_semantic_model_objects(
-        dataset=dataset_id, workspace=workspace_id
-    )
-    if not df_reports.empty:
-        grouped = df_reports.groupby(["Report Name", "Report Workspace Name"])
-        for (report_name, report_workspace), grp in grouped:
-            if selected is not None and (report_name, report_workspace) not in selected:
-                continue
-            report_count += 1
-            for _, r in grp.iterrows():
+    for report in _list_downstream_reports(dataset_id, workspace_id):
+        if (
+            selected is not None
+            and (report["name"], report["workspace"]) not in selected
+        ):
+            continue
+        rpt = ReportWrapper(report=report["id"], workspace=report["workspace_id"])
+        df_objects = rpt.list_semantic_model_objects()
+        report_count += 1
+        if not df_objects.empty:
+            for _, r in df_objects.iterrows():
                 reference = (
                     str(r["Table Name"]),
                     str(r["Object Name"]),
@@ -722,16 +723,40 @@ def find_unused_objects(
 
 
 def _list_downstream_reports(dataset_id: str, workspace_id: str) -> List[dict]:
-    """Returns the downstream reports (name + workspace) that consume the model."""
-    from sempy_labs._list_functions import list_reports_using_semantic_model
+    """Returns the downstream reports that consume the model, across all workspaces.
 
-    df = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
-    if df.empty:
-        return []
-    return [
-        {"name": r["Report Name"], "workspace": r["Report Workspace Name"]}
-        for _, r in df.iterrows()
-    ]
+    Uses the `Items - Get Downstream Relations <https://learn.microsoft.com/rest/api/fabric/core/items/get-downstream-relations(beta)>`_
+    API. Only reports bound directly to the model are returned (not transitive
+    dependents). Each entry has ``id``, ``name``, ``workspace`` (name) and
+    ``workspace_id`` keys.
+    """
+    from sempy_labs._helper_functions import get_downstream_relations
+
+    relations = get_downstream_relations(item=dataset_id, workspace=workspace_id) or {}
+    ws_names = {
+        str(w.get("id")): w.get("displayName") or ""
+        for w in relations.get("workspaces", [])
+    }
+    direct_ids = {
+        str(rel.get("itemId"))
+        for rel in relations.get("relations", [])
+        if str(rel.get("dependentOnItemId", "")).lower() == str(dataset_id).lower()
+    }
+    reports = []
+    for item in relations.get("items", []):
+        rid = str(item.get("id"))
+        if item.get("type") != "Report" or rid not in direct_ids:
+            continue
+        rws = str(item.get("workspaceId") or workspace_id)
+        reports.append(
+            {
+                "id": rid,
+                "name": str(item.get("displayName") or ""),
+                "workspace": ws_names.get(rws, ""),
+                "workspace_id": rws,
+            }
+        )
+    return reports
 
 
 def _render_find_unused_objects(
@@ -1244,9 +1269,8 @@ __SEARCH_SELECT_CSS__
     padding-left: 8px;
 }
 .fuo-empty { padding: 40px 16px; text-align: center; color: var(--ui-text-tertiary); font-size: 13px; }
-.fuo-attr { padding: 12px 18px 14px 18px; text-align: right; font-size: 11.5px; color: var(--ui-text-tertiary); }
-.fuo-attr a { color: var(--ui-text-tertiary); text-decoration: none; transition: color 120ms ease; }
-.fuo-attr a:hover { color: var(--ui-accent); }
+.fuo-attr { padding: 12px 18px 14px 18px; }
+.fuo .fuo-attr .sl-attribution { margin: 0; padding: 0; }
 
 /* ---- Spinner ---- */
 .fuo-spin {
@@ -1760,7 +1784,7 @@ function render({ model, el }) {
                 </div>
                 <div class="fuo-search-wrap fuo-res-search">${IC.search}<input type="text" class="fuo-search" data-r="search" placeholder="Filter objects…" /></div>
                 <div class="fuo-tree" data-r="tree"></div>
-                <div class="fuo-attr">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a></div>
+                <div class="fuo-attr">__SLLS_ATTRIBUTION__</div>
             </div>`;
         wireHeaderCtrls();
         root.querySelector('[data-r="rerun"]').addEventListener("click", () => goScreen("config"));
@@ -1932,6 +1956,8 @@ from sempy_labs._ui_components import (  # noqa: E402
     DARK_THEME_VARS as _UI_DARK_VARS,
     list_picker_datasets as _list_picker_datasets,
     list_picker_workspaces as _list_picker_workspaces,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
     scoped_header_css as _ui_scoped_header_css,
     SEARCH_SELECT_CSS as _UI_SEARCH_SELECT_CSS,
@@ -1945,9 +1971,11 @@ _WIDGET_CSS = (
 )
 _WIDGET_CSS += _ui_scoped_header_css(".fuo")
 _WIDGET_CSS += _ui_scoped_button_press_css(".fuo")
+_WIDGET_CSS += _ui_scoped_attribution_css(".fuo")
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SEARCH_SELECT_JS__", _UI_SEARCH_SELECT_JS)
+    .replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
     .replace("__IC_SCAN__", _UI_ICONS["scan_search"])
     .replace("__IC_TABLE__", _UI_ICONS["table"])
     .replace("__IC_CALCTABLE__", _UI_ICONS["calculated_table"])

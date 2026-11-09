@@ -1188,7 +1188,10 @@ def list_reports_using_semantic_model(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
-    Shows a list of all the reports which use a given semantic model. This is limited to the reports which are in the same workspace as the semantic model.
+    Shows a list of all the reports which use a given semantic model, across all workspaces.
+
+    This function uses the following API: `Items - Get Downstream Relations <https://learn.microsoft.com/rest/api/fabric/core/items/get-downstream-relations(beta)>`_.
+    Only reports bound directly to the semantic model are returned.
 
     Parameters
     ----------
@@ -1205,47 +1208,53 @@ def list_reports_using_semantic_model(
         A pandas dataframe showing the reports which use a given semantic model.
     """
 
-    # df = pd.DataFrame(
-    #    columns=[
-    #        "Report Name",
-    #        "Report Id",
-    #        "Report Workspace Name",
-    #        "Report Workspace Id",
-    #    ]
-    # )
+    from sempy_labs._helper_functions import get_downstream_relations
+
+    columns = {
+        "Report Name": "string",
+        "Report Id": "string",
+        "Report Workspace Name": "string",
+        "Report Workspace Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
+    dataset_id = str(dataset_id)
+    workspace_id = str(workspace_id)
 
-    dfR = fabric.list_reports(workspace=workspace_id)
-    dfR_filt = dfR[
-        (dfR["Dataset Id"] == dataset_id)
-        & (dfR["Dataset Workspace Id"] == workspace_id)
-    ][["Name", "Id"]]
-    dfR_filt.rename(columns={"Name": "Report Name", "Id": "Report Id"}, inplace=True)
-    dfR_filt["Report Workspace Name"] = workspace_name
-    dfR_filt["Report Workspace Id"] = workspace_id
+    relations = get_downstream_relations(item=dataset_id, workspace=workspace_id) or {}
+    ws_names = {
+        str(w.get("id")): w.get("displayName") for w in relations.get("workspaces", [])
+    }
+    ws_names.setdefault(workspace_id, workspace_name)
+    # Only reports bound directly to the model (not transitive dependents).
+    direct_ids = {
+        str(rel.get("itemId"))
+        for rel in relations.get("relations", [])
+        if str(rel.get("dependentOnItemId", "")).lower() == dataset_id.lower()
+    }
 
-    return dfR_filt
+    rows = []
+    for item in relations.get("items", []):
+        report_id = str(item.get("id"))
+        if item.get("type") != "Report" or report_id not in direct_ids:
+            continue
+        report_workspace_id = str(item.get("workspaceId") or workspace_id)
+        rows.append(
+            {
+                "Report Name": item.get("displayName"),
+                "Report Id": report_id,
+                "Report Workspace Name": ws_names.get(report_workspace_id),
+                "Report Workspace Id": report_workspace_id,
+            }
+        )
 
-    # response = _base_api(request=f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3")
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
-    # response_json = response.json()
-
-    # for i in response_json.get("artifacts", []):
-    #    object_workspace_id = i.get("workspace", {}).get("objectId")
-    #    object_type = i.get("typeName")
-
-    #    if object_type == "Report":
-    #        new_data = {
-    #            "Report Name": i.get("displayName"),
-    #            "Report Id": i.get("objectId"),
-    #            "Report Workspace Name": fabric.resolve_workspace_name(
-    #                object_workspace_id
-    #            ),
-    #            "Report Workspace Id": object_workspace_id,
-    #        }
-    #        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    return df
 
 
 @log
@@ -1304,7 +1313,7 @@ def list_report_semantic_model_objects(
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
-        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
+        rpt = ReportWrapper(report=r["Report Id"], workspace=r["Report Workspace Id"])
         # Collect all semantic model objects used in the report
         dfRSO = rpt.list_semantic_model_objects()
         dfRSO["Report Name"] = report_name

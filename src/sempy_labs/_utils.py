@@ -5,7 +5,7 @@ item_types = {
     "Environment": ["Environment", "environments"],
     "Eventhouse": ["Eventhouse", "eventhouses", "EventhouseProperties.json"],
     "Eventstream": ["Eventstream", "eventstreams", "eventstream.json"],
-    "GraphQLApi": ["GraphQL Api", "GraphQLApis"],
+    "GraphQLApi": ["GraphQL Api", "GraphQLApis", "graphql-definition.json"],
     "KQLDashboard": ["KQL Dashboard", "kqlDashboards", "RealTimeDashboard.json"],
     "KQLDatabase": [
         "KQL Database",
@@ -88,4 +88,7 @@ items = {
     "OrgApp": "orgApps",
     "PaginatedReport": "paginatedReports",
     "Plan": "plans",
+    "PolicySet": "policySets",
+    "DeploymentPlan": "deploymentPlans",
+    "Monitoring": "monitoringItems",
 }

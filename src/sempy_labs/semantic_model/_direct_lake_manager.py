@@ -13,6 +13,8 @@ _SOURCE_TYPES = [
 
 _WIDGET_CSS = """
 .slls-dle {
+    --ui-text-tertiary: var(--slls-text-tertiary);
+    --ui-accent: var(--slls-accent);
     --slls-bg-solid: #ffffff;
     --slls-surface: rgba(255, 255, 255, 0.85);
     --slls-surface-2: rgba(0, 0, 0, 0.025);
@@ -225,9 +227,6 @@ _WIDGET_CSS = """
 .slls-dle-pk-toggle.detected:not(.active) { border-style: dashed; color: var(--slls-accent); }
 .slls-dle-pk-toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
-.slls-dle-attribution { margin-top: 18px; text-align: right; font-size: 11.5px; color: var(--slls-text-tertiary); }
-.slls-dle-attribution a { color: var(--slls-text-tertiary); text-decoration: none; transition: color 120ms ease; }
-.slls-dle-attribution a:hover { color: var(--slls-accent); }
 
 .slls-dle-screen { display: none; }
 .slls-dle-screen.show { display: block; }
@@ -4081,11 +4080,7 @@ function render({ model, el }) {
     newWsSelect.addEventListener("change", renderSubtitle);
 
     // ----------- Attribution -----------
-    const attribution = document.createElement("div");
-    attribution.className = "slls-dle-attribution";
-    attribution.innerHTML =
-        'Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" rel="noopener noreferrer">Semantic Link Labs</a>';
-    root.appendChild(attribution);
+    root.insertAdjacentHTML("beforeend", `__SLLS_ATTRIBUTION__`);
 
     // ----------- Initial render -----------
     renderWorkspaces();
@@ -4106,10 +4101,14 @@ from sempy_labs._ui_components import (  # noqa: E402
     ICONS as _UI_ICONS,
     list_picker_datasets as _list_picker_datasets,
     list_picker_workspaces as _list_picker_workspaces,
+    render_attribution_html as _ui_render_attribution_html,
+    scoped_attribution_css as _ui_scoped_attribution_css,
     scoped_button_press_css as _ui_scoped_button_press_css,
 )
 
 _WIDGET_CSS += _ui_scoped_button_press_css(".slls-dle")
+_WIDGET_CSS += _ui_scoped_attribution_css(".slls-dle")
+_WIDGET_JS = _WIDGET_JS.replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
 
 _WIDGET_JS = (
     _WIDGET_JS.replace("__SLLS_ICON_PLUS__", _UI_ICONS["plus"])
