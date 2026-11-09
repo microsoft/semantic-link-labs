@@ -1,9 +1,10 @@
 import re
+from collections import deque
 from urllib.parse import unquote
 from uuid import UUID
 from typing import Iterator, List, Optional, Tuple
 import sempy.fabric as fabric
-from sempy.fabric.exceptions import FabricHTTPException
+from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundException
 from sempy_labs._helper_functions import (
     _base_api,
     _is_valid_uuid,
@@ -28,6 +29,12 @@ _AS_DATABASE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _CONN_STRING_FIELD = r"{}\s*=\s*\"?([^;\"]*)"
+# Exceptions raised by resolve_workspace_id when a workspace cannot be resolved.
+_WORKSPACE_RESOLUTION_ERRORS = (
+    ValueError,
+    WorkspaceNotFoundException,
+    FabricHTTPException,
+)
 
 
 def _parse_power_bi_source(
@@ -70,7 +77,7 @@ def _resolve_power_bi_source(
     if workspace is not None:
         try:
             workspace_id = str(resolve_workspace_id(workspace))
-        except Exception:
+        except _WORKSPACE_RESOLUTION_ERRORS:
             if not _is_valid_uuid(database):
                 raise
 
@@ -137,22 +144,32 @@ def _iter_power_bi_sources(
 
     found = False
     try:
-        for server, database in _sources_from_datasources(dataset_id):
-            if _parse_power_bi_source(server, database) is not None:
-                found = True
-                yield server, database
-    except Exception:
-        pass
+        sources = _sources_from_datasources(dataset_id)
+    except (FabricHTTPException, ValueError, KeyError, TypeError, AttributeError) as e:
+        sources = []
+        print(
+            f"{icons.warning} Unable to retrieve the data sources of the '{dataset_id}' semantic model via the Get Datasources API: {e}"
+        )
+    for server, database in sources:
+        if _parse_power_bi_source(server, database) is not None:
+            found = True
+            yield server, database
 
     if found or workspace_id is None:
         return
 
     try:
-        for server, database in _sources_from_expressions(dataset_id, workspace_id):
-            if _parse_power_bi_source(server, database) is not None:
-                yield server, database
-    except Exception:
-        pass
+        sources = _sources_from_expressions(dataset_id, workspace_id)
+    # Reading expressions goes through XMLA, which can surface a wide range of
+    # (including .NET) exception types, so a broad catch is needed here.
+    except Exception as e:
+        print(
+            f"{icons.warning} Unable to read the expressions of the '{dataset_id}' semantic model within the '{workspace_id}' workspace: {e}"
+        )
+        return
+    for server, database in sources:
+        if _parse_power_bi_source(server, database) is not None:
+            yield server, database
 
 
 def _get_upstream_dataset_ids(
@@ -167,14 +184,17 @@ def _get_upstream_dataset_ids(
     if workspace is not None:
         try:
             workspace_id = str(resolve_workspace_id(workspace))
-        except Exception:
+        except _WORKSPACE_RESOLUTION_ERRORS as e:
+            print(
+                f"{icons.warning} Unable to resolve the '{workspace}' workspace. Upstream semantic models will only be discovered via the Get Datasources API: {e}"
+            )
             workspace_id = None
 
     seen = {str(d).lower() for d in dataset_ids}
-    queue = [(str(d), workspace_id) for d in dataset_ids]
+    queue = deque((str(d), workspace_id) for d in dataset_ids)
     upstream = []
     while queue:
-        dataset_id, ws_id = queue.pop(0)
+        dataset_id, ws_id = queue.popleft()
         for server, database in _iter_power_bi_sources(dataset_id, ws_id):
             try:
                 resolved = _resolve_power_bi_source(server, database)

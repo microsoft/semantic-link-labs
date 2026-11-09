@@ -212,6 +212,73 @@ def test_generate_embed_token_falls_back_to_model_expressions(install):
     assert [d["id"] for d in fake.token_payloads[-1]["datasets"]] == [PROXY, CORE]
 
 
+def test_generate_embed_token_warns_and_falls_back_when_datasources_fail(
+    install, capsys
+):
+    expression = 'AnalysisServices.Database("powerbi://api.powerbi.com/v1.0/myorg/Core Workspace", "Core Model")'
+    fake = install(
+        FakePowerBI(chain=[PROXY, CORE], expressions={(PROXY_WS, PROXY): [expression]})
+    )
+    token_api = fake.base_api
+
+    def base_api(request, **kwargs):
+        if request.endswith("/datasources"):
+            raise FabricHTTPException(_response(404, {"error": {"message": "x"}}))
+        return token_api(request, **kwargs)
+
+    fake.base_api = base_api
+    install(fake)
+
+    token = embed.generate_embed_token(
+        dataset_ids=[PROXY], report_ids=[REPORT], workspace=PROXY_WS
+    )
+
+    assert token == "embed-token"
+    assert [d["id"] for d in fake.token_payloads[-1]["datasets"]] == [PROXY, CORE]
+    out = capsys.readouterr().out
+    assert "Unable to retrieve the data sources" in out
+    assert PROXY in out
+
+
+def test_generate_embed_token_warns_when_expressions_fail(install, capsys):
+    fake = install(FakePowerBI(chain=[PROXY, CORE]))
+
+    def failing_list_expressions(**_kwargs):
+        raise RuntimeError("XMLA endpoint unavailable")
+
+    fake.list_expressions = failing_list_expressions
+    install(fake)
+
+    with pytest.raises(FabricHTTPException):
+        embed.generate_embed_token(
+            dataset_ids=[PROXY], report_ids=[REPORT], workspace=PROXY_WS
+        )
+
+    out = capsys.readouterr().out
+    assert "Unable to read the expressions" in out
+    assert PROXY_WS in out
+
+
+def test_resolve_power_bi_source_propagates_unexpected_errors(monkeypatch):
+    def broken(_workspace):
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(embed, "resolve_workspace_id", broken)
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        embed._resolve_power_bi_source(
+            "powerbi://api.powerbi.com/v1.0/myorg/Core Workspace", CORE
+        )
+
+
+def test_resolve_power_bi_source_ignores_unresolvable_workspace_for_id(monkeypatch):
+    monkeypatch.setattr(embed, "resolve_workspace_id", _resolve_workspace_id)
+
+    assert embed._resolve_power_bi_source(
+        "powerbi://api.powerbi.com/v1.0/myorg/Missing WS", CORE
+    ) == (CORE, None)
+
+
 def test_generate_embed_token_reraises_with_hint_when_no_upstream_found(
     install, capsys
 ):
