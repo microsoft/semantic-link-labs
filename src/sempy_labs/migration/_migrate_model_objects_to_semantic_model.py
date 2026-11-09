@@ -26,7 +26,8 @@ def migrate_model_objects_to_semantic_model(
 
     Relationships which use calculated columns are not created in Direct Lake semantic models as calculated columns in Direct Lake
     use the 'UserContext' `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_
-    (they are evaluated at query time and not materialized).
+    (they are evaluated at query time and not materialized). This does not apply to calculated columns within calculated tables, as calculated tables
+    use the Import storage mode.
 
     Parameters
     ----------
@@ -340,9 +341,11 @@ def migrate_model_objects_to_semantic_model(
                         f"{icons.warning} The {relName} relationship was not created as Direct Lake does not support relationships based on columns with different data types."
                     )
                 # Direct Lake calculated columns are evaluated at query time (not
-                # materialized) so they cannot be used in relationships.
+                # materialized) so they cannot be used in relationships. Calculated
+                # columns within calculated (Import) tables are materialized.
                 elif isDirectLake and any(
                     c.Type == TOM.ColumnType.Calculated
+                    and not tom.is_calculated_table(table_name=c.Parent.Name)
                     and (
                         (
                             c.Name == r.FromColumn.Name

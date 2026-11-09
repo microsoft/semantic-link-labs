@@ -20,7 +20,11 @@ def show_unsupported_direct_lake_objects(
 
     Calculated columns are supported in Direct Lake on OneLake (preview) with the 'UserContext'
     `expression context <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculatedcolumn.expressioncontext>`_ only.
-    As they are evaluated at query time (not materialized), relationships which use calculated columns are not supported.
+    As they are evaluated at query time (not materialized), relationships which use calculated columns are not supported
+    (except for calculated columns within calculated tables, which use the Import storage mode).
+
+    Calculated tables (including those which reference Direct Lake tables) are supported in Direct Lake on OneLake (preview) but are not supported
+    in Direct Lake on SQL when they reference Direct Lake tables. Calculated tables are therefore still returned so they can be reviewed.
 
     Parameters
     ----------
@@ -35,7 +39,7 @@ def show_unsupported_direct_lake_objects(
     -------
     typing.Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
         3 pandas dataframes showing objects in a semantic model which are not supported by Direct Lake:
-        calculated tables, columns of binary data type, and relationships which use columns of different data types or calculated columns.
+        calculated tables (supported in Direct Lake on OneLake only), columns of binary data type, and relationships which use columns of different data types or calculated columns.
     """
 
     pd.options.mode.chained_assignment = None
@@ -71,8 +75,12 @@ def show_unsupported_direct_lake_objects(
 
     dfR["From Column Data Type"] = merged_from["Data Type"]
     dfR["To Column Data Type"] = merged_to["Data Type"]
-    from_calc = merged_from["Type"] == "Calculated"
-    to_calc = merged_to["Type"] == "Calculated"
+    # Calculated columns within calculated tables (Import storage mode) are materialized.
+    calc_tables = dfT.loc[dfT["Type"] == "Calculated Table", "Name"]
+    from_calc = (merged_from["Type"] == "Calculated") & ~dfR["From Table"].isin(
+        calc_tables
+    )
+    to_calc = (merged_to["Type"] == "Calculated") & ~dfR["To Table"].isin(calc_tables)
     type_mismatch = dfR["From Column Data Type"] != dfR["To Column Data Type"]
 
     dfR["Reason"] = None

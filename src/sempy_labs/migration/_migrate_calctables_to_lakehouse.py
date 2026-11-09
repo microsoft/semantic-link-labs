@@ -17,6 +17,16 @@ import sempy_labs._icons as icons
 from uuid import UUID
 
 
+def _uses_sql_endpoint(tom) -> bool:
+    """
+    Identifies whether a semantic model is a Direct Lake on SQL semantic model (i.e. any of its
+    Direct Lake expressions uses the SQL endpoint). Models without a Direct Lake expression
+    (e.g. a blank model) are not considered Direct Lake on SQL.
+    """
+
+    return any(v[2] for v in tom._get_direct_lake_expressions().values())
+
+
 @log
 def migrate_calc_tables_to_lakehouse(
     dataset: str,
@@ -27,9 +37,17 @@ def migrate_calc_tables_to_lakehouse(
     lakehouse_workspace: Optional[str | UUID] = None,
 ):
     """
-    Creates delta tables in your lakehouse based on the DAX expression of a calculated table in an import/DirectQuery semantic model.
-    The DAX expression encapsulating the calculated table logic is stored in the new Direct Lake semantic model as model annotations.
-    Calculated columns within calculated tables are not migrated.
+    This function is deprecated for Direct Lake on OneLake semantic models.
+
+    `Calculated tables <https://learn.microsoft.com/fabric/fundamentals/direct-lake-overview#considerations-and-limitations>`_ are supported in
+    Direct Lake on OneLake semantic models (preview), so they no longer need to be stored as delta tables in a lakehouse (nor their DAX expressions
+    stored as model annotations). Use :func:`sempy_labs.migration.migrate_calc_tables_to_semantic_model` to migrate calculated tables
+    to the Direct Lake semantic model as calculated tables. Unless the new semantic model is a Direct Lake on SQL semantic model, this function performs no action.
+
+    Direct Lake on SQL semantic models do not support calculated tables which reference Direct Lake tables. If the new semantic model is a Direct Lake on SQL
+    semantic model (i.e. its Direct Lake expression uses the SQL endpoint), this function creates delta tables in your lakehouse based on the DAX expression of each
+    calculated table in the import/DirectQuery semantic model and stores the DAX expressions in the new semantic model as model annotations (deprecated).
+    Calculated columns within calculated tables are not migrated in this case.
 
     Parameters
     ----------
@@ -46,12 +64,65 @@ def migrate_calc_tables_to_lakehouse(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     lakehouse : str | uuid.UUID, default=None
-        The Fabric lakehouse used by the Direct Lake semantic model.
+        The Fabric lakehouse used by the Direct Lake semantic model. Only used for Direct Lake on SQL semantic models.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     lakehouse_workspace : str | uuid.UUID, default=None
-        The Fabric workspace used by the lakehouse.
+        The Fabric workspace used by the lakehouse. Only used for Direct Lake on SQL semantic models.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+    from sempy_labs.tom import connect_semantic_model
+
+    if dataset == new_dataset:
+        raise ValueError(
+            f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
+        )
+
+    @retry(
+        sleep_time=1,
+        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
+    )
+    def dyn_connect():
+        with connect_semantic_model(
+            dataset=new_dataset, readonly=True, workspace=new_dataset_workspace
+        ) as tom:
+            return _uses_sql_endpoint(tom)
+
+    if not dyn_connect():
+        print(
+            f"{icons.warning} The 'migrate_calc_tables_to_lakehouse' function is deprecated and no longer performs any action for Direct Lake on OneLake semantic models. "
+            "Calculated tables are supported in Direct Lake on OneLake semantic models (preview) and are migrated as calculated tables by the "
+            "'migrate_calc_tables_to_semantic_model' function."
+        )
+        return
+
+    print(
+        f"{icons.warning} The '{new_dataset}' semantic model is a Direct Lake on SQL semantic model, which does not support calculated tables that reference "
+        "Direct Lake tables. Calculated tables are therefore stored as delta tables in the lakehouse (deprecated). "
+        "Consider using Direct Lake on OneLake, which supports calculated tables."
+    )
+    _materialize_calc_tables_in_lakehouse(
+        dataset=dataset,
+        new_dataset=new_dataset,
+        workspace=workspace,
+        new_dataset_workspace=new_dataset_workspace,
+        lakehouse=lakehouse,
+        lakehouse_workspace=lakehouse_workspace,
+    )
+
+
+def _materialize_calc_tables_in_lakehouse(
+    dataset: str,
+    new_dataset: str,
+    workspace: Optional[str | UUID] = None,
+    new_dataset_workspace: Optional[str | UUID] = None,
+    lakehouse: Optional[str | UUID] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
+):
+    """
+    Creates delta tables in the lakehouse based on the DAX expression of each calculated table in an import/DirectQuery semantic model
+    and stores the DAX expressions in the new semantic model as model annotations. Used for Direct Lake on SQL semantic models,
+    which do not support calculated tables that reference Direct Lake tables.
     """
     from sempy_labs.tom import connect_semantic_model
 

@@ -6319,30 +6319,56 @@ class TOMWrapper:
             if item:
                 break
 
+        def _search_accessible_workspaces():
+            # The internal metadata API is not accessible to service principals
+            # ("API is not accessible for application"), so look for the item in
+            # every workspace the caller can access using the public API.
+            try:
+                responses = _base_api(
+                    request="/v1/workspaces",
+                    client="fabric_sp",
+                    uses_pagination=True,
+                )
+            except FabricHTTPException:
+                return None
+            already_checked = {ws.lower() for ws in candidate_workspace_ids}
+            for r in responses:
+                for w in r.get("value", []):
+                    ws_id = str(w.get("id", ""))
+                    if not ws_id or ws_id.lower() in already_checked:
+                        continue
+                    found = _get_item(ws_id)
+                    if found:
+                        return found
+            return None
+
         if item is None:
             try:
                 result = _base_api(
                     request=f"metadata/artifacts/{artifact_id}", client="internal"
                 ).json()
             except FabricHTTPException as e:
-                raise ValueError(
-                    f"{icons.red_dot} Unable to resolve the '{artifact_id}' Direct Lake source. "
-                    "If running as a service principal, ensure it has access to the source's workspace."
-                ) from e
-            item_type = result.get("artifactType")
-            if item_type == "SqlAnalyticsEndpoint":
+                item = _search_accessible_workspaces()
+                if item is None:
+                    raise ValueError(
+                        f"{icons.red_dot} Unable to resolve the '{artifact_id}' Direct Lake source. "
+                        "If running as a service principal, ensure it has access to the source's workspace."
+                    ) from e
+            else:
+                item_type = result.get("artifactType")
+                if item_type == "SqlAnalyticsEndpoint":
+                    return (
+                        result.get("parentArtifactObjectId"),
+                        result.get("displayName"),
+                        "Lakehouse",
+                        result.get("folderObjectId"),
+                    )
                 return (
-                    result.get("parentArtifactObjectId"),
+                    artifact_id,
                     result.get("displayName"),
-                    "Lakehouse",
+                    item_type,
                     result.get("folderObjectId"),
                 )
-            return (
-                artifact_id,
-                result.get("displayName"),
-                item_type,
-                result.get("folderObjectId"),
-            )
 
         item_type = item.get("type")
         item_name = item.get("displayName")

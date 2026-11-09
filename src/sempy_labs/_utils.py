@@ -80,7 +80,7 @@ items = {
     "Ontology": "ontologies",
     "Lakehouse": "lakehouses",
     "EventSchemaSet": "EventSchemaSets",
-    "DataAgent": "DataAgents",
+    "DataAgent": "dataAgents",
     "MirroredCatalog": "mirroredCatalogs",
     "DataBuildToolJob": "dataBuildToolJobs",
     "AppBackend": "appBackends",
@@ -90,5 +90,6 @@ items = {
     "PaginatedReport": "paginatedReports",
     "Plan": "plans",
     "PolicySet": "policySets",
+    "DeploymentPlan": "deploymentPlans",
     "Monitoring": "monitoringItems",
 }
