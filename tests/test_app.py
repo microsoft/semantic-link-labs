@@ -11,6 +11,13 @@ def test_every_tool_resolves_to_a_callable():
         assert callable(getattr(module, tool["function"])), tool["key"]
 
 
+def test_every_tool_key_is_unique():
+    keys = [tool["key"] for tool in _app._TOOLS]
+
+    assert len(keys) == len(set(keys))
+    assert len(_app._TOOLS_BY_KEY) == len(_app._TOOLS)
+
+
 def test_tool_payload_carries_an_svg_icon_per_tool():
     payload = _app._tool_payload()
 
