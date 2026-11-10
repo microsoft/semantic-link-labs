@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     _run_spark_sql_query,
 )
 from sempy._utils._log import log
+from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
@@ -1266,6 +1267,7 @@ def list_report_semantic_model_objects(
     a given semantic model.
 
     Note: As with all functions which rely on the ReportWrapper, this function requires the report(s) to be in the 'PBIR' format.
+    Reports that cannot be found or accessed are skipped with a warning.
 
     Parameters
     ----------
@@ -1313,7 +1315,16 @@ def list_report_semantic_model_objects(
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
-        rpt = ReportWrapper(report=r["Report Id"], workspace=r["Report Workspace Id"])
+        try:
+            rpt = ReportWrapper(
+                report=r["Report Id"], workspace=r["Report Workspace Id"]
+            )
+        except (ValueError, FabricHTTPException):
+            print(
+                f"{icons.warning} Skipping report '{report_name}' ({r['Report Id']}) "
+                f"in workspace '{r['Report Workspace Id']}': the report could not be found or accessed."
+            )
+            continue
         # Collect all semantic model objects used in the report
         dfRSO = rpt.list_semantic_model_objects()
         dfRSO["Report Name"] = report_name
