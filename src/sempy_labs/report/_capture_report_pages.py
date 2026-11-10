@@ -211,6 +211,7 @@ def capture_report_pages(
     access_token = generate_embed_token(
         dataset_ids=[dataset_id],
         report_ids=[report_id],
+        workspace=dataset_workspace_id,
     )
 
     # Start a server-side trace against the semantic model behind the report

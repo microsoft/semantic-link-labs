@@ -11830,6 +11830,7 @@ export default { render };
             token = generate_embed_token(
                 dataset_ids=[ds_id],
                 report_ids=[report["id"] for report in reports],
+                workspace=ws_id,
             )
             if not token:
                 raise RuntimeError("Power BI did not return an embed token.")
