@@ -153,8 +153,8 @@ def delta_analyzer(
             dark_mode=dark_mode,
         )
         return {}
-    if '.' in table_name:
-        schema, table_name = table_name.split('.', 1)
+    if "." in table_name:
+        schema, table_name = table_name.split(".", 1)
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
@@ -1313,11 +1313,13 @@ def _list_delta_picker_tables(workspace_id: str, lakehouse_id: str) -> list:
             continue
         table = str(row["Table Name"])
         raw_schema = row.get("Schema Name")
-        schema = "" if pd.isna(raw_schema) or str(raw_schema) in ("", "None") else str(raw_schema)
-        display_name = f"{schema}.{table}" if schema else table
-        options.append(
-            {"table": table, "schema": schema, "display": display_name}
+        schema = (
+            ""
+            if pd.isna(raw_schema) or str(raw_schema) in ("", "None")
+            else str(raw_schema)
         )
+        display_name = f"{schema}.{table}" if schema else table
+        options.append({"table": table, "schema": schema, "display": display_name})
     return sorted(options, key=lambda item: item["display"].lower())
 
 
@@ -1400,8 +1402,7 @@ _DA_PICKER_CSS = (
 }
 __HEADER_CSS__
 __SEARCH_CSS__
-"""
-    .replace("__LIGHT_VARS__", _UI_LIGHT_VARS)
+""".replace("__LIGHT_VARS__", _UI_LIGHT_VARS)
     .replace("__DARK_VARS__", _UI_DARK_VARS)
     .replace("__HEADER_CSS__", _UI_HEADER_CSS)
     .replace("__SEARCH_CSS__", _UI_SEARCH_SELECT_CSS)
@@ -1527,8 +1528,7 @@ function render({ model, el }) {
     model.on("change:content_html", renderContent); renderContent(); renderState();
 }
 export default { render };
-"""
-    .replace("__DELTA_ICON__", _UI_ICONS["delta_stats"])
+""".replace("__DELTA_ICON__", _UI_ICONS["delta_stats"])
     .replace("__SUN_ICON__", _UI_ICONS["sun"])
     .replace("__MOON_ICON__", _UI_ICONS["moon"])
     .replace("__CLOSE_ICON__", _UI_ICONS["close"])
@@ -1593,7 +1593,9 @@ def _visualize_delta_analyzer(
         if initial_workspace_id and initial_lakehouse_id
         else []
     )
-    selected_table = f"{schema}.{table_name}" if schema and table_name else (table_name or "")
+    selected_table = (
+        f"{schema}.{table_name}" if schema and table_name else (table_name or "")
+    )
 
     class DeltaAnalyzerWidget(anywidget.AnyWidget):
         _esm = _DA_PICKER_JS

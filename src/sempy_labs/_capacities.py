@@ -2,7 +2,11 @@ from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import pandas as pd
 from uuid import UUID
-from sempy_labs._helper_functions import _create_dataframe, _update_dataframe_datatypes, _base_api
+from sempy_labs._helper_functions import (
+    _create_dataframe,
+    _update_dataframe_datatypes,
+    _base_api,
+)
 import sempy_labs._icons as icons
 
 
@@ -83,6 +87,7 @@ def list_vcores() -> pd.DataFrame:
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
 
 @log
 def get_capacity_resource_governance(capacity_name: str):

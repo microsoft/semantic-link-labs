@@ -535,10 +535,15 @@ def restart_gateway(gateway: str | UUID):
     gateway : str | uuid.UUID
         The name or ID of the gateway.
     """
-    
+
     gateway_id = resolve_gateway_id(gateway)
 
-    _base_api(request=f"/v1/gateways/{gateway_id}/restart", method="post", status_codes=[200, 202], lro_return_status_code=True)
+    _base_api(
+        request=f"/v1/gateways/{gateway_id}/restart",
+        method="post",
+        status_codes=[200, 202],
+        lro_return_status_code=True,
+    )
 
     print(f"{icons.green_dot} The '{gateway}' gateway has been restarted.")
 
@@ -557,9 +562,14 @@ def shutdown_gateway(gateway: str | UUID):
     gateway : str | uuid.UUID
         The name or ID of the gateway.
     """
-    
+
     gateway_id = resolve_gateway_id(gateway)
 
-    _base_api(request=f"/v1/gateways/{gateway_id}/shutdown", method="post", status_codes=[200, 202], lro_return_status_code=True)
+    _base_api(
+        request=f"/v1/gateways/{gateway_id}/shutdown",
+        method="post",
+        status_codes=[200, 202],
+        lro_return_status_code=True,
+    )
 
     print(f"{icons.green_dot} The '{gateway}' gateway has been shut down.")

@@ -95,10 +95,10 @@ def modify_onelake_diagnostics(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (destination_workspace_name, destination_workspace_id) = (
+    destination_workspace_name, destination_workspace_id = (
         resolve_workspace_name_and_id(destination_workspace)
     )
-    (destination_lakehouse_name, destination_lakehouse_id) = (
+    destination_lakehouse_name, destination_lakehouse_id = (
         resolve_lakehouse_name_and_id(destination_lakehouse, destination_workspace_id)
     )
 
@@ -157,7 +157,7 @@ def modify_immutability_policy(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     payload = {"scope": scope, "retentionDays": retention_days}
 
     _base_api(
@@ -173,7 +173,9 @@ def modify_immutability_policy(
 
 
 @log
-def modify_default_tier(default_tier: Literal["Hot", "Cool", "Cold"], workspace: Optional[str | UUID] = None):
+def modify_default_tier(
+    default_tier: Literal["Hot", "Cool", "Cold"], workspace: Optional[str | UUID] = None
+):
 
     default_tier = default_tier.capitalize()
 
@@ -181,12 +183,17 @@ def modify_default_tier(default_tier: Literal["Hot", "Cool", "Cold"], workspace:
         raise ValueError(
             f"Invalid default_tier value: {default_tier}. Must be one of 'Hot', 'Cool', or 'Cold'."
         )
-    
+
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
 
-    _base_api(request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyDefaultTier?defaultTier={default_tier}", method="post")
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyDefaultTier?defaultTier={default_tier}",
+        method="post",
+    )
 
-    print(f"{icons.green_dot} The default tier for OneLake has been set to '{default_tier}' in the '{workspace_name}' workspace.")
+    print(
+        f"{icons.green_dot} The default tier for OneLake has been set to '{default_tier}' in the '{workspace_name}' workspace."
+    )
 
 
 @log
@@ -214,7 +221,7 @@ def modify_access_time_tracking(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
     status = "Enabled" if enabled else "Disabled"
 
     _base_api(

@@ -27,6 +27,7 @@ def get_onelake_settings(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     """
 
     from sempy_labs.onelake._items import get_onelake_settings as gos
+
     return gos(workspace=workspace)
 
 
@@ -62,6 +63,7 @@ def modify_onelake_diagnostics(
     """
 
     from sempy_labs.onelake._items import modify_onelake_diagnostics as mod_diag
+
     return mod_diag(
         workspace=workspace,
         enabled=enabled,
@@ -97,9 +99,9 @@ def modify_immutability_policy(
     """
 
     from sempy_labs.onelake._items import modify_immutability_policy as mod_immut
+
     return mod_immut(
         retention_days=retention_days,
         scope=scope,
         workspace=workspace,
     )
-
