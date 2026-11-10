@@ -5537,7 +5537,7 @@ class TOMWrapper:
                     Source = Lakehouse.Contents(null),
                     Workspace = Source{{[workspaceId="{s.get('workspaceId')}"]}}[Data],
                     Artifact = Workspace{{[lakehouseId="{s.get('itemId')}"]}}[Data],
-                    Table = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]
+                    Table = Artifact{{[Name="{source_schema}.{source_table}", ItemKind="Table"]}}[Data]
                 in
                     Table"""
         elif s.get("itemType") == "Warehouse":

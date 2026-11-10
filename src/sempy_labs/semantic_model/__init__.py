@@ -9,9 +9,6 @@ from ._caching import (
 from ._perspective_editor import (
     perspective_editor,
 )
-from ._direct_lake_manager import (
-    direct_lake_manager,
-)
 from ._lineage_view import (
     lineage_view,
 )
@@ -24,6 +21,12 @@ from ._find_unused_objects import (
 from ._refresh_manager import (
     refresh_manager,
 )
+from ._cancel_query import (
+    cancel_spid,
+    list_semantic_model_sessions,
+    list_semantic_model_commands,
+    cancel_long_running_queries,
+)
 
 __all__ = [
     "approved_for_copilot",
@@ -31,9 +34,12 @@ __all__ = [
     "make_discoverable",
     "enable_query_caching",
     "perspective_editor",
-    "direct_lake_manager",
     "lineage_view",
     "migrate_to_direct_lake",
     "find_unused_objects",
     "refresh_manager",
+    "cancel_spid",
+    "list_semantic_model_sessions",
+    "list_semantic_model_commands",
+    "cancel_long_running_queries",
 ]
