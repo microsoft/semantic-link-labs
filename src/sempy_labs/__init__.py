@@ -367,7 +367,6 @@ from ._onelake import (
     modify_immutability_policy,
 )
 
-
 __all__ = [
     "get_onelake_settings",
     "modify_onelake_diagnostics",

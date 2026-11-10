@@ -18,9 +18,11 @@ def _format_dax(
     # Add variable assignment to model expressions, but preserve standalone
     # DAX queries beginning with EVALUATE or DEFINE.
     expressions = [
-        item
-        if item.lstrip().lower().startswith(("evaluate", "define"))
-        else f"x :={item}"
+        (
+            item
+            if item.lstrip().lower().startswith(("evaluate", "define"))
+            else f"x :={item}"
+        )
         for item in expressions
     ]
 

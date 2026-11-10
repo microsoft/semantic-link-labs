@@ -244,10 +244,7 @@ def capture_report_pages(
                 if current_count != last_count:
                     last_count = current_count
                     last_change_time = time.time()
-                elif (
-                    last_count > 0
-                    and time.time() - last_change_time >= quiet_period
-                ):
+                elif last_count > 0 and time.time() - last_change_time >= quiet_period:
                     break
 
             try:

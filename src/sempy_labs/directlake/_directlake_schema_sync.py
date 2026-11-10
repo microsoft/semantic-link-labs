@@ -81,7 +81,10 @@ def direct_lake_schema_sync(
     ) as tom:
         # Check if the columns in the semantic model exist in the lakehouse
         for c in tom.all_columns():
-            if c.Type not in (TOM.ColumnType.Data, TOM.ColumnType.CalculatedTableColumn):
+            if c.Type not in (
+                TOM.ColumnType.Data,
+                TOM.ColumnType.CalculatedTableColumn,
+            ):
                 # Columns of type Calculated and RowNumber are not sourced from external sources and therefore they do not contain "SourceColumn" property. So we skip them in the comparison.
                 continue
             column_name = c.Name
@@ -133,7 +136,9 @@ def direct_lake_schema_sync(
 
                 if not any(
                     c.SourceColumn == source_column and c.Parent.Name == table_name
-                    for c in tom.all_columns() if c.Type in (TOM.ColumnType.Data, TOM.ColumnType.CalculatedTableColumn)
+                    for c in tom.all_columns()
+                    if c.Type
+                    in (TOM.ColumnType.Data, TOM.ColumnType.CalculatedTableColumn)
                     # Columns of type Calculated and RowNumber are not sourced from external sources and therefore they do not contain "SourceColumn" property.
                     # We make sure to exclude them from Lakehouse <> Semantic Model comparison.
                 ):

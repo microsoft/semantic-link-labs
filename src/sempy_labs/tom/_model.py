@@ -5523,15 +5523,15 @@ class TOMWrapper:
         if p.Mode != TOM.ModeType.DirectLake:
             print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
             return
-        
+
         p.Name = p.Name + "_Remove"
-    
+
         source_table = p.Source.EntityName
-        source_schema = p.Source.SchemaName or 'dbo'
+        source_schema = p.Source.SchemaName or "dbo"
         expr_name = p.Source.ExpressionSource.Name
         sources = self.get_direct_lake_sources()
-        s = next(s for s in sources if s.get('expressionName') == expr_name)
-        if s.get('itemType') == 'Lakehouse':
+        s = next(s for s in sources if s.get("expressionName") == expr_name)
+        if s.get("itemType") == "Lakehouse":
             expr = f"""
                 let
                     Source = Lakehouse.Contents(null),
@@ -5540,7 +5540,7 @@ class TOMWrapper:
                     Table = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]
                 in
                     Table"""
-        elif s.get('itemType') == 'Warehouse':
+        elif s.get("itemType") == "Warehouse":
             expr = f"""
                 let
                     Source = Fabric.Warehouse(),
@@ -5551,7 +5551,9 @@ class TOMWrapper:
                     Table
                 """
         else:
-            print(f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import mode.")
+            print(
+                f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import mode."
+            )
             return
 
         # Add the import partition

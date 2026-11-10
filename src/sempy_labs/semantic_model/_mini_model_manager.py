@@ -2668,7 +2668,9 @@ def mini_model_manager(
             f"'{target_workspace_name}' workspace."
         )
         if widget.mode == "manage":
-            status_message += " The model was not refreshed; you may want to refresh it now."
+            status_message += (
+                " The model was not refreshed; you may want to refresh it now."
+            )
         _set_status(status_message, "success")
 
     def _on_run(_change):

@@ -1531,9 +1531,7 @@ def _collect_perspective_editor_state(
                 "hidden_columns": sorted(
                     c.Name for c in all_columns if c.Parent == table and c.IsHidden
                 ),
-                "hidden_measures": sorted(
-                    m.Name for m in table.Measures if m.IsHidden
-                ),
+                "hidden_measures": sorted(m.Name for m in table.Measures if m.IsHidden),
                 "hidden_hierarchies": sorted(
                     h.Name for h in table.Hierarchies if h.IsHidden
                 ),
@@ -1682,9 +1680,7 @@ def perspective_editor(
         perspectives=initial_state["perspectives"],
         perspective_members=initial_state["perspective_members"],
         selected_perspective=(
-            initial_state["perspectives"][0]
-            if initial_state["perspectives"]
-            else ""
+            initial_state["perspectives"][0] if initial_state["perspectives"] else ""
         ),
         status={},
         pending_action={},
