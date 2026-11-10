@@ -50,6 +50,9 @@ def test_all_interactive_tools_use_shared_button_press_feedback():
         "src/sempy_labs/semantic_model/_vertipaq_analyzer.py": (
             "_ui_scoped_button_press_css(root_selector)"
         ),
+        "src/sempy_labs/semantic_model/_convert.py": (
+            '_ui_scoped_button_press_css(".slls-cv")'
+        ),
         "src/sempy_labs/_copilot.py": (
             'scoped_button_press_css(f"#chat-wrapper-{session_id}")'
         ),

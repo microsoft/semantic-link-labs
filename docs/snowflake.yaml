@@ -1,0 +1,141 @@
+# Name and description of the semantic view.
+name: <name>
+description: <string>
+
+# Logical table-level concepts
+# A semantic view can contain one or more logical tables.
+tables:
+  # A logical table on top of a base table.
+  - name: <name>
+    description: <string>
+    # The fully qualified name of the base table.
+    base_table:
+      database: <database>
+      schema: <schema>
+      table: <base table name>
+
+    # Dimension columns in the logical table.
+    dimensions:
+      - name: <name>
+        synonyms: <array of strings>
+        description: <string>
+        expr: <SQL expression>
+        data_type: <data type>
+        unique: <boolean>
+        cortex_search_service:
+          service: <string>
+          literal_column: <string>
+          database: <string>
+          schema: <string>
+        is_enum: <boolean>
+        tags:                         # Optional tags for the dimension.
+          - name:
+              database: <database>
+              schema: <schema>
+              tag: <tag_name>
+            value: <tag_value>
+    - ...
+    # Time dimension columns in the logical table.
+    time_dimensions:
+      - name: <name>
+        synonyms: <array of strings>
+        description: <string>
+        expr: <SQL expression>
+        data_type: <data type>
+        unique: <boolean>
+
+    # Fact columns in the logical table.
+    facts:
+      - name: <name>
+        synonyms: <array of strings>
+        description: <string>
+        access_modifier: <public_access | private_access>  # Default is public_access.
+        expr: <SQL expression>
+        data_type: <data type>
+        tags:                         # Optional tags for the fact.
+          - name:
+              database: <database>
+              schema: <schema>
+              tag: <tag_name>
+            value: <tag_value>
+
+    # Regular metrics scoped to the logical table.
+    metrics:
+      - name: <name>
+        synonyms: <array of strings>
+        description: <string>
+        access_modifier: <public_access | private_access>  # Default is public_access.
+        expr: <SQL expression>
+        non_additive_dimensions:
+        - table: <table name>
+          dimension: <dimension name>
+          sort_direction: <ascending | descending>
+          null_order: <first | last>
+        using_relationships:
+        - <relationship_name>
+        tags:                         # Optional tags for the metric.
+          - name:
+              database: <database>
+              schema: <schema>
+              tag: <tag_name>
+            value: <tag_value>
+
+    # Commonly used filters over the logical table.
+    filters:
+      - name: <name>
+        synonyms: <array of strings>
+        description: <string>
+        expr: <SQL expression>
+
+    # Optional tags for the logical table.
+    tags:
+      - name:
+          database: <database>
+          schema: <schema>
+          tag: <tag_name>
+        value: <tag_value>
+
+# View-level concepts
+# Relationships between logical tables
+relationships:
+  - name: <string>
+    left_table: <table>
+    right_table: <table>
+    relationship_columns:
+      - left_column: <column>
+        right_column: <column>
+      - left_column: <column>
+        right_column: <column>
+
+# Derived metrics scoped to the semantic view.
+# Derived metrics combine metrics from multiple tables.
+metrics:
+  - name: <name>
+    synonyms: <array of strings>
+    description: <string>
+    access_modifier: <public_access | private_access>  # Default is public_access
+    expr: <SQL expression>
+    tags:                           # Optional tags for the derived metric.
+      - name:
+          database: <database>
+          schema: <schema>
+          tag: <tag_name>
+        value: <tag_value>
+
+# Additional context concepts
+# Verified queries with example questions and queries that answer them
+verified_queries:
+  - name: <string>       # A descriptive name of the query.
+    question: <string>   # The natural language question that this query answers.
+    verified_at: <int>   # Optional: Time (in seconds since the UNIX epoch, January 1, 1970) when the query was verified.
+    verified_by: <string> # Optional: Name of the person who verified the query.
+    use_as_onboarding_question: <boolean>  # Optional: Marks this question as an onboarding question for the end user.
+    sql: <string>        # The SQL query for answering the question
+
+# Optional tags for the semantic view itself.
+tags:
+  - name:
+      database: <database>
+      schema: <schema>
+      tag: <tag_name>
+    value: <tag_value>

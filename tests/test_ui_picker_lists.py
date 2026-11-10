@@ -29,6 +29,7 @@ PICKER_TOOLS = [
     SRC / "semantic_model" / "_perspective_editor.py",
     SRC / "semantic_model" / "_refresh_manager.py",
     SRC / "semantic_model" / "_vertipaq_analyzer.py",
+    SRC / "semantic_model" / "_convert.py",
 ]
 
 

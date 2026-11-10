@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).parents[1] / "src" / "sempy_labs"
 UI_COMPONENTS = ROOT / "_ui_components.py"
 
@@ -39,6 +38,7 @@ TOOLS = {
         "sl-reload-btn",
     ),
     "_delta_analyzer.py": ("sl-theme-btn",),
+    "semantic_model/_convert.py": ("sl-theme-btn", "sl-reload-btn"),
 }
 
 CONTROL_CLASSES = ("sl-theme-btn", "sl-change-btn", "sl-reload-btn")
