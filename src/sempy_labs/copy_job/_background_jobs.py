@@ -269,9 +269,13 @@ def run_copy_job(
     )
 
     while True:
-        result = _base_api(
+        response = _base_api(
             request=f"{url}/instances/{job_instance_id}", client="fabric_sp"
-        ).json()
+        )
+        result = response.json()
+        retry_after = int(
+            response.headers.get("Retry-After", retry_after) or retry_after
+        )
         status = result.get("status")
         if not wait or status in _TERMINAL_JOB_STATUSES:
             break
