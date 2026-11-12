@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID
 from sempy._utils._log import log
 import sempy_labs.dataflow as d
@@ -144,31 +144,38 @@ def get_dataflow_definition(
 
 @log
 def upgrade_dataflow(
-    dataflow: str | UUID,
+    dataflow: str | UUID | List[str | UUID],
     workspace: Optional[str | UUID] = None,
     new_dataflow_name: Optional[str] = None,
     new_dataflow_workspace: Optional[str | UUID] = None,
-):
+) -> pd.DataFrame:
     """
-    Creates a Dataflow Gen2 CI/CD item based on the mashup definition from an existing Gen1/Gen2 dataflow. After running this function, update the connections in the dataflow to ensure the data can be properly refreshed.
+    Upgrades one or more Gen1 dataflows to Dataflow Gen2 in place. Each successful upgrade preserves the dataflow ID and workspace.
+
+    This is a wrapper function for the following API: `Upgrade - Upgrade Dataflows <https://learn.microsoft.com/rest/api/fabric/dataflow/upgrade/upgrade-dataflows>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
-    dataflow : str | uuid.UUID
-        The name or ID of the dataflow.
+    dataflow : str | uuid.UUID | List[str | uuid.UUID]
+        The name or ID of the Gen1 dataflow, or a list of Gen1 dataflow names or IDs (up to 50).
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    new_dataflow_name: str, default=None
-        Name of the new dataflow.
+    new_dataflow_name : str, default=None
+        Deprecated. The upgrade runs in place so this parameter is ignored.
     new_dataflow_workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID of the dataflow to be created.
-        Defaults to None which resolves to the existing workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
+        Deprecated. The upgrade runs in place and does not support cross-workspace targets so this parameter is ignored.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the upgrade result for each dataflow.
     """
 
-    d.upgrade_dataflow(
+    return d.upgrade_dataflow(
         dataflow=dataflow,
         workspace=workspace,
         new_dataflow_name=new_dataflow_name,

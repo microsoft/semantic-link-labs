@@ -465,8 +465,12 @@ df[df["Valid Semantic Model Object"] == False]
 - **Function**: get_dataflow_definition
 
 ### Upgrade Dataflow
-- **Patterns**: upgrade dataflow, dataflow gen2, dataflow ci cd
-- **Function**: upgrade_dataflow
+- **Patterns**: upgrade dataflow, upgrade gen1 dataflow, dataflow gen2, dataflow ci cd
+- **Function**: dataflow.upgrade_dataflow
+
+### Dataflow Upgrade Readiness
+- **Patterns**: dataflow upgrade readiness, can dataflow be upgraded, gen1 dataflow readiness
+- **Function**: dataflow.list_dataflow_upgrade_readiness
 
 ---
 
