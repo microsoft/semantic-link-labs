@@ -48,7 +48,7 @@ def _get_spark_compute(
     response = _base_api(
         request=url,
         client="fabric_sp",
-    )
+    ).json()
 
     rows = []
     rows.append(
