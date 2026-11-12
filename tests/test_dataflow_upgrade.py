@@ -17,6 +17,7 @@ def patched(monkeypatch):
         "resolve_workspace_name_and_id",
         lambda workspace: ("Test Workspace", WS_ID),
     )
+    monkeypatch.setattr(upgrade, "resolve_workspace_id", lambda workspace: WS_ID)
     monkeypatch.setattr(
         upgrade,
         "list_dataflows",
