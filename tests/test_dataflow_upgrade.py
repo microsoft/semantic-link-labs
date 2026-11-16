@@ -130,11 +130,21 @@ def test_upgrade_dataflow_resolves_names_and_skips_non_gen1(patched, capsys):
     assert "1 of 2" in out
 
 
-def test_upgrade_dataflow_single_and_deprecated_params(patched, capsys):
-    upgrade.upgrade_dataflow(dataflow="Sales", new_dataflow_name="New")
+def test_upgrade_dataflow_single(patched):
+    upgrade.upgrade_dataflow(dataflow="Sales")
 
     assert patched[0]["payload"] == {"dataflows": [{"id": GEN1_A}]}
-    assert "deprecated" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"new_dataflow_name": "New"}, {"new_dataflow_workspace": "Sandbox"}],
+)
+def test_upgrade_dataflow_legacy_copy_params_raise_without_mutation(patched, kwargs):
+    with pytest.raises(ValueError, match="no longer supported"):
+        upgrade.upgrade_dataflow(dataflow="Sales", **kwargs)
+
+    assert patched == []
 
 
 def test_upgrade_dataflow_only_non_gen1_makes_no_call(patched):

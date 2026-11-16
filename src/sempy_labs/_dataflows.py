@@ -152,6 +152,10 @@ def upgrade_dataflow(
     """
     Upgrades one or more Gen1 dataflows to Dataflow Gen2 in place. Each successful upgrade preserves the dataflow ID and workspace.
 
+    The upgrade modifies the source dataflow and is not reversible (see
+    `Upgrade limitations <https://learn.microsoft.com/fabric/data-factory/migrate-to-dataflow-gen2-using-upgrade-wizard#the-upgrade-is-in-place-and-isnt-reversible>`_).
+    Copying a dataflow to a new item or another workspace is no longer supported.
+
     This is a wrapper function for the following API: `Upgrade - Upgrade Dataflows <https://learn.microsoft.com/rest/api/fabric/dataflow/upgrade/upgrade-dataflows>`_.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
@@ -165,14 +169,22 @@ def upgrade_dataflow(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     new_dataflow_name : str, default=None
-        Deprecated. The upgrade runs in place so this parameter is ignored.
+        Deprecated and no longer supported. Must be None; passing a value raises a ValueError
+        because the upgrade runs in place and cannot create a new dataflow.
     new_dataflow_workspace : str | uuid.UUID, default=None
-        Deprecated. The upgrade runs in place and does not support cross-workspace targets so this parameter is ignored.
+        Deprecated and no longer supported. Must be None; passing a value raises a ValueError
+        because the upgrade runs in place and cannot target another workspace.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the upgrade result for each dataflow.
+
+    Raises
+    ------
+    ValueError
+        If 'new_dataflow_name' or 'new_dataflow_workspace' is specified, if a dataflow does not exist,
+        or if more than 50 Gen1 dataflows are provided.
     """
 
     return d.upgrade_dataflow(

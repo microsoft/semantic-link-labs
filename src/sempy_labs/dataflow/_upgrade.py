@@ -87,6 +87,10 @@ def upgrade_dataflow(
     """
     Upgrades one or more Gen1 dataflows to Dataflow Gen2 in place. Each successful upgrade preserves the dataflow ID and workspace.
 
+    The upgrade modifies the source dataflow and is not reversible (see
+    `Upgrade limitations <https://learn.microsoft.com/fabric/data-factory/migrate-to-dataflow-gen2-using-upgrade-wizard#the-upgrade-is-in-place-and-isnt-reversible>`_).
+    Copying a dataflow to a new item or another workspace is no longer supported.
+
     Use :func:`sempy_labs.dataflow.list_dataflow_upgrade_readiness` to check whether the dataflows are ready to be upgraded.
 
     This is a wrapper function for the following API: `Upgrade - Upgrade Dataflows <https://learn.microsoft.com/rest/api/fabric/dataflow/upgrade/upgrade-dataflows>`_.
@@ -102,9 +106,11 @@ def upgrade_dataflow(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     new_dataflow_name : str, default=None
-        Deprecated. The upgrade runs in place so this parameter is ignored.
+        Deprecated and no longer supported. Must be None; passing a value raises a ValueError
+        because the upgrade runs in place and cannot create a new dataflow.
     new_dataflow_workspace : str | uuid.UUID, default=None
-        Deprecated. The upgrade runs in place and does not support cross-workspace targets so this parameter is ignored.
+        Deprecated and no longer supported. Must be None; passing a value raises a ValueError
+        because the upgrade runs in place and cannot target another workspace.
 
     Returns
     -------
@@ -112,11 +118,20 @@ def upgrade_dataflow(
         A pandas dataframe showing the upgrade result for each dataflow.
         The 'Required Actions' column contains a list of dictionaries (with 'status', 'code' and 'message' keys)
         describing the changes required before the dataflow can be upgraded.
+
+    Raises
+    ------
+    ValueError
+        If 'new_dataflow_name' or 'new_dataflow_workspace' is specified, if a dataflow does not exist,
+        or if more than 50 Gen1 dataflows are provided.
     """
 
-    if new_dataflow_name or new_dataflow_workspace:
-        print(
-            f"{icons.warning} The 'new_dataflow_name' and 'new_dataflow_workspace' parameters are deprecated and ignored. Dataflows are now upgraded in place."
+    # Refuse before resolving anything so a caller expecting the legacy copy behavior never mutates the source dataflow.
+    if new_dataflow_name is not None or new_dataflow_workspace is not None:
+        raise ValueError(
+            f"{icons.red_dot} The 'new_dataflow_name' and 'new_dataflow_workspace' parameters are no longer supported. "
+            "Dataflows are now upgraded in place (preserving the dataflow ID and workspace) and the upgrade is not reversible. "
+            "No changes were made. Remove these parameters to upgrade the dataflow in place."
         )
 
     workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
