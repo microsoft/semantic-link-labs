@@ -615,6 +615,37 @@ ICONS: dict[str, str] = {
         '<rect x="31" y="31" width="25" height="25" rx="4" '
         'stroke="currentColor" stroke-width="3"/></svg>'
     ),
+    # A person guarded by a checked shield: reviewing and managing who has
+    # access to workspaces.
+    "user_access_manager": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<circle cx="9" cy="7.5" r="3.5"/>'
+        '<path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5 1.2 0 2.3.3 3.2.9"/>'
+        '<path d="M18 12.8l3.6 1.4v2.7c0 2.4-1.5 3.9-3.6 4.6-2.1-.7-3.6-2.2-3.6-4.6v-2.7z"/>'
+        '<path d="m16.4 17.1 1.1 1.1 2.1-2.1"/></svg>'
+    ),
+    # Official Microsoft Graph logo (brand colors kept; classes inlined as fills).
+    "microsoft_graph": (
+        '<svg viewBox="0 0 374.85 330" aria-hidden="true">'
+        '<g>'
+        '<path fill="#0078d4" d="M1043.7,375H876.3A20,20,0,0,0,859,385L775.26,530a20,20,0,0,0,0,20L859,695a20,20,0,0,0,17.35,10h167.4a20,20,0,0,0,17.35-10l83.69-145a20,20,0,0,0,0-20l-83.69-145A20,20,0,0,0,1043.7,375Z" transform="translate(-772.57 -375)"/>'
+        '<g>'
+        '<path fill="#28a8ea" d="M1144.74,530,1061,385a19.87,19.87,0,0,0-6-6.5l6.77,161.17,85.63.27A20,20,0,0,0,1144.74,530Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#14447d" d="M775.26,550,859,695a20.09,20.09,0,0,0,5.43,6.08l36.39-58.56L774.15,547.78A20.26,20.26,0,0,0,775.26,550Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#0078d4" d="M859,385,775.26,530a19.18,19.18,0,0,0-1.46,3.12l120.66-95.83-30.35-58.13A19.89,19.89,0,0,0,859,385Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#28a8ea" d="M1043.7,375H876.3a20,20,0,0,0-12.19,4.14l30.35,58.13,153.91-61.71A20.16,20.16,0,0,0,1043.7,375Z" transform="translate(-772.57 -375)"/>'
+        '<polygon fill="#28a8ea" points="128.19 267.5 289.22 164.69 121.89 62.27 128.19 267.5"/>'
+        '<path fill="#50d9ff" d="M1048.37,375.56,894.46,437.27l167.33,102.42L1055,378.52A20,20,0,0,0,1048.37,375.56Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#0364b8" d="M773.8,533.1a20.07,20.07,0,0,0,.35,14.68L900.77,642.5l-6.31-205.23Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#0f335e" d="M864.38,701.06A20.07,20.07,0,0,0,876.3,705h167.4a20,20,0,0,0,3.8-.38L900.77,642.5Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#0364b8" d="M900.77,642.5l146.73,62.12a20,20,0,0,0,7.54-3.15l6.75-161.78Z" transform="translate(-772.57 -375)"/>'
+        '<path fill="#0078d4" d="M1061.79,539.69,1055,701.47a19.88,19.88,0,0,0,6-6.49l83.7-145a20,20,0,0,0,2.68-10.06Z" transform="translate(-772.57 -375)"/>'
+        '</g>'
+        '</g>'
+        '</svg>'
+    ),
     "expand_rows": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
@@ -1142,6 +1173,7 @@ LIGHT_THEME_VARS: str = """\
 --ui-danger-text: #b91c1c;
 --ui-warning-bg: #fef3c7;
 --ui-warning-text: #92400e;
+--ui-pending: #ff9500;
 --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
@@ -1171,6 +1203,7 @@ DARK_THEME_VARS: str = """\
 --ui-danger-text: #fca5a5;
 --ui-warning-bg: rgba(250, 204, 21, 0.22);
 --ui-warning-text: #fde047;
+--ui-pending: #ff9f0a;
 --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4);
 --ui-shadow-md: 0 4px 14px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
 --ui-shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);

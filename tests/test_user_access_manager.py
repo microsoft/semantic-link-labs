@@ -62,6 +62,7 @@ def test_principal_quotes_upn_and_rejects_bad_group(monkeypatch):
 
 
 def sample_review(monkeypatch, fail_groups=False):
+    monkeypatch.setattr(manager, "_graph_available", lambda *_: True)
     monkeypatch.setattr(manager, "_principal", lambda kind, identity: {"id": USER, "name": "User", "type": "User"})
 
     def pages(request, client):
@@ -88,6 +89,10 @@ def test_review_direct_nested_group_and_per_workspace_failure(monkeypatch):
     assert GROUP in review["rows"][1]["path"]
     assert review["reviewed_workspace_ids"] == [WS]
     assert "403 denied" in review["warnings"][0]
+    summary = review["summary"]
+    assert (summary["workspaces_with_access"], summary["direct"], summary["inherited"]) == (1, 1, 1)
+    assert summary["roles"] == {"Admin": 0, "Member": 1, "Contributor": 0, "Viewer": 0}
+    assert (summary["reviewed"], summary["visible"], summary["groups"]) == (1, 2, 1)
 
 
 def test_review_group_resolution_failure_is_explicit(monkeypatch):
@@ -97,6 +102,7 @@ def test_review_group_resolution_failure_is_explicit(monkeypatch):
 
 
 def test_group_members_failure_does_not_show_partial_results(monkeypatch):
+    monkeypatch.setattr(manager, "_graph_available", lambda *_: True)
     monkeypatch.setattr(manager, "_principal", lambda *_: {"id": GROUP, "name": "Group", "type": "Group"})
 
     def pages(request, client):
@@ -112,6 +118,53 @@ def test_group_members_failure_does_not_show_partial_results(monkeypatch):
     assert "page 2 failed" in result["warnings"][0]
 
 
+def test_review_without_service_principal_skips_graph_and_matches_upn(monkeypatch):
+    token = manager.auth.token_provider.set(None)
+    requests = []
+
+    def pages(request, client):
+        requests.append(client)
+        if request == "/v1/workspaces":
+            return iter([{"id": WS, "displayName": "Sales"}])
+        return iter([
+            {"id": DIRECT, "role": "Viewer", "principal": {
+                "id": USER, "type": "User", "displayName": "Jane",
+                "userDetails": {"userPrincipalName": "Jane@Example.com"}}},
+            {"id": INHERITED, "role": "Member", "principal": {"id": GROUP, "type": "Group"}},
+        ])
+
+    monkeypatch.setattr(manager, "_pages", pages)
+    try:
+        review = manager._review("User", "jane@example.com")
+    finally:
+        manager.auth.token_provider.reset(token)
+    assert "graph" not in requests
+    assert review["principal"] == {"id": USER, "type": "User", "name": "Jane"}
+    assert [row["assignment_id"] for row in review["rows"]] == [DIRECT]
+    assert "service principal" in review["info"] and review["warnings"] == []
+
+
+def test_key_vault_credential_is_scoped_to_graph_calls(monkeypatch):
+    credential = object()
+    seen = []
+    monkeypatch.setattr(manager, "_principal", lambda kind, identity: (
+        seen.append(("principal", manager.auth.token_provider.get())) or {"id": USER, "name": "User", "type": "User"}))
+
+    def pages(request, client):
+        seen.append((client, manager.auth.token_provider.get()))
+        return iter([{"id": WS, "displayName": "Sales"}] if request == "/v1/workspaces" else [])
+
+    monkeypatch.setattr(manager, "_pages", pages)
+    review = manager._review("User", USER, credential)
+    assert seen == [("principal", credential), ("graph", credential), ("fabric_sp", None), ("fabric_sp", None)]
+    assert review["warnings"] == []
+    assert manager.auth.token_provider.get() is None
+
+    with pytest.raises(ValueError, match="together"):
+        manager._graph_credential_from_key_vault("https://kv.vault.azure.net/", "tenant", None, None)
+    assert manager._graph_credential_from_key_vault(None, None, None, None) is None
+
+
 def test_mutations_require_direct_reviewed_assignment(monkeypatch):
     review = sample_review(monkeypatch)
     api = Mock()
@@ -120,11 +173,12 @@ def test_mutations_require_direct_reviewed_assignment(monkeypatch):
         with pytest.raises(ValueError, match="direct assignment"):
             manager._mutate(review, action, WS, INHERITED, "Admin")
     with pytest.raises(ValueError, match="not successfully reviewed"):
-        manager._mutate(review, "grant", WS2, role="Admin")
+        manager._mutate(review, "update", WS2, DIRECT, "Admin")
     with pytest.raises(ValueError, match="Invalid workspace role"):
         manager._mutate(review, "update", WS, DIRECT, "Owner")
-    with pytest.raises(ValueError, match="already exists"):
-        manager._mutate(review, "grant", WS, role="Viewer")
+    with pytest.raises(ValueError, match="Unknown action"):
+        manager._mutate(review, "grant", WS, DIRECT, "Viewer")
+    manager._mutate(review, "remove", WS, DIRECT, dry_run=True)
     api.assert_not_called()
     manager._mutate(review, "update", WS, DIRECT, "Member")
     assert api.call_args.kwargs["request"].endswith("/" + DIRECT)
@@ -133,15 +187,26 @@ def test_mutations_require_direct_reviewed_assignment(monkeypatch):
     assert api.call_args.kwargs["request"].endswith("/" + DIRECT)
 
 
-def test_grant_uses_principal_id_and_type(monkeypatch):
+def test_apply_validates_every_change_before_applying_any(monkeypatch):
     review = sample_review(monkeypatch)
-    review["rows"] = []
     api = Mock()
     monkeypatch.setattr(manager, "_base_api", api)
-    manager._mutate(review, "grant", WS, role="Viewer")
-    assert api.call_args.kwargs["payload"] == {
-        "principal": {"id": USER, "type": "User"}, "role": "Viewer"
-    }
+    good = {"action": "update", "workspace_id": WS, "assignment_id": DIRECT, "role": "Member"}
+    with pytest.raises(ValueError, match="direct assignment"):
+        manager._apply(review, [good, {"action": "remove", "workspace_id": WS, "assignment_id": INHERITED}])
+    with pytest.raises(ValueError, match="one pending change"):
+        manager._apply(review, [good, {**good, "action": "remove"}])
+    with pytest.raises(ValueError, match="no pending changes"):
+        manager._apply(review, [])
+    api.assert_not_called()
+    # Fabric reuses the principal ID as the assignment ID in every workspace.
+    review["reviewed_workspace_ids"].append(WS2)
+    review["rows"].append({**review["rows"][0], "workspace_id": WS2, "workspace": "Denied"})
+    assert manager._apply(review, [good, {**good, "workspace_id": WS2}]) == []
+    assert [c.kwargs["request"] for c in api.call_args_list] == [
+        f"/v1/workspaces/{WS}/roleAssignments/{DIRECT}", f"/v1/workspaces/{WS2}/roleAssignments/{DIRECT}"]
+    api.side_effect = [None, RuntimeError("403 denied")]
+    assert manager._apply(review, [good, {**good, "workspace_id": WS2}]) == ["Denied: 403 denied"]
 
 
 def test_selected_group_direct_assignment_can_be_changed(monkeypatch):
@@ -159,11 +224,12 @@ def test_widget_discloses_limits_and_confirms_mutations():
     js = manager._JS
     assert "Member.Read.Hidden" in js and "EntireTenant" in js
     assert "caller-visible" in js and "Other access paths may remain" in js
-    assert 'confirm(' in js and 'row.direct&&row.assignment_id' in js
-    assert "__FULLSCREEN__" not in js and "__SEARCH__" not in js
+    assert "confirm(" not in js and "alert(" not in js
+    assert "ask({" in js and 'row.direct&&row.assignment_id' in js
+    assert "__FULLSCREEN__" not in js and "__RESIZE__" not in js and "data-grant" not in js
 
 
-def test_workspace_picker_is_reused_and_selection_survives_redraws():
+def test_widget_queues_changes_until_save():
     if not shutil.which("node"):
         pytest.skip("Node.js is required for the widget JavaScript test")
     dom = r"""
@@ -209,42 +275,71 @@ class Element {
 }
 global.document={createElement:tag=>new Element(tag),addEventListener(){}};
 global.window={innerHeight:1000};
-global.confirm=()=>true;
-global.alert=()=>{throw new Error("Unexpected alert");};
+global.confirm=()=>{throw new Error("Native confirm must not be used");};
+global.alert=()=>{throw new Error("Native alert must not be used");};
 """
     scenario = r"""
-const values={workspace_id:"one",dark_mode:false,run:0,data:{},status:{}};
+const values={dark_mode:false,run:0,data:{},status:{}};
 const listeners={};
 const model={get:key=>values[key],set:(key,value)=>{values[key]=value;},
   on:(event,fn)=>{listeners[event]=fn;},save_changes(){}};
 const host=new Element("host");
 render({model,el:host});
-const data={principal:{id:"p",name:"Person",type:"User"},warnings:[],rows:[],members:[],
-  workspaces:[{id:"one",name:"One"},{id:"two",name:"Two"}],reviewed_workspace_ids:["one","two"]};
+const byTag=(el,tag)=>{const out=[];const walk=e=>{for(const c of e.children){if(c.tag===tag)out.push(c);walk(c);}};walk(el);return out;};
+const cells=()=>byTag(host,"td").map(td=>td.textContent);
+const btn=title=>byTag(host,"button").find(b=>b.title===title);
+const overlay=host.querySelector(".overlay"),dlgButtons=()=>host.querySelector(".dialog-actions").children;
+host.querySelector("[data-info]").onclick();
+assert.equal(overlay.style.display,"flex");assert.ok(host.querySelector(".info"));
+dlgButtons()[0].onclick();assert.equal(overlay.style.display,"none");
+const data={principal:{id:"p",name:"Person",type:"User"},warnings:[],members:[],workspaces:[],reviewed_workspace_ids:["one","two"],
+  rows:[{workspace_id:"one",workspace:"Sales",assignment_id:"a1",role:"Viewer",path:"Direct",direct:true},
+    {workspace_id:"two",workspace:"Finance",assignment_id:"a2",role:"Admin",path:"Via group: G (g)",direct:false},
+    {workspace_id:"three",workspace:"Zeta",assignment_id:"a1",role:"Viewer",path:"Direct",direct:true}],
+  summary:{workspaces_with_access:2,direct:1,inherited:1,roles:{Admin:1,Member:0,Contributor:0,Viewer:1},
+    reviewed:2,visible:2,groups:null,members:0,warnings:0}};
 values.data=data;listeners["change:data"]();
-assert.equal(__sllsSsOpen.size,1);
-let picker=host.querySelector(".slls-ss");
-assert.ok(picker);
-assert.equal(host.querySelector(".slls-ss-value").textContent,"One (one)");
-let options=host.querySelectorAll(".slls-ss-opt");
-options[1].fire("click");
-for(let i=0;i<20;i++)listeners["change:status"]();
-assert.equal(__sllsSsOpen.size,1);
-assert.equal(host.querySelector(".slls-ss"),picker);
-assert.equal(host.querySelector(".slls-ss-value").textContent,"Two (two)");
-host.querySelector("[data-grant]").onclick();
-assert.equal(values.pending_action.workspace_id,"two");
-values.data={};listeners["change:data"]();
-values.data=data;listeners["change:data"]();listeners["change:status"]();
-assert.equal(__sllsSsOpen.size,1);
-assert.equal(host.querySelector(".slls-ss"),picker);
-assert.equal(host.querySelector(".slls-ss-value").textContent,"One (one)");
-host.querySelectorAll(".slls-ss-opt")[1].fire("click");
-data.reviewed_workspace_ids=["one"];
-listeners["change:data"]();
-assert.equal(host.querySelector(".slls-ss-value").textContent,"One (one)");
-host.querySelector("[data-grant]").onclick();
-assert.equal(values.pending_action.workspace_id,"one");
+assert.equal(host.querySelectorAll(".card").length,9);
+assert.equal(host.querySelectorAll(".card-value")[8].textContent,"n/a");
+host.querySelector("[data-kv-uri]").value=" https://kv.vault.azure.net/ ";
+host.querySelector("[data-graph-connect]").onclick();
+assert.equal(values.pending_action.key_vault_uri,"https://kv.vault.azure.net/");
+listeners["change:status"]();
+assert.equal(cells()[0],"Finance");
+const filter=host.querySelector(".search").children.find(c=>c.tag==="input");
+filter.value="sales";filter.oninput();
+assert.equal(cells()[0],"Sales");assert.equal(cells().length,5);
+filter.value="";filter.oninput();
+host.querySelectorAll(".sort")[3].onclick();assert.equal(cells()[0],"Sales");
+host.querySelectorAll(".sort")[3].onclick();assert.equal(cells()[0],"Finance");
+const saveBtn=()=>btn("Save all pending changes");
+assert.equal(saveBtn().disabled,true);
+const run=values.run;
+btn("Change role").onclick();
+const roleSelect=host.querySelector(".dialog").children.find(c=>c.tag==="label").children.find(c=>c.tag==="select");
+assert.equal(roleSelect.value,"Viewer");assert.equal(dlgButtons()[1].disabled,true);
+roleSelect.value="Member";roleSelect.onchange();dlgButtons()[1].onclick();
+assert.equal(values.run,run);
+assert.equal(host.querySelectorAll(".new-role").length,1);
+assert.equal(host.querySelectorAll(".new-role")[0].textContent,"Member");
+assert.equal(host.querySelectorAll(".dot").length,2);
+assert.equal(saveBtn().disabled,false);
+btn("Undo pending change").onclick();
+assert.equal(host.querySelectorAll(".new-role").length,0);assert.equal(saveBtn().disabled,true);
+btn("Remove direct access").onclick();
+assert.equal(values.run,run);assert.equal(host.querySelectorAll(".pending-remove").length,1);
+host.querySelector(".pending-btn").onclick();
+assert.equal(byTag(host.querySelector(".pending-list"),"li").length,1);
+dlgButtons()[0].onclick();
+saveBtn().onclick();
+assert.deepEqual(values.pending_action,{action:"save",changes:[{action:"remove",workspace_id:"one",assignment_id:"a1",role:""}]});
+listeners["change:status"]();
+host.querySelector("[data-review]").onclick();
+assert.equal(overlay.style.display,"flex");assert.equal(values.pending_action.action,"save");
+dlgButtons()[1].onclick();
+assert.equal(values.pending_action.action,"review");
+values.data={...data};listeners["change:data"]();listeners["change:status"]();
+assert.equal(host.querySelectorAll(".pending-remove").length,0);
 """
     js = manager._JS.replace("export default { render };", "")
     result = subprocess.run(
@@ -253,7 +348,7 @@ assert.equal(values.pending_action.workspace_id,"one");
     assert result.returncode == 0, result.stderr
 
 
-def test_callback_clears_stale_state_after_failure_and_mutation(monkeypatch):
+def show_widget(monkeypatch, **kwargs):
     class Trait:
         def __init__(self, *args):
             pass
@@ -279,26 +374,76 @@ def test_callback_clears_stale_state_after_failure_and_mutation(monkeypatch):
     monkeypatch.setitem(sys.modules, "traitlets", types.SimpleNamespace(
         Dict=Trait, Int=Trait, Bool=Trait, Unicode=Trait
     ))
-    monkeypatch.setattr(manager, "resolve_workspace_name_and_id", lambda _: ("Workspace", WS))
-    review = {"principal": {"id": USER, "type": "User"}, "rows": []}
-    loader = Mock(side_effect=[review, RuntimeError("Graph denied"), review])
-    monkeypatch.setattr(manager, "_review", loader)
-    mutation = Mock()
-    monkeypatch.setattr(manager, "_mutate", mutation)
     func = getattr(manager.user_access_manager, "__wrapped__", manager.user_access_manager)
-    func(workspace=WS)
-    widget = display.call_args.args[0]
+    func(**kwargs)
+    return display.call_args.args[0]
+
+
+def test_graph_panel_connects_and_disconnects(monkeypatch):
+    credential = Mock()
+    factory = Mock(side_effect=[None, credential, RuntimeError("bad secret")])
+    monkeypatch.setattr(manager, "_graph_credential_from_key_vault", factory)
+    loader = Mock(return_value={"principal": {}})
+    monkeypatch.setattr(manager, "_review", loader)
+    widget = show_widget(monkeypatch)
+    assert widget.graph_status == {"connected": False, "source": ""}
+
+    config = {"key_vault_uri": "https://kv.vault.azure.net/", "key_vault_tenant_id": "t",
+              "key_vault_client_id": "c", "key_vault_client_secret": "s"}
+    widget.pending_action = {"action": "review", "kind": "User", "identity": USER}
+    widget.run = 1
+    widget.callback(None)
+    widget.pending_action = {"action": "graph_connect", **config}
+    widget.run = 2
+    widget.callback(None)
+    credential.get_token.assert_called_once_with("graph")
+    assert widget.graph_status == {"connected": True, "source": "key_vault"}
+    assert widget.graph_config == config and widget.data == {"principal": {}}
+
+    widget.pending_action = {"action": "review", "kind": "User", "identity": USER}
+    widget.run = 3
+    widget.callback(None)
+    assert loader.call_args.args[2] is credential
+
+    widget.pending_action = {"action": "graph_connect", **config}
+    widget.run = 4
+    widget.callback(None)
+    assert widget.status["error"] and "bad secret" in widget.status["message"]
+    assert widget.graph_status["connected"]
+
+    widget.pending_action = {"action": "graph_disconnect"}
+    widget.run = 5
+    widget.callback(None)
+    assert widget.graph_status == {"connected": False, "source": ""}
+
+
+def test_save_applies_pending_changes_then_refreshes(monkeypatch):
+    review = {"principal": {"id": USER, "type": "User"}, "rows": []}
+    refreshed = {**review, "rows": [{"workspace_id": WS}]}
+    loader = Mock(side_effect=[review, refreshed, RuntimeError("Graph denied")])
+    monkeypatch.setattr(manager, "_review", loader)
+    apply = Mock(side_effect=[ValueError("stale review"), ["Sales: 403 denied"], []])
+    monkeypatch.setattr(manager, "_apply", apply)
+    widget = show_widget(monkeypatch)
     widget.pending_action = {"action": "review", "kind": "User", "identity": USER}
     widget.run = 1
     widget.callback(None)
     assert widget.data == review
+
+    change = {"action": "remove", "workspace_id": WS, "assignment_id": DIRECT}
+    widget.pending_action = {"action": "save", "changes": [change]}
     widget.run = 2
     widget.callback(None)
-    assert widget.data == {} and widget.status["error"]
+    assert widget.data == review and loader.call_count == 1
+    assert widget.status["error"] and "No changes were saved" in widget.status["message"]
+
     widget.run = 3
     widget.callback(None)
-    widget.pending_action = {"action": "remove", "workspace_id": WS, "assignment_id": DIRECT}
+    assert apply.call_args.args == (review, [change])
+    assert loader.call_args.args == ("User", USER, None) and widget.data == refreshed
+    assert widget.status["error"] and "Saved 0 of 1" in widget.status["message"]
+    assert "Sales: 403 denied" in widget.status["message"]
+
     widget.run = 4
     widget.callback(None)
-    mutation.assert_called_once()
-    assert widget.data == {} and not widget.status["error"]
+    assert widget.data == {} and "Refreshing the review failed" in widget.status["message"]

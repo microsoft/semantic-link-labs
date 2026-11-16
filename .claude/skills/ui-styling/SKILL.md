@@ -126,6 +126,7 @@ All interactive UIs share one visual language. Stick to these tokens — do not 
 | `--ui-on-accent` | Text/icon color placed on top of an `--ui-accent` (or `--ui-danger`) fill — i.e. "white" |
 | `--ui-danger`, `--ui-danger-hover` | Destructive button fill + hover (e.g. a Stop button) |
 | `--ui-danger-bg`, `--ui-danger-border`, `--ui-danger-text` | Inline error/alert box background, border, and text (themed for light + dark) |
+| `--ui-pending` | Orange marker for unsaved / pending changes (e.g. the tracking dot next to a queued edit) |
 | `--ui-shadow-sm`, `--ui-shadow-md`, `--ui-shadow-lg` | Elevation |
 
 Never hard-code `#fff`, red error colors, or any other literal — always go through a token. If a destructive action, error banner, or white-on-accent label is needed, use the danger / on-accent tokens above rather than inlining hex values.
