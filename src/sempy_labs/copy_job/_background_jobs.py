@@ -241,7 +241,9 @@ def run_copy_job(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     wait : bool, default=True
         If True, waits for the job instance to reach a terminal status (Completed, Failed, Cancelled or Deduped).
+        Honors the Retry-After delay before the first status poll and between subsequent polls.
         If False, returns immediately after the job instance is submitted.
+        No status poll is made; status, timestamps and other server-provided details are left empty.
 
     Returns
     -------
@@ -262,13 +264,28 @@ def run_copy_job(
         client="fabric_sp",
     )
     job_instance_id = response.headers.get("Location", "").rstrip("/").split("/")[-1]
-    retry_after = int(response.headers.get("Retry-After", 5) or 5)
 
     print(
         f"{icons.in_progress} The execute job for the '{item_name}' copy job within the '{workspace_name}' workspace has been initiated (job instance '{job_instance_id}')."
     )
 
+    if not wait:
+        return _job_instances_df(
+            [
+                _job_instance_row(
+                    {
+                        "id": job_instance_id,
+                        "itemId": str(item_id),
+                        "jobType": "Execute",
+                        "invokeType": "Manual",
+                    }
+                )
+            ]
+        )
+
+    retry_after = int(response.headers.get("Retry-After", 5) or 5)
     while True:
+        time.sleep(retry_after)
         response = _base_api(
             request=f"{url}/instances/{job_instance_id}", client="fabric_sp"
         )
@@ -277,9 +294,8 @@ def run_copy_job(
             response.headers.get("Retry-After", retry_after) or retry_after
         )
         status = result.get("status")
-        if not wait or status in _TERMINAL_JOB_STATUSES:
+        if status in _TERMINAL_JOB_STATUSES:
             break
-        time.sleep(retry_after)
 
     if status == "Completed":
         print(
@@ -585,6 +601,8 @@ def update_copy_job_schedule(
     Updates an existing execute schedule of the specified copy job.
 
     Only the specified parameters are changed; all other settings are retained from the existing schedule.
+    Omitted monthly occurrence fields are retained within the existing occurrence type.
+    Switching occurrence types requires all fields of the new type and discards incompatible fields.
 
     This is a wrapper function for the following API: `Background Jobs - Update Execute Schedule <https://learn.microsoft.com/rest/api/fabric/copyjob/background-jobs/update-execute-schedule>`_.
 
@@ -653,12 +671,14 @@ def update_copy_job_schedule(
     config = existing.get("configuration") or {}
     occurrence = config.get("occurrence") or {}
 
-    # Only inherit the existing monthly occurrence if no occurrence parameter was provided, so a
-    # DayOfMonth occurrence can be swapped for an OrdinalWeekday one (and vice versa).
-    if day_of_month is None and week_index is None and weekday is None:
-        day_of_month = occurrence.get("dayOfMonth")
-        week_index = occurrence.get("weekIndex")
-        weekday = occurrence.get("weekday")
+    if day_of_month is None:
+        if occurrence.get("occurrenceType") == "OrdinalWeekday":
+            if week_index is None:
+                week_index = occurrence.get("weekIndex")
+            if weekday is None:
+                weekday = occurrence.get("weekday")
+        elif week_index is None and weekday is None:
+            day_of_month = occurrence.get("dayOfMonth")
 
     payload = {
         "enabled": existing.get("enabled") if enabled is None else enabled,

@@ -67,11 +67,11 @@ def _job(status, failure=None):
 
 
 class TestRunCopyJob:
-    def _submit(self):
+    def _submit(self, retry_after="1"):
         return _response(
             headers={
                 "Location": f"https://api.fabric.microsoft.com{BASE}/instances/{JOB_ID}",
-                "Retry-After": "1",
+                "Retry-After": retry_after,
             }
         )
 
@@ -104,13 +104,46 @@ class TestRunCopyJob:
         assert f"status '{status}'" in out
         assert "Error: boom" in out
 
-    def test_no_wait_returns_after_first_poll(self, api):
-        api.queue.extend([self._submit(), _response(_job("NotStarted"))])
+    @pytest.mark.parametrize("status_retry_after", ["90", None, ""])
+    def test_honors_submission_and_status_polling_delays(
+        self, api, monkeypatch, status_retry_after
+    ):
+        sleeps = []
+        monkeypatch.setattr(
+            bg.time, "sleep", lambda seconds: sleeps.append((len(api.calls), seconds))
+        )
+        headers = (
+            {} if status_retry_after is None else {"Retry-After": status_retry_after}
+        )
+        api.queue.extend(
+            [
+                self._submit(retry_after="60"),
+                _response(_job("InProgress"), headers=headers),
+                _response(_job("Completed"), headers={"Retry-After": "120"}),
+            ]
+        )
+
+        df = bg.run_copy_job("My Copy Job")
+
+        assert sleeps == [(1, 60), (2, int(status_retry_after or 60))]
+        assert len(api.calls) == 3
+        assert df.loc[0, "Status"] == "Completed"
+
+    def test_no_wait_returns_submission_without_polling(self, api, monkeypatch):
+        sleeps = []
+        monkeypatch.setattr(bg.time, "sleep", sleeps.append)
+        api.queue.append(self._submit(retry_after="60"))
 
         df = bg.run_copy_job("My Copy Job", wait=False)
 
-        assert len(api.calls) == 2
+        assert len(api.calls) == 1
+        assert sleeps == []
         assert df.loc[0, "Job Instance Id"] == JOB_ID
+        assert df.loc[0, "Item Id"] == ITEM_ID
+        assert df.loc[0, "Job Type"] == "Execute"
+        assert df.loc[0, "Invoke Type"] == "Manual"
+        assert pd.isna(df.loc[0, "Status"])
+        assert pd.isna(df.loc[0, "Start Time UTC"])
 
 
 def test_list_copy_job_instances(api):
@@ -305,7 +338,88 @@ def test_update_copy_job_schedule_merges_existing_values(api):
     }
 
 
-def test_update_copy_job_schedule_switches_monthly_occurrence(api):
+@pytest.mark.parametrize(
+    "occurrence,updates,expected",
+    [
+        (
+            {"occurrenceType": "DayOfMonth", "dayOfMonth": 3},
+            {"week_index": "Second", "weekday": "Friday"},
+            {
+                "occurrenceType": "OrdinalWeekday",
+                "weekIndex": "Second",
+                "weekday": "Friday",
+            },
+        ),
+        (
+            {
+                "occurrenceType": "OrdinalWeekday",
+                "weekIndex": "First",
+                "weekday": "Monday",
+            },
+            {"day_of_month": 5},
+            {"occurrenceType": "DayOfMonth", "dayOfMonth": 5},
+        ),
+    ],
+)
+def test_update_copy_job_schedule_switches_monthly_occurrence(
+    api, occurrence, updates, expected
+):
+    monthly = {
+        **CRON_SCHEDULE,
+        "configuration": {
+            **CRON_SCHEDULE["configuration"],
+            "type": "Monthly",
+            "times": ["08:00"],
+            "recurrence": 1,
+            "occurrence": occurrence,
+        },
+    }
+    api.queue.extend([_response(monthly), _response(monthly)])
+
+    bg.update_copy_job_schedule("My Copy Job", schedule_id=SCHEDULE_ID, **updates)
+
+    assert api.calls[1]["payload"]["configuration"]["occurrence"] == expected
+
+
+@pytest.mark.parametrize(
+    "updates,expected_week_index,expected_weekday",
+    [
+        ({"weekday": "Friday"}, "First", "Friday"),
+        ({"week_index": "Second"}, "Second", "Monday"),
+        ({"enabled": False}, "First", "Monday"),
+    ],
+)
+def test_update_copy_job_schedule_retains_omitted_ordinal_fields(
+    api, updates, expected_week_index, expected_weekday
+):
+    monthly = {
+        **CRON_SCHEDULE,
+        "configuration": {
+            **CRON_SCHEDULE["configuration"],
+            "type": "Monthly",
+            "times": ["08:00"],
+            "recurrence": 1,
+            "occurrence": {
+                "occurrenceType": "OrdinalWeekday",
+                "weekIndex": "First",
+                "weekday": "Monday",
+            },
+        },
+    }
+    api.queue.extend([_response(monthly), _response(monthly)])
+
+    bg.update_copy_job_schedule("My Copy Job", schedule_id=SCHEDULE_ID, **updates)
+
+    assert api.calls[1]["method"] == "patch"
+    assert api.calls[1]["payload"]["configuration"]["occurrence"] == {
+        "occurrenceType": "OrdinalWeekday",
+        "weekIndex": expected_week_index,
+        "weekday": expected_weekday,
+    }
+
+
+@pytest.mark.parametrize("updates", [{"weekday": "Friday"}, {"week_index": "Second"}])
+def test_update_copy_job_schedule_requires_complete_new_occurrence(api, updates):
     monthly = {
         **CRON_SCHEDULE,
         "configuration": {
@@ -316,17 +430,11 @@ def test_update_copy_job_schedule_switches_monthly_occurrence(api):
             "occurrence": {"occurrenceType": "DayOfMonth", "dayOfMonth": 3},
         },
     }
-    api.queue.extend([_response(monthly), _response(monthly)])
+    api.queue.append(_response(monthly))
 
-    bg.update_copy_job_schedule(
-        "My Copy Job", schedule_id=SCHEDULE_ID, week_index="Second", weekday="Friday"
-    )
-
-    assert api.calls[1]["payload"]["configuration"]["occurrence"] == {
-        "occurrenceType": "OrdinalWeekday",
-        "weekIndex": "Second",
-        "weekday": "Friday",
-    }
+    with pytest.raises(ValueError, match="parameters are required"):
+        bg.update_copy_job_schedule("My Copy Job", schedule_id=SCHEDULE_ID, **updates)
+    assert len(api.calls) == 1
 
 
 def test_update_copy_job_schedule_change_type_requires_new_fields(api):
