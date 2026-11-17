@@ -1075,7 +1075,7 @@ def save_as_delta_table(
 
         writer.save(file_path)
 
-    delta_table_name = delta_table_name.replace('/', '.')
+    delta_table_name = delta_table_name.replace("/", ".")
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
@@ -1973,7 +1973,10 @@ def _get_column_aggregate(
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
-    if is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id) and schema_name is None:
+    if (
+        is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
+        and schema_name is None
+    ):
         schema_name = "dbo"
     path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
     function = function.lower()
@@ -2354,16 +2357,37 @@ def _base_api(
     if client in ["fabric", "fabric_sp"]:
         token = auth.token_provider.get() or FabricDefaultCredential()
         c = fabric.FabricRestClient(credential=token)
+        header_kwargs = {"headers": headers} if headers else {}
+        content_type = next(
+            (
+                value
+                for key, value in (headers or {}).items()
+                if key.lower() == "content-type"
+            ),
+            None,
+        )
+        if isinstance(payload, (bytes, bytearray)):
+            if content_type is None:
+                headers = {
+                    **(headers or {}),
+                    "Content-Type": "application/octet-stream",
+                }
+                header_kwargs = {"headers": headers}
+            body_kwargs = {"data": payload, **header_kwargs}
+        elif content_type is not None and "json" not in content_type.lower():
+            body_kwargs = {"data": payload, **header_kwargs}
+        else:
+            body_kwargs = {"json": payload, **header_kwargs}
         if method == "get":
-            response = c.get(request)
+            response = c.get(request, **header_kwargs)
         elif method == "delete":
-            response = c.delete(request)
+            response = c.delete(request, **header_kwargs)
         elif method == "post":
-            response = c.post(request, json=payload)
+            response = c.post(request, **body_kwargs)
         elif method == "patch":
-            response = c.patch(request, json=payload)
+            response = c.patch(request, **body_kwargs)
         elif method == "put":
-            response = c.put(request, json=payload)
+            response = c.put(request, **body_kwargs)
         else:
             raise NotImplementedError
     elif client == "onelake":
@@ -3185,7 +3209,9 @@ def extract_descriptions_from_table_path(
 
 
 @log
-def get_downstream_relations(item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> dict:
+def get_downstream_relations(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> dict:
     """
     Gets downstream relations for an item.
 
@@ -3209,13 +3235,17 @@ def get_downstream_relations(item: str | UUID, type: Optional[str] = None, works
     workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
 
-    response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/downstream?beta=True")
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/relations/downstream?beta=True"
+    )
 
     return response.json()
 
 
 @log
-def get_upstream_relations(item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> dict:
+def get_upstream_relations(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> dict:
     """
     Gets upstream relations for an item.
 

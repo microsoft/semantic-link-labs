@@ -15,6 +15,7 @@ item_types = {
     "Lakehouse": ["Lakehouse", "lakehouses"],
     "MLExperiment": ["ML Experiment", "mlExperiments"],
     "MLModel": ["ML Model", "mlModels"],
+    "Monitoring": ["Monitoring", "monitoringItems", "MonitoringProperties.json"],
     "MirroredDatabase": [
         "Mirrored Database",
         "mirroredDatabases",
@@ -79,7 +80,7 @@ items = {
     "Ontology": "ontologies",
     "Lakehouse": "lakehouses",
     "EventSchemaSet": "EventSchemaSets",
-    "DataAgent": "DataAgents",
+    "DataAgent": "dataAgents",
     "MirroredCatalog": "mirroredCatalogs",
     "DataBuildToolJob": "dataBuildToolJobs",
     "AppBackend": "appBackends",

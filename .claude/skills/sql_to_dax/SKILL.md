@@ -490,6 +490,63 @@ CALCULATE(
 
 ---
 
+# COUNT over an Expression
+
+`DISTINCTCOUNT` and `COUNT` only accept a column reference. When the SQL
+counts an expression, materialize the values instead.
+
+### SQL
+```sql
+COUNT(DISTINCT LOWER(SPLIT_PART(email, '@', 2)))
+```
+
+### DAX
+```dax
+COUNTROWS(
+    DISTINCT(
+        SELECTCOLUMNS(
+            'customer',
+            "Value",
+            LOWER(PATHITEM(SUBSTITUTE('customer'[email], "@", "|"), 2))
+        )
+    )
+)
+```
+
+### SQL
+```sql
+COUNT(UPPER(last_name))
+```
+
+### DAX
+```dax
+COUNTX('customer', UPPER('customer'[last_name]))
+```
+
+---
+
+# Avoiding Repeated Sub-Expressions
+
+Never duplicate a non-trivial sub-expression. Use a variable instead — the
+`VAR ... RETURN` block is parenthesized so it stays valid when nested.
+
+### SQL
+```sql
+NULLIF(TRIM(COALESCE(salutation,'') || ' ' || COALESCE(first_name,'')), '')
+```
+
+### DAX
+```dax
+(
+    VAR __value1 =
+        TRIM(COALESCE('customer'[salutation], "") & " " & COALESCE('customer'[first_name], ""))
+    RETURN
+        IF(__value1 = "", BLANK(), __value1)
+)
+```
+
+---
+
 # Multi-Table Arithmetic
 
 When expressions reference multiple tables:
@@ -729,6 +786,94 @@ CALCULATE(
 | CASE WHEN | CALCULATE/FILTER |
 | OVER(...) | CALCULATE + time intelligence |
 | SUM(a*b) | SUMX(table,a*b) |
+
+---
+
+# Scalar Function Translation
+
+Row-level (non-aggregate) SQL functions used by calculated columns and by
+`CASE` conditions are translated to their DAX equivalents. Unknown functions
+are emitted as `NAME(<translated args>)` so that column references are still
+fully qualified — the function itself is never re-rendered as SQL.
+
+| SQL | DAX |
+|---|---|
+| `a \|\| b` | `a & b` |
+| `CONCAT(a, b)` | `a & b` |
+| `TRUE` / `FALSE` | `TRUE()` / `FALSE()` |
+| `COALESCE(a, b)` | `COALESCE(a, b)` |
+| `NULLIF(col, x)` | `IF(col = x, BLANK(), col)` |
+| `NULLIF(<expr>, x)` | `(VAR __value1 = <expr> RETURN IF(__value1 = x, BLANK(), __value1))` |
+| `CURRENT_DATE()` | `TODAY()` |
+| `CURRENT_TIMESTAMP()` | `NOW()` |
+| `TO_CHAR(d, 'YYYY-MM')` | `FORMAT(d, "yyyy-MM")` |
+| `TO_VARCHAR(x)` | `CONVERT(x, STRING)` |
+| `TO_NUMBER(x)` / `TRY_TO_NUMBER(x)` | `VALUE(x)` |
+| `TO_DATE(x)` / `TRY_TO_DATE(x, fmt)` | `DATEVALUE(x)` |
+| `MONTHNAME(d)` | `FORMAT(d, "MMM")` |
+| `DATE_TRUNC('MONTH', d)` | `DATE(YEAR(d), MONTH(d), 1)` |
+| `DATE_TRUNC('QUARTER', d)` | `DATE(YEAR(d), (QUARTER(d) - 1) * 3 + 1, 1)` |
+| `DATE_TRUNC('YEAR', d)` | `DATE(YEAR(d), 1, 1)` |
+| `DATE_TRUNC('WEEK', d)` | `d - WEEKDAY(d, 3)` |
+| `DATEDIFF(unit, start, end)` | `DATEDIFF(start, end, unit)` |
+| `DATEADD(DAY, n, d)` / `DATE_ADD(d, n)` | `d + (n)` |
+| `DATEADD(WEEK, n, d)` | `d + (n) * 7` |
+| `DATEADD(MONTH \| QUARTER \| YEAR, n, d)` | `EDATE(d, n \| n * 3 \| n * 12)` |
+| `DATEADD(HOUR \| MINUTE \| SECOND, n, d)` | `d + (n) / 24 \| 1440 \| 86400` (a DAX datetime is a number of days) |
+| `IFF(c, a, b)` | `IF(c, a, b)` |
+| `ZEROIFNULL(x)` | `IF(ISBLANK(x), 0, x)` |
+| `NULLIFZERO(x)` | `IF(x = 0, BLANK(), x)` |
+| `SPLIT_PART(s, d, n)` | `PATHITEM(SUBSTITUTE(s, d, "\|"), n)` |
+| `LPAD(s, n, p)` | `IF(LEN(s) >= n, LEFT(s, n), LEFT(REPT(p, n), n - LEN(s)) & s)` |
+| `RPAD(s, n, p)` | `LEFT(s & REPT(p, n), n)` |
+| `SUBSTRING(s, start, len)` | `MID(s, start, len)` |
+| `LENGTH(s)` | `LEN(s)` |
+| `CEIL(x)` / `FLOOR(x)` | `-INT(-(x))` / `INT(x)` |
+| `CEIL(x, s)` / `FLOOR(x, s)` | `IF(x < 0, ROUNDDOWN(x, s), ROUNDUP(x, s))` / `IF(x < 0, ROUNDUP(x, s), ROUNDDOWN(x, s))` |
+| `CAST(x AS <type>)` | `x` |
+
+Date part abbreviations (e.g. `hh`, `mi`, `mm`, `dd`, `yy`) are normalized to
+their full name. `DATEADD` with any other date part is untranslatable.
+
+> **Note:** SQL `CEIL` / `FLOOR` round toward +/- infinity, whereas DAX
+> `ROUNDUP` / `ROUNDDOWN` round away from / toward zero, so they must not be
+> mapped directly. Likewise, `LPAD` truncates an over-length value to its
+> leftmost characters, so `RIGHT(REPT(p, n) & s, n)` is incorrect.
+
+Date format strings are token-translated (`YYYY` → `yyyy`, `MON` → `MMM`,
+`DD` → `dd`, `HH24` → `HH`, `MI` → `mm`, `SS` → `ss`).
+
+> **Note:** `||` must never be passed through unchanged — in DAX `||` is the
+> logical OR operator, not string concatenation.
+
+---
+
+# Untranslatable Expressions
+
+An incorrect expression is worse than no expression. When the SQL cannot be
+faithfully translated, emit `BLANK()` preceded by a `//` comment giving the
+reason (and warn) rather than guessing. The comment distinguishes an
+unconverted expression from SQL which legitimately translates to `BLANK()`
+(e.g. `NULL`), so conversion previews can report it:
+
+- The SQL fails to parse.
+- A column reference cannot be resolved through the column map. (Exception:
+  a bare identifier that is the sole argument of a scalar aggregate is
+  qualified to the default table, as described above.)
+- A function has no DAX equivalent (e.g. `REGEXP_COUNT`, `LISTAGG`), i.e. the
+  translated name is not a known DAX function.
+- A date part is not supported (e.g. `DATEADD(WEEKDAY, 1, d)`).
+
+### SQL
+```sql
+REGEXP_COUNT(customer.last_name, 'a')
+```
+
+### DAX
+```dax
+// This SQL expression could not be converted to DAX: the 'REGEXP_COUNT' function has no DAX equivalent.
+BLANK()
+```
 
 ---
 

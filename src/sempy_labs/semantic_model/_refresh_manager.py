@@ -54,6 +54,8 @@ _WIDGET_CSS = """
 .slls-rm-card,.slls-rm-panel { border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-bg-tertiary); }
 .slls-rm-card { padding:16px; }
 .slls-rm-card-head { display:flex;align-items:center;gap:8px;min-height:34px;margin-bottom:12px; }
+.slls-rm .slls-rm-card-head [data-reload-objects] { background:var(--ui-bg); }
+.slls-rm .slls-rm-card-head [data-reload-objects]:hover:not(:disabled) { border-color:var(--ui-border-strong);background:var(--ui-bg-secondary); }
 .slls-rm-card-title { margin:0;margin-right:auto;font-size:14px;font-weight:650; }
 .slls-rm-input,.slls-rm-select { width:100%;min-height:36px;padding:7px 10px;border:1px solid var(--ui-border-strong);border-radius:8px;background:var(--ui-bg);color:var(--ui-text);outline:none; }
 .slls-rm-input:focus,.slls-rm-select:focus { border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-accent-soft); }
@@ -102,6 +104,9 @@ _WIDGET_CSS = """
 .slls-rm-picker-grid .slls-ss-panel { z-index:90; }
 .slls-rm-picker-actions { display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:14px; }
 .slls-rm-btn.primary.slls-rm-picker-connect { flex:none;width:auto;min-width:96px; }
+.slls-rm-picker-note { margin-right:auto;min-width:0;color:var(--ui-text-secondary);font-size:12.5px;overflow-wrap:anywhere; }
+.slls-rm-picker-note.error { color:var(--rm-danger); }
+.slls-rm-updated { color:var(--ui-text-tertiary);font-size:11.5px;white-space:nowrap; }
 .slls-rm-actions { display:flex;gap:8px;margin-top:14px; }
 .slls-rm-btn { min-height:38px;border:1px solid var(--ui-border-strong);border-radius:8px;padding:8px 14px;background:var(--ui-bg);color:var(--ui-text);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px; }
 .slls-rm-btn:hover { background:var(--ui-bg-secondary); }
@@ -213,7 +218,7 @@ function render({ model, el }) {
     const hints={Full:"Reload and recalculate data for the selected objects.",Automatic:"Let the engine decide what needs processing.",Calculate:"Recalculate formulas, hierarchies and relationships only.",DataOnly:"Reload data without recalculating dependents.",ClearValues:"Flush data from the selected objects.",Defragment:"Defragment table data while keeping it available."};
     const weekdays=[["Monday","Mon"],["Tuesday","Tue"],["Wednesday","Wed"],["Thursday","Thu"],["Friday","Fri"],["Saturday","Sat"],["Sunday","Sun"]];
     const timeOptions=Array.from({length:48},(_,index)=>`${String(Math.floor(index/2)).padStart(2,"0")}:${index%2?"30":"00"}`);
-    const s={full:true,tables:new Set(),parts:new Set(),expanded:new Set(),search:"",ganttSearch:"",history:false,schedule:false,type:"Full",commit:"Transactional",parallel:10,retry:0,policy:false,visualize:false,detail:false,draft:null,pickWs:"",pickDs:"",pickerOpen:false};
+    const s={full:true,tables:new Set(),parts:new Set(),expanded:new Set(),search:"",ganttSearch:"",history:false,schedule:false,type:"Full",commit:"Transactional",parallel:10,retry:0,policy:false,visualize:false,detail:false,draft:null,pickWs:"",pickDs:"",pickerOpen:false,pickerError:false,objectsLoading:false,objectsLoadedAt:null,connecting:false,pendingModel:null};
     const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
     const pkey=(t,p)=>`${t}\u0000${p}`;
     const dispatch=(action,payload={})=>{model.set("pending_action",{action,...payload});model.set("run",Number(model.get("run")||0)+1);model.save_changes();};
@@ -234,29 +239,40 @@ function render({ model, el }) {
     const date=v=>{if(!v)return"Never refreshed";const d=new Date(v);return Number.isNaN(d.getTime())?"Never refreshed":d.toLocaleString();};
     const duration=(a,b)=>{a=Date.parse(a);b=Date.parse(b);if(!a||!b||b<a)return"";const x=Math.round((b-a)/1000),h=Math.floor(x/3600),m=Math.floor(x%3600/60);return`${h?`${h}h `:""}${m?`${m}m `:""}${x%60}s`;};
     const objects=()=>s.full?[]:[...[...s.tables].map(table=>({table})),...[...s.parts].map(v=>{const[table,partition]=v.split("\u0000");return{table,partition};})];
+    // The kernel handles actions synchronously, so loading state is mirrored locally to give instant feedback.
+    const objectsBusy=()=>s.objectsLoading||!!model.get("objects_loading");
+    const pickerBusy=()=>!!model.get("busy")||!!model.get("picker_loading");
+    // `busy` stays set while the kernel reloads history/tables after a refresh, so a final status ends the running state.
+    const refreshDone=()=>["Completed","Failed","Cancelled","Disabled"].includes((model.get("refresh_status")||{}).status);
+    const refreshing=()=>!!model.get("busy")&&!refreshDone();
+    const objectsReady=()=>!s.connecting&&!objectsBusy()&&(model.get("objects")||[]).length>0;
+    const loadObjects=()=>{if(s.objectsLoading)return;s.objectsLoading=true;dispatch("load_objects");draw();};
+    const resetView=()=>{s.pickerOpen=false;s.pickerError=false;s.pickDs="";s.tables.clear();s.parts.clear();s.expanded.clear();s.search="";s.ganttSearch="";s.history=false;s.schedule=false;s.draft=null;s.visualize=false;s.detail=false;};
+    const pruneSelection=()=>{const all=model.get("objects")||[],names=new Set(all.map(t=>t.name)),keys=new Set(all.flatMap(t=>(t.partitions||[]).map(p=>pkey(t.name,p.name))));[...s.tables].forEach(n=>{if(!names.has(n))s.tables.delete(n);});[...s.parts].forEach(k=>{if(!keys.has(k))s.parts.delete(k);});[...s.expanded].forEach(n=>{if(!names.has(n))s.expanded.delete(n);});};
     let fsMode=false;
     function setFullscreen(on){fsMode=on;root.classList.toggle("slls-rm-fs",on);try{if(on){const request=root.requestFullscreen||root.webkitRequestFullscreen;if(request){const promise=request.call(root);if(promise&&promise.catch)promise.catch(()=>{});}}else{const exit=document.exitFullscreen||document.webkitExitFullscreen;if(exit&&(document.fullscreenElement||document.webkitFullscreenElement)){const promise=exit.call(document);if(promise&&promise.catch)promise.catch(()=>{});}}}catch(_error){}draw();}
     function onFullscreenChange(){if(!(document.fullscreenElement||document.webkitFullscreenElement)&&fsMode){fsMode=false;root.classList.remove("slls-rm-fs");draw();}}
     document.addEventListener("fullscreenchange",onFullscreenChange);document.addEventListener("webkitfullscreenchange",onFullscreenChange);document.addEventListener("keydown",event=>{if(event.key==="Escape"&&fsMode)setFullscreen(false);});
-    function tree(){const all=model.get("objects")||[],q=s.search.trim().toLowerCase();const rows=all.map(t=>{if(!q||t.name.toLowerCase().includes(q))return t;const partitions=(t.partitions||[]).filter(p=>p.name.toLowerCase().includes(q));return partitions.length?{...t,partitions}:null;}).filter(Boolean).sort((left,right)=>left.name.localeCompare(right.name,undefined,{sensitivity:"base"}));if(!rows.length)return`<div class="slls-rm-empty">${all.length?"No tables or partitions match your search.":"Loading tables and partitions..."}</div>`;return rows.map(t=>{const open=s.expanded.has(t.name)||!!q,checked=s.tables.has(t.name),partial=[...s.parts].some(v=>v.startsWith(`${t.name}\u0000`)),parts=t.partitions||[],tableIcon=t.kind==="calculation_group"?I.calculationGroup:t.kind==="calculated_table"?I.calculatedTable:t.kind==="field_parameter"?I.fieldParameter:I.table,tableKind={calculation_group:"Calculation Group",calculated_table:"Calculated Table",field_parameter:"Field Parameter"}[t.kind]||"Table";return`<div class="slls-rm-table"><div class="slls-rm-table-row"><button class="slls-rm-caret ${open?"open":""}" data-expand="${esc(t.name)}">${I.caret}</button><input type="checkbox" data-table="${esc(t.name)}" ${checked?"checked":""} ${partial?"data-partial=1":""}><span class="slls-rm-object-icon" title="${tableKind}" aria-label="${tableKind}">${tableIcon}</span><span class="slls-rm-name">${esc(t.name)}</span><span class="slls-rm-count">${parts.length} partition${parts.length===1?"":"s"}</span></div><div class="slls-rm-partitions ${open?"open":""}">${parts.map(p=>`<label class="slls-rm-partition"><input type="checkbox" data-partition="${esc(p.name)}" data-owner="${esc(t.name)}" ${checked||s.parts.has(pkey(t.name,p.name))?"checked":""} ${checked?"disabled":""}><span class="slls-rm-object-icon">${I.partition}</span><span class="slls-rm-name">${esc(p.name)}</span>${p.mode?`<span class="slls-rm-pill">${esc(p.mode)}</span>`:""}<span class="slls-rm-muted">${esc(date(p.refreshedTime))}</span></label>`).join("")}</div></div>`;}).join("");}
-    function status(){const x=model.get("refresh_status")||{},busy=!!model.get("busy");if(!busy&&!x.message&&!x.status)return"";const value=x.status||(busy?"Unknown":""),kind=x.kind||(value==="Completed"?"success":value==="Failed"?"error":""),title=value==="Completed"?"Refresh completed":value==="Failed"?"Refresh failed":value==="Cancelled"?"Refresh cancelled":"Refresh in progress...",elapsed=duration(x.startTime,x.endTime),targets=x.objects||[],meta=x.startTime?`Started ${date(x.startTime)}${x.endTime?` · ended ${date(x.endTime)}`:""}`:"",facts=[["Refresh type",x.refreshType],["Duration",elapsed]].filter(([,v])=>v),rows=targets.map(o=>`<tr><td>${esc(o.table||"-")}</td><td>${esc(o.partition||"-")}</td><td>${esc(o.status||"-")}</td></tr>`).join("");return`<div class="slls-rm-status ${kind}"><div class="slls-rm-status-head"><span class="slls-rm-status-icon ${busy?"slls-rm-spin":""}">${value==="Completed"?I.check:value==="Failed"?I.close:I.refresh}</span><div><strong>${esc(title)}</strong>${meta?`<div class="slls-rm-status-meta">${esc(meta)}</div>`:""}</div></div>${facts.length?`<div class="slls-rm-status-facts">${facts.map(([label,v])=>`<div class="slls-rm-status-fact"><span>${label}</span><b>${esc(v)}</b></div>`).join("")}</div>`:""}${x.message?`<div class="slls-rm-status-message">${esc(x.message)}</div>`:""}${rows?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Table</th><th>Partition</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`:""}</div>`;}
+    function tree(){const all=s.connecting?[]:model.get("objects")||[],q=s.search.trim().toLowerCase();const rows=all.map(t=>{if(!q||t.name.toLowerCase().includes(q))return t;const partitions=(t.partitions||[]).filter(p=>p.name.toLowerCase().includes(q));return partitions.length?{...t,partitions}:null;}).filter(Boolean).sort((left,right)=>left.name.localeCompare(right.name,undefined,{sensitivity:"base"}));if(!rows.length)return`<div class="slls-rm-empty">${all.length?"No tables or partitions match your search.":objectsBusy()||!model.get("objects_version")?"Loading tables and partitions...":"No tables or partitions were found."}</div>`;return rows.map(t=>{const open=s.expanded.has(t.name)||!!q,checked=s.tables.has(t.name),partial=[...s.parts].some(v=>v.startsWith(`${t.name}\u0000`)),parts=t.partitions||[],tableIcon=t.kind==="calculation_group"?I.calculationGroup:t.kind==="calculated_table"?I.calculatedTable:t.kind==="field_parameter"?I.fieldParameter:I.table,tableKind={calculation_group:"Calculation Group",calculated_table:"Calculated Table",field_parameter:"Field Parameter"}[t.kind]||"Table";return`<div class="slls-rm-table"><div class="slls-rm-table-row"><button class="slls-rm-caret ${open?"open":""}" data-expand="${esc(t.name)}">${I.caret}</button><input type="checkbox" data-table="${esc(t.name)}" ${checked?"checked":""} ${partial?"data-partial=1":""}><span class="slls-rm-object-icon" title="${tableKind}" aria-label="${tableKind}">${tableIcon}</span><span class="slls-rm-name">${esc(t.name)}</span><span class="slls-rm-count">${parts.length} partition${parts.length===1?"":"s"}</span></div><div class="slls-rm-partitions ${open?"open":""}">${parts.map(p=>`<label class="slls-rm-partition"><input type="checkbox" data-partition="${esc(p.name)}" data-owner="${esc(t.name)}" ${checked||s.parts.has(pkey(t.name,p.name))?"checked":""} ${checked?"disabled":""}><span class="slls-rm-object-icon">${I.partition}</span><span class="slls-rm-name">${esc(p.name)}</span>${p.mode?`<span class="slls-rm-pill">${esc(p.mode)}</span>`:""}<span class="slls-rm-muted">${esc(date(p.refreshedTime))}</span></label>`).join("")}</div></div>`;}).join("");}
+    function status(){const x=s.connecting?{}:model.get("refresh_status")||{},busy=refreshing();if(!busy&&!x.message&&!x.status)return"";const value=x.status||(busy?"Unknown":""),kind=x.kind||(value==="Completed"?"success":value==="Failed"?"error":""),title=value==="Completed"?"Refresh completed":value==="Failed"?"Refresh failed":value==="Cancelled"?"Refresh cancelled":"Refresh in progress...",elapsed=duration(x.startTime,x.endTime),targets=x.objects||[],meta=x.startTime?`Started ${date(x.startTime)}${x.endTime?` · ended ${date(x.endTime)}`:""}`:"",facts=[["Refresh type",x.refreshType],["Duration",elapsed]].filter(([,v])=>v),rows=targets.map(o=>`<tr><td>${esc(o.table||"-")}</td><td>${esc(o.partition||"-")}</td><td>${esc(o.status||"-")}</td></tr>`).join("");return`<div class="slls-rm-status ${kind}"><div class="slls-rm-status-head"><span class="slls-rm-status-icon ${busy?"slls-rm-spin":""}">${value==="Completed"?I.check:value==="Failed"?I.close:I.refresh}</span><div><strong>${esc(title)}</strong>${meta?`<div class="slls-rm-status-meta">${esc(meta)}</div>`:""}</div></div>${facts.length?`<div class="slls-rm-status-facts">${facts.map(([label,v])=>`<div class="slls-rm-status-fact"><span>${label}</span><b>${esc(v)}</b></div>`).join("")}</div>`:""}${x.message?`<div class="slls-rm-status-message">${esc(x.message)}</div>`:""}${rows?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Table</th><th>Partition</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`:""}</div>`;}
     const formatMs=value=>value>=1000?`${(value/1000).toFixed(1)}s`:`${Math.round(value)}ms`;
-    function gantt(){const events=model.get("gantt_events")||[];if(!events.length)return"";const starts=events.map(event=>Date.parse(event.startTime)).filter(Number.isFinite),ends=events.map(event=>Date.parse(event.endTime)).filter(Number.isFinite),minimum=Math.min(...starts),maximum=Math.max(...ends),span=Math.max(maximum-minimum,1),groups=new Map();events.forEach(event=>{const rows=groups.get(event.objectName)||[];rows.push(event);groups.set(event.objectName,rows);});const rows=[...groups.entries()].sort(([,left],[,right])=>Date.parse(left[0].startTime)-Date.parse(right[0].startTime)).map(([name,items])=>{const filterText=items.flatMap(event=>[event.tableName,event.partitionName,event.objectName]).filter(Boolean).join(" ").toLowerCase();return`<div class="slls-rm-gantt-row" data-gantt-row data-filter="${esc(filterText)}"><span class="slls-rm-gantt-label" title="${esc(name)}">${esc(name)}</span><div class="slls-rm-gantt-track">${items.map(event=>{const start=Date.parse(event.startTime),end=Date.parse(event.endTime),left=Math.max(0,(start-minimum)/span*100),width=Math.max(.3,(end-start)/span*100),color=event.eventSubclass==="ExecuteSql"?"#0070c0":"#ffc000";return`<span class="slls-rm-gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${color}" title="${esc(name)} · ${esc(event.eventSubclass==="ExecuteSql"?"Execute SQL":"Process")} · ${esc(formatMs(event.durationMs||0))} · CPU ${esc(formatMs(event.cpuTimeMs||0))}"></span>`;}).join("")}</div></div>`;}).join("");return`<div class="slls-rm-gantt"><div class="slls-rm-gantt-head"><strong>Refresh timeline</strong><div class="slls-rm-gantt-legend"><span class="slls-rm-gantt-key"><i class="slls-rm-gantt-swatch" style="background:#ffc000"></i>Process</span><span class="slls-rm-gantt-key"><i class="slls-rm-gantt-swatch" style="background:#0070c0"></i>Execute SQL</span><span>Total ${esc(formatMs(span))}</span></div></div><div class="slls-rm-gantt-search"><span>${I.search}</span><input class="slls-rm-input" data-gantt-search value="${esc(s.ganttSearch)}" placeholder="Search tables and partitions..." aria-label="Search refresh timeline by table or partition"></div><div class="slls-rm-gantt-rows">${rows}<div class="slls-rm-empty" data-gantt-empty hidden>No timeline rows match your search.</div></div><div class="slls-rm-gantt-axis"><span>Elapsed</span><div class="slls-rm-gantt-ticks"><span>0ms</span><span>${esc(formatMs(span/2))}</span><span>${esc(formatMs(span))}</span></div></div></div>`;}
+    function gantt(){const events=s.connecting?[]:model.get("gantt_events")||[];if(!events.length)return"";const starts=events.map(event=>Date.parse(event.startTime)).filter(Number.isFinite),ends=events.map(event=>Date.parse(event.endTime)).filter(Number.isFinite),minimum=Math.min(...starts),maximum=Math.max(...ends),span=Math.max(maximum-minimum,1),groups=new Map();events.forEach(event=>{const rows=groups.get(event.objectName)||[];rows.push(event);groups.set(event.objectName,rows);});const rows=[...groups.entries()].sort(([,left],[,right])=>Date.parse(left[0].startTime)-Date.parse(right[0].startTime)).map(([name,items])=>{const filterText=items.flatMap(event=>[event.tableName,event.partitionName,event.objectName]).filter(Boolean).join(" ").toLowerCase();return`<div class="slls-rm-gantt-row" data-gantt-row data-filter="${esc(filterText)}"><span class="slls-rm-gantt-label" title="${esc(name)}">${esc(name)}</span><div class="slls-rm-gantt-track">${items.map(event=>{const start=Date.parse(event.startTime),end=Date.parse(event.endTime),left=Math.max(0,(start-minimum)/span*100),width=Math.max(.3,(end-start)/span*100),color=event.eventSubclass==="ExecuteSql"?"#0070c0":"#ffc000";return`<span class="slls-rm-gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${color}" title="${esc(name)} · ${esc(event.eventSubclass==="ExecuteSql"?"Execute SQL":"Process")} · ${esc(formatMs(event.durationMs||0))} · CPU ${esc(formatMs(event.cpuTimeMs||0))}"></span>`;}).join("")}</div></div>`;}).join("");return`<div class="slls-rm-gantt"><div class="slls-rm-gantt-head"><strong>Refresh timeline</strong><div class="slls-rm-gantt-legend"><span class="slls-rm-gantt-key"><i class="slls-rm-gantt-swatch" style="background:#ffc000"></i>Process</span><span class="slls-rm-gantt-key"><i class="slls-rm-gantt-swatch" style="background:#0070c0"></i>Execute SQL</span><span>Total ${esc(formatMs(span))}</span></div></div><div class="slls-rm-gantt-search"><span>${I.search}</span><input class="slls-rm-input" data-gantt-search value="${esc(s.ganttSearch)}" placeholder="Search tables and partitions..." aria-label="Search refresh timeline by table or partition"></div><div class="slls-rm-gantt-rows">${rows}<div class="slls-rm-empty" data-gantt-empty hidden>No timeline rows match your search.</div></div><div class="slls-rm-gantt-axis"><span>Elapsed</span><div class="slls-rm-gantt-ticks"><span>0ms</span><span>${esc(formatMs(span/2))}</span><span>${esc(formatMs(span))}</span></div></div></div>`;}
     function applyGanttFilter(){const input=root.querySelector("[data-gantt-search]");if(!input)return;s.ganttSearch=input.value;const query=s.ganttSearch.trim().toLowerCase(),rows=[...root.querySelectorAll("[data-gantt-row]")];let visible=0;rows.forEach(row=>{const show=!query||row.dataset.filter.includes(query);row.classList.toggle("filtered",!show);if(show)visible++;});const empty=root.querySelector("[data-gantt-empty]");if(empty)empty.hidden=visible>0;}
-    function history(){const rows=model.get("history")||[],loading=!!model.get("history_loading");return`<div class="slls-rm-panel ${s.history?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="history"><span class="slls-rm-caret">${I.caret}</span>${I.history}<span>Refresh history</span></button>${rows.length?`<span class="slls-rm-badge">${rows.length}</span>`:""}<button class="sl-reload-btn ${loading?"sl-spinning":""}" data-reload-history title="Reload refresh history" ${loading?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-panel-body">${rows.length?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Status</th><th>Refresh ID</th><th>Actions</th></tr></thead><tbody>${rows.map(r=>`<tr data-detail="${esc(r.requestId)}"><td>${esc(r.refreshType)}</td><td>${esc(date(r.startTime))}</td><td>${esc(r.endTime?date(r.endTime):"-")}</td><td>${esc(duration(r.startTime,r.endTime)||"-")}</td><td><span class="slls-rm-badge ${esc(r.status)}">${esc(r.status)}</span></td><td><code>${esc(r.requestId)}</code></td><td>${r.status==="Unknown"?`<button class="slls-rm-iconbtn slls-rm-history-cancel" data-cancel-history="${esc(r.requestId)}" title="Cancel refresh" aria-label="Cancel refresh">${I.close}</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:`<div class="slls-rm-empty">${model.get("history_loaded")?"No refresh history for this model yet.":"Open this panel to load refresh history."}</div>`}</div></div>`;}
-    function schedule(){const current=model.get("schedule")||{},loading=!!model.get("schedule_loading");if(!s.draft&&current.exists)s.draft=JSON.parse(JSON.stringify(current));const d=s.draft||{days:[],times:[],localTimeZoneId:"UTC",notifyOption:"NoNotification",enabled:false},timeRows=(d.times||[]).map((time,index)=>`<div class="slls-rm-time-row"><select class="slls-rm-select" data-time-index="${index}" aria-label="Refresh time ${index+1}">${timeOptions.filter(option=>option===time||!d.times.includes(option)).map(option=>`<option value="${option}" ${option===time?"selected":""}>${option}</option>`).join("")}</select><button class="slls-rm-iconbtn" data-remove-time="${index}" title="Remove time" aria-label="Remove time ${esc(time)}">${I.close}</button></div>`).join("");return`<div class="slls-rm-panel ${s.schedule?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="schedule"><span class="slls-rm-caret">${I.caret}</span>${I.calendar}<span>Refresh schedule</span>${current.exists?`<span class="slls-rm-badge ${current.enabled?"Completed":""}">${current.enabled?"Enabled":"Disabled"}</span>`:""}</button>${s.schedule?`<button class="sl-reload-btn ${loading?"sl-spinning":""}" data-reload-schedule title="Reload refresh schedule" aria-label="Reload refresh schedule" ${loading?"disabled":""}>${I.refresh}</button>`:""}</div><div class="slls-rm-panel-body">${loading&&!model.get("schedule_loaded")?`<div class="slls-rm-empty">Loading refresh schedule...</div>`:model.get("schedule_loaded")&&!current.exists?`<div class="slls-rm-empty">${esc(current.message||"This model has no refresh schedule.")}</div>`:`<div class="slls-rm-schedule-state"><div><strong>Scheduled refresh</strong><span>${d.enabled?"Power BI refreshes this model on the schedule below.":"The schedule is saved but turned off."}</span></div><button class="slls-rm-switch" type="button" role="switch" aria-checked="${d.enabled}" aria-label="${d.enabled?"Disable":"Enable"} scheduled refresh" data-toggle-schedule title="${d.enabled?"Disable":"Enable"} scheduled refresh"><span class="slls-rm-switch-knob"></span></button></div><div class="slls-rm-days">${weekdays.map(([v,l])=>`<button class="slls-rm-day ${(d.days||[]).includes(v)?"active":""}" data-day="${v}">${l}</button>`).join("")}</div><div class="slls-rm-schedule-grid"><div class="slls-rm-field"><label>Times</label><div class="slls-rm-times">${timeRows||`<span class="slls-rm-muted">No times set.</span>`}<button class="slls-rm-btn slls-rm-add-time" data-add-time ${d.times.length>=timeOptions.length?"disabled":""}>${I.plus}Add time</button></div></div><div class="slls-rm-field"><label>Time zone</label><input class="slls-rm-input" data-schedule="timezone" value="${esc(d.localTimeZoneId||"UTC")}"></div><div class="slls-rm-field"><label>Notification</label><select class="slls-rm-select" data-schedule="notify"><option value="NoNotification" ${d.notifyOption==="NoNotification"?"selected":""}>No notification</option><option value="MailOnFailure" ${d.notifyOption==="MailOnFailure"?"selected":""}>Mail on failure</option></select></div></div><div class="slls-rm-actions slls-rm-schedule-actions"><button class="slls-rm-btn primary slls-rm-save-schedule" data-save-schedule ${!(d.days||[]).length?"disabled":""}>${I.save}Save schedule</button><span class="slls-rm-schedule-help">Saving also enables the schedule. Times must be on the hour or half hour.</span></div>`}</div></div>`;}
+    function history(){const rows=s.connecting?[]:model.get("history")||[],loading=!!model.get("history_loading");return`<div class="slls-rm-panel ${s.history?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="history"><span class="slls-rm-caret">${I.caret}</span>${I.history}<span>Refresh history</span></button>${rows.length?`<span class="slls-rm-badge">${rows.length}</span>`:""}<button class="sl-reload-btn ${loading?"sl-spinning":""}" data-reload-history title="Reload refresh history" ${loading?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-panel-body">${rows.length?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Status</th><th>Refresh ID</th><th>Actions</th></tr></thead><tbody>${rows.map(r=>`<tr data-detail="${esc(r.requestId)}"><td>${esc(r.refreshType)}</td><td>${esc(date(r.startTime))}</td><td>${esc(r.endTime?date(r.endTime):"-")}</td><td>${esc(duration(r.startTime,r.endTime)||"-")}</td><td><span class="slls-rm-badge ${esc(r.status)}">${esc(r.status)}</span></td><td><code>${esc(r.requestId)}</code></td><td>${r.status==="Unknown"?`<button class="slls-rm-iconbtn slls-rm-history-cancel" data-cancel-history="${esc(r.requestId)}" title="Cancel refresh" aria-label="Cancel refresh">${I.close}</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:`<div class="slls-rm-empty">${model.get("history_loaded")?"No refresh history for this model yet.":"Open this panel to load refresh history."}</div>`}</div></div>`;}
+    function schedule(){const current=s.connecting?{}:model.get("schedule")||{},loading=!!model.get("schedule_loading");if(!s.draft&&current.exists)s.draft=JSON.parse(JSON.stringify(current));const d=s.draft||{days:[],times:[],localTimeZoneId:"UTC",notifyOption:"NoNotification",enabled:false},timeRows=(d.times||[]).map((time,index)=>`<div class="slls-rm-time-row"><select class="slls-rm-select" data-time-index="${index}" aria-label="Refresh time ${index+1}">${timeOptions.filter(option=>option===time||!d.times.includes(option)).map(option=>`<option value="${option}" ${option===time?"selected":""}>${option}</option>`).join("")}</select><button class="slls-rm-iconbtn" data-remove-time="${index}" title="Remove time" aria-label="Remove time ${esc(time)}">${I.close}</button></div>`).join("");return`<div class="slls-rm-panel ${s.schedule?"open":""}"><div class="slls-rm-panel-head"><button class="slls-rm-panel-toggle" data-panel="schedule"><span class="slls-rm-caret">${I.caret}</span>${I.calendar}<span>Refresh schedule</span>${current.exists?`<span class="slls-rm-badge ${current.enabled?"Completed":""}">${current.enabled?"Enabled":"Disabled"}</span>`:""}</button>${s.schedule?`<button class="sl-reload-btn ${loading?"sl-spinning":""}" data-reload-schedule title="Reload refresh schedule" aria-label="Reload refresh schedule" ${loading?"disabled":""}>${I.refresh}</button>`:""}</div><div class="slls-rm-panel-body">${loading&&!model.get("schedule_loaded")?`<div class="slls-rm-empty">Loading refresh schedule...</div>`:model.get("schedule_loaded")&&!current.exists?`<div class="slls-rm-empty">${esc(current.message||"This model has no refresh schedule.")}</div>`:`<div class="slls-rm-schedule-state"><div><strong>Scheduled refresh</strong><span>${d.enabled?"Power BI refreshes this model on the schedule below.":"The schedule is saved but turned off."}</span></div><button class="slls-rm-switch" type="button" role="switch" aria-checked="${d.enabled}" aria-label="${d.enabled?"Disable":"Enable"} scheduled refresh" data-toggle-schedule title="${d.enabled?"Disable":"Enable"} scheduled refresh"><span class="slls-rm-switch-knob"></span></button></div><div class="slls-rm-days">${weekdays.map(([v,l])=>`<button class="slls-rm-day ${(d.days||[]).includes(v)?"active":""}" data-day="${v}">${l}</button>`).join("")}</div><div class="slls-rm-schedule-grid"><div class="slls-rm-field"><label>Times</label><div class="slls-rm-times">${timeRows||`<span class="slls-rm-muted">No times set.</span>`}<button class="slls-rm-btn slls-rm-add-time" data-add-time ${d.times.length>=timeOptions.length?"disabled":""}>${I.plus}Add time</button></div></div><div class="slls-rm-field"><label>Time zone</label><input class="slls-rm-input" data-schedule="timezone" value="${esc(d.localTimeZoneId||"UTC")}"></div><div class="slls-rm-field"><label>Notification</label><select class="slls-rm-select" data-schedule="notify"><option value="NoNotification" ${d.notifyOption==="NoNotification"?"selected":""}>No notification</option><option value="MailOnFailure" ${d.notifyOption==="MailOnFailure"?"selected":""}>Mail on failure</option></select></div></div><div class="slls-rm-actions slls-rm-schedule-actions"><button class="slls-rm-btn primary slls-rm-save-schedule" data-save-schedule ${!(d.days||[]).length?"disabled":""}>${I.save}Save schedule</button><span class="slls-rm-schedule-help">Saving also enables the schedule. Times must be on the hour or half hour.</span></div>`}</div></div>`;}
     function detailError(value){if(!value)return"—";try{const parsed=typeof value==="string"?JSON.parse(value):value;return parsed.errorDescription||parsed.errorCode||parsed.message||"—";}catch(_error){return String(value);}}
     function detail(){const d=model.get("detail")||{},attempts=d.refreshAttempts||[],targets=d.objects||[],fields=[["Current type",d.currentRefreshType||d.type||d.refreshType],["Commit mode",d.commitMode],["Initiated by",d.initiatedBy],["Attempts",d.numberOfAttempts??attempts.length],["Start",date(d.startTime)],["End",d.endTime?date(d.endTime):"-"],["Duration",duration(d.startTime,d.endTime)||"-"]];const attemptRows=attempts.map((a,index)=>`<tr><td>${esc(a.attemptId??index+1)}</td><td>${esc(a.type||"-")}</td><td>${esc(date(a.startTime))}</td><td>${esc(a.endTime?date(a.endTime):"-")}</td><td>${esc(duration(a.startTime,a.endTime)||"-")}</td><td class="slls-rm-detail-error" title="${esc(detailError(a.serviceExceptionJson))}">${esc(detailError(a.serviceExceptionJson))}</td></tr>`).join("");const objectRows=targets.map(o=>`<tr><td>${esc(o.table||"-")}</td><td>${esc(o.partition||"-")}</td><td>${esc(o.status||"-")}</td></tr>`).join("");return`<div class="slls-rm-overlay ${s.detail?"show":""}"><div class="slls-rm-modal"><div class="slls-rm-modal-head"><div><h2>Refresh details</h2><code>${esc(d.requestId||"Loading...")}</code></div><button class="slls-rm-iconbtn" data-close-detail title="Close refresh details" aria-label="Close refresh details">${I.close}</button></div><div class="slls-rm-modal-body">${d.requestId?`<div class="slls-rm-summary">${fields.map(([label,value])=>`<div><span>${label}</span><b>${esc(value??"-")}</b></div>`).join("")}</div><section class="slls-rm-detail-section"><div class="slls-rm-detail-title">Attempts</div>${attemptRows?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>#</th><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Error</th></tr></thead><tbody>${attemptRows}</tbody></table></div>`:`<div class="slls-rm-empty">No attempt details are available.</div>`}</section><section class="slls-rm-detail-section"><div class="slls-rm-detail-title">Objects</div>${objectRows?`<div class="slls-rm-tablewrap"><table class="slls-rm-data"><thead><tr><th>Table</th><th>Partition</th><th>Status</th></tr></thead><tbody>${objectRows}</tbody></table></div>`:`<div class="slls-rm-empty">No object details are available.</div>`}</section>`:`<div class="slls-rm-empty">Loading refresh details...</div>`}</div></div></div>`;}
-    function picker(){if(!s.pickWs)s.pickWs=model.get("workspace_id")||"";const connected=!!model.get("connected"),busy=!!model.get("busy");return`<div class="slls-rm-picker-wrap"><div class="slls-rm-picker"><div class="slls-rm-picker-top"><div class="slls-rm-picker-head"><div class="slls-rm-picker-title">Connect to a semantic model</div><div class="slls-rm-picker-sub">Select a workspace and semantic model to begin.</div></div><button class="sl-reload-btn${busy?" sl-spinning":""}" data-picker-reload type="button" title="Reload workspaces and semantic models" aria-label="Reload workspaces and semantic models" ${busy?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-picker-grid"><div class="slls-rm-field"><label>Workspace</label><div data-picker-ws></div></div><div class="slls-rm-field"><label>Semantic model</label><div data-picker-ds></div></div></div><div class="slls-rm-picker-actions">${connected?`<button class="slls-rm-btn" data-picker-close>Cancel</button>`:""}<button class="slls-rm-btn primary slls-rm-picker-connect" data-picker-connect ${!s.pickDs||busy?"disabled":""}>Connect</button></div></div></div>`;}
-    function header(){const connected=!!model.get("connected"),picking=!connected||s.pickerOpen,subtitle=connected?`${esc(model.get("dataset_name"))} &middot; ${esc(model.get("workspace_name"))}`:"Choose a workspace and semantic model",fullscreenLabel=fsMode?"Exit full screen":"Full screen";return`<header class="slls-rm-header"><span class="slls-rm-mark">${I.refresh}</span><div class="slls-rm-heading"><div class="slls-rm-title-row"><h1 class="slls-rm-title">Refresh Manager</h1>${connected&&!picking?`<button class="sl-change-btn" data-change-model title="Change semantic model / workspace" aria-label="Change semantic model / workspace" ${model.get("busy")?"disabled":""}>${I.swap}</button>`:""}</div><div class="slls-rm-subtitle">${subtitle}</div></div><button class="sl-theme-btn" data-fullscreen title="${fullscreenLabel}" aria-label="${fullscreenLabel}">${fsMode?I.fullscreenExit:I.fullscreen}</button><button class="sl-theme-btn" data-theme title="Toggle theme">${model.get("dark_mode")?I.sun:I.moon}</button></header>`;}
-    function bindHeader(){root.querySelector("[data-theme]").onclick=()=>{model.set("dark_mode",!model.get("dark_mode"));model.save_changes();draw();};root.querySelector("[data-fullscreen]").onclick=()=>setFullscreen(!fsMode);const change=root.querySelector("[data-change-model]");if(change)change.onclick=()=>{s.pickerOpen=true;s.pickWs=model.get("workspace_id")||"";s.pickDs="";draw();};const expandAll=root.querySelector("[data-expand-all]");if(expandAll){const collapse=s.expanded.size>0;expandAll.innerHTML=collapse?I.collapseRows:I.expandRows;expandAll.title=collapse?"Collapse all":"Expand all";}}
-    function bindPicker(){bindHeader();const workspaces=model.get("workspaces")||[],datasets=(model.get("datasets")||{})[s.pickWs],busy=!!model.get("busy");const wsPicker=createSearchSelect({placeholder:"Select a workspace\u2026",searchPlaceholder:"Filter workspaces\u2026",ariaLabel:"Workspace",emptyLabel:busy?"Loading workspaces\u2026":"No workspaces",onChange:option=>{s.pickWs=option.value;s.pickDs="";dispatch("list_datasets",{workspace_id:option.value});draw();}});wsPicker.setOptions(workspaces.map(w=>({value:w.id,label:w.name})),s.pickWs);wsPicker.setDisabled(busy);root.querySelector("[data-picker-ws]").appendChild(wsPicker.el);const dsPicker=createSearchSelect({placeholder:"Select a semantic model\u2026",searchPlaceholder:"Filter semantic models\u2026",ariaLabel:"Semantic model",emptyLabel:!s.pickWs?"Select a workspace first\u2026":datasets===undefined?"Loading semantic models\u2026":"No semantic models",onChange:option=>{s.pickDs=option.value;draw();}});dsPicker.setOptions((datasets||[]).map(d=>({value:d.id,label:d.name})),s.pickDs);dsPicker.setDisabled(!s.pickWs||datasets===undefined||busy);root.querySelector("[data-picker-ds]").appendChild(dsPicker.el);root.querySelector("[data-picker-reload]").onclick=()=>dispatch("reload_picker",{workspace_id:s.pickWs});const close=root.querySelector("[data-picker-close]");if(close)close.onclick=()=>{s.pickerOpen=false;draw();};root.querySelector("[data-picker-connect]").onclick=()=>{if(!s.pickDs)return;dispatch("connect",{workspace_id:s.pickWs,dataset_id:s.pickDs,workspace_name:(workspaces.find(w=>w.id===s.pickWs)||{}).name||"",dataset_name:((datasets||[]).find(d=>d.id===s.pickDs)||{}).name||""});};}
-    function draw(){if(!savedPosition)keepPosition();theme();if(!model.get("connected")||s.pickerOpen){root.innerHTML=header()+`<main class="slls-rm-body">${picker()}<div class="slls-rm-attribution">__SLLS_ATTRIBUTION__</div></main>`;bindPicker();restorePosition();return;}const busy=!!model.get("busy"),policyOff=s.commit==="PartialBatch";if(policyOff)s.policy=false;root.innerHTML=header()+`<main class="slls-rm-body"><div class="slls-rm-grid"><section class="slls-rm-card"><div class="slls-rm-card-head"><h2 class="slls-rm-card-title">Objects to refresh</h2><button class="slls-rm-iconbtn" data-expand-all title="Expand or collapse all">${I.caret}</button><button class="sl-reload-btn ${model.get("objects_loading")?"sl-spinning":""}" data-reload-objects title="Reload tables">${I.refresh}</button></div><div class="slls-rm-search"><span>${I.search}</span><input class="slls-rm-input" data-search value="${esc(s.search)}" placeholder="Search tables and partitions..."></div><label class="slls-rm-model"><input type="checkbox" data-full ${s.full?"checked":""}>Refresh the entire model</label><div class="slls-rm-tree ${s.full?"disabled":""}">${tree()}</div></section><section><div class="slls-rm-card slls-rm-options"><div class="slls-rm-card-head"><h2 class="slls-rm-card-title">Refresh options</h2></div><div class="slls-rm-fields"><div class="slls-rm-field"><label>Refresh type</label><select class="slls-rm-select" data-option="type">${Object.keys(hints).map(v=>`<option value="${v}" ${s.type===v?"selected":""}>${v==="DataOnly"?"Data only":v==="ClearValues"?"Clear values":v}</option>`).join("")}</select><p>${hints[s.type]}</p></div><div class="slls-rm-field"><label>Commit mode</label><select class="slls-rm-select" data-option="commit"><option value="Transactional" ${s.commit==="Transactional"?"selected":""}>Transactional</option><option value="PartialBatch" ${s.commit==="PartialBatch"?"selected":""}>Partial batch</option></select></div><div class="slls-rm-two"><div class="slls-rm-field"><label>Max parallelism</label><input class="slls-rm-input" type="number" min="1" value="${s.parallel}" data-option="parallel"></div><div class="slls-rm-field"><label>Retry count</label><input class="slls-rm-input" type="number" min="0" value="${s.retry}" data-option="retry"></div></div><div class="slls-rm-toggle-row"><span>Apply refresh policy</span><button class="slls-rm-switch" type="button" role="switch" aria-checked="${s.policy}" aria-label="Toggle apply refresh policy" data-option="policy" ${policyOff||busy?"disabled":""}><span class="slls-rm-switch-knob"></span></button></div>${policyOff?`<p class="slls-rm-toggle-help">Partial batch does not support applying the refresh policy.</p>`:""}<div class="slls-rm-toggle-row" title="Run the refresh under an Analysis Services trace and chart each partition's Process and source-query durations."><span>Visualize refresh</span><button class="slls-rm-switch" type="button" role="switch" aria-checked="${s.visualize}" aria-label="Toggle visualize refresh" data-option="visualize" ${busy?"disabled":""}><span class="slls-rm-switch-knob"></span></button></div>${s.visualize?`<p class="slls-rm-toggle-help">Charts each partition's processing timeline. Cancelling is not available while visualizing.</p>`:""}</div></div><div class="slls-rm-actions"><button class="slls-rm-btn primary ${busy?"slls-rm-spin":""}" data-refresh ${busy||(!s.full&&!objects().length)?"disabled":""}>${I.refresh}${busy?"Refreshing...":"Refresh"}</button>${busy&&!s.visualize?`<button class="slls-rm-btn danger" data-cancel>Cancel</button>`:""}</div></section><section class="slls-rm-wide" data-live-status>${status()}</section><section class="slls-rm-wide" data-live-gantt>${gantt()}</section><section class="slls-rm-wide">${history()}</section><section class="slls-rm-wide">${schedule()}</section></div><div class="slls-rm-attribution">__SLLS_ATTRIBUTION__</div></main>${detail()}`;bind();restorePosition();}
-    function bind(){const one=q=>root.querySelector(q);bindHeader();one("[data-search]").oninput=e=>{s.search=e.target.value;draw();const x=one("[data-search]");x.focus();x.setSelectionRange(x.value.length,x.value.length);};one("[data-full]").onchange=e=>{s.full=e.target.checked;draw();};one("[data-expand-all]").onclick=()=>{const all=model.get("objects")||[];s.expanded.size?s.expanded.clear():all.forEach(t=>s.expanded.add(t.name));draw();};one("[data-reload-objects]").onclick=()=>dispatch("load_objects");root.querySelectorAll("[data-expand]").forEach(b=>b.onclick=()=>{s.expanded.has(b.dataset.expand)?s.expanded.delete(b.dataset.expand):s.expanded.add(b.dataset.expand);draw();});root.querySelectorAll("[data-table]").forEach(x=>{if(x.dataset.partial)x.indeterminate=true;x.onchange=()=>{const n=x.dataset.table;x.checked?s.tables.add(n):s.tables.delete(n);[...s.parts].filter(v=>v.startsWith(`${n}\u0000`)).forEach(v=>s.parts.delete(v));draw();};});root.querySelectorAll("[data-partition]").forEach(x=>x.onchange=()=>{const k=pkey(x.dataset.owner,x.dataset.partition);x.checked?s.parts.add(k):s.parts.delete(k);s.tables.delete(x.dataset.owner);draw();});one('[data-option="type"]').onchange=e=>{s.type=e.target.value;draw();};one('[data-option="commit"]').onchange=e=>{s.commit=e.target.value;draw();};one('[data-option="parallel"]').onchange=e=>s.parallel=Math.max(1,Number(e.target.value)||1);one('[data-option="retry"]').onchange=e=>s.retry=Math.max(0,Number(e.target.value)||0);const policy=one('[data-option="policy"]');if(policy)policy.onclick=()=>{s.policy=!s.policy;draw();};const visualize=one('[data-option="visualize"]');if(visualize)visualize.onclick=()=>{s.visualize=!s.visualize;draw();};const start=one("[data-refresh]");if(start)start.onclick=()=>dispatch("start_refresh",{refresh_type:s.type,commit_mode:s.commit,max_parallelism:s.parallel,retry_count:s.retry,apply_refresh_policy:s.policy,visualize:s.visualize,objects:objects()});const cancel=one("[data-cancel]");if(cancel)cancel.onclick=()=>dispatch("cancel_refresh");root.querySelectorAll("[data-panel]").forEach(b=>b.onclick=()=>{if(b.dataset.panel==="history"){s.history=!s.history;if(s.history&&!model.get("history_loaded"))dispatch("load_history");}else{s.schedule=!s.schedule;if(s.schedule&&!model.get("schedule_loaded"))dispatch("load_schedule");}draw();});root.querySelectorAll("[data-detail]").forEach(r=>r.onclick=()=>{s.detail=true;model.set("detail",{});dispatch("load_detail",{request_id:r.dataset.detail});draw();});const close=one("[data-close-detail]");if(close)close.onclick=()=>{s.detail=false;draw();};root.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{keepPosition();const a=s.draft.days,v=b.dataset.day;a.includes(v)?s.draft.days=a.filter(d=>d!==v):a.push(v);draw();});root.querySelectorAll("[data-time-index]").forEach(select=>select.onchange=e=>{keepPosition();s.draft.times[Number(select.dataset.timeIndex)]=e.target.value;draw();});root.querySelectorAll("[data-remove-time]").forEach(button=>button.onclick=()=>{keepPosition();s.draft.times=s.draft.times.filter((_,index)=>index!==Number(button.dataset.removeTime));draw();});const addTime=one("[data-add-time]");if(addTime)addTime.onclick=()=>{keepPosition();s.draft.times.push(timeOptions.find(option=>!s.draft.times.includes(option))||"00:00");draw();};const zone=one('[data-schedule="timezone"]');if(zone)zone.onchange=e=>s.draft.localTimeZoneId=e.target.value.trim()||"UTC";const notify=one('[data-schedule="notify"]');if(notify)notify.onchange=e=>s.draft.notifyOption=e.target.value;const save=one("[data-save-schedule]");if(save)save.onclick=()=>{keepPosition();s.draft.times=[...new Set(s.draft.times)].sort();dispatch("save_schedule",{schedule:s.draft});};const toggle=one("[data-toggle-schedule]");if(toggle)toggle.onclick=()=>{keepPosition();dispatch("toggle_schedule",{enabled:!s.draft.enabled});};}
+    function picker(){if(!s.pickWs)s.pickWs=model.get("workspace_id")||"";const connected=!!model.get("connected"),loading=pickerBusy(),error=s.pickerError?model.get("picker_error"):"",note=error?`<span class="slls-rm-picker-note error" role="alert">${esc(error)}</span>`:"";return`<div class="slls-rm-picker-wrap"><div class="slls-rm-picker"><div class="slls-rm-picker-top"><div class="slls-rm-picker-head"><div class="slls-rm-picker-title">Connect to a semantic model</div><div class="slls-rm-picker-sub">Select a workspace and semantic model to begin.</div></div><button class="sl-reload-btn${loading?" sl-spinning":""}" data-picker-reload type="button" title="Reload workspaces and semantic models" aria-label="Reload workspaces and semantic models" ${loading||s.connecting?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-picker-grid"><div class="slls-rm-field"><label>Workspace</label><div data-picker-ws></div></div><div class="slls-rm-field"><label>Semantic model</label><div data-picker-ds></div></div></div><div class="slls-rm-picker-actions">${note}${connected?`<button class="slls-rm-btn" data-picker-close ${s.connecting?"disabled":""}>Cancel</button>`:""}<button class="slls-rm-btn primary slls-rm-picker-connect" data-picker-connect ${!s.pickDs||loading?"disabled":""}>Connect</button></div></div></div>`;}
+    function header(){const connected=!!model.get("connected")||s.connecting,picking=!connected||s.pickerOpen,names=s.connecting&&s.pendingModel?s.pendingModel:{dataset_name:model.get("dataset_name"),workspace_name:model.get("workspace_name")},subtitle=connected?`${esc(names.dataset_name)} &middot; ${esc(names.workspace_name)}`:"Choose a workspace and semantic model",fullscreenLabel=fsMode?"Exit full screen":"Full screen";return`<header class="slls-rm-header"><span class="slls-rm-mark">${I.refresh}</span><div class="slls-rm-heading"><div class="slls-rm-title-row"><h1 class="slls-rm-title">Refresh Manager</h1>${connected&&!picking?`<button class="sl-change-btn" data-change-model title="Change semantic model / workspace" aria-label="Change semantic model / workspace" ${refreshing()||s.connecting?"disabled":""}>${I.swap}</button>`:""}</div><div class="slls-rm-subtitle">${subtitle}</div></div><button class="sl-theme-btn" data-fullscreen title="${fullscreenLabel}" aria-label="${fullscreenLabel}">${fsMode?I.fullscreenExit:I.fullscreen}</button><button class="sl-theme-btn" data-theme title="Toggle theme">${model.get("dark_mode")?I.sun:I.moon}</button></header>`;}
+    function bindHeader(){root.querySelector("[data-theme]").onclick=()=>{model.set("dark_mode",!model.get("dark_mode"));model.save_changes();draw();};root.querySelector("[data-fullscreen]").onclick=()=>setFullscreen(!fsMode);const change=root.querySelector("[data-change-model]");if(change)change.onclick=()=>{s.pickerOpen=true;s.pickerError=false;s.pickWs=model.get("workspace_id")||"";s.pickDs="";if(!model.get("workspaces_loaded")||(model.get("datasets")||{})[s.pickWs]===undefined)dispatch("open_picker",{workspace_id:s.pickWs});draw();};const expandAll=root.querySelector("[data-expand-all]");if(expandAll){const collapse=s.expanded.size>0;expandAll.innerHTML=collapse?I.collapseRows:I.expandRows;expandAll.title=collapse?"Collapse all":"Expand all";}}
+    function bindPicker(){bindHeader();const workspaces=model.get("workspaces")||[],datasets=(model.get("datasets")||{})[s.pickWs],loading=pickerBusy(),locked=loading||s.connecting;const wsPicker=createSearchSelect({placeholder:"Select a workspace\u2026",searchPlaceholder:"Filter workspaces\u2026",ariaLabel:"Workspace",emptyLabel:loading?"Loading workspaces\u2026":"No workspaces",onChange:option=>{s.pickWs=option.value;s.pickDs="";s.pickerError=false;dispatch("list_datasets",{workspace_id:option.value});draw();}});wsPicker.setOptions(workspaces.map(w=>({value:w.id,label:w.name})),s.pickWs);wsPicker.setDisabled(locked);root.querySelector("[data-picker-ws]").appendChild(wsPicker.el);const dsPicker=createSearchSelect({placeholder:"Select a semantic model\u2026",searchPlaceholder:"Filter semantic models\u2026",ariaLabel:"Semantic model",emptyLabel:!s.pickWs?"Select a workspace first\u2026":datasets===undefined?"Loading semantic models\u2026":"No semantic models",onChange:option=>{s.pickDs=option.value;s.pickerError=false;draw();}});dsPicker.setOptions((datasets||[]).map(d=>({value:d.id,label:d.name})),s.pickDs);dsPicker.setDisabled(!s.pickWs||datasets===undefined||locked);root.querySelector("[data-picker-ds]").appendChild(dsPicker.el);root.querySelector("[data-picker-reload]").onclick=()=>dispatch("reload_picker",{workspace_id:s.pickWs});const close=root.querySelector("[data-picker-close]");if(close)close.onclick=()=>{s.pickerOpen=false;s.pickerError=false;draw();};root.querySelector("[data-picker-connect]").onclick=()=>{if(!s.pickDs||s.connecting)return;const target={workspace_id:s.pickWs,dataset_id:s.pickDs,workspace_name:(workspaces.find(w=>w.id===s.pickWs)||{}).name||"",dataset_name:((datasets||[]).find(d=>d.id===s.pickDs)||{}).name||""};resetView();s.connecting=true;s.pendingModel=target;s.objectsLoading=true;s.objectsLoadedAt=null;dispatch("connect",target);draw();};}
+    function draw(){if(!savedPosition)keepPosition();theme();if(!(model.get("connected")||s.connecting)||s.pickerOpen){root.innerHTML=header()+`<main class="slls-rm-body">${picker()}<div class="slls-rm-attribution">__SLLS_ATTRIBUTION__</div></main>`;bindPicker();restorePosition();return;}const busy=refreshing(),policyOff=s.commit==="PartialBatch";if(policyOff)s.policy=false;root.innerHTML=header()+`<main class="slls-rm-body"><div class="slls-rm-grid"><section class="slls-rm-card"><div class="slls-rm-card-head"><h2 class="slls-rm-card-title">Objects to refresh</h2><button class="slls-rm-iconbtn" data-expand-all title="Expand or collapse all">${I.caret}</button>${objectsBusy()?`<span class="slls-rm-updated" role="status">Loading\u2026</span>`:s.objectsLoadedAt?`<span class="slls-rm-updated" title="Tables and partitions last loaded ${esc(s.objectsLoadedAt.toLocaleString())}">Updated ${esc(s.objectsLoadedAt.toLocaleTimeString())}</span>`:""}<button class="sl-reload-btn ${objectsBusy()?"sl-spinning":""}" data-reload-objects title="Reload tables and partitions" aria-label="Reload tables and partitions" ${objectsBusy()?"disabled":""}>${I.refresh}</button></div><div class="slls-rm-search"><span>${I.search}</span><input class="slls-rm-input" data-search value="${esc(s.search)}" placeholder="Search tables and partitions..."></div><label class="slls-rm-model"><input type="checkbox" data-full ${s.full?"checked":""}>Refresh the entire model</label><div class="slls-rm-tree ${s.full?"disabled":""}">${tree()}</div></section><section><div class="slls-rm-card slls-rm-options"><div class="slls-rm-card-head"><h2 class="slls-rm-card-title">Refresh options</h2></div><div class="slls-rm-fields"><div class="slls-rm-field"><label>Refresh type</label><select class="slls-rm-select" data-option="type">${Object.keys(hints).map(v=>`<option value="${v}" ${s.type===v?"selected":""}>${v==="DataOnly"?"Data only":v==="ClearValues"?"Clear values":v}</option>`).join("")}</select><p>${hints[s.type]}</p></div><div class="slls-rm-field"><label>Commit mode</label><select class="slls-rm-select" data-option="commit"><option value="Transactional" ${s.commit==="Transactional"?"selected":""}>Transactional</option><option value="PartialBatch" ${s.commit==="PartialBatch"?"selected":""}>Partial batch</option></select></div><div class="slls-rm-two"><div class="slls-rm-field"><label>Max parallelism</label><input class="slls-rm-input" type="number" min="1" value="${s.parallel}" data-option="parallel"></div><div class="slls-rm-field"><label>Retry count</label><input class="slls-rm-input" type="number" min="0" value="${s.retry}" data-option="retry"></div></div><div class="slls-rm-toggle-row"><span>Apply refresh policy</span><button class="slls-rm-switch" type="button" role="switch" aria-checked="${s.policy}" aria-label="Toggle apply refresh policy" data-option="policy" ${policyOff||busy?"disabled":""}><span class="slls-rm-switch-knob"></span></button></div>${policyOff?`<p class="slls-rm-toggle-help">Partial batch does not support applying the refresh policy.</p>`:""}<div class="slls-rm-toggle-row" title="Run the refresh under an Analysis Services trace and chart each partition's Process and source-query durations."><span>Visualize refresh</span><button class="slls-rm-switch" type="button" role="switch" aria-checked="${s.visualize}" aria-label="Toggle visualize refresh" data-option="visualize" ${busy?"disabled":""}><span class="slls-rm-switch-knob"></span></button></div>${s.visualize?`<p class="slls-rm-toggle-help">Charts each partition's processing timeline. Cancelling is not available while visualizing.</p>`:""}</div></div><div class="slls-rm-actions"><button class="slls-rm-btn primary ${busy?"slls-rm-spin":""}" data-refresh ${!busy&&!objectsReady()?`title="Available once the tables and partitions have loaded."`:""} ${busy||!objectsReady()||(!s.full&&!objects().length)?"disabled":""}>${I.refresh}${busy?"Refreshing...":"Refresh"}</button>${busy&&!s.visualize?`<button class="slls-rm-btn danger" data-cancel>Cancel</button>`:""}</div></section><section class="slls-rm-wide" data-live-status>${status()}</section><section class="slls-rm-wide" data-live-gantt>${gantt()}</section><section class="slls-rm-wide">${history()}</section><section class="slls-rm-wide">${schedule()}</section></div><div class="slls-rm-attribution">__SLLS_ATTRIBUTION__</div></main>${detail()}`;bind();restorePosition();}
+    function bind(){const one=q=>root.querySelector(q);bindHeader();one("[data-search]").oninput=e=>{s.search=e.target.value;draw();const x=one("[data-search]");x.focus();x.setSelectionRange(x.value.length,x.value.length);};one("[data-full]").onchange=e=>{s.full=e.target.checked;draw();};one("[data-expand-all]").onclick=()=>{const all=model.get("objects")||[];s.expanded.size?s.expanded.clear():all.forEach(t=>s.expanded.add(t.name));draw();};one("[data-reload-objects]").onclick=loadObjects;root.querySelectorAll("[data-expand]").forEach(b=>b.onclick=()=>{s.expanded.has(b.dataset.expand)?s.expanded.delete(b.dataset.expand):s.expanded.add(b.dataset.expand);draw();});root.querySelectorAll("[data-table]").forEach(x=>{if(x.dataset.partial)x.indeterminate=true;x.onchange=()=>{const n=x.dataset.table;x.checked?s.tables.add(n):s.tables.delete(n);[...s.parts].filter(v=>v.startsWith(`${n}\u0000`)).forEach(v=>s.parts.delete(v));draw();};});root.querySelectorAll("[data-partition]").forEach(x=>x.onchange=()=>{const k=pkey(x.dataset.owner,x.dataset.partition);x.checked?s.parts.add(k):s.parts.delete(k);s.tables.delete(x.dataset.owner);draw();});one('[data-option="type"]').onchange=e=>{s.type=e.target.value;draw();};one('[data-option="commit"]').onchange=e=>{s.commit=e.target.value;draw();};one('[data-option="parallel"]').onchange=e=>s.parallel=Math.max(1,Number(e.target.value)||1);one('[data-option="retry"]').onchange=e=>s.retry=Math.max(0,Number(e.target.value)||0);const policy=one('[data-option="policy"]');if(policy)policy.onclick=()=>{s.policy=!s.policy;draw();};const visualize=one('[data-option="visualize"]');if(visualize)visualize.onclick=()=>{s.visualize=!s.visualize;draw();};const start=one("[data-refresh]");if(start)start.onclick=()=>objectsReady()&&dispatch("start_refresh",{refresh_type:s.type,commit_mode:s.commit,max_parallelism:s.parallel,retry_count:s.retry,apply_refresh_policy:s.policy,visualize:s.visualize,objects:objects()});const cancel=one("[data-cancel]");if(cancel)cancel.onclick=()=>dispatch("cancel_refresh");root.querySelectorAll("[data-panel]").forEach(b=>b.onclick=()=>{if(b.dataset.panel==="history"){s.history=!s.history;if(s.history&&!model.get("history_loaded"))dispatch("load_history");}else{s.schedule=!s.schedule;if(s.schedule&&!model.get("schedule_loaded"))dispatch("load_schedule");}draw();});root.querySelectorAll("[data-detail]").forEach(r=>r.onclick=()=>{s.detail=true;model.set("detail",{});dispatch("load_detail",{request_id:r.dataset.detail});draw();});const close=one("[data-close-detail]");if(close)close.onclick=()=>{s.detail=false;draw();};root.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{keepPosition();const a=s.draft.days,v=b.dataset.day;a.includes(v)?s.draft.days=a.filter(d=>d!==v):a.push(v);draw();});root.querySelectorAll("[data-time-index]").forEach(select=>select.onchange=e=>{keepPosition();s.draft.times[Number(select.dataset.timeIndex)]=e.target.value;draw();});root.querySelectorAll("[data-remove-time]").forEach(button=>button.onclick=()=>{keepPosition();s.draft.times=s.draft.times.filter((_,index)=>index!==Number(button.dataset.removeTime));draw();});const addTime=one("[data-add-time]");if(addTime)addTime.onclick=()=>{keepPosition();s.draft.times.push(timeOptions.find(option=>!s.draft.times.includes(option))||"00:00");draw();};const zone=one('[data-schedule="timezone"]');if(zone)zone.onchange=e=>s.draft.localTimeZoneId=e.target.value.trim()||"UTC";const notify=one('[data-schedule="notify"]');if(notify)notify.onchange=e=>s.draft.notifyOption=e.target.value;const save=one("[data-save-schedule]");if(save)save.onclick=()=>{keepPosition();s.draft.times=[...new Set(s.draft.times)].sort();dispatch("save_schedule",{schedule:s.draft});};const toggle=one("[data-toggle-schedule]");if(toggle)toggle.onclick=()=>{keepPosition();dispatch("toggle_schedule",{enabled:!s.draft.enabled});};}
     const updateLive=(selector,render)=>{const node=root.querySelector(selector);if(node)node.innerHTML=render();else draw();};
     const updateGantt=()=>{const current=root.querySelector("[data-gantt-search]"),focused=document.activeElement===current,start=focused?current.selectionStart:null,end=focused?current.selectionEnd:null,scrollTop=root.querySelector(".slls-rm-gantt-rows")?.scrollTop||0;updateLive("[data-live-gantt]",gantt);applyGanttFilter();const rows=root.querySelector(".slls-rm-gantt-rows");if(rows)rows.scrollTop=scrollTop;if(focused){const input=root.querySelector("[data-gantt-search]");if(input){input.focus();input.setSelectionRange(start,end);}}};
     root.addEventListener("input",event=>{if(event.target.matches("[data-gantt-search]"))applyGanttFilter();});
-    ["objects","objects_loading","history","history_loaded","history_loading","schedule_loaded","schedule_loading","busy","detail","dark_mode","connected","workspaces","datasets"].forEach(n=>model.on(`change:${n}`,draw));model.on("change:refresh_status",()=>updateLive("[data-live-status]",status));model.on("change:gantt_events",updateGantt);model.on("change:schedule",()=>{s.draft=null;draw();});model.on("change:connect_done",()=>{s.pickerOpen=false;s.pickDs="";s.tables.clear();s.parts.clear();s.expanded.clear();s.search="";s.ganttSearch="";s.history=false;s.schedule=false;s.draft=null;s.visualize=false;draw();});draw();if(model.get("connected"))dispatch("load_objects");
+    let lastRefreshDone=refreshDone();
+    ["objects_loading","history","history_loaded","history_loading","schedule_loaded","schedule_loading","busy","detail","dark_mode","connected","workspaces","workspaces_loaded","datasets","picker_loading"].forEach(n=>model.on(`change:${n}`,draw));model.on("change:objects",()=>{pruneSelection();draw();});model.on("change:objects_version",()=>{s.objectsLoading=false;s.objectsLoadedAt=new Date();draw();});model.on("change:refresh_status",()=>{const done=refreshDone();if(done!==lastRefreshDone){lastRefreshDone=done;draw();}else updateLive("[data-live-status]",status);});model.on("change:gantt_events",updateGantt);model.on("change:schedule",()=>{s.draft=null;draw();});model.on("change:connect_failed",()=>{s.connecting=false;s.pendingModel=null;s.objectsLoading=false;s.pickerOpen=true;s.pickerError=true;draw();});model.on("change:connect_done",()=>{const wasConnecting=s.connecting;s.connecting=false;s.pendingModel=null;if(!wasConnecting)resetView();draw();});draw();if(model.get("connected"))loadObjects();
 }
 export default { render };
 """
@@ -370,7 +386,171 @@ def _read_refresh_trace_events(
     return _get_refresh_trace_events(trace_logs, partition_map)
 
 
+# Microsoft.AnalysisServices.Tabular.ModeType / PartitionSourceType values as
+# returned by the TMSCHEMA DMVs.
+_PARTITION_MODES = {
+    0: "Import",
+    1: "DirectQuery",
+    2: "Default",
+    3: "Push",
+    4: "Dual",
+    5: "DirectLake",
+}
+_SOURCE_TYPE_CALCULATED = 2
+_SOURCE_TYPE_CALCULATION_GROUP = 7
+_EXTENDED_PROPERTY_COLUMN = 4
+
+
+def _format_dmv_time(value: Any) -> Optional[str]:
+    """Format a DMV timestamp; TMSCHEMA times are UTC but arrive timezone-naive."""
+
+    import pandas as pd
+
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if hasattr(value, "isoformat"):
+        if getattr(value, "year", 2) <= 1:
+            return None
+        text = value.isoformat()
+        return text if getattr(value, "tzinfo", None) else f"{text}Z"
+    text = str(value)
+    return None if not text or text.startswith("0001-") else text
+
+
+def _dmv_int(value: Any) -> Optional[int]:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _query_dmv(dataset_id: str, workspace_id: str, query: str) -> list[dict[str, Any]]:
+    import sempy.fabric as fabric
+
+    df = fabric.evaluate_dax(
+        dataset=dataset_id, workspace=workspace_id, dax_string=query
+    )
+    df.columns = [str(column).strip("[]") for column in df.columns]
+    return df.to_dict("records")
+
+
+def _build_refresh_objects(
+    tables: list[dict[str, Any]],
+    partitions: list[dict[str, Any]],
+    parameter_table_ids: Optional[set] = None,
+) -> list[dict[str, Any]]:
+    """Shape TMSCHEMA table/partition rows into the widget's object tree."""
+
+    parameter_table_ids = parameter_table_ids or set()
+    partitions_by_table: dict[Any, list[dict[str, Any]]] = {}
+    for partition in partitions:
+        partitions_by_table.setdefault(partition.get("TableID"), []).append(partition)
+
+    objects = []
+    for table in tables:
+        table_id = table.get("TableID")
+        rows = partitions_by_table.get(table_id, [])
+        source_types = {_dmv_int(row.get("Type")) for row in rows}
+        if _SOURCE_TYPE_CALCULATION_GROUP in source_types:
+            kind = "calculation_group"
+        elif _SOURCE_TYPE_CALCULATED in source_types:
+            is_parameter = table_id in parameter_table_ids and any(
+                "NAMEOF(" in str(row.get("QueryDefinition") or "").replace(" ", "")
+                for row in rows
+            )
+            kind = "field_parameter" if is_parameter else "calculated_table"
+        else:
+            kind = "table"
+        objects.append(
+            {
+                "name": str(table.get("TableName")),
+                "kind": kind,
+                "partitions": sorted(
+                    (
+                        {
+                            "name": str(row.get("PartitionName")),
+                            "mode": _PARTITION_MODES.get(_dmv_int(row.get("Mode")), ""),
+                            "refreshedTime": _format_dmv_time(row.get("RefreshedTime")),
+                        }
+                        for row in rows
+                    ),
+                    key=lambda partition: partition["name"],
+                ),
+            }
+        )
+    return sorted(objects, key=lambda table: table["name"])
+
+
+def _get_field_parameter_table_ids(dataset_id: str, workspace_id: str) -> set:
+    """Tables owning a column with the ``ParameterMetadata`` extended property."""
+
+    properties = _query_dmv(
+        dataset_id,
+        workspace_id,
+        "SELECT [ObjectID], [ObjectType], [Name] FROM $SYSTEM.TMSCHEMA_EXTENDED_PROPERTIES",
+    )
+    column_ids = {
+        row.get("ObjectID")
+        for row in properties
+        if _dmv_int(row.get("ObjectType")) == _EXTENDED_PROPERTY_COLUMN
+        and str(row.get("Name")) == "ParameterMetadata"
+    }
+    if not column_ids:
+        return set()
+    columns = _query_dmv(
+        dataset_id,
+        workspace_id,
+        "SELECT [ID] AS [ColumnID], [TableID] FROM $SYSTEM.TMSCHEMA_COLUMNS",
+    )
+    return {row.get("TableID") for row in columns if row.get("ColumnID") in column_ids}
+
+
+def _get_refresh_objects_dmv(
+    dataset_id: str, workspace_id: str
+) -> list[dict[str, Any]]:
+    """Read tables/partitions through lightweight DMV queries.
+
+    Opening a TOM connection downloads the full model definition, which is
+    slow for large models; the refresh tree only needs a handful of fields.
+    """
+
+    tables = _query_dmv(
+        dataset_id,
+        workspace_id,
+        "SELECT [ID] AS [TableID], [Name] AS [TableName] FROM $SYSTEM.TMSCHEMA_TABLES",
+    )
+    partitions = _query_dmv(
+        dataset_id,
+        workspace_id,
+        "SELECT [TableID], [Name] AS [PartitionName], [Mode], [Type], "
+        "[RefreshedTime], [QueryDefinition] FROM $SYSTEM.TMSCHEMA_PARTITIONS",
+    )
+    parameter_table_ids: set = set()
+    if any(_dmv_int(row.get("Type")) == _SOURCE_TYPE_CALCULATED for row in partitions):
+        try:
+            parameter_table_ids = _get_field_parameter_table_ids(
+                dataset_id, workspace_id
+            )
+        except Exception:
+            parameter_table_ids = set()
+    return _build_refresh_objects(tables, partitions, parameter_table_ids)
+
+
 def _get_refresh_objects(dataset_id: str, workspace_id: str) -> list[dict[str, Any]]:
+    try:
+        return _get_refresh_objects_dmv(dataset_id, workspace_id)
+    except Exception:
+        return _get_refresh_objects_tom(dataset_id, workspace_id)
+
+
+def _get_refresh_objects_tom(
+    dataset_id: str, workspace_id: str
+) -> list[dict[str, Any]]:
     from sempy_labs.tom import connect_semantic_model
 
     tables = []
@@ -532,10 +712,16 @@ def refresh_manager(
         workspace_id = traitlets.Unicode("").tag(sync=True)
         connected = traitlets.Bool(False).tag(sync=True)
         workspaces = traitlets.List(default_value=[]).tag(sync=True)
+        workspaces_loaded = traitlets.Bool(False).tag(sync=True)
         datasets = traitlets.Dict(default_value={}).tag(sync=True)
+        picker_loading = traitlets.Bool(False).tag(sync=True)
+        picker_error = traitlets.Unicode("").tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
         objects = traitlets.List(default_value=[]).tag(sync=True)
         objects_loading = traitlets.Bool(False).tag(sync=True)
+        # Bumped after every load attempt so the UI can clear its loading state
+        # even when the reloaded metadata is identical (no `objects` change).
+        objects_version = traitlets.Int(0).tag(sync=True)
         history = traitlets.List(default_value=[]).tag(sync=True)
         history_loaded = traitlets.Bool(False).tag(sync=True)
         history_loading = traitlets.Bool(False).tag(sync=True)
@@ -550,6 +736,7 @@ def refresh_manager(
         pending_action = traitlets.Dict(default_value={}).tag(sync=True)
         run = traitlets.Int(0).tag(sync=True)
         connect_done = traitlets.Int(0).tag(sync=True)
+        connect_failed = traitlets.Int(0).tag(sync=True)
 
     widget = _RefreshManagerWidget(
         dataset_name=dataset_name,
@@ -557,6 +744,7 @@ def refresh_manager(
         workspace_id=workspace_id,
         connected=connected,
         workspaces=initial_workspaces,
+        workspaces_loaded=not connected,
         datasets=initial_datasets,
         dark_mode=bool(dark_mode),
     )
@@ -576,6 +764,51 @@ def refresh_manager(
             set_error(f"Unable to load tables and partitions: {exc}")
         finally:
             widget.objects_loading = False
+            widget.objects_version = widget.objects_version + 1
+
+    def load_picker_lists(target_workspace_id: str, include_workspaces: bool) -> None:
+        widget.picker_loading = True
+        try:
+            if include_workspaces:
+                widget.workspaces = list_workspaces()
+                widget.workspaces_loaded = True
+            if target_workspace_id:
+                datasets = dict(widget.datasets)
+                datasets[target_workspace_id] = list_datasets(target_workspace_id)
+                widget.datasets = datasets
+        finally:
+            widget.picker_loading = False
+
+    def connect(data: dict[str, Any]) -> None:
+        nonlocal workspace_name, workspace_id, dataset_name, dataset_id
+        target_workspace_id = str(data.get("workspace_id") or "")
+        target_dataset_id = str(data.get("dataset_id") or "")
+        widget.picker_error = ""
+        if not target_workspace_id or not target_dataset_id:
+            widget.picker_error = "Select a workspace and semantic model."
+            widget.connect_failed = widget.connect_failed + 1
+            return
+        workspace_id = target_workspace_id
+        dataset_id = target_dataset_id
+        workspace_name = str(data.get("workspace_name") or "")
+        dataset_name = str(data.get("dataset_name") or "")
+        widget.workspace_id = workspace_id
+        widget.workspace_name = workspace_name
+        widget.dataset_name = dataset_name
+        widget.objects = []
+        widget.history = []
+        widget.history_loaded = False
+        widget.schedule = {}
+        widget.schedule_loaded = False
+        widget.detail = {}
+        widget.refresh_status = {}
+        widget.gantt_events = []
+        widget.refresh_id = ""
+        widget.connected = True
+        # Signal the switch before loading so the main page shows right away
+        # and the tree fills in once the metadata arrives.
+        widget.connect_done = widget.connect_done + 1
+        load_objects()
 
     def load_history() -> None:
         widget.history_loading = True
@@ -644,6 +877,12 @@ def refresh_manager(
         }
         return status
 
+    def finish_refresh() -> None:
+        """End the running state before the follow-up history/table reloads."""
+
+        widget.busy = False
+        widget.refresh_id = ""
+
     def poll_refresh(request_id: str, refresh_type: str) -> None:
         try:
             while True:
@@ -659,13 +898,13 @@ def refresh_manager(
                 if status in {"Completed", "Failed", "Cancelled", "Disabled"}:
                     break
                 time.sleep(3)
+            finish_refresh()
             load_history()
             load_objects()
         except Exception as exc:
             set_error(str(exc))
         finally:
-            widget.busy = False
-            widget.refresh_id = ""
+            finish_refresh()
 
     def run_visualized_refresh(data: dict[str, Any]) -> None:
         import sempy_labs._icons as icons
@@ -708,22 +947,23 @@ def refresh_manager(
                         widget.gantt_events = _read_refresh_trace_events(
                             trace, partition_map, stop=True
                         )
+            finish_refresh()
             load_history()
             load_objects()
         except Exception as exc:
             set_error(str(exc))
         finally:
-            widget.busy = False
-            widget.refresh_id = ""
+            finish_refresh()
 
     def start_refresh(data: dict[str, Any]) -> None:
         if widget.busy:
             return
-        widget.busy = True
+        # Status first: the UI treats busy + a final status as finished.
         widget.refresh_status = {
             "status": "Unknown",
             "message": "Submitting enhanced refresh request...",
         }
+        widget.busy = True
         widget.gantt_events = []
         try:
             if bool(data.get("visualize")):
@@ -811,51 +1051,33 @@ def refresh_manager(
         load_schedule()
 
     def on_run(_change: dict[str, Any]) -> None:
-        nonlocal workspace_name, workspace_id, dataset_name, dataset_id
         data = dict(widget.pending_action or {})
         action = data.get("action")
         try:
             if action == "load_objects":
                 load_objects()
             elif action == "list_workspaces":
-                widget.workspaces = list_workspaces()
+                load_picker_lists("", include_workspaces=True)
             elif action == "reload_picker":
-                widget.workspaces = list_workspaces()
+                load_picker_lists(
+                    str(data.get("workspace_id") or ""), include_workspaces=True
+                )
+            elif action == "open_picker":
                 target_workspace_id = str(data.get("workspace_id") or "")
-                if target_workspace_id:
-                    datasets = dict(widget.datasets)
-                    datasets[target_workspace_id] = list_datasets(target_workspace_id)
-                    widget.datasets = datasets
+                load_picker_lists(
+                    (
+                        target_workspace_id
+                        if target_workspace_id not in widget.datasets
+                        else ""
+                    ),
+                    include_workspaces=not widget.workspaces_loaded,
+                )
             elif action == "list_datasets":
-                target_workspace_id = str(data.get("workspace_id") or "")
-                if target_workspace_id:
-                    datasets = dict(widget.datasets)
-                    datasets[target_workspace_id] = list_datasets(target_workspace_id)
-                    widget.datasets = datasets
+                load_picker_lists(
+                    str(data.get("workspace_id") or ""), include_workspaces=False
+                )
             elif action == "connect":
-                target_workspace_id = str(data.get("workspace_id") or "")
-                target_dataset_id = str(data.get("dataset_id") or "")
-                if not target_workspace_id or not target_dataset_id:
-                    raise ValueError("Select a workspace and semantic model.")
-                workspace_id = target_workspace_id
-                dataset_id = target_dataset_id
-                workspace_name = str(data.get("workspace_name") or "")
-                dataset_name = str(data.get("dataset_name") or "")
-                widget.workspace_id = workspace_id
-                widget.workspace_name = workspace_name
-                widget.dataset_name = dataset_name
-                widget.objects = []
-                widget.history = []
-                widget.history_loaded = False
-                widget.schedule = {}
-                widget.schedule_loaded = False
-                widget.detail = {}
-                widget.refresh_status = {}
-                widget.gantt_events = []
-                widget.refresh_id = ""
-                widget.connected = True
-                load_objects()
-                widget.connect_done = widget.connect_done + 1
+                connect(data)
             elif action == "load_history":
                 load_history()
             elif action == "load_schedule":

@@ -255,13 +255,13 @@ _TEST_EVENT_SCHEMA: dict = {
     ],
     "ExecutionMetrics": [
         "EventClass",
-        #"EventSubclass",
-        #"CurrentTime",
+        # "EventSubclass",
+        # "CurrentTime",
         "TextData",
         "ApplicationName",
         "ApplicationContext",
         "RequestID",
-    ]
+    ],
 }
 
 
@@ -941,14 +941,13 @@ def _prepare_embedded_vertipaq_dataframe(name: str, df: pd.DataFrame) -> pd.Data
     view = df.copy()
     if name == "Columns":
         if "Type" in view.columns:
-            view = view[
-                view["Type"].astype("string").str.casefold() != "rownumber"
-            ]
+            view = view[view["Type"].astype("string").str.casefold() != "rownumber"]
         view = view.drop(columns=["Source Column"], errors="ignore")
     elif name == "Partitions":
-        has_direct_lake = "Mode" in view.columns and view["Mode"].astype(
-            "string"
-        ).str.casefold().eq("directlake").any()
+        has_direct_lake = (
+            "Mode" in view.columns
+            and view["Mode"].astype("string").str.casefold().eq("directlake").any()
+        )
         if not has_direct_lake:
             view = view.drop(
                 columns=[
@@ -1375,9 +1374,7 @@ def _list_reports_for_capture(dataset_id: str, workspace_id: str) -> list:
         {
             "id": str(row["Report Id"]),
             "name": str(row["Report Name"]),
-            "embed_url": (
-                "" if pd.isna(row["Embed Url"]) else str(row["Embed Url"])
-            ),
+            "embed_url": ("" if pd.isna(row["Embed Url"]) else str(row["Embed Url"])),
         }
         for _, row in matches.iterrows()
     ]
@@ -1679,7 +1676,9 @@ def _classify_dax_spans(dax_expression: str) -> list:
 def _clean_monitoring_query(value: str) -> str:
     """Return the Workspace Monitoring query exactly as displayed in the UI."""
 
-    return re.sub(r"\s*\[WaitTime:[^\]]*\]\s*$", "", value, flags=re.IGNORECASE).rstrip()
+    return re.sub(
+        r"\s*\[WaitTime:[^\]]*\]\s*$", "", value, flags=re.IGNORECASE
+    ).rstrip()
 
 
 def _monitoring_dax_spans(value: str) -> list:
@@ -1951,6 +1950,7 @@ def _visualize_dax_test(
         scoped_attribution_css as _ui_scoped_attribution_css,
         ICONS as _UI_ICONS,
     )
+
     _UI_SEARCH_SELECT_CSS = getattr(
         _ui_components, "SEARCH_SELECT_CSS", _FALLBACK_SEARCH_SELECT_CSS
     )
@@ -5269,9 +5269,7 @@ def _visualize_dax_test(
     level_icon = _UI_ICONS["level"].replace("`", "\\`")
     play_icon = _UI_ICONS["play"].replace("`", "\\`")
     stop_icon = _UI_ICONS["stop"].replace("`", "\\`")
-    eraser_icon = _UI_ICONS.get("eraser", _FALLBACK_ERASER_ICON).replace(
-        "`", "\\`"
-    )
+    eraser_icon = _UI_ICONS.get("eraser", _FALLBACK_ERASER_ICON).replace("`", "\\`")
     trash_icon = _UI_ICONS["trash"].replace("`", "\\`")
     camera_icon = _UI_ICONS["camera"].replace("`", "\\`")
     report_file_icon = _UI_ICONS["report_file"].replace("`", "\\`")
@@ -5283,15 +5281,13 @@ def _visualize_dax_test(
     sort_desc_icon = _UI_ICONS["sort_desc"].replace("`", "\\`")
     panel_collapse_icon = _UI_ICONS["panel_collapse"].replace("`", "\\`")
     panel_expand_icon = _UI_ICONS["panel_expand"].replace("`", "\\`")
-    builder_icon = _UI_ICONS.get("hammer", _FALLBACK_HAMMER_ICON).replace(
-        "`", "\\`"
-    )
+    builder_icon = _UI_ICONS.get("hammer", _FALLBACK_HAMMER_ICON).replace("`", "\\`")
     list_tree_icon = _UI_ICONS.get("list_tree", _FALLBACK_LIST_TREE_ICON).replace(
         "`", "\\`"
     )
-    git_branch_icon = _UI_ICONS.get(
-        "git_branch", _FALLBACK_GIT_BRANCH_ICON
-    ).replace("`", "\\`")
+    git_branch_icon = _UI_ICONS.get("git_branch", _FALLBACK_GIT_BRANCH_ICON).replace(
+        "`", "\\`"
+    )
     workflow_icon = _UI_ICONS.get("workflow", _FALLBACK_WORKFLOW_ICON).replace(
         "`", "\\`"
     )
@@ -5434,8 +5430,7 @@ def _visualize_dax_test(
         "</svg>"
     ).replace("`", "\\`")
 
-    widget_js = (
-        _UI_SEARCH_SELECT_JS + "\n" + _UI_TABLE_COLUMN_RESIZE_JS + "\n" + r"""
+    widget_js = _UI_SEARCH_SELECT_JS + "\n" + _UI_TABLE_COLUMN_RESIZE_JS + "\n" + r"""
 function escapeHtml(s) {
     return String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -11291,7 +11286,6 @@ function render({ model, el }) {
 }
 export default { render };
 """
-    )
     widget_js = (
         widget_js.replace("__DTX_SUN__", sun_icon)
         .replace("__SLLS_ATTRIBUTION__", _ui_render_attribution_html())
@@ -12469,9 +12463,7 @@ export default { render };
                     "object_type": _value(row, "Object Type"),
                     "table": _value(row, "Table"),
                     "object": _value(row, "Object"),
-                    "referenced_object_type": _value(
-                        row, "Referenced Object Type"
-                    ),
+                    "referenced_object_type": _value(row, "Referenced Object Type"),
                     "referenced_table": _value(row, "Referenced Table"),
                     "referenced_object": _value(row, "Referenced Object"),
                 }
@@ -12849,7 +12841,7 @@ export default { render };
                     continue
                 if logs is None or logs.empty or len(logs) <= int(start_baseline):
                     continue
-                _new = logs.iloc[int(start_baseline):]
+                _new = logs.iloc[int(start_baseline) :]
                 _req_id = _resolve_query_request_id(_new, query)
                 if _req_id is not None:
                     _new = _filter_logs_to_request_id(_new, _req_id)
@@ -13006,18 +12998,16 @@ export default { render };
                 return
             if "ReportId" in monitoring_df.columns:
                 report_lookup = {
-                    str(report.get("id") or "").lower(): str(
-                        report.get("name") or ""
-                    )
+                    str(report.get("id") or "").lower(): str(report.get("name") or "")
                     for report in (widget.available_reports or [])
                 }
                 monitoring_df = monitoring_df.copy()
                 monitoring_df["ReportName"] = monitoring_df["ReportId"].map(
                     lambda value: report_lookup.get(str(value or "").lower(), "")
                 )
-                monitoring_df["ReportWorkspace"] = monitoring_df[
-                    "ReportName"
-                ].map(lambda value: str(widget.workspace_name or "") if value else "")
+                monitoring_df["ReportWorkspace"] = monitoring_df["ReportName"].map(
+                    lambda value: str(widget.workspace_name or "") if value else ""
+                )
             payload = _result_payload_from_df(monitoring_df, max_rows=top_n)
             query_index = next(
                 (
@@ -13028,9 +13018,11 @@ export default { render };
                 -1,
             )
             monitoring_tokens = [
-                _monitoring_dax_spans(str(row[query_index] or ""))
-                if query_index >= 0
-                else []
+                (
+                    _monitoring_dax_spans(str(row[query_index] or ""))
+                    if query_index >= 0
+                    else []
+                )
                 for row in payload["rows"]
             ]
             widget.workspace_monitoring_columns = payload["columns"]

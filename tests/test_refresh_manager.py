@@ -355,7 +355,7 @@ def test_semantic_table_icons_have_hover_labels():
         assert label in widget_js
     assert 'title="${tableKind}" aria-label="${tableKind}"' in widget_js
     assert "tom.is_field_parameter(table_name=str(table.Name))" in getsource(
-        refresh_manager_module._get_refresh_objects
+        refresh_manager_module._get_refresh_objects_tom
     )
 
 
@@ -445,7 +445,7 @@ def test_visualized_refresh_updates_live_regions_without_full_redraw():
 
     assert "data-live-status" in widget_js
     assert "data-live-gantt" in widget_js
-    assert 'model.on("change:refresh_status",()=>updateLive(' in widget_js
+    assert 'else updateLive("[data-live-status]",status);' in widget_js
     assert 'model.on("change:gantt_events",updateGantt)' in widget_js
     assert 'updateLive("[data-live-gantt]",gantt)' in widget_js
     draw_observers = widget_js.split(
@@ -476,3 +476,292 @@ def test_refresh_details_include_tools_app_sections():
     assert "serviceExceptionJson" in refresh_manager_module._WIDGET_JS
     assert "No attempt details are available." in refresh_manager_module._WIDGET_JS
     assert "No object details are available." in refresh_manager_module._WIDGET_JS
+
+
+def test_refresh_objects_are_read_from_dmvs(monkeypatch):
+    import datetime
+
+    queries = []
+    rows = {
+        "TMSCHEMA_TABLES": [
+            {"TableID": 1, "TableName": "Sales"},
+            {"TableID": 2, "TableName": "Calc"},
+            {"TableID": 3, "TableName": "Parameter"},
+            {"TableID": 4, "TableName": "Calculated"},
+        ],
+        "TMSCHEMA_PARTITIONS": [
+            {
+                "TableID": 1,
+                "PartitionName": "Sales-2",
+                "Mode": 5,
+                "Type": 4,
+                "RefreshedTime": datetime.datetime(2026, 8, 2, 12, 30),
+                "QueryDefinition": "",
+            },
+            {
+                "TableID": 1,
+                "PartitionName": "Sales-1",
+                "Mode": 0,
+                "Type": 4,
+                "RefreshedTime": datetime.datetime(1, 1, 1),
+                "QueryDefinition": "",
+            },
+            {"TableID": 2, "PartitionName": "Calc", "Mode": 0, "Type": 7},
+            {
+                "TableID": 3,
+                "PartitionName": "Parameter",
+                "Mode": 0,
+                "Type": 2,
+                "QueryDefinition": "{(\"A\", NAMEOF('Sales'[Amount]), 0)}",
+            },
+            {
+                "TableID": 4,
+                "PartitionName": "Calculated",
+                "Mode": 0,
+                "Type": 2,
+                "QueryDefinition": "CALENDARAUTO()",
+            },
+        ],
+        "TMSCHEMA_EXTENDED_PROPERTIES": [
+            {"ObjectID": 30, "ObjectType": 4, "Name": "ParameterMetadata"},
+            {"ObjectID": 40, "ObjectType": 4, "Name": "Other"},
+        ],
+        "TMSCHEMA_COLUMNS": [
+            {"ColumnID": 30, "TableID": 3},
+            {"ColumnID": 40, "TableID": 4},
+        ],
+    }
+
+    def query(dataset_id, workspace_id, dax):
+        queries.append(dax)
+        return next(value for key, value in rows.items() if key in dax)
+
+    monkeypatch.setattr(refresh_manager_module, "_query_dmv", query)
+
+    objects = refresh_manager_module._get_refresh_objects("ds", "ws")
+
+    assert [table["name"] for table in objects] == [
+        "Calc",
+        "Calculated",
+        "Parameter",
+        "Sales",
+    ]
+    kinds = {table["name"]: table["kind"] for table in objects}
+    assert kinds == {
+        "Calc": "calculation_group",
+        "Calculated": "calculated_table",
+        "Parameter": "field_parameter",
+        "Sales": "table",
+    }
+    sales = next(table for table in objects if table["name"] == "Sales")
+    assert sales["partitions"] == [
+        {"name": "Sales-1", "mode": "Import", "refreshedTime": None},
+        {
+            "name": "Sales-2",
+            "mode": "DirectLake",
+            "refreshedTime": "2026-08-02T12:30:00Z",
+        },
+    ]
+    assert len(queries) == 4
+
+
+def test_refresh_objects_fall_back_to_tom_when_dmvs_fail(monkeypatch):
+    def fail(*_args):
+        raise RuntimeError("DMV unavailable")
+
+    monkeypatch.setattr(refresh_manager_module, "_query_dmv", fail)
+    monkeypatch.setattr(
+        refresh_manager_module,
+        "_get_refresh_objects_tom",
+        lambda dataset_id, workspace_id: [{"name": "T", "kind": "table"}],
+    )
+
+    assert refresh_manager_module._get_refresh_objects("ds", "ws") == [
+        {"name": "T", "kind": "table"}
+    ]
+
+
+def _open_refresh_manager(monkeypatch, objects_by_dataset, dataset="ds1"):
+    import IPython.display
+    import sempy_labs._helper_functions as helpers
+
+    shown = []
+    loads = []
+
+    def get_objects(dataset_id, workspace_id):
+        loads.append((dataset_id, workspace_id))
+        result = objects_by_dataset[dataset_id]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(IPython.display, "display", shown.append)
+    monkeypatch.setattr(
+        helpers, "resolve_workspace_name_and_id", lambda workspace: ("WS 1", "ws1")
+    )
+    monkeypatch.setattr(
+        helpers,
+        "resolve_dataset_name_and_id",
+        lambda dataset, workspace: ("Model 1", "ds1"),
+    )
+    monkeypatch.setattr(
+        refresh_manager_module,
+        "_list_picker_workspaces",
+        lambda *_args: [{"id": "ws1", "name": "WS 1"}, {"id": "ws2", "name": "WS 2"}],
+    )
+    monkeypatch.setattr(
+        refresh_manager_module,
+        "_list_picker_datasets",
+        lambda workspace_id: [{"id": f"{workspace_id}-ds", "name": "Model"}],
+    )
+    monkeypatch.setattr(refresh_manager_module, "_get_refresh_objects", get_objects)
+    refresh_manager_module.refresh_manager(dataset=dataset)
+    return shown[0], loads
+
+
+def _dispatch(widget, action, **payload):
+    widget.pending_action = {"action": action, **payload}
+    widget.run = widget.run + 1
+
+
+def test_reload_objects_signals_completion_even_when_unchanged(monkeypatch):
+    objects = [{"name": "Sales", "kind": "table", "partitions": []}]
+    widget, loads = _open_refresh_manager(monkeypatch, {"ds1": objects})
+
+    _dispatch(widget, "load_objects")
+    _dispatch(widget, "load_objects")
+
+    assert loads == [("ds1", "ws1"), ("ds1", "ws1")]
+    assert widget.objects == objects
+    assert widget.objects_version == 2
+    assert widget.objects_loading is False
+
+
+def test_change_model_picker_loads_workspaces_and_models(monkeypatch):
+    widget, _loads = _open_refresh_manager(monkeypatch, {"ds1": []})
+
+    assert widget.workspaces == [{"id": "ws1", "name": "WS 1"}]
+    assert widget.workspaces_loaded is False
+    assert "ws1" not in widget.datasets
+
+    _dispatch(widget, "open_picker", workspace_id="ws1")
+
+    assert [w["id"] for w in widget.workspaces] == ["ws1", "ws2"]
+    assert widget.workspaces_loaded is True
+    assert widget.datasets["ws1"] == [{"id": "ws1-ds", "name": "Model"}]
+    assert widget.picker_loading is False
+
+
+def test_connect_shows_main_page_before_loading_objects(monkeypatch):
+    new_objects = [{"name": "Orders", "kind": "table", "partitions": []}]
+    widget, loads = _open_refresh_manager(
+        monkeypatch, {"ds1": [], "ws2-ds": new_objects}
+    )
+    seen_at_load = []
+    original_version = widget.objects_version
+
+    def record(change):
+        if change["name"] == "objects_loading" and change["new"]:
+            seen_at_load.append(
+                (widget.connect_done, widget.dataset_name, list(widget.objects))
+            )
+
+    widget.observe(record, names=["objects_loading"])
+
+    _dispatch(
+        widget,
+        "connect",
+        workspace_id="ws2",
+        dataset_id="ws2-ds",
+        workspace_name="WS 2",
+        dataset_name="Model",
+    )
+
+    # The switch is signalled (and stale objects cleared) before the load.
+    assert seen_at_load == [(1, "Model", [])]
+    assert loads == [("ws2-ds", "ws2")]
+    assert widget.connect_failed == 0
+    assert (widget.workspace_id, widget.dataset_name) == ("ws2", "Model")
+    assert widget.objects == new_objects
+    assert widget.objects_version == original_version + 1
+
+    _dispatch(widget, "load_objects")
+    assert loads[-1] == ("ws2-ds", "ws2")
+
+
+def test_connect_metadata_failure_is_reported_on_main_page(monkeypatch):
+    widget, _loads = _open_refresh_manager(
+        monkeypatch, {"ds1": [], "ws2-ds": RuntimeError("no access")}
+    )
+
+    _dispatch(widget, "connect", workspace_id="ws2", dataset_id="ws2-ds")
+
+    assert widget.connect_done == 1
+    assert widget.connect_failed == 0
+    assert widget.objects == []
+    assert widget.objects_loading is False
+    assert "no access" in widget.refresh_status["message"]
+
+
+def test_connect_without_selection_returns_to_picker(monkeypatch):
+    widget, _loads = _open_refresh_manager(monkeypatch, {"ds1": []})
+
+    _dispatch(widget, "connect", workspace_id="ws2", dataset_id="")
+
+    assert widget.connect_done == 0
+    assert widget.connect_failed == 1
+    assert widget.picker_error == "Select a workspace and semantic model."
+    assert (widget.workspace_id, widget.dataset_name) == ("ws1", "Model 1")
+
+
+def test_refresh_running_state_ends_before_follow_up_reloads(monkeypatch):
+    import sempy.fabric
+    import sempy_labs._helper_functions as helpers
+
+    busy_during_reload = []
+
+    def history(workspace_id, dataset_id):
+        busy_during_reload.append(widget.busy)
+        return []
+
+    monkeypatch.setattr(sempy.fabric, "refresh_dataset", lambda **_kwargs: "req-1")
+    monkeypatch.setattr(
+        helpers,
+        "_base_api",
+        lambda **_kwargs: {"status": "Completed", "type": "Full"},
+    )
+    monkeypatch.setattr(refresh_manager_module, "_get_refresh_history", history)
+    widget, _loads = _open_refresh_manager(monkeypatch, {"ds1": []})
+
+    _dispatch(widget, "start_refresh", refresh_type="Full")
+
+    assert widget.refresh_status["status"] == "Completed"
+    assert busy_during_reload == [False]
+    assert widget.busy is False
+    assert widget.refresh_id == ""
+
+
+def test_refresh_button_requires_loaded_tables_and_partitions():
+    widget_js = refresh_manager_module._WIDGET_JS
+
+    assert (
+        'const objectsReady=()=>!s.connecting&&!objectsBusy()&&(model.get("objects")||[]).length>0;'
+        in widget_js
+    )
+    assert "busy||!objectsReady()||" in widget_js
+    assert 'start.onclick=()=>objectsReady()&&dispatch("start_refresh"' in widget_js
+
+
+def test_objects_reload_button_matches_expand_button_colors():
+    widget_css = refresh_manager_module._WIDGET_CSS
+
+    assert (
+        ".slls-rm .slls-rm-card-head [data-reload-objects] { background:var(--ui-bg); }"
+        in widget_css
+    )
+    assert (
+        ".slls-rm .slls-rm-card-head [data-reload-objects]:hover:not(:disabled) "
+        "{ border-color:var(--ui-border-strong);background:var(--ui-bg-secondary); }"
+        in widget_css
+    )
+    assert ".slls-rm-iconbtn:hover { background:var(--ui-bg-secondary);" in widget_css
