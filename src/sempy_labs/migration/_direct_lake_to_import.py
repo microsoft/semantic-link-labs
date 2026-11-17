@@ -60,27 +60,29 @@ def migrate_direct_lake_to_import(
             p = next(p for p in t.Partitions)
             if p.Mode == TOM.ModeType.DirectLake:
                 source_table = p.Source.EntityName
-                source_schema = p.Source.SchemaName or 'dbo'
+                source_schema = p.Source.SchemaName or "dbo"
                 expr_name = p.Source.ExpressionSource.Name
                 p.Name = f"{p.Name}_remove"
                 expr = None
 
-                s = next(s for s in sources if s.get('expressionName') == expr_name)
-                if s.get('itemType') == 'Lakehouse':
+                s = next(s for s in sources if s.get("expressionName") == expr_name)
+                if s.get("itemType") == "Lakehouse":
                     expr = f"""let\n\tSource = Lakehouse.Contents(null),\n\tWorkspace = Source{{[workspaceId="{s.get('workspaceId')}"]}}[Data],\n\tArtifact = Workspace{{[lakehouseId="{s.get('itemId')}"]}}[Data],\n\tTable = Artifact{{[Name="{source_table}", ItemKind="Table", Schema="{source_schema}"]}}[Data]\nin\n\tTable"""
-                elif s.get('itemType') == 'Warehouse':
+                elif s.get("itemType") == "Warehouse":
                     expr = f"""let\n\tSource = Fabric.Warehouse(),\n\tWorkspace = Source{{[workspaceId="{s.get('workspaceId')}"]}}[Data],\n\tWarehouse = Workspace{{[warehouseId="{s.get('itemId')}"]}}[Data],\n\tTable = Warehouse{{[Schema="{source_schema}", Item="{source_table}"]}}[Data]\nin\n\tTable"""
                 else:
-                    print(f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import/DirectQuery mode.")
-                
+                    print(
+                        f"{icons.warning} The source type '{s.get('itemType')}' is not supported for converting to Import/DirectQuery mode."
+                    )
+
                 if expr:
                     tom.add_m_partition(
                         table_name=table_name,
                         partition_name=table_name,
                         expression=expr,
                         mode=actual_mode,
-                    )           
-                    
+                    )
+
                     # Remove Direct Lake partition
                     tom.remove_object(object=p)
                     migrated_tables.append(table_name)

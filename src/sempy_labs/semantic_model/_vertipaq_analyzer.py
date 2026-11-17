@@ -956,7 +956,9 @@ def vertipaq_analyzer(
 
     if dataset is None:
         if not visualize:
-            raise ValueError("The 'dataset' parameter is required when visualize=False.")
+            raise ValueError(
+                "The 'dataset' parameter is required when visualize=False."
+            )
         if export is not None:
             raise ValueError("The 'dataset' parameter is required when export='table'.")
         _show_vertipaq_picker(
