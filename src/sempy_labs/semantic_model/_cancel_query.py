@@ -191,7 +191,7 @@ def cancel_spid(dataset: str | UUID, spid: int, workspace: Optional[str | UUID] 
 
 
 @log
-def list_semantic_model_sessions(
+def list_sessions(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     user_name: Optional[str | List[str]] = None,
@@ -245,7 +245,7 @@ def list_semantic_model_sessions(
 
 
 @log
-def list_semantic_model_commands(
+def list_commands(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     min_elapsed_time_seconds: Optional[int] = None,
@@ -279,7 +279,7 @@ def list_semantic_model_commands(
     workspace_id = resolve_workspace_id(workspace)
     dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    sessions = list_semantic_model_sessions(dataset=dataset_id, workspace=workspace_id)
+    sessions = list_sessions(dataset=dataset_id, workspace=workspace_id)
     commands = _discover_commands(dataset=dataset_id, workspace=workspace_id)
     commands = commands[commands["SESSION_SPID"].isin(sessions["SESSION_SPID"])]
 
