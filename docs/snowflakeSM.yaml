@@ -1,0 +1,1756 @@
+name: MKVIEW
+description: >-
+  Store-channel retail analytics semantic view over the DEMO.STORE schema.
+  Covers store sales, store returns, customers, stores and the shared calendar,
+  including profitability, discount, promotion and return-behavior metrics.
+tables:
+  - name: CUSTOMER
+    description: Registered customers with demographic, contact and loyalty attributes.
+    synonyms:
+      - customers
+      - shopper
+      - buyer
+      - account holder
+    base_table:
+      database: DEMO
+      schema: STORE
+      table: CUSTOMER
+    dimensions:
+      - name: C_BIRTH_COUNTRY
+        synonyms:
+          - birth country
+          - country of birth
+          - nationality
+        description: Country in which the customer was born.
+        expr: C_BIRTH_COUNTRY
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: C_BIRTH_DAY
+        expr: C_BIRTH_DAY
+        data_type: NUMBER(38,0)
+      - name: C_BIRTH_MONTH
+        expr: C_BIRTH_MONTH
+        data_type: NUMBER(38,0)
+      - name: C_BIRTH_YEAR
+        expr: C_BIRTH_YEAR
+        data_type: NUMBER(38,0)
+      - name: C_CURRENT_ADDR_SK
+        expr: C_CURRENT_ADDR_SK
+        data_type: NUMBER(38,0)
+      - name: C_CURRENT_CDEMO_SK
+        expr: C_CURRENT_CDEMO_SK
+        data_type: NUMBER(38,0)
+      - name: C_CURRENT_HDEMO_SK
+        expr: C_CURRENT_HDEMO_SK
+        data_type: NUMBER(38,0)
+      - name: C_CUSTOMER_ID
+        synonyms:
+          - customer number
+          - customer code
+          - business key
+        description: Natural (business) key of the customer.
+        expr: C_CUSTOMER_ID
+        data_type: VARCHAR(16777216)
+        unique: true
+      - name: C_CUSTOMER_SK
+        synonyms:
+          - customer key
+          - customer surrogate key
+        description: Surrogate key of the customer; joins to sales and returns.
+        expr: C_CUSTOMER_SK
+        data_type: NUMBER(38,0)
+        unique: true
+      - name: C_EMAIL_ADDRESS
+        synonyms:
+          - email
+          - e-mail
+          - contact email
+        description: Primary email address of the customer.
+        expr: C_EMAIL_ADDRESS
+        data_type: VARCHAR(16777216)
+      - name: C_FIRST_NAME
+        synonyms:
+          - given name
+          - forename
+        expr: C_FIRST_NAME
+        data_type: VARCHAR(16777216)
+      - name: C_FIRST_SALES_DATE_SK
+        expr: C_FIRST_SALES_DATE_SK
+        data_type: NUMBER(38,0)
+      - name: C_FIRST_SHIPTO_DATE_SK
+        expr: C_FIRST_SHIPTO_DATE_SK
+        data_type: NUMBER(38,0)
+      - name: C_LAST_NAME
+        synonyms:
+          - surname
+          - family name
+        expr: C_LAST_NAME
+        data_type: VARCHAR(16777216)
+      - name: C_LAST_REVIEW_DATE_SK
+        expr: C_LAST_REVIEW_DATE_SK
+        data_type: NUMBER(38,0)
+      - name: C_LOGIN
+        expr: C_LOGIN
+        data_type: VARCHAR(16777216)
+      - name: C_PREFERRED_CUST_FLAG
+        synonyms:
+          - preferred flag
+          - loyalty flag
+          - vip flag
+        description: Y when the customer is enrolled in the preferred customer program.
+        expr: C_PREFERRED_CUST_FLAG
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: C_SALUTATION
+        expr: C_SALUTATION
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: CUSTOMER_FULL_NAME
+        synonyms:
+          - full name
+          - customer name
+          - display name
+        description: Salutation, first name and last name concatenated and trimmed.
+        expr: >-
+          NULLIF(TRIM(COALESCE(C_SALUTATION, '') || ' ' || COALESCE(C_FIRST_NAME, '')
+          || ' ' || COALESCE(C_LAST_NAME, '')), '')
+        data_type: VARCHAR(16777216)
+      - name: CUSTOMER_EMAIL_DOMAIN
+        synonyms:
+          - email domain
+          - mail provider
+        description: Lower-cased domain portion of the customer's email address.
+        expr: LOWER(NULLIF(SPLIT_PART(C_EMAIL_ADDRESS, '@', 2), ''))
+        data_type: VARCHAR(16777216)
+      - name: CUSTOMER_AGE
+        synonyms:
+          - age
+          - age in years
+        description: >-
+          Age in completed years derived from the birth year/month/day columns.
+          Invalid or missing birth dates resolve to NULL.
+        expr: >-
+          DATEDIFF(
+            YEAR,
+            TRY_TO_DATE(TO_VARCHAR(C_BIRTH_YEAR) || '-' || LPAD(TO_VARCHAR(C_BIRTH_MONTH), 2, '0')
+              || '-' || LPAD(TO_VARCHAR(C_BIRTH_DAY), 2, '0'), 'YYYY-MM-DD'),
+            CURRENT_DATE()
+          )
+        data_type: NUMBER(38,0)
+      - name: CUSTOMER_AGE_BAND
+        synonyms:
+          - age band
+          - age group
+          - age bracket
+        description: Age bucketed into reporting bands.
+        expr: >-
+          CASE
+            WHEN C_BIRTH_YEAR IS NULL THEN 'Unknown'
+            WHEN YEAR(CURRENT_DATE()) - C_BIRTH_YEAR < 25 THEN '18-24'
+            WHEN YEAR(CURRENT_DATE()) - C_BIRTH_YEAR < 35 THEN '25-34'
+            WHEN YEAR(CURRENT_DATE()) - C_BIRTH_YEAR < 45 THEN '35-44'
+            WHEN YEAR(CURRENT_DATE()) - C_BIRTH_YEAR < 55 THEN '45-54'
+            WHEN YEAR(CURRENT_DATE()) - C_BIRTH_YEAR < 65 THEN '55-64'
+            ELSE '65+'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: CUSTOMER_GENERATION
+        synonyms:
+          - generation
+          - cohort
+        description: Generational cohort derived from the birth year.
+        expr: >-
+          CASE
+            WHEN C_BIRTH_YEAR IS NULL THEN 'Unknown'
+            WHEN C_BIRTH_YEAR < 1946 THEN 'Silent Generation'
+            WHEN C_BIRTH_YEAR < 1965 THEN 'Baby Boomer'
+            WHEN C_BIRTH_YEAR < 1981 THEN 'Gen X'
+            WHEN C_BIRTH_YEAR < 1997 THEN 'Millennial'
+            ELSE 'Gen Z'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: CUSTOMER_BIRTH_REGION
+        synonyms:
+          - birth region
+          - region of birth
+        description: Birth country rolled up into a coarse geographic region.
+        expr: >-
+          CASE
+            WHEN UPPER(C_BIRTH_COUNTRY) IN ('UNITED STATES', 'CANADA', 'MEXICO') THEN 'North America'
+            WHEN UPPER(C_BIRTH_COUNTRY) IN ('BRAZIL', 'ARGENTINA', 'CHILE', 'PERU', 'COLOMBIA') THEN 'South America'
+            WHEN UPPER(C_BIRTH_COUNTRY) IN ('FRANCE', 'GERMANY', 'SPAIN', 'ITALY', 'UNITED KINGDOM', 'POLAND', 'NETHERLANDS') THEN 'Europe'
+            WHEN UPPER(C_BIRTH_COUNTRY) IN ('CHINA', 'INDIA', 'JAPAN', 'INDONESIA', 'THAILAND', 'VIETNAM') THEN 'Asia'
+            WHEN C_BIRTH_COUNTRY IS NULL OR TRIM(C_BIRTH_COUNTRY) = '' THEN 'Unknown'
+            ELSE 'Rest of World'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: CUSTOMER_LOYALTY_SEGMENT
+        synonyms:
+          - loyalty segment
+          - customer segment
+          - engagement tier
+        description: >-
+          Combines the preferred-customer flag with review recency to classify the
+          customer as Champion, Loyal, Engaged, Lapsed or Prospect.
+        expr: >-
+          CASE
+            WHEN C_PREFERRED_CUST_FLAG = 'Y' AND C_LAST_REVIEW_DATE_SK IS NOT NULL THEN 'Champion'
+            WHEN C_PREFERRED_CUST_FLAG = 'Y' THEN 'Loyal'
+            WHEN C_LAST_REVIEW_DATE_SK IS NOT NULL THEN 'Engaged'
+            WHEN C_FIRST_SALES_DATE_SK IS NOT NULL THEN 'Lapsed'
+            ELSE 'Prospect'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: CUSTOMER_ONBOARDING_LAG_DAYS
+        synonyms:
+          - onboarding lag
+          - days to first shipment
+        description: Days between the first sale date key and the first ship-to date key.
+        expr: COALESCE(C_FIRST_SHIPTO_DATE_SK, 0) - COALESCE(C_FIRST_SALES_DATE_SK, 0)
+        data_type: NUMBER(38,0)
+      - name: IS_PREFERRED_CUSTOMER
+        synonyms:
+          - preferred
+          - is vip
+        description: Boolean form of the preferred customer flag.
+        expr: IFF(C_PREFERRED_CUST_FLAG = 'Y', TRUE, FALSE)
+        data_type: BOOLEAN
+      - name: IS_CONTACTABLE
+        synonyms:
+          - reachable
+          - marketable
+        description: True when the customer has a usable email address on file.
+        expr: IFF(C_EMAIL_ADDRESS IS NOT NULL AND TRIM(C_EMAIL_ADDRESS) <> '', TRUE, FALSE)
+        data_type: BOOLEAN
+    metrics:
+      - name: CUSTOMER_COUNT
+        synonyms:
+          - number of customers
+          - customer headcount
+          - distinct customers
+        description: Distinct count of customers.
+        expr: COUNT(DISTINCT CUSTOMER.C_CUSTOMER_SK)
+        access_modifier: public_access
+      - name: PREFERRED_CUSTOMER_COUNT
+        synonyms:
+          - vip customers
+          - loyalty members
+        description: Distinct customers enrolled in the preferred customer program.
+        expr: COUNT(DISTINCT CASE WHEN CUSTOMER.C_PREFERRED_CUST_FLAG = 'Y' THEN CUSTOMER.C_CUSTOMER_SK END)
+        access_modifier: public_access
+      - name: CONTACTABLE_CUSTOMER_COUNT
+        synonyms:
+          - marketable customers
+          - customers with email
+        description: Distinct customers with a non-empty email address.
+        expr: >-
+          COUNT(DISTINCT CASE
+            WHEN CUSTOMER.C_EMAIL_ADDRESS IS NOT NULL AND TRIM(CUSTOMER.C_EMAIL_ADDRESS) <> ''
+            THEN CUSTOMER.C_CUSTOMER_SK
+          END)
+        access_modifier: public_access
+      - name: PREFERRED_CUSTOMER_SHARE_PCT
+        synonyms:
+          - loyalty penetration
+          - percent preferred
+        description: Preferred customers as a percentage of all customers.
+        expr: >-
+          100.0 * COUNT(DISTINCT CASE WHEN CUSTOMER.C_PREFERRED_CUST_FLAG = 'Y' THEN CUSTOMER.C_CUSTOMER_SK END)
+          / NULLIF(COUNT(DISTINCT CUSTOMER.C_CUSTOMER_SK), 0)
+        access_modifier: public_access
+      - name: AVG_CUSTOMER_AGE
+        synonyms:
+          - average age
+          - mean customer age
+        description: Average customer age in years, ignoring unknown birth years.
+        expr: AVG(CASE WHEN CUSTOMER.C_BIRTH_YEAR BETWEEN 1900 AND YEAR(CURRENT_DATE()) THEN YEAR(CURRENT_DATE()) - CUSTOMER.C_BIRTH_YEAR END)
+        access_modifier: public_access
+      - name: INTERNAL_CUSTOMER_EMAIL_DOMAIN_COUNT
+        description: Distinct email domains; kept private and used only by derived metrics.
+        expr: COUNT(DISTINCT LOWER(SPLIT_PART(CUSTOMER.C_EMAIL_ADDRESS, '@', 2)))
+        access_modifier: private_access
+    filters:
+      - name: PREFERRED_CUSTOMERS
+        synonyms:
+          - vip only
+          - loyalty members only
+        description: Restricts to customers in the preferred customer program.
+        expr: CUSTOMER.C_PREFERRED_CUST_FLAG = 'Y'
+      - name: CONTACTABLE_CUSTOMERS
+        synonyms:
+          - customers with email
+        description: Restricts to customers with a usable email address.
+        expr: CUSTOMER.C_EMAIL_ADDRESS IS NOT NULL AND TRIM(CUSTOMER.C_EMAIL_ADDRESS) <> ''
+      - name: DOMESTIC_CUSTOMERS
+        synonyms:
+          - us customers
+        description: Restricts to customers born in the United States.
+        expr: UPPER(CUSTOMER.C_BIRTH_COUNTRY) = 'UNITED STATES'
+    primary_key:
+      columns:
+        - C_CUSTOMER_SK
+    tags:
+      - name:
+          database: DEMO
+          schema: STORE
+          tag: DATA_DOMAIN
+        value: CUSTOMER
+  - name: DATE_DIM
+    description: Gregorian and fiscal calendar shared by sales and returns.
+    synonyms:
+      - calendar
+      - date dimension
+      - dates
+      - time
+    base_table:
+      database: DEMO
+      schema: STORE
+      table: DATE_DIM
+    dimensions:
+      - name: D_CURRENT_DAY
+        expr: D_CURRENT_DAY
+        data_type: VARCHAR(16777216)
+      - name: D_CURRENT_MONTH
+        expr: D_CURRENT_MONTH
+        data_type: VARCHAR(16777216)
+      - name: D_CURRENT_QUARTER
+        expr: D_CURRENT_QUARTER
+        data_type: VARCHAR(16777216)
+      - name: D_CURRENT_WEEK
+        expr: D_CURRENT_WEEK
+        data_type: VARCHAR(16777216)
+      - name: D_CURRENT_YEAR
+        expr: D_CURRENT_YEAR
+        data_type: VARCHAR(16777216)
+      - name: D_DATE_ID
+        expr: D_DATE_ID
+        data_type: VARCHAR(16777216)
+      - name: D_DATE_SK
+        synonyms:
+          - date key
+          - date surrogate key
+        description: Surrogate key of the calendar date.
+        expr: D_DATE_SK
+        data_type: NUMBER(38,0)
+        unique: true
+      - name: D_DAY_NAME
+        expr: D_DAY_NAME
+        data_type: VARCHAR(16777216)
+      - name: D_DOM
+        expr: D_DOM
+        data_type: NUMBER(38,0)
+      - name: D_DOW
+        expr: D_DOW
+        data_type: NUMBER(38,0)
+      - name: D_FIRST_DOM
+        expr: D_FIRST_DOM
+        data_type: NUMBER(38,0)
+      - name: D_FOLLOWING_HOLIDAY
+        expr: D_FOLLOWING_HOLIDAY
+        data_type: VARCHAR(16777216)
+      - name: D_FY_QUARTER_SEQ
+        expr: D_FY_QUARTER_SEQ
+        data_type: NUMBER(38,0)
+      - name: D_FY_WEEK_SEQ
+        expr: D_FY_WEEK_SEQ
+        data_type: NUMBER(38,0)
+      - name: D_FY_YEAR
+        expr: D_FY_YEAR
+        data_type: NUMBER(38,0)
+      - name: D_HOLIDAY
+        synonyms:
+          - holiday flag
+          - public holiday
+        description: Y when the date is a holiday.
+        expr: D_HOLIDAY
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: D_LAST_DOM
+        expr: D_LAST_DOM
+        data_type: NUMBER(38,0)
+      - name: D_MONTH_SEQ
+        expr: D_MONTH_SEQ
+        data_type: NUMBER(38,0)
+      - name: D_MOY
+        expr: D_MOY
+        data_type: NUMBER(38,0)
+      - name: D_QOY
+        expr: D_QOY
+        data_type: NUMBER(38,0)
+      - name: D_QUARTER_NAME
+        expr: D_QUARTER_NAME
+        data_type: VARCHAR(16777216)
+      - name: D_QUARTER_SEQ
+        expr: D_QUARTER_SEQ
+        data_type: NUMBER(38,0)
+      - name: D_SAME_DAY_LQ
+        expr: D_SAME_DAY_LQ
+        data_type: NUMBER(38,0)
+      - name: D_SAME_DAY_LY
+        expr: D_SAME_DAY_LY
+        data_type: NUMBER(38,0)
+      - name: D_WEEK_SEQ
+        expr: D_WEEK_SEQ
+        data_type: NUMBER(38,0)
+      - name: D_WEEKEND
+        synonyms:
+          - weekend flag
+          - is weekend
+        description: Y when the date falls on a Saturday or Sunday.
+        expr: D_WEEKEND
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: D_YEAR
+        synonyms:
+          - calendar year
+          - year
+        expr: D_YEAR
+        data_type: NUMBER(38,0)
+      - name: D_MONTH_NAME
+        synonyms:
+          - month name
+          - month label
+        description: Abbreviated month name of the calendar date.
+        expr: MONTHNAME(D_DATE)
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: D_YEAR_MONTH
+        synonyms:
+          - year month
+          - month key
+        description: Calendar month formatted as YYYY-MM for chronological sorting.
+        expr: TO_CHAR(D_DATE, 'YYYY-MM')
+        data_type: VARCHAR(16777216)
+      - name: D_YEAR_QUARTER
+        synonyms:
+          - year quarter
+          - quarter label
+        description: Calendar quarter formatted as YYYY-Qn.
+        expr: TO_VARCHAR(D_YEAR) || '-Q' || TO_VARCHAR(D_QOY)
+        data_type: VARCHAR(16777216)
+      - name: D_HALF_OF_YEAR
+        synonyms:
+          - half year
+          - semester
+        expr: IFF(D_MOY <= 6, 'H1', 'H2')
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: D_SEASON
+        synonyms:
+          - season
+          - retail season
+        description: Northern-hemisphere retail season derived from the month of year.
+        expr: >-
+          CASE
+            WHEN D_MOY IN (12, 1, 2) THEN 'Winter'
+            WHEN D_MOY IN (3, 4, 5) THEN 'Spring'
+            WHEN D_MOY IN (6, 7, 8) THEN 'Summer'
+            ELSE 'Fall'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: D_DAY_TYPE
+        synonyms:
+          - day type
+          - trading day type
+        description: Classifies each date as Holiday, Weekend or Weekday.
+        expr: >-
+          CASE
+            WHEN D_HOLIDAY = 'Y' THEN 'Holiday'
+            WHEN D_WEEKEND = 'Y' THEN 'Weekend'
+            ELSE 'Weekday'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: D_IS_SELLING_DAY
+        synonyms:
+          - selling day
+          - trading day
+        description: True for non-holiday weekdays used as the trading-day denominator.
+        expr: IFF(COALESCE(D_HOLIDAY, 'N') = 'N' AND COALESCE(D_WEEKEND, 'N') = 'N', TRUE, FALSE)
+        data_type: BOOLEAN
+      - name: D_RELATIVE_YEAR_OFFSET
+        synonyms:
+          - years ago
+          - relative year
+        description: Offset of the calendar year from the current year (0 = current year).
+        expr: D_YEAR - YEAR(CURRENT_DATE())
+        data_type: NUMBER(38,0)
+      - name: D_RELATIVE_MONTH_OFFSET
+        synonyms:
+          - months ago
+          - relative month
+        description: Offset in whole months from the current month (0 = current month).
+        expr: DATEDIFF(MONTH, DATE_TRUNC('MONTH', CURRENT_DATE()), DATE_TRUNC('MONTH', D_DATE))
+        data_type: NUMBER(38,0)
+      - name: D_IS_LAST_365_DAYS
+        synonyms:
+          - trailing year
+          - last 12 months
+        expr: IFF(D_DATE BETWEEN DATEADD(DAY, -364, CURRENT_DATE()) AND CURRENT_DATE(), TRUE, FALSE)
+        data_type: BOOLEAN
+    time_dimensions:
+      - name: D_DATE
+        synonyms:
+          - date
+          - calendar date
+          - day
+        description: Calendar date at day grain.
+        expr: D_DATE
+        data_type: DATE
+        unique: true
+      - name: D_WEEK_START_DATE
+        synonyms:
+          - week start
+          - week beginning
+        expr: DATE_TRUNC('WEEK', D_DATE)
+        data_type: DATE
+      - name: D_MONTH_START_DATE
+        synonyms:
+          - month start
+          - first day of month
+        expr: DATE_TRUNC('MONTH', D_DATE)
+        data_type: DATE
+      - name: D_QUARTER_START_DATE
+        synonyms:
+          - quarter start
+          - first day of quarter
+        expr: DATE_TRUNC('QUARTER', D_DATE)
+        data_type: DATE
+      - name: D_SAME_DAY_PRIOR_YEAR
+        synonyms:
+          - same day last year
+          - prior year date
+        expr: DATEADD(YEAR, -1, D_DATE)
+        data_type: DATE
+    metrics:
+      - name: CALENDAR_DAY_COUNT
+        synonyms:
+          - number of days
+          - days in period
+        description: Distinct calendar days in the current filter context.
+        expr: COUNT(DISTINCT DATE_DIM.D_DATE_SK)
+        access_modifier: public_access
+      - name: SELLING_DAY_COUNT
+        synonyms:
+          - trading days
+          - selling days
+        description: Distinct non-holiday weekdays in the current filter context.
+        expr: >-
+          COUNT(DISTINCT CASE
+            WHEN COALESCE(DATE_DIM.D_HOLIDAY, 'N') = 'N' AND COALESCE(DATE_DIM.D_WEEKEND, 'N') = 'N'
+            THEN DATE_DIM.D_DATE_SK
+          END)
+        access_modifier: public_access
+      - name: WEEKEND_DAY_COUNT
+        synonyms:
+          - weekend days
+        expr: COUNT(DISTINCT CASE WHEN DATE_DIM.D_WEEKEND = 'Y' THEN DATE_DIM.D_DATE_SK END)
+        access_modifier: public_access
+      - name: LATEST_CALENDAR_DATE
+        synonyms:
+          - max date
+          - most recent date
+        description: Most recent calendar date in the current filter context.
+        expr: MAX(DATE_DIM.D_DATE)
+        access_modifier: public_access
+    filters:
+      - name: LAST_12_MONTHS
+        synonyms:
+          - trailing twelve months
+          - ttm
+        description: Restricts to the trailing 365 days ending today.
+        expr: DATE_DIM.D_DATE BETWEEN DATEADD(DAY, -364, CURRENT_DATE()) AND CURRENT_DATE()
+      - name: CURRENT_CALENDAR_YEAR
+        synonyms:
+          - this year
+          - year to date
+        expr: DATE_DIM.D_YEAR = YEAR(CURRENT_DATE())
+      - name: SELLING_DAYS_ONLY
+        synonyms:
+          - trading days only
+        expr: COALESCE(DATE_DIM.D_HOLIDAY, 'N') = 'N' AND COALESCE(DATE_DIM.D_WEEKEND, 'N') = 'N'
+      - name: HOLIDAYS_ONLY
+        synonyms:
+          - holidays
+        expr: DATE_DIM.D_HOLIDAY = 'Y'
+    primary_key:
+      columns:
+        - D_DATE_SK
+    tags:
+      - name:
+          database: DEMO
+          schema: STORE
+          tag: DATA_DOMAIN
+        value: CALENDAR
+  - name: STORE
+    description: Store master data, including location, size, staffing and tax attributes.
+    synonyms:
+      - stores
+      - shop
+      - branch
+      - location
+    base_table:
+      database: DEMO
+      schema: STORE
+      table: STORE
+    dimensions:
+      - name: S_CITY
+        expr: S_CITY
+        data_type: VARCHAR(16777216)
+      - name: S_CLOSED_DATE_SK
+        expr: S_CLOSED_DATE_SK
+        data_type: NUMBER(38,0)
+      - name: S_COMPANY_ID
+        expr: S_COMPANY_ID
+        data_type: NUMBER(38,0)
+      - name: S_COMPANY_NAME
+        expr: S_COMPANY_NAME
+        data_type: VARCHAR(16777216)
+      - name: S_COUNTRY
+        expr: S_COUNTRY
+        data_type: VARCHAR(16777216)
+      - name: S_COUNTY
+        expr: S_COUNTY
+        data_type: VARCHAR(16777216)
+      - name: S_DIVISION_ID
+        expr: S_DIVISION_ID
+        data_type: NUMBER(38,0)
+      - name: S_DIVISION_NAME
+        expr: S_DIVISION_NAME
+        data_type: VARCHAR(16777216)
+      - name: S_FLOOR_SPACE
+        expr: S_FLOOR_SPACE
+        data_type: NUMBER(38,0)
+      - name: S_GEOGRAPHY_CLASS
+        expr: S_GEOGRAPHY_CLASS
+        data_type: VARCHAR(16777216)
+      - name: S_HOURS
+        expr: S_HOURS
+        data_type: VARCHAR(16777216)
+      - name: S_MANAGER
+        expr: S_MANAGER
+        data_type: VARCHAR(16777216)
+      - name: S_MARKET_DESC
+        expr: S_MARKET_DESC
+        data_type: VARCHAR(16777216)
+      - name: S_MARKET_ID
+        expr: S_MARKET_ID
+        data_type: NUMBER(38,0)
+      - name: S_MARKET_MANAGER
+        expr: S_MARKET_MANAGER
+        data_type: VARCHAR(16777216)
+      - name: S_NUMBER_EMPLOYEES
+        expr: S_NUMBER_EMPLOYEES
+        data_type: NUMBER(38,0)
+      - name: S_STATE
+        synonyms:
+          - state
+          - province
+          - region code
+        expr: S_STATE
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: S_STORE_ID
+        synonyms:
+          - store number
+          - store code
+        description: Natural (business) key of the store.
+        expr: S_STORE_ID
+        data_type: VARCHAR(16777216)
+      - name: S_STORE_NAME
+        synonyms:
+          - store name
+          - branch name
+        expr: S_STORE_NAME
+        data_type: VARCHAR(16777216)
+      - name: S_STORE_SK
+        synonyms:
+          - store key
+          - store surrogate key
+        expr: S_STORE_SK
+        data_type: NUMBER(38,0)
+        unique: true
+      - name: S_STREET_NAME
+        expr: S_STREET_NAME
+        data_type: VARCHAR(16777216)
+      - name: S_STREET_NUMBER
+        expr: S_STREET_NUMBER
+        data_type: VARCHAR(16777216)
+      - name: S_STREET_TYPE
+        expr: S_STREET_TYPE
+        data_type: VARCHAR(16777216)
+      - name: S_SUITE_NUMBER
+        expr: S_SUITE_NUMBER
+        data_type: VARCHAR(16777216)
+      - name: S_ZIP
+        synonyms:
+          - zip code
+          - postal code
+        expr: S_ZIP
+        data_type: VARCHAR(16777216)
+      - name: S_FULL_ADDRESS
+        synonyms:
+          - address
+          - street address
+        description: Street number, name, type, suite, city, state and zip in one string.
+        expr: >-
+          TRIM(COALESCE(S_STREET_NUMBER, '') || ' ' || COALESCE(S_STREET_NAME, '') || ' '
+          || COALESCE(S_STREET_TYPE, '') || IFF(S_SUITE_NUMBER IS NULL, '', ' ' || S_SUITE_NUMBER)
+          || ', ' || COALESCE(S_CITY, '') || ', ' || COALESCE(S_STATE, '') || ' ' || COALESCE(S_ZIP, ''))
+        data_type: VARCHAR(16777216)
+      - name: S_ZIP3
+        synonyms:
+          - zip3
+          - postal prefix
+        description: First three characters of the postal code, used for trade-area rollups.
+        expr: LEFT(COALESCE(S_ZIP, ''), 3)
+        data_type: VARCHAR(16777216)
+      - name: S_STORE_SIZE_BAND
+        synonyms:
+          - store size
+          - format
+          - square footage band
+        description: Store format derived from the sales floor space.
+        expr: >-
+          CASE
+            WHEN S_FLOOR_SPACE IS NULL THEN 'Unknown'
+            WHEN S_FLOOR_SPACE < 5000 THEN 'Express'
+            WHEN S_FLOOR_SPACE < 20000 THEN 'Neighborhood'
+            WHEN S_FLOOR_SPACE < 50000 THEN 'Standard'
+            WHEN S_FLOOR_SPACE < 100000 THEN 'Supercenter'
+            ELSE 'Flagship'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: S_STAFFING_BAND
+        synonyms:
+          - staffing level
+          - headcount band
+        expr: >-
+          CASE
+            WHEN S_NUMBER_EMPLOYEES IS NULL THEN 'Unknown'
+            WHEN S_NUMBER_EMPLOYEES < 50 THEN 'Small team'
+            WHEN S_NUMBER_EMPLOYEES < 200 THEN 'Medium team'
+            WHEN S_NUMBER_EMPLOYEES < 500 THEN 'Large team'
+            ELSE 'Very large team'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: S_MARKET_LABEL
+        synonyms:
+          - market
+          - market name
+        description: Market description, falling back to the market id when blank.
+        expr: COALESCE(NULLIF(TRIM(S_MARKET_DESC), ''), 'Market ' || TO_VARCHAR(S_MARKET_ID))
+        data_type: VARCHAR(16777216)
+      - name: S_ORG_PATH
+        synonyms:
+          - org hierarchy
+          - company division path
+        description: Company / division / market breadcrumb for the store.
+        expr: >-
+          COALESCE(S_COMPANY_NAME, 'Unknown company') || ' > '
+          || COALESCE(S_DIVISION_NAME, 'Unknown division') || ' > '
+          || COALESCE(NULLIF(TRIM(S_MARKET_DESC), ''), 'Market ' || TO_VARCHAR(S_MARKET_ID))
+        data_type: VARCHAR(16777216)
+      - name: S_IS_ACTIVE
+        synonyms:
+          - open store
+          - currently trading
+        description: >-
+          True when the store has no closing date and the current record version has
+          not been end-dated.
+        expr: >-
+          IFF(S_CLOSED_DATE_SK IS NULL
+              AND (S_REC_END_DATE IS NULL OR S_REC_END_DATE >= CURRENT_DATE()), TRUE, FALSE)
+        data_type: BOOLEAN
+      - name: S_TAX_BAND
+        synonyms:
+          - tax band
+          - tax bracket
+        expr: >-
+          CASE
+            WHEN S_TAX_PERCENTAGE IS NULL THEN 'Unknown'
+            WHEN S_TAX_PERCENTAGE < 0.05 THEN 'Low (<5%)'
+            WHEN S_TAX_PERCENTAGE < 0.09 THEN 'Medium (5-9%)'
+            ELSE 'High (9%+)'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+    time_dimensions:
+      - name: S_REC_END_DATE
+        synonyms:
+          - record end date
+          - version valid to
+        expr: S_REC_END_DATE
+        data_type: DATE
+      - name: S_REC_START_DATE
+        synonyms:
+          - record start date
+          - version valid from
+        expr: S_REC_START_DATE
+        data_type: DATE
+    facts:
+      - name: S_GMT_OFFSET
+        synonyms:
+          - gmt offset
+          - timezone offset
+        expr: S_GMT_OFFSET
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: S_TAX_PERCENTAGE
+        synonyms:
+          - tax rate
+          - sales tax percentage
+        expr: S_TAX_PERCENTAGE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: S_FLOOR_SPACE_SQFT
+        synonyms:
+          - floor space
+          - square feet
+        description: Sales floor space in square feet.
+        expr: S_FLOOR_SPACE
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: S_SPACE_PER_EMPLOYEE
+        synonyms:
+          - space per employee
+          - square feet per associate
+        description: Sales floor space divided by the number of employees.
+        expr: ROUND(S_FLOOR_SPACE / NULLIF(S_NUMBER_EMPLOYEES, 0), 2)
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: S_STORE_AGE_DAYS
+        synonyms:
+          - store age
+          - days since opening
+        description: Days since the current store record became effective.
+        expr: DATEDIFF(DAY, S_REC_START_DATE, CURRENT_DATE())
+        data_type: NUMBER(38,0)
+        access_modifier: private_access
+    metrics:
+      - name: STORE_COUNT
+        synonyms:
+          - number of stores
+          - store headcount
+        description: Distinct count of stores.
+        expr: COUNT(DISTINCT STORE.S_STORE_SK)
+        access_modifier: public_access
+      - name: ACTIVE_STORE_COUNT
+        synonyms:
+          - open stores
+          - trading stores
+        description: Distinct stores that are neither closed nor end-dated.
+        expr: >-
+          COUNT(DISTINCT CASE
+            WHEN STORE.S_CLOSED_DATE_SK IS NULL
+             AND (STORE.S_REC_END_DATE IS NULL OR STORE.S_REC_END_DATE >= CURRENT_DATE())
+            THEN STORE.S_STORE_SK
+          END)
+        access_modifier: public_access
+      - name: TOTAL_FLOOR_SPACE
+        synonyms:
+          - total square feet
+          - selling space
+        description: >-
+          Total sales floor space. Semi-additive: it is a stock measure and is not
+          summed across the calendar, the latest date in context is used instead.
+        expr: SUM(STORE.S_FLOOR_SPACE)
+        access_modifier: public_access
+        non_additive_dimensions:
+          - table: DATE_DIM
+            dimension: D_DATE
+            sort_direction: descending
+            null_order: last
+      - name: EMPLOYEE_COUNT
+        synonyms:
+          - associates
+          - store headcount
+        expr: SUM(STORE.S_NUMBER_EMPLOYEES)
+        access_modifier: public_access
+        non_additive_dimensions:
+          - table: DATE_DIM
+            dimension: D_DATE
+            sort_direction: descending
+            null_order: last
+      - name: AVG_STORE_TAX_RATE
+        synonyms:
+          - average tax rate
+        expr: AVG(STORE.S_TAX_PERCENTAGE)
+        access_modifier: public_access
+      - name: AVG_SPACE_PER_EMPLOYEE
+        synonyms:
+          - average space per associate
+        expr: SUM(STORE.S_FLOOR_SPACE) / NULLIF(SUM(STORE.S_NUMBER_EMPLOYEES), 0)
+        access_modifier: public_access
+    filters:
+      - name: ACTIVE_STORES
+        synonyms:
+          - open stores only
+        expr: >-
+          STORE.S_CLOSED_DATE_SK IS NULL
+          AND (STORE.S_REC_END_DATE IS NULL OR STORE.S_REC_END_DATE >= CURRENT_DATE())
+      - name: LARGE_FORMAT_STORES
+        synonyms:
+          - supercenters
+        expr: STORE.S_FLOOR_SPACE >= 50000
+    primary_key:
+      columns:
+        - S_STORE_SK
+    tags:
+      - name:
+          database: DEMO
+          schema: STORE
+          tag: DATA_DOMAIN
+        value: STORE
+  - name: STORE_RETURNS
+    description: Line-level merchandise returns processed in stores.
+    synonyms:
+      - returns
+      - refunds
+      - merchandise returns
+    base_table:
+      database: DEMO
+      schema: STORE
+      table: STORE_RETURNS
+    dimensions:
+      - name: SR_ADDR_SK
+        expr: SR_ADDR_SK
+        data_type: NUMBER(38,0)
+      - name: SR_CDEMO_SK
+        expr: SR_CDEMO_SK
+        data_type: NUMBER(38,0)
+      - name: SR_CUSTOMER_SK
+        expr: SR_CUSTOMER_SK
+        data_type: NUMBER(38,0)
+      - name: SR_HDEMO_SK
+        expr: SR_HDEMO_SK
+        data_type: NUMBER(38,0)
+      - name: SR_ITEM_SK
+        expr: SR_ITEM_SK
+        data_type: NUMBER(38,0)
+      - name: SR_REASON_SK
+        expr: SR_REASON_SK
+        data_type: NUMBER(38,0)
+      - name: SR_RETURN_QUANTITY
+        expr: SR_RETURN_QUANTITY
+        data_type: NUMBER(38,0)
+      - name: SR_RETURN_TIME_SK
+        expr: SR_RETURN_TIME_SK
+        data_type: NUMBER(38,0)
+      - name: SR_RETURNED_DATE_SK
+        expr: SR_RETURNED_DATE_SK
+        data_type: NUMBER(38,0)
+      - name: SR_STORE_SK
+        expr: SR_STORE_SK
+        data_type: NUMBER(38,0)
+      - name: SR_TICKET_NUMBER
+        synonyms:
+          - return ticket
+          - return receipt number
+        expr: SR_TICKET_NUMBER
+        data_type: NUMBER(38,0)
+      - name: SR_RETURN_SIZE_BAND
+        synonyms:
+          - return size
+          - return value band
+        description: Return value bucketed into reporting bands.
+        expr: >-
+          CASE
+            WHEN SR_RETURN_AMT IS NULL THEN 'Unknown'
+            WHEN SR_RETURN_AMT < 25 THEN 'Under $25'
+            WHEN SR_RETURN_AMT < 100 THEN '$25-$100'
+            WHEN SR_RETURN_AMT < 250 THEN '$100-$250'
+            ELSE '$250+'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: SR_REFUND_METHOD
+        synonyms:
+          - refund type
+          - how refunded
+        description: >-
+          Classifies the refund as Cash, Store credit, Mixed, Charge reversal or
+          None based on which settlement amounts are populated.
+        expr: >-
+          CASE
+            WHEN COALESCE(SR_REFUNDED_CASH, 0) > 0 AND COALESCE(SR_STORE_CREDIT, 0) > 0 THEN 'Mixed'
+            WHEN COALESCE(SR_REFUNDED_CASH, 0) > 0 THEN 'Cash'
+            WHEN COALESCE(SR_STORE_CREDIT, 0) > 0 THEN 'Store credit'
+            WHEN COALESCE(SR_REVERSED_CHARGE, 0) > 0 THEN 'Charge reversal'
+            ELSE 'None'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: SR_IS_LOSS_MAKING
+        synonyms:
+          - loss making return
+        description: True when the return produced a net loss after fees and shipping.
+        expr: IFF(COALESCE(SR_NET_LOSS, 0) > 0, TRUE, FALSE)
+        data_type: BOOLEAN
+      - name: SR_FEE_TIER
+        synonyms:
+          - restocking fee tier
+        expr: >-
+          CASE
+            WHEN COALESCE(SR_FEE, 0) = 0 THEN 'No fee'
+            WHEN SR_FEE < 10 THEN 'Low fee'
+            WHEN SR_FEE < 50 THEN 'Standard fee'
+            ELSE 'High fee'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+    facts:
+      - name: SR_FEE
+        expr: SR_FEE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_NET_LOSS
+        expr: SR_NET_LOSS
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_REFUNDED_CASH
+        expr: SR_REFUNDED_CASH
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_RETURN_AMT
+        expr: SR_RETURN_AMT
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_RETURN_AMT_INC_TAX
+        expr: SR_RETURN_AMT_INC_TAX
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_RETURN_SHIP_COST
+        expr: SR_RETURN_SHIP_COST
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_RETURN_TAX
+        expr: SR_RETURN_TAX
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_REVERSED_CHARGE
+        expr: SR_REVERSED_CHARGE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_STORE_CREDIT
+        synonyms:
+          - store credit
+          - gift card refund
+        expr: SR_STORE_CREDIT
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_NET_RECOVERY
+        synonyms:
+          - net recovery
+          - recovered value
+        description: Return amount net of restocking fee and return shipping cost.
+        expr: SR_RETURN_AMT - COALESCE(SR_FEE, 0) - COALESCE(SR_RETURN_SHIP_COST, 0)
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SR_TOTAL_SETTLEMENT
+        synonyms:
+          - settlement amount
+        description: Cash refunded plus store credit plus reversed charges.
+        expr: COALESCE(SR_REFUNDED_CASH, 0) + COALESCE(SR_STORE_CREDIT, 0) + COALESCE(SR_REVERSED_CHARGE, 0)
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+    metrics:
+      - name: RETURN_AMOUNT
+        synonyms:
+          - returns value
+          - returned dollars
+          - refund amount
+        description: Total value of returned merchandise, excluding tax.
+        expr: SUM(STORE_RETURNS.SR_RETURN_AMT)
+        access_modifier: public_access
+      - name: RETURN_AMOUNT_INC_TAX
+        synonyms:
+          - returns value with tax
+        expr: SUM(STORE_RETURNS.SR_RETURN_AMT_INC_TAX)
+        access_modifier: public_access
+      - name: RETURN_QUANTITY
+        synonyms:
+          - returned units
+          - units returned
+        expr: SUM(STORE_RETURNS.SR_RETURN_QUANTITY)
+        access_modifier: public_access
+      - name: RETURN_NET_LOSS
+        synonyms:
+          - shrink
+          - returns net loss
+        expr: SUM(STORE_RETURNS.SR_NET_LOSS)
+        access_modifier: public_access
+      - name: RETURN_TICKET_COUNT
+        synonyms:
+          - return transactions
+          - number of returns
+        expr: COUNT(DISTINCT STORE_RETURNS.SR_TICKET_NUMBER)
+        access_modifier: public_access
+      - name: RETURN_LINE_COUNT
+        synonyms:
+          - return lines
+          - returned line items
+        expr: COUNT(STORE_RETURNS.SR_ITEM_SK)
+        access_modifier: public_access
+      - name: RETURNING_CUSTOMER_COUNT
+        synonyms:
+          - customers who returned
+          - returners
+        description: Distinct customers with at least one return, resolved through the customer relationship.
+        expr: COUNT(DISTINCT STORE_RETURNS.SR_CUSTOMER_SK)
+        access_modifier: public_access
+        using_relationships:
+          - STORE_RETURNS_TO_CUSTOMER
+      - name: RETURN_HANDLING_COST
+        synonyms:
+          - returns processing cost
+          - reverse logistics cost
+        description: >-
+          Restocking fees plus return shipping plus a 15% assumed re-processing
+          charge on the returned merchandise value.
+        expr: >-
+          SUM(COALESCE(STORE_RETURNS.SR_FEE, 0)
+              + COALESCE(STORE_RETURNS.SR_RETURN_SHIP_COST, 0)
+              + 0.15 * COALESCE(STORE_RETURNS.SR_RETURN_AMT, 0))
+        access_modifier: public_access
+      - name: HIGH_VALUE_RETURN_AMOUNT
+        synonyms:
+          - large returns
+          - high value refunds
+        description: Value of returns of $250 or more, which require manager approval.
+        expr: SUM(CASE WHEN STORE_RETURNS.SR_RETURN_AMT >= 250 THEN STORE_RETURNS.SR_RETURN_AMT ELSE 0 END)
+        access_modifier: public_access
+      - name: AVG_RETURN_VALUE
+        synonyms:
+          - average refund
+          - average return per ticket
+        expr: SUM(STORE_RETURNS.SR_RETURN_AMT) / NULLIF(COUNT(DISTINCT STORE_RETURNS.SR_TICKET_NUMBER), 0)
+        access_modifier: public_access
+      - name: CASH_REFUND_SHARE_PCT
+        synonyms:
+          - percent refunded in cash
+        description: Cash refunds as a percentage of the total returned value.
+        expr: >-
+          100.0 * SUM(COALESCE(STORE_RETURNS.SR_REFUNDED_CASH, 0))
+          / NULLIF(SUM(STORE_RETURNS.SR_RETURN_AMT), 0)
+        access_modifier: public_access
+      - name: RETURN_NET_RECOVERY
+        synonyms:
+          - net recovered value
+        description: Returned value net of restocking fees and return shipping cost.
+        expr: >-
+          SUM(STORE_RETURNS.SR_RETURN_AMT - COALESCE(STORE_RETURNS.SR_FEE, 0)
+              - COALESCE(STORE_RETURNS.SR_RETURN_SHIP_COST, 0))
+        access_modifier: public_access
+    filters:
+      - name: HIGH_VALUE_RETURNS
+        synonyms:
+          - large returns only
+        expr: STORE_RETURNS.SR_RETURN_AMT >= 250
+      - name: CASH_REFUNDS_ONLY
+        expr: COALESCE(STORE_RETURNS.SR_REFUNDED_CASH, 0) > 0
+    tags:
+      - name:
+          database: DEMO
+          schema: STORE
+          tag: DATA_DOMAIN
+        value: RETURNS
+  - name: STORE_SALES
+    description: Line-level point-of-sale transactions captured in stores.
+    synonyms:
+      - sales
+      - transactions
+      - pos sales
+      - tickets
+    base_table:
+      database: DEMO
+      schema: STORE
+      table: STORE_SALES
+    dimensions:
+      - name: SS_ADDR_SK
+        expr: SS_ADDR_SK
+        data_type: NUMBER(38,0)
+      - name: SS_CDEMO_SK
+        expr: SS_CDEMO_SK
+        data_type: NUMBER(38,0)
+      - name: SS_CUSTOMER_SK
+        expr: SS_CUSTOMER_SK
+        data_type: NUMBER(38,0)
+      - name: SS_HDEMO_SK
+        expr: SS_HDEMO_SK
+        data_type: NUMBER(38,0)
+      - name: SS_ITEM_SK
+        expr: SS_ITEM_SK
+        data_type: NUMBER(38,0)
+      - name: SS_PROMO_SK
+        expr: SS_PROMO_SK
+        data_type: NUMBER(38,0)
+      - name: SS_QUANTITY
+        expr: SS_QUANTITY
+        data_type: NUMBER(38,0)
+      - name: SS_SOLD_DATE_SK
+        expr: SS_SOLD_DATE_SK
+        data_type: NUMBER(38,0)
+      - name: SS_SOLD_TIME_SK
+        expr: SS_SOLD_TIME_SK
+        data_type: NUMBER(38,0)
+      - name: SS_STORE_SK
+        expr: SS_STORE_SK
+        data_type: NUMBER(38,0)
+      - name: SS_TICKET_NUMBER
+        synonyms:
+          - ticket
+          - receipt number
+          - basket id
+        expr: SS_TICKET_NUMBER
+        data_type: NUMBER(38,0)
+      - name: SS_PROMOTION_STATUS
+        synonyms:
+          - promoted
+          - promotion status
+        description: Whether the sales line was attached to a promotion.
+        expr: IFF(SS_PROMO_SK IS NULL, 'Non-promoted', 'Promoted')
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: SS_DISCOUNT_BAND
+        synonyms:
+          - discount band
+          - markdown depth
+        description: Discount as a share of the extended list price, bucketed into bands.
+        expr: >-
+          CASE
+            WHEN COALESCE(SS_EXT_LIST_PRICE, 0) = 0 THEN 'Unknown'
+            WHEN COALESCE(SS_EXT_DISCOUNT_AMT, 0) = 0 THEN 'Full price'
+            WHEN SS_EXT_DISCOUNT_AMT / SS_EXT_LIST_PRICE < 0.10 THEN 'Up to 10%'
+            WHEN SS_EXT_DISCOUNT_AMT / SS_EXT_LIST_PRICE < 0.25 THEN '10-25%'
+            WHEN SS_EXT_DISCOUNT_AMT / SS_EXT_LIST_PRICE < 0.50 THEN '25-50%'
+            ELSE 'Over 50%'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: SS_BASKET_SIZE_BAND
+        synonyms:
+          - units per line band
+          - basket size
+        expr: >-
+          CASE
+            WHEN COALESCE(SS_QUANTITY, 0) <= 0 THEN 'Unknown'
+            WHEN SS_QUANTITY = 1 THEN 'Single unit'
+            WHEN SS_QUANTITY <= 5 THEN '2-5 units'
+            WHEN SS_QUANTITY <= 20 THEN '6-20 units'
+            ELSE 'Bulk (20+)'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: SS_MARGIN_TIER
+        synonyms:
+          - margin tier
+          - profitability tier
+        description: Line-level margin percentage bucketed into profitability tiers.
+        expr: >-
+          CASE
+            WHEN COALESCE(SS_NET_PAID, 0) = 0 THEN 'No revenue'
+            WHEN (SS_NET_PAID - COALESCE(SS_EXT_WHOLESALE_COST, 0)) / SS_NET_PAID < 0 THEN 'Loss making'
+            WHEN (SS_NET_PAID - COALESCE(SS_EXT_WHOLESALE_COST, 0)) / SS_NET_PAID < 0.20 THEN 'Low margin'
+            WHEN (SS_NET_PAID - COALESCE(SS_EXT_WHOLESALE_COST, 0)) / SS_NET_PAID < 0.40 THEN 'Healthy margin'
+            ELSE 'High margin'
+          END
+        data_type: VARCHAR(16777216)
+        is_enum: true
+      - name: SS_IS_COUPON_REDEEMED
+        synonyms:
+          - coupon used
+        expr: IFF(COALESCE(SS_COUPON_AMT, 0) > 0, TRUE, FALSE)
+        data_type: BOOLEAN
+    facts:
+      - name: SS_COUPON_AMT
+        expr: SS_COUPON_AMT
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_EXT_DISCOUNT_AMT
+        expr: SS_EXT_DISCOUNT_AMT
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_EXT_LIST_PRICE
+        expr: SS_EXT_LIST_PRICE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_EXT_SALES_PRICE
+        expr: SS_EXT_SALES_PRICE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_EXT_TAX
+        expr: SS_EXT_TAX
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_EXT_WHOLESALE_COST
+        expr: SS_EXT_WHOLESALE_COST
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_LIST_PRICE
+        expr: SS_LIST_PRICE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_NET_PAID
+        expr: SS_NET_PAID
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_NET_PAID_INC_TAX
+        expr: SS_NET_PAID_INC_TAX
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_NET_PROFIT
+        expr: SS_NET_PROFIT
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_SALES_PRICE
+        expr: SS_SALES_PRICE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_WHOLESALE_COST
+        synonyms:
+          - unit cost
+          - cost price
+        expr: SS_WHOLESALE_COST
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_GROSS_REVENUE
+        synonyms:
+          - gross revenue
+          - gross sales
+        description: Quantity multiplied by the unit sales price, before discounts and tax.
+        expr: SS_QUANTITY * SS_SALES_PRICE
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_MARGIN_AMOUNT
+        synonyms:
+          - margin
+          - gross margin amount
+        description: Net paid less the extended wholesale cost of the line.
+        expr: SS_NET_PAID - COALESCE(SS_EXT_WHOLESALE_COST, 0)
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_TOTAL_PRICE_REDUCTION
+        synonyms:
+          - total markdown
+          - price reduction
+        description: Discounts and coupons applied to the line.
+        expr: COALESCE(SS_EXT_DISCOUNT_AMT, 0) + COALESCE(SS_COUPON_AMT, 0)
+        data_type: NUMBER(38,2)
+        access_modifier: public_access
+      - name: SS_DISCOUNT_RATE
+        synonyms:
+          - discount rate
+          - markdown rate
+        expr: ROUND(COALESCE(SS_EXT_DISCOUNT_AMT, 0) / NULLIF(SS_EXT_LIST_PRICE, 0), 4)
+        data_type: NUMBER(38,4)
+        access_modifier: private_access
+    metrics:
+      - name: QUANTITY
+        synonyms:
+          - units
+          - units sold
+          - volume
+        description: Total units sold.
+        expr: SUM(STORE_SALES.SS_QUANTITY)
+        access_modifier: public_access
+      - name: TOTAL_SALES
+        synonyms:
+          - revenue
+          - net sales
+          - sales amount
+        description: Net paid amount excluding tax.
+        expr: SUM(STORE_SALES.SS_NET_PAID)
+        access_modifier: public_access
+      - name: TOTAL_SALES_INC_TAX
+        synonyms:
+          - gross receipts
+          - sales including tax
+        expr: SUM(STORE_SALES.SS_NET_PAID_INC_TAX)
+        access_modifier: public_access
+      - name: GROSS_REVENUE
+        synonyms:
+          - gross sales
+          - list revenue
+        description: Quantity multiplied by unit sales price, before discounts.
+        expr: SUM(STORE_SALES.SS_QUANTITY * STORE_SALES.SS_SALES_PRICE)
+        access_modifier: public_access
+      - name: COST_OF_GOODS_SOLD
+        synonyms:
+          - cogs
+          - product cost
+        expr: SUM(STORE_SALES.SS_EXT_WHOLESALE_COST)
+        access_modifier: public_access
+      - name: NET_PROFIT
+        synonyms:
+          - profit
+          - bottom line
+        expr: SUM(STORE_SALES.SS_NET_PROFIT)
+        access_modifier: public_access
+      - name: DISCOUNT_AMOUNT
+        synonyms:
+          - markdowns
+          - discounts
+        expr: SUM(STORE_SALES.SS_EXT_DISCOUNT_AMT)
+        access_modifier: public_access
+      - name: COUPON_AMOUNT
+        synonyms:
+          - coupons redeemed value
+        expr: SUM(STORE_SALES.SS_COUPON_AMT)
+        access_modifier: public_access
+      - name: TAX_AMOUNT
+        synonyms:
+          - sales tax
+        expr: SUM(STORE_SALES.SS_EXT_TAX)
+        access_modifier: public_access
+      - name: TICKET_COUNT
+        synonyms:
+          - transactions
+          - baskets
+          - number of tickets
+        expr: COUNT(DISTINCT STORE_SALES.SS_TICKET_NUMBER)
+        access_modifier: public_access
+      - name: LINE_ITEM_COUNT
+        synonyms:
+          - sales lines
+          - line items
+        expr: COUNT(STORE_SALES.SS_ITEM_SK)
+        access_modifier: public_access
+      - name: DISTINCT_ITEMS_SOLD
+        synonyms:
+          - unique products sold
+          - assortment breadth
+        expr: COUNT(DISTINCT STORE_SALES.SS_ITEM_SK)
+        access_modifier: public_access
+      - name: PURCHASING_CUSTOMER_COUNT
+        synonyms:
+          - buyers
+          - active customers
+        description: Distinct customers with at least one purchase, via the customer relationship.
+        expr: COUNT(DISTINCT STORE_SALES.SS_CUSTOMER_SK)
+        access_modifier: public_access
+        using_relationships:
+          - STORE_SALES_TO_CUSTOMER
+      - name: AVG_TICKET_VALUE
+        synonyms:
+          - average basket
+          - average transaction value
+        expr: SUM(STORE_SALES.SS_NET_PAID) / NULLIF(COUNT(DISTINCT STORE_SALES.SS_TICKET_NUMBER), 0)
+        access_modifier: public_access
+      - name: UNITS_PER_TICKET
+        synonyms:
+          - basket size
+          - units per transaction
+        expr: SUM(STORE_SALES.SS_QUANTITY) / NULLIF(COUNT(DISTINCT STORE_SALES.SS_TICKET_NUMBER), 0)
+        access_modifier: public_access
+      - name: AVG_SELLING_PRICE
+        synonyms:
+          - asp
+          - average unit retail
+        expr: SUM(STORE_SALES.SS_NET_PAID) / NULLIF(SUM(STORE_SALES.SS_QUANTITY), 0)
+        access_modifier: public_access
+      - name: GROSS_MARGIN_PCT
+        synonyms:
+          - margin percent
+          - gross margin rate
+        description: Net sales less cost of goods sold, expressed as a percentage of net sales.
+        expr: >-
+          100.0 * (SUM(STORE_SALES.SS_NET_PAID) - SUM(STORE_SALES.SS_EXT_WHOLESALE_COST))
+          / NULLIF(SUM(STORE_SALES.SS_NET_PAID), 0)
+        access_modifier: public_access
+      - name: DISCOUNT_RATE_PCT
+        synonyms:
+          - markdown rate
+          - discount percentage
+        expr: >-
+          100.0 * SUM(COALESCE(STORE_SALES.SS_EXT_DISCOUNT_AMT, 0) + COALESCE(STORE_SALES.SS_COUPON_AMT, 0))
+          / NULLIF(SUM(STORE_SALES.SS_EXT_LIST_PRICE), 0)
+        access_modifier: public_access
+      - name: PROMOTED_SALES
+        synonyms:
+          - promo sales
+          - sales on promotion
+        expr: SUM(CASE WHEN STORE_SALES.SS_PROMO_SK IS NOT NULL THEN STORE_SALES.SS_NET_PAID ELSE 0 END)
+        access_modifier: public_access
+      - name: PROMOTED_SALES_SHARE_PCT
+        synonyms:
+          - promo participation
+          - percent of sales on promotion
+        expr: >-
+          100.0 * SUM(CASE WHEN STORE_SALES.SS_PROMO_SK IS NOT NULL THEN STORE_SALES.SS_NET_PAID ELSE 0 END)
+          / NULLIF(SUM(STORE_SALES.SS_NET_PAID), 0)
+        access_modifier: public_access
+      - name: LOSS_MAKING_SALES
+        synonyms:
+          - negative margin sales
+        description: Net sales on lines where the wholesale cost exceeded the amount paid.
+        expr: >-
+          SUM(CASE
+            WHEN STORE_SALES.SS_NET_PAID < COALESCE(STORE_SALES.SS_EXT_WHOLESALE_COST, 0)
+            THEN STORE_SALES.SS_NET_PAID ELSE 0
+          END)
+        access_modifier: public_access
+      - name: WEEKEND_SALES
+        synonyms:
+          - saturday sunday sales
+        description: Net sales on weekend trading days, resolved through the sold-date relationship.
+        expr: SUM(CASE WHEN DATE_DIM.D_WEEKEND = 'Y' THEN STORE_SALES.SS_NET_PAID ELSE 0 END)
+        access_modifier: public_access
+        using_relationships:
+          - STORE_SALES_TO_DATE
+      - name: HOLIDAY_SALES
+        synonyms:
+          - sales on holidays
+        expr: SUM(CASE WHEN DATE_DIM.D_HOLIDAY = 'Y' THEN STORE_SALES.SS_NET_PAID ELSE 0 END)
+        access_modifier: public_access
+        using_relationships:
+          - STORE_SALES_TO_DATE
+      - name: PREFERRED_CUSTOMER_SALES
+        synonyms:
+          - loyalty sales
+          - vip sales
+        description: Net sales attributable to preferred customers.
+        expr: SUM(CASE WHEN CUSTOMER.C_PREFERRED_CUST_FLAG = 'Y' THEN STORE_SALES.SS_NET_PAID ELSE 0 END)
+        access_modifier: public_access
+        using_relationships:
+          - STORE_SALES_TO_CUSTOMER
+      - name: LATEST_DAY_SALES
+        synonyms:
+          - most recent day sales
+        description: >-
+          Net sales on the latest date in context. Non-additive over the calendar so
+          the value is not summed across days.
+        expr: SUM(STORE_SALES.SS_NET_PAID)
+        access_modifier: public_access
+        non_additive_dimensions:
+          - table: DATE_DIM
+            dimension: D_DATE
+            sort_direction: descending
+            null_order: last
+    filters:
+      - name: PROMOTED_LINES
+        synonyms:
+          - promotion only
+        expr: STORE_SALES.SS_PROMO_SK IS NOT NULL
+      - name: POSITIVE_MARGIN_LINES
+        synonyms:
+          - profitable lines only
+        expr: STORE_SALES.SS_NET_PROFIT > 0
+      - name: LARGE_BASKETS
+        synonyms:
+          - bulk purchases
+        expr: STORE_SALES.SS_QUANTITY >= 20
+    tags:
+      - name:
+          database: DEMO
+          schema: STORE
+          tag: DATA_DOMAIN
+        value: SALES
+
+# Relationships between the logical tables. Fact tables are on the left (many)
+# side, dimensions on the right (one) side.
+relationships:
+  - name: STORE_SALES_TO_CUSTOMER
+    left_table: STORE_SALES
+    right_table: CUSTOMER
+    relationship_columns:
+      - left_column: SS_CUSTOMER_SK
+        right_column: C_CUSTOMER_SK
+  - name: STORE_SALES_TO_DATE
+    left_table: STORE_SALES
+    right_table: DATE_DIM
+    relationship_columns:
+      - left_column: SS_SOLD_DATE_SK
+        right_column: D_DATE_SK
+  - name: STORE_SALES_TO_STORE
+    left_table: STORE_SALES
+    right_table: STORE
+    relationship_columns:
+      - left_column: SS_STORE_SK
+        right_column: S_STORE_SK
+  - name: STORE_RETURNS_TO_CUSTOMER
+    left_table: STORE_RETURNS
+    right_table: CUSTOMER
+    relationship_columns:
+      - left_column: SR_CUSTOMER_SK
+        right_column: C_CUSTOMER_SK
+  - name: STORE_RETURNS_TO_DATE
+    left_table: STORE_RETURNS
+    right_table: DATE_DIM
+    relationship_columns:
+      - left_column: SR_RETURNED_DATE_SK
+        right_column: D_DATE_SK
+  - name: STORE_RETURNS_TO_STORE
+    left_table: STORE_RETURNS
+    right_table: STORE
+    relationship_columns:
+      - left_column: SR_STORE_SK
+        right_column: S_STORE_SK
+
+# Derived metrics that combine metrics from multiple logical tables.
+metrics:
+  - name: NET_SALES_AFTER_RETURNS
+    synonyms:
+      - sales net of returns
+      - true net sales
+    description: Net sales less the value of merchandise returned.
+    expr: STORE_SALES.TOTAL_SALES - STORE_RETURNS.RETURN_AMOUNT
+    access_modifier: public_access
+  - name: RETURN_RATE_PCT
+    synonyms:
+      - return rate
+      - percent returned
+    description: Value of returns as a percentage of net sales.
+    expr: 100.0 * STORE_RETURNS.RETURN_AMOUNT / NULLIF(STORE_SALES.TOTAL_SALES, 0)
+    access_modifier: public_access
+  - name: UNIT_RETURN_RATE_PCT
+    synonyms:
+      - unit return rate
+    description: Units returned as a percentage of units sold.
+    expr: 100.0 * STORE_RETURNS.RETURN_QUANTITY / NULLIF(STORE_SALES.QUANTITY, 0)
+    access_modifier: public_access
+  - name: RETURN_TICKET_RATE_PCT
+    synonyms:
+      - transaction return rate
+    expr: 100.0 * STORE_RETURNS.RETURN_TICKET_COUNT / NULLIF(STORE_SALES.TICKET_COUNT, 0)
+    access_modifier: public_access
+  - name: PROFIT_AFTER_RETURN_LOSS
+    synonyms:
+      - adjusted profit
+      - profit net of shrink
+    description: Net profit less the net loss and handling cost incurred on returns.
+    expr: STORE_SALES.NET_PROFIT - STORE_RETURNS.RETURN_NET_LOSS - STORE_RETURNS.RETURN_HANDLING_COST
+    access_modifier: public_access
+  - name: NET_MARGIN_AFTER_RETURNS_PCT
+    synonyms:
+      - adjusted margin percent
+    expr: >-
+      100.0 * (STORE_SALES.NET_PROFIT - STORE_RETURNS.RETURN_NET_LOSS)
+      / NULLIF(STORE_SALES.TOTAL_SALES - STORE_RETURNS.RETURN_AMOUNT, 0)
+    access_modifier: public_access
+  - name: SALES_PER_SQUARE_FOOT
+    synonyms:
+      - sales density
+      - revenue per square foot
+    description: Net sales divided by total selling floor space.
+    expr: STORE_SALES.TOTAL_SALES / NULLIF(STORE.TOTAL_FLOOR_SPACE, 0)
+    access_modifier: public_access
+  - name: SALES_PER_STORE
+    synonyms:
+      - average store revenue
+    expr: STORE_SALES.TOTAL_SALES / NULLIF(STORE.ACTIVE_STORE_COUNT, 0)
+    access_modifier: public_access
+  - name: SALES_PER_EMPLOYEE
+    synonyms:
+      - revenue per associate
+      - labor productivity
+    expr: STORE_SALES.TOTAL_SALES / NULLIF(STORE.EMPLOYEE_COUNT, 0)
+    access_modifier: public_access
+  - name: SALES_PER_SELLING_DAY
+    synonyms:
+      - average daily sales
+      - revenue per trading day
+    expr: STORE_SALES.TOTAL_SALES / NULLIF(DATE_DIM.SELLING_DAY_COUNT, 0)
+    access_modifier: public_access
+  - name: SALES_PER_CUSTOMER
+    synonyms:
+      - revenue per customer
+      - customer value
+    expr: STORE_SALES.TOTAL_SALES / NULLIF(CUSTOMER.CUSTOMER_COUNT, 0)
+    access_modifier: public_access
+  - name: CUSTOMER_PENETRATION_PCT
+    synonyms:
+      - active customer share
+      - buying rate
+    description: Purchasing customers as a percentage of the total customer base.
+    expr: 100.0 * STORE_SALES.PURCHASING_CUSTOMER_COUNT / NULLIF(CUSTOMER.CUSTOMER_COUNT, 0)
+    access_modifier: public_access
+  - name: LOYALTY_SALES_SHARE_PCT
+    synonyms:
+      - preferred customer share of sales
+    expr: 100.0 * STORE_SALES.PREFERRED_CUSTOMER_SALES / NULLIF(STORE_SALES.TOTAL_SALES, 0)
+    access_modifier: public_access
+  - name: RETURNER_SHARE_OF_BUYERS_PCT
+    synonyms:
+      - percent of buyers who returned
+    expr: >-
+      100.0 * STORE_RETURNS.RETURNING_CUSTOMER_COUNT
+      / NULLIF(STORE_SALES.PURCHASING_CUSTOMER_COUNT, 0)
+    access_modifier: public_access
+  - name: WEEKEND_SALES_SHARE_PCT
+    synonyms:
+      - weekend mix
+    expr: 100.0 * STORE_SALES.WEEKEND_SALES / NULLIF(STORE_SALES.TOTAL_SALES, 0)
+    access_modifier: public_access
+
+# Verified natural-language questions and the SQL that answers them.
+verified_queries:
+  - name: sales_and_return_rate_by_state_last_year
+    question: What were net sales and the return rate by state last year?
+    verified_at: 1735689600
+    verified_by: Retail Analytics Team
+    use_as_onboarding_question: true
+    sql: |
+      SELECT * FROM SEMANTIC_VIEW(
+        DEMO.STORE.MKVIEW
+        METRICS STORE_SALES.TOTAL_SALES, RETURN_RATE_PCT
+        DIMENSIONS STORE.S_STATE, DATE_DIM.D_YEAR
+      )
+      WHERE D_YEAR = YEAR(CURRENT_DATE()) - 1
+      ORDER BY TOTAL_SALES DESC
+  - name: top_stores_by_sales_density
+    question: Which stores have the highest sales per square foot this year?
+    verified_at: 1735689600
+    verified_by: Retail Analytics Team
+    sql: |
+      SELECT * FROM SEMANTIC_VIEW(
+        DEMO.STORE.MKVIEW
+        METRICS SALES_PER_SQUARE_FOOT, STORE_SALES.TOTAL_SALES, STORE_SALES.GROSS_MARGIN_PCT
+        DIMENSIONS STORE.S_STORE_NAME, STORE.S_STORE_SIZE_BAND, DATE_DIM.D_YEAR
+      )
+      WHERE D_YEAR = YEAR(CURRENT_DATE())
+      ORDER BY SALES_PER_SQUARE_FOOT DESC
+      LIMIT 20
+  - name: loyalty_mix_by_generation
+    question: How much of our sales comes from preferred customers by generation?
+    verified_at: 1735689600
+    verified_by: Customer Insights Team
+    use_as_onboarding_question: true
+    sql: |
+      SELECT * FROM SEMANTIC_VIEW(
+        DEMO.STORE.MKVIEW
+        METRICS STORE_SALES.TOTAL_SALES, LOYALTY_SALES_SHARE_PCT, SALES_PER_CUSTOMER
+        DIMENSIONS CUSTOMER.CUSTOMER_GENERATION, CUSTOMER.CUSTOMER_LOYALTY_SEGMENT
+      )
+      ORDER BY TOTAL_SALES DESC
+  - name: promotion_effectiveness_by_season
+    question: How effective were promotions by season?
+    verified_at: 1735689600
+    verified_by: Merchandising Team
+    sql: |
+      SELECT * FROM SEMANTIC_VIEW(
+        DEMO.STORE.MKVIEW
+        METRICS STORE_SALES.PROMOTED_SALES_SHARE_PCT, STORE_SALES.DISCOUNT_RATE_PCT, STORE_SALES.GROSS_MARGIN_PCT
+        DIMENSIONS DATE_DIM.D_SEASON, DATE_DIM.D_YEAR
+      )
+      ORDER BY D_YEAR, D_SEASON
+
+# Tags applied to the semantic view itself.
+tags:
+  - name:
+      database: DEMO
+      schema: STORE
+      tag: BUSINESS_AREA
+    value: RETAIL_STORE_CHANNEL
+  - name:
+      database: DEMO
+      schema: STORE
+      tag: CERTIFICATION_STATUS
+    value: CERTIFIED

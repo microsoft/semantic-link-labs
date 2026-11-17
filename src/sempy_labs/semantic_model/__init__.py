@@ -18,6 +18,9 @@ from ._direct_lake_migration import (
 from ._find_unused_objects import (
     find_unused_objects,
 )
+from ._snowflake import (
+    convert_from_snowflake,
+)
 from ._refresh_manager import (
     refresh_manager,
 )
@@ -37,6 +40,7 @@ __all__ = [
     "lineage_view",
     "migrate_to_direct_lake",
     "find_unused_objects",
+    "convert_from_snowflake",
     "refresh_manager",
     "cancel_spid",
     "list_semantic_model_sessions",
