@@ -112,7 +112,9 @@ def test_list_dataflow_upgrade_readiness(patched):
 
 
 def test_upgrade_dataflow_resolves_names_and_skips_non_gen1(patched, capsys):
-    df = upgrade.upgrade_dataflow(dataflow=["Sales", GEN1_B, "Native", GEN1_A])
+    df = upgrade.upgrade_dataflow(
+        dataflow=["Sales", GEN1_B, "Native", GEN1_A], in_place=True
+    )
 
     call = patched[0]
     assert call["request"] == f"/v1/workspaces/{WS_ID}/dataflows/gen1Upgrade"
@@ -131,7 +133,7 @@ def test_upgrade_dataflow_resolves_names_and_skips_non_gen1(patched, capsys):
 
 
 def test_upgrade_dataflow_single(patched):
-    upgrade.upgrade_dataflow(dataflow="Sales")
+    upgrade.upgrade_dataflow(dataflow="Sales", in_place=True)
 
     assert patched[0]["payload"] == {"dataflows": [{"id": GEN1_A}]}
 
@@ -140,15 +142,15 @@ def test_upgrade_dataflow_single(patched):
     "kwargs",
     [{"new_dataflow_name": "New"}, {"new_dataflow_workspace": "Sandbox"}],
 )
-def test_upgrade_dataflow_legacy_copy_params_raise_without_mutation(patched, kwargs):
-    with pytest.raises(ValueError, match="no longer supported"):
-        upgrade.upgrade_dataflow(dataflow="Sales", **kwargs)
+def test_upgrade_dataflow_in_place_rejects_copy_params(patched, kwargs):
+    with pytest.raises(ValueError, match="cannot be used"):
+        upgrade.upgrade_dataflow(dataflow="Sales", in_place=True, **kwargs)
 
     assert patched == []
 
 
 def test_upgrade_dataflow_only_non_gen1_makes_no_call(patched):
-    df = upgrade.upgrade_dataflow(dataflow=GEN2_CICD)
+    df = upgrade.upgrade_dataflow(dataflow=GEN2_CICD, in_place=True)
 
     assert patched == []
     assert df.empty
@@ -156,4 +158,38 @@ def test_upgrade_dataflow_only_non_gen1_makes_no_call(patched):
 
 def test_upgrade_dataflow_missing_raises(patched):
     with pytest.raises(ValueError, match="does not exist"):
-        upgrade.upgrade_dataflow(dataflow="Missing")
+        upgrade.upgrade_dataflow(dataflow="Missing", in_place=True)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"workspace": "Production"},
+        {"new_dataflow_name": "New", "new_dataflow_workspace": "Sandbox"},
+    ],
+)
+def test_upgrade_dataflow_defaults_to_legacy_copy(patched, monkeypatch, kwargs):
+    copies = []
+    monkeypatch.setattr(
+        upgrade, "_copy_dataflow_to_gen2", lambda **kw: copies.append(kw)
+    )
+
+    result = upgrade.upgrade_dataflow("Sales", **kwargs)
+
+    assert result is None
+    assert patched == []
+    assert copies == [
+        {
+            "dataflow": "Sales",
+            "workspace": kwargs.get("workspace"),
+            "new_dataflow_name": kwargs.get("new_dataflow_name"),
+            "new_dataflow_workspace": kwargs.get("new_dataflow_workspace"),
+        }
+    ]
+
+
+def test_upgrade_dataflow_list_requires_in_place(patched):
+    with pytest.raises(ValueError, match="in_place"):
+        upgrade.upgrade_dataflow(dataflow=["Sales", "Marketing"])
+
+    assert patched == []

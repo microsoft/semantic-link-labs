@@ -148,43 +148,52 @@ def upgrade_dataflow(
     workspace: Optional[str | UUID] = None,
     new_dataflow_name: Optional[str] = None,
     new_dataflow_workspace: Optional[str | UUID] = None,
-) -> pd.DataFrame:
+    in_place: bool = False,
+) -> Optional[pd.DataFrame]:
     """
-    Upgrades one or more Gen1 dataflows to Dataflow Gen2 in place. Each successful upgrade preserves the dataflow ID and workspace.
+    Upgrades a dataflow to Dataflow Gen2.
 
-    The upgrade modifies the source dataflow and is not reversible (see
+    By default (``in_place=False``), creates a new Dataflow Gen2 CI/CD item based on the mashup definition from an existing Gen1/Gen2 dataflow
+    and leaves the source dataflow unchanged. After running this function, update the connections in the new dataflow to ensure the data can be properly refreshed.
+
+    If ``in_place=True``, upgrades one or more Gen1 dataflows to Dataflow Gen2 in place using the
+    `Upgrade - Upgrade Dataflows <https://learn.microsoft.com/rest/api/fabric/dataflow/upgrade/upgrade-dataflows>`_ API.
+    Each successful upgrade preserves the dataflow ID and workspace. The in-place upgrade modifies the source dataflow and is not reversible (see
     `Upgrade limitations <https://learn.microsoft.com/fabric/data-factory/migrate-to-dataflow-gen2-using-upgrade-wizard#the-upgrade-is-in-place-and-isnt-reversible>`_).
-    Copying a dataflow to a new item or another workspace is no longer supported.
 
-    This is a wrapper function for the following API: `Upgrade - Upgrade Dataflows <https://learn.microsoft.com/rest/api/fabric/dataflow/upgrade/upgrade-dataflows>`_.
-
-    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+    Service Principal Authentication is supported for in-place upgrades (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
     dataflow : str | uuid.UUID | List[str | uuid.UUID]
-        The name or ID of the Gen1 dataflow, or a list of Gen1 dataflow names or IDs (up to 50).
+        The name or ID of the dataflow. A list of Gen1 dataflow names or IDs (up to 50) is only supported when ``in_place=True``.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     new_dataflow_name : str, default=None
-        Deprecated and no longer supported. Must be None; passing a value raises a ValueError
-        because the upgrade runs in place and cannot create a new dataflow.
+        Name of the new dataflow. Defaults to None which uses the name of the existing dataflow.
+        Only applies when ``in_place=False``.
     new_dataflow_workspace : str | uuid.UUID, default=None
-        Deprecated and no longer supported. Must be None; passing a value raises a ValueError
-        because the upgrade runs in place and cannot target another workspace.
+        The Fabric workspace name or ID of the dataflow to be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+        Only applies when ``in_place=False``.
+    in_place : bool, default=False
+        If True, upgrades the Gen1 dataflow(s) in place. This modifies the source dataflow(s) and is not reversible.
+        If False, creates a new Dataflow Gen2 CI/CD item and leaves the source dataflow unchanged.
 
     Returns
     -------
-    pandas.DataFrame
-        A pandas dataframe showing the upgrade result for each dataflow.
+    pandas.DataFrame | None
+        If ``in_place=True``, a pandas dataframe showing the upgrade result for each dataflow.
+        If ``in_place=False``, returns None.
 
     Raises
     ------
     ValueError
-        If 'new_dataflow_name' or 'new_dataflow_workspace' is specified, if a dataflow does not exist,
-        or if more than 50 Gen1 dataflows are provided.
+        If ``in_place=True`` and 'new_dataflow_name' or 'new_dataflow_workspace' is specified, if more than 50 Gen1 dataflows are provided,
+        if a list of dataflows is provided without ``in_place=True``, or if a dataflow does not exist.
     """
 
     return d.upgrade_dataflow(
@@ -192,6 +201,7 @@ def upgrade_dataflow(
         workspace=workspace,
         new_dataflow_name=new_dataflow_name,
         new_dataflow_workspace=new_dataflow_workspace,
+        in_place=in_place,
     )
 
 
