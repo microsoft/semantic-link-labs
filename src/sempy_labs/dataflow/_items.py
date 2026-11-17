@@ -359,8 +359,7 @@ def get_dataflow_definition(
         return result
 
 
-@log
-def upgrade_dataflow(
+def _copy_dataflow_to_gen2(
     dataflow: str | UUID,
     workspace: Optional[str | UUID] = None,
     new_dataflow_name: Optional[str] = None,
