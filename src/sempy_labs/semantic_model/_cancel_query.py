@@ -114,7 +114,7 @@ def _list_running_commands(
     is only used when the server returns it.
     """
 
-    sessions = list_semantic_model_sessions(dataset=dataset, workspace=workspace)
+    sessions = list_sessions(dataset=dataset, workspace=workspace)
     commands = _discover_commands(dataset=dataset, workspace=workspace)
 
     if (
@@ -170,7 +170,7 @@ def cancel_spid(dataset: str | UUID, spid: int, workspace: Optional[str | UUID] 
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
     spid : int
-        The SPID of the query to cancel. Can be found using the 'list_semantic_model_commands' function.
+        The SPID of the query to cancel. Can be found using the 'list_commands' function.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -191,7 +191,7 @@ def cancel_spid(dataset: str | UUID, spid: int, workspace: Optional[str | UUID] 
 
 
 @log
-def list_semantic_model_sessions(
+def list_sessions(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     user_name: Optional[str | List[str]] = None,
@@ -245,7 +245,7 @@ def list_semantic_model_sessions(
 
 
 @log
-def list_semantic_model_commands(
+def list_commands(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     min_elapsed_time_seconds: Optional[int] = None,
@@ -279,7 +279,7 @@ def list_semantic_model_commands(
     workspace_id = resolve_workspace_id(workspace)
     dataset_name, dataset_id = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    sessions = list_semantic_model_sessions(dataset=dataset_id, workspace=workspace_id)
+    sessions = list_sessions(dataset=dataset_id, workspace=workspace_id)
     commands = _discover_commands(dataset=dataset_id, workspace=workspace_id)
     commands = commands[commands["SESSION_SPID"].isin(sessions["SESSION_SPID"])]
 

@@ -37,7 +37,7 @@ def _load(sessions: Optional[pd.DataFrame] = None, commands=None) -> dict:
         "pd": pd,
         "Optional": Optional,
         "UUID": str,
-        "list_semantic_model_sessions": lambda **_kwargs: sessions,
+        "list_sessions": lambda **_kwargs: sessions,
         "_discover_commands": lambda **_kwargs: commands,
     }
     exec(
