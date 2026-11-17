@@ -1319,10 +1319,10 @@ def list_report_semantic_model_objects(
             rpt = ReportWrapper(
                 report=r["Report Id"], workspace=r["Report Workspace Id"]
             )
-        except (ValueError, FabricHTTPException):
+        except (ValueError, FabricHTTPException) as exc:
             print(
                 f"{icons.warning} Skipping report '{report_name}' ({r['Report Id']}) "
-                f"in workspace '{r['Report Workspace Id']}': the report could not be found or accessed."
+                f"in workspace '{r['Report Workspace Id']}': {exc}"
             )
             continue
         # Collect all semantic model objects used in the report
