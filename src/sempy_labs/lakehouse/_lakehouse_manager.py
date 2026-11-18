@@ -547,15 +547,28 @@ _LHM_CSS = (
 }
 .slls-lhm-node-more { color: var(--ui-text-tertiary); font-size: 12px; font-style: italic; }
 /* Capped so the list scrolls itself and its column headers stay in view. */
-.slls-lhm-list {
-    flex: 1 1 auto; min-height: 220px; max-height: min(640px, calc(100vh - 160px));
-    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg); overflow: auto;
+.slls-lhm-listframe {
+    position: relative; z-index: 0; display: flex; flex: 1 1 auto; flex-direction: column;
+    min-height: 220px; max-height: min(640px, calc(100vh - 160px));
 }
-.slls-lhm.slls-lhm-fullscreen .slls-lhm-list, .slls-lhm:fullscreen .slls-lhm-list { max-height: none; }
+.slls-lhm.slls-lhm-fullscreen .slls-lhm-listframe, .slls-lhm:fullscreen .slls-lhm-listframe { max-height: none; }
+.slls-lhm-list {
+    flex: 1 1 auto; min-height: 0;
+    border: 1px solid transparent; border-radius: 10px; background: var(--ui-bg); overflow: auto;
+}
+/* At fractional display scaling the browser can paint a pixel row of scrolled
+   rows just outside the sticky table header, over or above the list's top
+   border. The frame covers that edge with a solid strip and redraws the border
+   on top, and the header sticks a pixel high to cover the inside edge. */
+.slls-lhm-listframe::before, .slls-lhm-listframe::after {
+    content: ""; position: absolute; z-index: 5; pointer-events: none;
+}
+.slls-lhm-listframe::before { inset: -2px 0 auto 0; height: 3px; background: var(--ui-bg); }
+.slls-lhm-listframe::after { inset: 0; border: 1px solid var(--ui-border); border-radius: 10px; }
 .slls-lhm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 /* A collapsed border scrolls away from a sticky header, so it is drawn as a shadow. */
 .slls-lhm-table th {
-    position: sticky; top: 0; z-index: 1; padding: 9px 12px;
+    position: sticky; top: -1px; z-index: 1; padding: 10px 12px 9px;
     border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border); background: var(--ui-bg-secondary);
     color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-align: left;
     text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
@@ -888,6 +901,8 @@ function render({ model, el }) {
     });
     toolbar.append(search, selection, pills, tableSelection, segment);
     const listWrap = document.createElement("div"); listWrap.className = "slls-lhm-list";
+    const listFrame = document.createElement("div"); listFrame.className = "slls-lhm-listframe";
+    listFrame.appendChild(listWrap);
     const note = document.createElement("div"); note.className = "slls-lhm-note";
     const noteIcon = document.createElement("span"); const noteText = document.createElement("span");
     note.append(noteIcon, noteText);
@@ -899,7 +914,7 @@ function render({ model, el }) {
     const batchCancel = document.createElement("button"); batchCancel.type = "button";
     batchCancel.className = "slls-lhm-ghost"; batchCancel.textContent = "Cancel";
     batchBar.append(batchText, batchCancel);
-    body.append(cards, toolbar, batchBar, listWrap, note);
+    body.append(cards, toolbar, batchBar, listFrame, note);
 
     const attribution = document.createElement("div"); attribution.className = "slls-lhm-attr";
     attribution.innerHTML = `__ATTRIBUTION__`;

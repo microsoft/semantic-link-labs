@@ -424,7 +424,16 @@ def test_the_table_view_selects_tables_for_bulk_maintenance():
     assert "paths: maintenanceTargets.map((row) => row.path)," in js
     # The list scrolls itself, so its sticky headers stay in view.
     assert "max-height: min(640px, calc(100vh - 160px));" in css
-    assert ".slls-lhm:fullscreen .slls-lhm-list { max-height: none; }" in css
+    assert ".slls-lhm:fullscreen .slls-lhm-listframe { max-height: none; }" in css
+    # At fractional display scaling scrolled rows must not peek above the
+    # sticky header: the frame covers the list's top edge and redraws its
+    # border, and the header sticks a pixel high.
+    assert "listFrame.appendChild(listWrap);" in js
+    assert (
+        ".slls-lhm-listframe::before { inset: -2px 0 auto 0; height: 3px; background: var(--ui-bg); }"
+        in css
+    )
+    assert "position: sticky; top: -1px; z-index: 1; padding: 10px 12px 9px;" in css
 
 
 def test_only_live_tables_which_are_not_shortcuts_can_be_maintained():
@@ -1332,7 +1341,7 @@ def test_the_mount_is_reused_across_stats_runs(manager, monkeypatch):
 def test_bulk_table_actions_can_be_cancelled_between_tables():
     js = lhm._LHM_JS
 
-    assert "body.append(cards, toolbar, batchBar, listWrap, note);" in js
+    assert "body.append(cards, toolbar, batchBar, listFrame, note);" in js
     assert 'act(cancelRequested ? "batch_cancel" : "batch_next");' in js
     # The next table is only asked for once the kernel is idle.
     assert (
