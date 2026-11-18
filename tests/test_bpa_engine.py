@@ -522,3 +522,37 @@ def test_ui_strings_cover_every_supported_language():
         assert all(strings.values()), language
     assert ui_strings(None) == {}
     assert ui_strings("xx-XX") == {}
+
+
+def test_every_built_in_rule_has_bundled_translations():
+    import ast
+
+    # The rules module needs the Analysis Services client to run, so the rule
+    # names and descriptions are read from its source.
+    with open(engine._RULES_MODULE, "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    rules = {}
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Tuple)
+            and len(node.elts) >= 5
+            and isinstance(node.elts[2], ast.Constant)
+            and node.elts[2].value in ("Error", "Warning", "Info")
+            and isinstance(node.elts[3], ast.Constant)
+        ):
+            has_description = len(node.elts) > 5 and isinstance(
+                node.elts[5], ast.Constant
+            )
+            rules[node.elts[3].value] = has_description
+
+    for language in engine.supported_languages():
+        po = engine._po_translations(language)
+        for name, has_description in rules.items():
+            assert ("Rule Name", name) in po, (language, name)
+            assert ("Category", name) in po, (language, name)
+            if has_description:
+                description = po.get(("Description", name), "")
+                assert description and not description.startswith("http"), (
+                    language,
+                    name,
+                )

@@ -3457,7 +3457,7 @@ function render({ model, el }) {
                 body.appendChild(name);
                 const meta = document.createElement("div");
                 meta.className = "slls-bpa-rule-meta";
-                meta.textContent = `${rule.category} \u2022 ${rule.severity} \u2022 ${rule.scopes.join(", ")}`;
+                meta.textContent = `${rule.category} \u2022 ${tr(rule.severity, rule.severity)} \u2022 ${rule.scopes.join(", ")}`;
                 body.appendChild(meta);
                 if (rule.description) {
                     const desc = document.createElement("div");

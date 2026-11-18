@@ -277,6 +277,29 @@ msgstr "Az objektumok első betűjét nagybetűvel kell írni"
 msgid "Object names must not contain special characters"
 msgstr "Az objektumnevek nem tartalmazhatnak speciális karaktereket"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Kerülje a SUM vagy AVERAGE használatát szöveges oszlopon"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Győződjön meg arról, hogy a Direct Lake forrástáblák V-Order rendezésűek"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Győződjön meg arról, hogy a Direct Lake-táblák forrása nem SQL-nézet"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Egypartíciós táblák esetén a partíció nevének meg kell egyeznie a tábla "
+"nevével"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Adjon meg formátumkarakterláncot a 'Month' oszlopokhoz"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Teljesítmény"
@@ -529,6 +552,26 @@ msgstr "Formázás"
 msgid "Object names must not contain special characters"
 msgstr "Elnevezési konvenciók"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX-kifejezések"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Teljesítmény"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Teljesítmény"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Elnevezési konvenciók"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Formázás"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -550,8 +593,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"A kétirányú és a több-a-többhöz kapcsolatok teljesítménycsökkenést vagy akár"
+" nem kívánt következményeket is okozhatnak. Ellenőrizze ezeket a "
+"kapcsolatokat, hogy biztosan a terveknek megfelelően működjenek, és valóban "
+"szükségesek legyenek."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -961,3 +1006,41 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "Az objektumnevek nem tartalmazhatnak tabulátorokat, sortöréseket stb."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"A SUM és AVERAGE függvények nem tudnak szöveges (string) oszlopot "
+"összesíteni, és hibát okoznak. Győződjön meg arról, hogy ezeket a "
+"függvényeket numerikus oszlopokra alkalmazza, vagy szöveges oszlopokhoz "
+"használjon más összesítést (például COUNT vagy DISTINCTCOUNT)."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"A legjobb Direct Lake-teljesítmény érdekében a Direct Lake-modell által "
+"olvasott delta táblákat V-Order használatával kell írni. Ez a szabály "
+"megjelöli azokat a Direct Lake-partíciókat, amelyek lakehouse-forrástáblája "
+"nem V-Order rendezésű; írja újra a forrástáblát, vagy futtassa rajta az "
+"OPTIMIZE parancsot engedélyezett V-Order mellett."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Az a Direct Lake-tábla, amelynek forrása SQL-nézet (tábla helyett), mindig "
+"DirectQuery módra vált vissza, ami lassabb, és meghiúsítja a Direct Lake "
+"célját. Irányítsa a táblát egy lakehouse-/warehouse-táblára, vagy "
+"materializálja a nézetet delta táblaként."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Egyetlen partícióval rendelkező tábla esetén az áttekinthetőség és "
+"következetesség érdekében a partíció nevének meg kell egyeznie a tábla "
+"nevével."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"A \"DateTime\" típusú oszlopokat, amelyek nevében szerepel a \"Month\", "
+"\"MMMM yyyy\" formátumúra kell formázni."

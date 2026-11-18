@@ -280,6 +280,28 @@ msgstr "Incwadi yokuqala yezinto kumele i-capitalized"
 msgid "Object names must not contain special characters"
 msgstr "Amagama ento akumele ibe nezinhlamvu ezikhethekile"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Gwema ukusebenzisa i-SUM noma i-AVERAGE kukholamu yombhalo"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Qinisekisa ukuthi amathebula omthombo we-Direct Lake ane-V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Qinisekisa ukuthi amathebula e-Direct Lake awaveli ekubukeni kwe-SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Igama lengxenye kufanele lifane negama lethebula kumathebula anengxenye "
+"eyodwa"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Nikeza uchungechunge lwefomethi lwamakholamu e-'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Ukusebenza"
@@ -532,6 +554,26 @@ msgstr "Ukuhlela"
 msgid "Object names must not contain special characters"
 msgstr "Izingqungquthela Zokuqamba Amagama"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Izinkulumo ze-DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Ukusebenza"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Ukusebenza"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Izingqungquthela Zokuqamba Amagama"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Ukuhlela"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -553,8 +595,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Ubudlelwano obunezindlela ezimbili nobudlelwano obuningi-kokuningi "
+"bungabangela ukwehla kokusebenza noma imiphumela engalindelekile. Qiniseka "
+"ukuthi uhlola lobu budlelwano ukuze uqinisekise ukuthi busebenza njengoba "
+"buklanyiwe futhi budingeka ngempela."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -967,3 +1011,40 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "Amagama ento akufanele afake amathebhu, ikhefu lomugqa, njll."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Imisebenzi ye-SUM ne-AVERAGE ayikwazi ukuhlanganisa ikholamu yombhalo "
+"(string) futhi izodala iphutha. Qinisekisa ukuthi le misebenzi isetshenziswa"
+" kumakholamu ezinombolo, noma usebenzise ukuhlanganisa okuhlukile (isibonelo"
+" i-COUNT noma i-DISTINCTCOUNT) kumakholamu ombhalo."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Ukuze uthole ukusebenza okuhle kakhulu kwe-Direct Lake, amathebula e-delta "
+"afundwa yimodeli ye-Direct Lake kufanele abhalwe nge-V-Order. Lo mthetho "
+"umaka izingxenye ze-Direct Lake ezinethebula lomthombo ku-lakehouse "
+"elingenayo i-V-Order; phinda ubhale ithebula lomthombo noma wenze i-OPTIMIZE"
+" kulo i-V-Order ivuliwe."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Ithebula le-Direct Lake elinomthombo oyikubuka kwe-SQL (esikhundleni "
+"sethebula) lizohlala libuyela ku-DirectQuery, okuhamba kancane futhi "
+"okwehlula inhloso ye-Direct Lake. Khombisa ithebula kuthebula le-"
+"lakehouse/warehouse, noma wenze ukubuka kube ithebula le-delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Ethebuleni elinengxenye eyodwa kuphela, igama lengxenye kufanele lifane "
+"negama lethebula ukuze kube nokucaca nokungaguquki."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Amakholamu ohlobo lwe-\"DateTime\" anegama eliqukethe \"Month\" kufanele "
+"afomethwe njenge-\"MMMM yyyy\"."

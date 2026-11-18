@@ -266,6 +266,26 @@ msgstr "يجب كتابة الحرف الأول من الكائنات بأحرف
 msgid "Object names must not contain special characters"
 msgstr "يجب ألا تحتوي أسماء الكائنات على أحرف خاصة"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "تجنب استخدام SUM أو AVERAGE على عمود نصي"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "تأكد من أن الجداول المصدر لـ Direct Lake مرتبة باستخدام V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "تأكد من أن جداول Direct Lake لا تستمد بياناتها من طريقة عرض SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr "يجب أن يطابق اسم القسم اسم الجدول في الجداول ذات القسم الواحد"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "توفير سلسلة تنسيق لأعمدة 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "اداء"
@@ -518,6 +538,26 @@ msgstr "التنسيق"
 msgid "Object names must not contain special characters"
 msgstr "اصطلاحات التسمية"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "تعبيرات DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "اداء"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "اداء"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "اصطلاحات التسمية"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "التنسيق"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -537,8 +577,9 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"قد تتسبب العلاقات ثنائية الاتجاه والعلاقات متعددة إلى متعدد في تدهور الأداء "
+"أو حتى في عواقب غير مقصودة. تأكد من فحص هذه العلاقات المحددة للتأكد من أنها "
+"تعمل كما هو مصمم وأنها ضرورية بالفعل."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -906,3 +947,37 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "يجب ألا تتضمن أسماء الكائنات علامات تبويب وفواصل أسطر وما إلى ذلك."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"لا يمكن للدالتين SUM وAVERAGE تجميع عمود نصي (string) وستؤديان إلى حدوث خطأ."
+" تأكد من تطبيق هاتين الدالتين على أعمدة رقمية، أو استخدم تجميعًا مختلفًا "
+"(مثل COUNT أو DISTINCTCOUNT) للأعمدة النصية."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"للحصول على أفضل أداء لـ Direct Lake، يجب كتابة جداول delta التي يقرأ منها "
+"نموذج Direct Lake باستخدام V-Order. تحدد هذه القاعدة أقسام Direct Lake التي "
+"لا يكون جدول المصدر الخاص بها في lakehouse مرتبًا باستخدام V-Order؛ أعد "
+"كتابة جدول المصدر أو نفّذ OPTIMIZE عليه مع تمكين V-Order."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"جدول Direct Lake الذي يكون مصدره طريقة عرض SQL (بدلاً من جدول) سيعود دائمًا "
+"إلى DirectQuery، وهو أبطأ ويُفقد Direct Lake الغرض منه. وجّه الجدول إلى جدول"
+" في lakehouse/warehouse، أو حوّل طريقة العرض إلى جدول delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"في الجدول الذي يحتوي على قسم واحد، يجب أن يطابق اسم القسم اسم الجدول من أجل "
+"الوضوح والاتساق."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"يجب تنسيق الأعمدة من النوع \"DateTime\" التي تحتوي أسماؤها على \"Month\" "
+"بالتنسيق \"MMMM yyyy\"."

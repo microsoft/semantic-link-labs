@@ -284,6 +284,30 @@ msgstr "La prima lettera degli oggetti deve essere maiuscola"
 msgid "Object names must not contain special characters"
 msgstr "I nomi degli oggetti non devono contenere caratteri speciali"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Evitare l'uso di SUM o AVERAGE su una colonna di testo"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Assicurarsi che le tabelle di origine di Direct Lake siano in V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Assicurarsi che le tabelle Direct Lake non abbiano come origine una vista "
+"SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Il nome della partizione deve corrispondere al nome della tabella per le "
+"tabelle con una sola partizione"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Specificare una stringa di formato per le colonne 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Prestazione"
@@ -536,6 +560,26 @@ msgstr "Formattazione"
 msgid "Object names must not contain special characters"
 msgstr "Convenzioni di denominazione"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Espressioni DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Prestazione"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Prestazione"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Convenzioni di denominazione"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Formattazione"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -557,8 +601,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Le relazioni bidirezionali e molti-a-molti possono causare un calo delle "
+"prestazioni o persino conseguenze indesiderate. Verificare queste relazioni "
+"specifiche per assicurarsi che funzionino come previsto e che siano "
+"effettivamente necessarie."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -984,3 +1030,40 @@ msgid "Object names must not contain special characters"
 msgstr ""
 "I nomi degli oggetti non devono includere tabulazioni, interruzioni di riga,"
 " ecc."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Le funzioni SUM e AVERAGE non possono aggregare una colonna di testo "
+"(string) e generano un errore. Assicurarsi che queste funzioni siano "
+"applicate a colonne numeriche oppure utilizzare un'aggregazione diversa (ad "
+"esempio COUNT o DISTINCTCOUNT) per le colonne di testo."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Per ottenere le migliori prestazioni di Direct Lake, le tabelle delta lette "
+"da un modello Direct Lake devono essere scritte con V-Order. Questa regola "
+"segnala le partizioni Direct Lake la cui tabella di origine nel lakehouse "
+"non è in V-Order; riscrivere la tabella di origine o eseguire OPTIMIZE con "
+"V-Order abilitato."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Una tabella Direct Lake la cui origine è una vista SQL (anziché una tabella)"
+" ricadrà sempre in DirectQuery, che è più lento e vanifica lo scopo di "
+"Direct Lake. Puntare la tabella a una tabella del lakehouse/warehouse oppure"
+" materializzare la vista come tabella delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Per una tabella con una sola partizione, il nome della partizione deve "
+"corrispondere al nome della tabella per chiarezza e coerenza."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Le colonne di tipo \"DateTime\" che contengono \"Month\" nel nome devono "
+"essere formattate come \"MMMM yyyy\"."

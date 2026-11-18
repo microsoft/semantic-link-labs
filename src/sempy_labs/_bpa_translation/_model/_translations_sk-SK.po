@@ -279,6 +279,28 @@ msgstr "Prvé písmeno objektov musí byť veľké"
 msgid "Object names must not contain special characters"
 msgstr "Názvy objektov nesmú obsahovať špeciálne znaky"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Nepoužívajte SUM ani AVERAGE na textový stĺpec"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Uistite sa, že zdrojové tabuľky Direct Lake používajú V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Uistite sa, že tabuľky Direct Lake nečerpajú zo zobrazenia SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Pri tabuľkách s jedným oddielom by sa názov oddielu mal zhodovať s názvom "
+"tabuľky"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Zadajte formátovací reťazec pre stĺpce 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Výkon"
@@ -531,6 +553,26 @@ msgstr "Formátovanie"
 msgid "Object names must not contain special characters"
 msgstr "Konvencií"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Výkon"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Výkon"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Konvencií"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Formátovanie"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -551,8 +593,9 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Obojsmerné vzťahy a vzťahy typu M:N môžu znížiť výkon alebo mať dokonca "
+"nezamýšľané dôsledky. Tieto konkrétne vzťahy skontrolujte, aby ste sa "
+"uistili, že fungujú podľa návrhu a sú skutočne potrebné."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -950,3 +993,40 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "Názvy objektov by nemali obsahovať tabulátory, zlomy riadkov atď."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Funkcie SUM a AVERAGE nedokážu agregovať textový (string) stĺpec a spôsobia "
+"chybu. Uistite sa, že tieto funkcie sa používajú na číselné stĺpce, alebo "
+"pre textové stĺpce použite inú agregáciu (napríklad COUNT alebo "
+"DISTINCTCOUNT)."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Na dosiahnutie najlepšieho výkonu Direct Lake by tabuľky delta, z ktorých "
+"model Direct Lake číta, mali byť zapísané s V-Order. Toto pravidlo označuje "
+"oddiely Direct Lake, ktorých zdrojová tabuľka v lakehouse nepoužíva V-Order;"
+" zdrojovú tabuľku prepíšte alebo na ňu spustite OPTIMIZE so zapnutým "
+"V-Order."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Tabuľka Direct Lake, ktorej zdrojom je zobrazenie SQL (namiesto tabuľky), "
+"vždy prejde do režimu DirectQuery, ktorý je pomalší a marí účel Direct Lake."
+" Nasmerujte tabuľku na tabuľku v lakehouse/warehouse alebo zobrazenie "
+"materializujte ako tabuľku delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Pri tabuľke s jediným oddielom by sa názov oddielu mal kvôli prehľadnosti a "
+"konzistentnosti zhodovať s názvom tabuľky."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Stĺpce typu \"DateTime\", ktoré majú v názve \"Month\", by mali byť "
+"formátované ako \"MMMM yyyy\"."

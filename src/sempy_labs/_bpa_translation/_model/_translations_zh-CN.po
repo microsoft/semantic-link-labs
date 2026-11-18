@@ -258,6 +258,26 @@ msgstr "对象的首字母必须大写"
 msgid "Object names must not contain special characters"
 msgstr "对象名称不得包含特殊字符"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "避免对字符串列使用 SUM 或 AVERAGE"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "确保 Direct Lake 源表已进行 V-Order 排序"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "确保 Direct Lake 表的源不是 SQL 视图"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr "对于只有一个分区的表，分区名称应与表名称一致"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "为 'Month' 列提供格式字符串"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "性能"
@@ -510,6 +530,26 @@ msgstr "格式"
 msgid "Object names must not contain special characters"
 msgstr "命名约定"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX 表达式"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "性能"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "性能"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "命名约定"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "格式"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -523,9 +563,7 @@ msgstr ""
 
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
-msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+msgstr "双向关系和多对多关系可能会导致性能下降，甚至产生意外后果。请务必检查这些关系，确保它们按设计工作并且确实必要。"
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -802,3 +840,30 @@ msgstr "对象名称的首字母应大写，以保持专业质量。"
 # description
 msgid "Object names must not contain special characters"
 msgstr "对象名称不应包含制表符、换行符等。"
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"SUM 和 AVERAGE 函数无法聚合文本 (string) 列，并会引发错误。请确保这些函数应用于数值列，或对文本列使用其他聚合（例如 COUNT "
+"或 DISTINCTCOUNT）。"
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"为获得最佳的 Direct Lake 性能，Direct Lake 模型读取的 delta 表应使用 V-Order 写入。此规则会标记其 "
+"lakehouse 源表未进行 V-Order 排序的 Direct Lake 分区；请在启用 V-Order 的情况下重写源表或对其运行 "
+"OPTIMIZE。"
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"源为 SQL 视图（而不是表）的 Direct Lake 表将始终回退到 DirectQuery，这会更慢并且违背了 Direct Lake "
+"的初衷。请将该表指向 lakehouse/warehouse 表，或将视图具体化为 delta 表。"
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr "对于只有一个分区的表，为保持清晰和一致，分区名称应与表名称一致。"
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr "名称中包含 \"Month\" 的 \"DateTime\" 类型列应设置为 \"MMMM yyyy\" 格式。"

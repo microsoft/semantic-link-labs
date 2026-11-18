@@ -282,6 +282,28 @@ msgstr "பொருள்களின் முதல் எழுத்து 
 msgid "Object names must not contain special characters"
 msgstr "பொருள் பெயர்களில் சிறப்பு கேரக்டர்கள் இருக்கக்கூடாது"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "உரை நெடுவரிசையில் SUM அல்லது AVERAGE பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Direct Lake மூல அட்டவணைகள் V-Order செய்யப்பட்டுள்ளதை உறுதிசெய்யவும்"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Direct Lake அட்டவணைகளின் மூலம் SQL காட்சி அல்ல என்பதை உறுதிசெய்யவும்"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"ஒற்றைப் பகிர்வு அட்டவணைகளில் பகிர்வின் பெயர் அட்டவணையின் பெயருடன் பொருந்த "
+"வேண்டும்"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "'Month' நெடுவரிசைகளுக்கு வடிவமைப்புச் சரத்தை வழங்கவும்"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "செயல்திறன்"
@@ -534,6 +556,26 @@ msgstr "வடிவமைத்தல்"
 msgid "Object names must not contain special characters"
 msgstr "பெயரிடும் மரபுகள்"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX கோவைகள்"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "செயல்திறன்"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "பெயரிடும் மரபுகள்"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "வடிவமைத்தல்"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -555,8 +597,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"இருதிசை மற்றும் பல-க்கு-பல உறவுகள் செயல்திறன் குறைவை அல்லது எதிர்பாராத "
+"விளைவுகளையும் ஏற்படுத்தக்கூடும். இந்தக் குறிப்பிட்ட உறவுகள் "
+"வடிவமைக்கப்பட்டபடி செயல்படுகின்றனவா, உண்மையில் தேவையானவையா என்பதை உறுதிசெய்ய"
+" அவற்றைச் சரிபார்க்கவும்."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -974,3 +1018,40 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "பொருள் பெயர்களில் தாவல்கள், வரி இடைவெளிகள் போன்றவை இருக்கக்கூடாது."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"SUM மற்றும் AVERAGE செயல்பாடுகளால் உரை (string) நெடுவரிசையைத் தொகுக்க "
+"முடியாது, அவை பிழையை ஏற்படுத்தும். இந்தச் செயல்பாடுகள் எண் நெடுவரிசைகளில் "
+"பயன்படுத்தப்படுவதை உறுதிசெய்யவும், அல்லது உரை நெடுவரிசைகளுக்கு வேறு "
+"தொகுப்பைப் (எடுத்துக்காட்டாக COUNT அல்லது DISTINCTCOUNT) பயன்படுத்தவும்."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"சிறந்த Direct Lake செயல்திறனுக்கு, Direct Lake மாதிரி படிக்கும் delta "
+"அட்டவணைகள் V-Order உடன் எழுதப்பட வேண்டும். lakehouse மூல அட்டவணை V-Order "
+"செய்யப்படாத Direct Lake பகிர்வுகளை இந்த விதி குறிக்கிறது; V-Order "
+"இயக்கப்பட்ட நிலையில் மூல அட்டவணையை மீண்டும் எழுதவும் அல்லது OPTIMIZE "
+"செய்யவும்."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"மூலம் (அட்டவணைக்குப் பதிலாக) SQL காட்சியாக உள்ள Direct Lake அட்டவணை "
+"எப்போதும் DirectQuery-க்குத் திரும்பும்; இது மெதுவானது மற்றும் Direct Lake-"
+"இன் நோக்கத்தைத் தோற்கடிக்கிறது. அட்டவணையை lakehouse/warehouse அட்டவணைக்குச் "
+"சுட்டவும், அல்லது காட்சியை delta அட்டவணையாக உருவாக்கவும்."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"ஒரே ஒரு பகிர்வு கொண்ட அட்டவணையில், தெளிவு மற்றும் சீரான தன்மைக்காக பகிர்வின்"
+" பெயர் அட்டவணையின் பெயருடன் பொருந்த வேண்டும்."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"பெயரில் \"Month\" உள்ள \"DateTime\" வகை நெடுவரிசைகள் \"MMMM yyyy\" என "
+"வடிவமைக்கப்பட வேண்டும்."

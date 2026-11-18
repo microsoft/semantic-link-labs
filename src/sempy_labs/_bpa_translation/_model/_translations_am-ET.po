@@ -260,6 +260,26 @@ msgstr "የእቃዎች የመጀመሪያ ፊደል መጠቀም አለበት"
 msgid "Object names must not contain special characters"
 msgstr "የግዕዝ ስሞች ልዩ ፊደሎችን መያዝ የለባቸውም"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "በጽሑፍ (string) ዓምድ ላይ SUM ወይም AVERAGE ከመጠቀም ይቆጠቡ"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "የDirect Lake ምንጭ ሰንጠረዦች V-Order መደረጋቸውን ያረጋግጡ"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "የDirect Lake ሰንጠረዦች ከSQL እይታ (view) እንደማይመነጩ ያረጋግጡ"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr "ነጠላ ክፍልፋይ ላላቸው ሰንጠረዦች የክፍልፋዩ ስም ከሰንጠረዡ ስም ጋር መመሳሰል አለበት"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "ለ'Month' ዓምዶች የቅርጸት ሕብረቁምፊ ያቅርቡ"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "አፈጻጸም"
@@ -512,6 +532,26 @@ msgstr "ፎርማት (formatting)"
 msgid "Object names must not contain special characters"
 msgstr "የአውራጃ ስብሰባዎችን ስም ማውጣት"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "ዳክስ መግለጫዎች"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "አፈጻጸም"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "የአውራጃ ስብሰባዎችን ስም ማውጣት"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "ፎርማት (formatting)"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -529,8 +569,8 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"ባለሁለት አቅጣጫ እና ብዙ-ለብዙ ግንኙነቶች የአፈጻጸም መቀነስ ወይም ያልታሰቡ ውጤቶችን ሊያስከትሉ ይችላሉ። እነዚህ "
+"ግንኙነቶች እንደታሰበው እየሰሩ መሆናቸውንና በእርግጥም አስፈላጊ መሆናቸውን ያረጋግጡ።"
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -867,3 +907,33 @@ msgstr "የእቃ ስሞች የመጀመሪያ ፊደል የሙያ ጥራትን 
 # description
 msgid "Object names must not contain special characters"
 msgstr "የObject ስሞች መክተቻዎች, የመስመር መሰበር, ወዘተ ማካተት የለባቸውም."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"የSUM እና AVERAGE ተግባራት የጽሑፍ (string) ዓምድን ማጠቃለል አይችሉም፤ ስህተትም ያስከትላሉ። እነዚህ "
+"ተግባራት በቁጥር ዓምዶች ላይ መተግበራቸውን ያረጋግጡ፣ ወይም ለጽሑፍ ዓምዶች ሌላ ማጠቃለያ (ለምሳሌ COUNT ወይም "
+"DISTINCTCOUNT) ይጠቀሙ።"
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"ለተሻለ የDirect Lake አፈጻጸም፣ የDirect Lake ሞዴል የሚያነባቸው የdelta ሰንጠረዦች በV-Order መጻፍ"
+" አለባቸው። ይህ ደንብ የlakehouse ምንጭ ሰንጠረዣቸው V-Order ያልተደረገባቸውን የDirect Lake ክፍልፋዮች"
+" ያመለክታል፤ የምንጭ ሰንጠረዡን V-Order በማንቃት እንደገና ይጻፉ ወይም OPTIMIZE ያድርጉ።"
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"ምንጩ (ከሰንጠረዥ ይልቅ) የSQL እይታ የሆነ የDirect Lake ሰንጠረዥ ሁልጊዜ ወደ DirectQuery ይመለሳል፤ "
+"ይህም ቀርፋፋ ሲሆን የDirect Lakeን ዓላማ ያጠፋል። ሰንጠረዡን ወደ lakehouse/warehouse ሰንጠረዥ "
+"ይጠቁሙ፣ ወይም እይታውን እንደ delta ሰንጠረዥ ያስቀምጡ።"
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"አንድ ክፍልፋይ ብቻ ላለው ሰንጠረዥ፣ ለግልጽነትና ለወጥነት የክፍልፋዩ ስም ከሰንጠረዡ ስም ጋር መመሳሰል አለበት።"
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr "በስማቸው \"Month\" ያለባቸው የ\"DateTime\" አይነት ዓምዶች በ\"MMMM yyyy\" ቅርጸት መቀረጽ አለባቸው።"
