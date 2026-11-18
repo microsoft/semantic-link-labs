@@ -3781,6 +3781,7 @@ def bpa(
     export_lakehouse: Optional[str | UUID] = None,
     export_workspace: Optional[str | UUID] = None,
     language: Optional[str] = None,
+    extended: bool = False,
 ):
     """
     Generates an interactive Best Practice Analyzer for semantic models.
@@ -3844,6 +3845,9 @@ def bpa(
     return_dataframe : bool, default=False
         If True, no user interface is shown; the rule violations of the semantic model
         given by the 'dataset' parameter are returned as a pandas dataframe instead.
+        The dataframe has the Category, Rule Name, Severity, Object Type, Object Name,
+        Description and URL columns. Severity is given as text: 'Error', 'Warning' or
+        'Info'. If 'export' is also True, the violations are exported as well.
     export : bool, default=False
         If True, no user interface is shown; the rule violations of the semantic model
         given by the 'dataset' parameter are saved to a delta table in a lakehouse
@@ -3866,6 +3870,13 @@ def bpa(
         Defaults to None which resolves to English. The language can also be
         changed in the analyzer, which lists English and the languages with
         built-in translations.
+    extended : bool, default=False
+        If True, collects the Vertipaq Analyzer statistics of each semantic model
+        before it is scanned (see :meth:`sempy_labs.tom.TOMWrapper.set_vertipaq_annotations`),
+        so the rules which rely on them (such as 'Large tables should be partitioned',
+        which reads the tables' row counts) can be evaluated. The statistics are only
+        used for the scan and are not saved to the semantic model. This makes each
+        scan slower.
 
     Returns
     -------
@@ -4028,6 +4039,9 @@ def bpa(
     def _scan(workspace_id, dataset_id, disabled_rules):
         rules = _rules_for(workspace_id, dataset_id)
         with _connect(dataset_id, workspace_id, True) as tom:
+            # The connection is read-only, so the annotations are never saved.
+            if extended:
+                tom.set_vertipaq_annotations()
             violations = scan_model(
                 tom, rules, disabled_rules, should_cancel=_cancelled
             )
@@ -4047,12 +4061,17 @@ def bpa(
     ]
 
     def _violations_dataframe(violations):
+        import sempy_labs._icons as icons
+
+        # Severity is text; a rules dataframe may carry the severity icons.
         return pd.DataFrame(
             [
                 {
                     "Category": v["category"],
                     "Rule Name": v["ruleName"],
-                    "Severity": v["severity"],
+                    "Severity": icons.severity_mapping.get(
+                        v["severity"], v["severity"]
+                    ),
                     "Object Type": v["objectType"],
                     "Object Name": v["objectName"],
                     "Description": v["description"],
@@ -4126,16 +4145,12 @@ def bpa(
             workspace=export_workspace,
         )
 
-    if return_dataframe:
-        _require_dataset("return_dataframe")
-        return _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
-
-    if export:
-        _require_dataset("export")
-        _export_violations(
-            _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
-        )
-        return
+    if return_dataframe or export:
+        _require_dataset("return_dataframe" if return_dataframe else "export")
+        df = _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
+        if export:
+            _export_violations(df)
+        return df if return_dataframe else None
 
     try:
         import anywidget

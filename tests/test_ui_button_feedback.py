@@ -56,7 +56,6 @@ def test_all_interactive_tools_use_shared_button_press_feedback():
         "src/sempy_labs/_copilot.py": (
             'scoped_button_press_css(f"#chat-wrapper-{session_id}")'
         ),
-        "src/sempy_labs/_model_bpa.py": "scoped_button_press_css(f'#{root_id}')",
         "src/sempy_labs/report/_report_bpa.py": (
             "scoped_button_press_css(f'#{root_id}')"
         ),

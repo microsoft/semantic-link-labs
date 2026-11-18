@@ -556,3 +556,152 @@ def test_every_built_in_rule_has_bundled_translations():
                     language,
                     name,
                 )
+
+
+def _offline_bpa(monkeypatch, tom):
+    """Lets bpa() run against a fake model, without Fabric."""
+
+    import contextlib
+    from sempy_labs import _helper_functions, _model_bpa_rules
+    import sempy_labs.tom
+
+    # The built-in rules load the Analysis Services client (.NET).
+    monkeypatch.setattr(
+        _model_bpa_rules, "model_bpa_rules", lambda dependencies=None: _rules()
+    )
+    monkeypatch.setattr(
+        _helper_functions, "resolve_workspace_name_and_id", lambda w: ("WS", "ws-id")
+    )
+    monkeypatch.setattr(
+        _helper_functions,
+        "resolve_dataset_name_and_id",
+        lambda dataset, workspace=None: ("Sales Model", "ds-id"),
+    )
+    monkeypatch.setattr(
+        sempy_labs.tom,
+        "connect_semantic_model",
+        lambda dataset, workspace, readonly: contextlib.nullcontext(tom),
+    )
+
+
+class _AnnotatedTom(_FakeTom):
+    def __init__(self):
+        super().__init__()
+        self.annotated = False
+
+    def set_vertipaq_annotations(self):
+        self.annotated = True
+
+
+def test_bpa_returns_text_severities_and_collects_vertipaq_stats_when_extended(
+    monkeypatch,
+):
+    import sempy_labs._icons as icons
+    from sempy_labs.semantic_model._bpa import bpa
+
+    tom = _AnnotatedTom()
+    _offline_bpa(monkeypatch, tom)
+    rules = _rules()
+    # A rules dataframe may carry the severity icons.
+    rules.loc[0, "Severity"] = icons.info
+
+    df = bpa(
+        dataset="Sales Model",
+        rules=rules,
+        check_dependencies=False,
+        return_dataframe=True,
+        extended=True,
+    )
+
+    assert tom.annotated
+    assert list(df["Object Name"]) == ["date"]
+    assert list(df["Severity"]) == ["Info"]
+
+    tom = _AnnotatedTom()
+    _offline_bpa(monkeypatch, tom)
+    bpa(
+        dataset="Sales Model",
+        rules=_rules(),
+        check_dependencies=False,
+        return_dataframe=True,
+    )
+    assert not tom.annotated
+
+
+def test_bpa_exports_and_returns_the_violations_when_both_are_requested(monkeypatch):
+    import sempy.fabric as fabric
+    from sempy_labs import _helper_functions
+    from sempy_labs.lakehouse import _get_lakehouse_tables
+    from sempy_labs.semantic_model._bpa import bpa
+
+    _offline_bpa(monkeypatch, _FakeTom())
+    saved = {}
+    monkeypatch.setattr(
+        _get_lakehouse_tables,
+        "get_lakehouse_tables",
+        lambda lakehouse=None, workspace=None: pd.DataFrame({"Table Name": []}),
+    )
+    monkeypatch.setattr(
+        fabric,
+        "list_datasets",
+        lambda workspace=None, mode=None: pd.DataFrame(
+            {"Dataset Id": ["ds-id"], "Configured By": ["owner@contoso.com"]}
+        ),
+    )
+    monkeypatch.setattr(
+        _helper_functions, "resolve_workspace_capacity", lambda workspace: ("c", "C")
+    )
+    monkeypatch.setattr(
+        _helper_functions,
+        "save_as_delta_table",
+        lambda dataframe, delta_table_name, **kwargs: saved.update(
+            df=dataframe, table=delta_table_name
+        ),
+    )
+
+    df = bpa(
+        dataset="Sales Model",
+        rules=_rules(),
+        check_dependencies=False,
+        return_dataframe=True,
+        export=True,
+    )
+
+    assert list(df["Object Name"]) == ["date"]
+    assert saved["table"] == "modelbparesults"
+    assert list(saved["df"]["Severity"]) == ["Info"]
+    assert list(saved["df"]["RunId"]) == [1]
+
+
+def test_run_model_bpa_runs_the_analyzer(monkeypatch):
+    from sempy_labs import run_model_bpa
+    from sempy_labs.semantic_model import _bpa
+
+    calls = []
+    monkeypatch.setattr(_bpa, "bpa", lambda **kwargs: calls.append(kwargs) or "df")
+    rules = _rules()
+
+    result = run_model_bpa(
+        "Sales Model",
+        rules=rules,
+        workspace="WS",
+        return_dataframe=True,
+        extended=True,
+        language="it-IT",
+        check_dependencies=False,
+        extend=True,
+    )
+
+    assert result == "df"
+    assert calls == [
+        {
+            "dataset": "Sales Model",
+            "workspace": "WS",
+            "rules": rules,
+            "check_dependencies": False,
+            "return_dataframe": True,
+            "export": False,
+            "language": "it-IT",
+            "extended": True,
+        }
+    ]
