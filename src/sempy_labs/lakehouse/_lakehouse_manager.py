@@ -476,7 +476,16 @@ _LHM_CSS = (
 .slls-lhm-head { flex: 0 0 auto; padding: 20px 22px 16px; }
 .slls-lhm-body { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 14px; padding: 0 22px 20px; }
 .slls-lhm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.slls-lhm-card { padding: 12px 14px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary); }
+.slls-lhm-card {
+    display: flex; align-items: center; gap: 12px; min-width: 0; padding: 12px 14px;
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
+}
+.slls-lhm-card-icon {
+    display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 8px; background: var(--ui-accent-soft); color: var(--ui-accent);
+}
+.slls-lhm-card-icon svg { display: block; width: 18px; height: 18px; }
+.slls-lhm-card-text { min-width: 0; }
 .slls-lhm-card-label { color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .slls-lhm-card-value { margin-top: 6px; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .slls-lhm-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -676,7 +685,7 @@ _LHM_CSS = (
 .slls-lhm-cols-head .slls-lhm-cols-cell[aria-sort="ascending"] .slls-lhm-sort,
 .slls-lhm-cols-head .slls-lhm-cols-cell[aria-sort="descending"] .slls-lhm-sort { color: var(--ui-accent); }
 .slls-lhm-cols-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.slls-lhm-type-icon { display: inline-flex; flex: 0 0 auto; color: var(--ui-text-tertiary); cursor: help; }
+.slls-lhm-type-icon { display: inline-flex; flex: 0 0 auto; color: var(--ui-text-tertiary); }
 .slls-lhm-type-icon svg { display: block; width: 14px; height: 14px; }
 .slls-lhm-cols .slls-lhm-bar { display: block; width: 100%; height: 18px; }
 .slls-lhm-badge {
@@ -870,11 +879,17 @@ function render({ model, el }) {
     const body = document.createElement("div"); body.className = "slls-lhm-body";
     const cards = document.createElement("div"); cards.className = "slls-lhm-cards";
     const cardValues = {};
-    for (const [key, label] of [["tables", "Tables"], ["files", "Files"], ["deleted", "Deleted"], ["size_label", "Size"]]) {
+    const CARDS = [
+        ["tables", "Tables", `__ICON_TABLE__`], ["files", "Files", `__ICON_FILE__`],
+        ["deleted", "Deleted", `__ICON_TRASH__`], ["size_label", "Size", `__ICON_SCHEMA__`],
+    ];
+    for (const [key, label, iconSvg] of CARDS) {
         const card = document.createElement("div"); card.className = "slls-lhm-card";
+        const icon = document.createElement("span"); icon.className = "slls-lhm-card-icon"; icon.innerHTML = iconSvg;
+        const text = document.createElement("div"); text.className = "slls-lhm-card-text";
         const lab = document.createElement("div"); lab.className = "slls-lhm-card-label"; lab.textContent = label;
         const val = document.createElement("div"); val.className = "slls-lhm-card-value"; val.textContent = "—";
-        card.append(lab, val); cards.appendChild(card); cardValues[key] = val;
+        text.append(lab, val); card.append(icon, text); cards.appendChild(card); cardValues[key] = val;
     }
     const toolbar = document.createElement("div"); toolbar.className = "slls-lhm-toolbar";
     const search = document.createElement("input"); search.type = "search"; search.className = "slls-lhm-search";
