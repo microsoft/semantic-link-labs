@@ -1220,3 +1220,322 @@ def apply_fixes(
         applied += 1
 
     return applied
+
+
+# ---------------------------------------------------------------------------
+# Translation of the rule text shown to the user
+# ---------------------------------------------------------------------------
+
+_TRANSLATION_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "_bpa_translation",
+    "_model",
+)
+
+# Maps each translatable rules column to the comment tagging it in the .po files.
+_PO_COMMENTS = {
+    "Category": "category",
+    "Rule Name": "rule_name",
+    "Description": "description",
+}
+
+
+def resolve_language(language: Optional[str]) -> Optional[str]:
+    """
+    Resolves a language name or code (for example 'Italian' or 'it-IT') into the
+    language code used to translate the rules, matching
+    :func:`sempy_labs.run_model_bpa`.
+
+    Parameters
+    ----------
+    language : str, default=None
+        A language name or code.
+
+    Returns
+    -------
+    str | None
+        The language code, or None when no language was given.
+    """
+
+    import sempy_labs._icons as icons
+    from sempy_labs._helper_functions import get_language_codes
+
+    if language is None:
+        return None
+
+    language = get_language_codes(languages=language)[0]
+    if language not in icons.language_map:
+        print(
+            f"{icons.yellow_dot} The '{language}' language code is not in our "
+            "predefined language list. Please file an issue and let us know which "
+            "language code you are using: https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=."
+        )
+
+    return language
+
+
+def supported_languages() -> Dict[str, str]:
+    """
+    Returns the predefined languages which have bundled rule translations, as a
+    mapping of language code to language name.
+    """
+
+    import sempy_labs._icons as icons
+
+    return {
+        code: name
+        for code, name in icons.language_map.items()
+        if os.path.exists(os.path.join(_TRANSLATION_DIR, f"_translations_{code}.po"))
+    }
+
+
+def _po_translations(language: str) -> Dict[Tuple[str, str], str]:
+    """Reads the bundled translations, keyed by ``(column, English rule name)``."""
+
+    import polib
+
+    po = polib.pofile(os.path.join(_TRANSLATION_DIR, f"_translations_{language}.po"))
+    translations = {}
+    for entry in po:
+        for column, comment in _PO_COMMENTS.items():
+            if entry.tcomment == comment and entry.msgstr:
+                translations[(column, entry.msgid)] = entry.msgstr
+
+    return translations
+
+
+def _spark_translations(texts: List[str], language: str) -> Dict[str, str]:
+    """Machine-translates texts using the Fabric AI translation service."""
+
+    from pyspark.sql.functions import col, flatten
+    from synapse.ml.services import Translate
+    from sempy_labs._helper_functions import _create_spark_session
+
+    spark = _create_spark_session()
+    df = spark.createDataFrame([(t,) for t in texts], "text string")
+    translated = (
+        Translate()
+        .setTextCol("text")
+        .setToLanguage(language)
+        .setOutputCol("translation")
+        .setConcurrency(5)
+        .transform(df)
+        .withColumn("translation", flatten(col("translation.translations")))
+        .withColumn("translation", col("translation.text"))
+        .select("text", "translation")
+        .toPandas()
+    )
+
+    result = {}
+    for text, translation in zip(translated["text"], translated["translation"]):
+        if translation is not None and len(translation) > 0 and translation[0]:
+            result[text] = translation[0]
+
+    return result
+
+
+class RuleTranslator:
+    """
+    Translates the Category, Rule Name and Description of the rules shown to the
+    user, mirroring :func:`sempy_labs.run_model_bpa`: the bundled translations are
+    used for the built-in rules when the language is one of the predefined
+    languages, and anything else is machine-translated.
+
+    Only the displayed text is translated. Rule ids, automatic fixes and ruleset
+    matching keep using the English rule names, so a translated rule name received
+    back from the user interface is mapped to its English name with
+    :meth:`source_rule_name`.
+
+    Parameters
+    ----------
+    language : str, default=None
+        A language code, as returned by :func:`resolve_language`. None disables
+        translation.
+    """
+
+    def __init__(self, language: Optional[str] = None):
+        self.language = language
+        # Both caches are keyed by language, as the language can be switched.
+        self._po: Dict[str, Dict[Tuple[str, str], str]] = {}
+        self._machine: Dict[Tuple[str, str], str] = {}
+        self._source_names: Dict[str, str] = {}
+
+    def translations(
+        self, rows: List[Dict[str, str]], defaults: Optional[pd.DataFrame] = None
+    ) -> Dict[str, Dict[str, str]]:
+        """
+        Returns the translated text of each rule, keyed by its English rule name.
+
+        Parameters
+        ----------
+        rows : List[Dict[str, str]]
+            The ``Category``, ``Rule Name`` and ``Description`` of each rule, in
+            English.
+        defaults : pandas.DataFrame, default=None
+            The built-in rules. Text which is unchanged from the built-in rules uses
+            the bundled translations; any other text is machine-translated.
+            Defaults to None which machine-translates all text.
+
+        Returns
+        -------
+        Dict[str, Dict[str, str]]
+            The translated ``Category``, ``Rule Name`` and ``Description`` per rule.
+        """
+
+        import sempy_labs._icons as icons
+
+        if not self.language or not rows:
+            return {}
+
+        language = self.language
+        built_in = {}
+        po = {}
+        if defaults is not None and language in icons.language_map:
+            if language not in self._po:
+                self._po[language] = _po_translations(language)
+            po = self._po[language]
+            for _, r in defaults.iterrows():
+                built_in[str(r["Rule Name"])] = {
+                    "Category": str(r["Category"]),
+                    "Rule Name": str(r["Rule Name"]),
+                    "Description": (
+                        "" if pd.isna(r["Description"]) else str(r["Description"])
+                    ),
+                }
+
+        # The bundled files translate the category per rule and some rules lack an
+        # entry, so each built-in category takes its most common translation.
+        # Otherwise rules of one category could show under two different names.
+        votes: Dict[str, Dict[str, int]] = {}
+        for rule_name, base in built_in.items():
+            translated = po.get(("Category", rule_name))
+            if translated:
+                counts = votes.setdefault(base["Category"], {})
+                counts[translated] = counts.get(translated, 0) + 1
+        categories = {
+            category: max(counts, key=lambda t: (counts[t], t))
+            for category, counts in votes.items()
+        }
+
+        def uses_po(rule_name, column, text):
+            if column == "Category" and text in categories:
+                return True
+            base = built_in.get(rule_name)
+            return base is not None and base[column] == text
+
+        pending = sorted(
+            {
+                text
+                for row in rows
+                for column, text in row.items()
+                if text
+                and (language, text) not in self._machine
+                and not uses_po(row["Rule Name"], column, text)
+            }
+        )
+        if pending:
+            for text, translation in _spark_translations(pending, language).items():
+                self._machine[(language, text)] = translation
+
+        result = {}
+        for row in rows:
+            rule_name = row["Rule Name"]
+            translated = {}
+            for column, text in row.items():
+                if column == "Category" and text in categories:
+                    translated[column] = categories[text]
+                elif uses_po(rule_name, column, text):
+                    translated[column] = po.get((column, rule_name)) or text
+                else:
+                    translated[column] = self._machine.get((language, text)) or text
+            self._source_names[translated["Rule Name"]] = rule_name
+            result[rule_name] = translated
+
+        return result
+
+    def source_rule_name(self, rule_name: str) -> str:
+        """Maps a (possibly translated) rule name back to its English rule name."""
+
+        return self._source_names.get(rule_name, rule_name)
+
+    def _localize(
+        self,
+        items: List[dict],
+        fields: Dict[str, str],
+        defaults: Optional[pd.DataFrame],
+    ) -> List[dict]:
+        """
+        Translates the text ``fields`` (rules column -> item key) of each item.
+
+        Items translated before carry their English text under ``source``, so they
+        can be translated again into another language, or restored to English.
+        """
+
+        originals = []
+        for item in items:
+            original = {
+                k: v for k, v in item.items() if k not in ("source", "categoryKey")
+            }
+            original.update(item.get("source") or {})
+            originals.append(original)
+
+        translations = self.translations(
+            [
+                {column: str(o.get(key) or "") for column, key in fields.items()}
+                for o in originals
+            ],
+            defaults,
+        )
+        if not translations:
+            return originals
+
+        localized = []
+        for o in originals:
+            t = translations.get(str(o[fields["Rule Name"]]))
+            if t is not None:
+                o = {
+                    **o,
+                    **{key: t[column] for column, key in fields.items()},
+                    "source": {key: o[key] for key in fields.values()},
+                }
+            localized.append(o)
+
+        return localized
+
+    def localize_violations(
+        self, violations: List[dict], defaults: Optional[pd.DataFrame] = None
+    ) -> List[dict]:
+        """
+        Translates violations produced by :func:`scan_model`. The English category
+        is kept under ``categoryKey`` so the user interface can still order the
+        categories and pick their icons.
+        """
+
+        localized = self._localize(
+            violations,
+            {
+                "Category": "category",
+                "Rule Name": "ruleName",
+                "Description": "description",
+            },
+            defaults,
+        )
+        for v in localized:
+            if v.get("source"):
+                v["categoryKey"] = v["source"]["category"]
+
+        return localized
+
+    def localize_payload(
+        self, payload: List[dict], defaults: Optional[pd.DataFrame] = None
+    ) -> List[dict]:
+        """
+        Translates rule descriptors produced by :func:`rules_payload`. The original
+        text is kept under ``source`` so an exported ruleset stays in English.
+        """
+
+        return self._localize(
+            payload,
+            {"Category": "category", "Rule Name": "name", "Description": "description"},
+            defaults,
+        )

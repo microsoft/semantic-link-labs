@@ -862,6 +862,14 @@ ICONS: dict[str, str] = {
         'aria-hidden="true"><path d="M3.5 8h9"/></svg>'
     ),
     # Two branches with opposing arrows: the "compare these two things" mark.
+    "globe": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/><path d="M2 8h12"/>'
+        '<path d="M8 2c1.7 1.7 2.5 3.7 2.5 6S9.7 12.3 8 14'
+        'C6.3 12.3 5.5 10.3 5.5 8S6.3 3.7 8 2Z"/></svg>'
+    ),
     "git_compare": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '

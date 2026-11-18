@@ -377,3 +377,148 @@ def test_validate_rules_json_reports_every_problem_it_finds():
     assert any("'Enabled'" in w for w in warnings)
     assert any("no 'ID' or 'Name'" in w for w in warnings)
     assert any("not a rule object" in w for w in warnings)
+
+
+def _fake_translations(monkeypatch):
+    po = {
+        ("Category", "First letter of objects must be capitalized"): "Formattazione",
+        (
+            "Rule Name",
+            "First letter of objects must be capitalized",
+        ): "Iniziale maiuscola",
+        (
+            "Description",
+            "First letter of objects must be capitalized",
+        ): "Descrizione tradotta.",
+    }
+    machine_calls = []
+
+    def fake_spark(texts, language):
+        machine_calls.append(list(texts))
+        return {t: f"[{language}] {t}" for t in texts}
+
+    monkeypatch.setattr(engine, "_po_translations", lambda language: po)
+    monkeypatch.setattr(engine, "_spark_translations", fake_spark)
+    return machine_calls
+
+
+def test_translator_localizes_violations_and_maps_fixes_back(monkeypatch):
+    machine_calls = _fake_translations(monkeypatch)
+    rules = _rules().iloc[[0]].reset_index(drop=True)
+    translator = engine.RuleTranslator("it-IT")
+
+    violations = translator.localize_violations(
+        engine.scan_model(_FakeTom(), rules), rules
+    )
+
+    assert machine_calls == []
+    assert [v["objectName"] for v in violations] == ["date"]
+    for v in violations:
+        assert v["ruleName"] == "Iniziale maiuscola"
+        assert v["category"] == "Formattazione"
+        assert v["categoryKey"] == "Formatting"
+        assert v["description"] == "Descrizione tradotta."
+        assert v["ruleId"] == "first_letter_of_objects_must_be_capitalized"
+        assert v["fixable"] is True
+
+    source = translator.source_rule_name("Iniziale maiuscola")
+    assert source == "First letter of objects must be capitalized"
+    assert engine.preview_fixes(_FakeTom(), rules, source)
+
+
+def test_translator_machine_translates_text_changed_from_the_built_in(monkeypatch):
+    machine_calls = _fake_translations(monkeypatch)
+    defaults = _rules()
+    custom = defaults.copy()
+    custom.loc[0, "Description"] = "My own description."
+    translator = engine.RuleTranslator("it-IT")
+
+    payload = translator.localize_payload(engine.rules_payload(custom), defaults)
+
+    by_id = {p["id"]: p for p in payload}
+    first = by_id["first_letter_of_objects_must_be_capitalized"]
+    assert first["name"] == "Iniziale maiuscola"
+    assert first["description"] == "[it-IT] My own description."
+    assert first["source"] == {
+        "name": "First letter of objects must be capitalized",
+        "category": "Formatting",
+        "description": "My own description.",
+    }
+    # Built-in text without a bundled translation stays as-is.
+    assert by_id["rule_that_raises"]["name"] == "Rule that raises"
+    assert machine_calls == [["My own description."]]
+
+
+def test_translator_switches_language_and_back_to_english(monkeypatch):
+    machine_calls = _fake_translations(monkeypatch)
+    rules = _rules().iloc[[0]].reset_index(drop=True)
+    english = engine.scan_model(_FakeTom(), rules)
+    monkeypatch.setattr(
+        engine,
+        "_po_translations",
+        lambda language: {
+            ("Rule Name", "First letter of objects must be capitalized"): language
+        },
+    )
+    translator = engine.RuleTranslator("it-IT")
+    italian = translator.localize_violations(english, rules)
+    assert italian[0]["ruleName"] == "it-IT"
+
+    translator.language = "de-DE"
+    german = translator.localize_violations(italian, rules)
+    assert german[0]["ruleName"] == "de-DE"
+
+    # An unsupported language machine-translates the English text, not the
+    # German text on screen.
+    translator.language = "xx-XX"
+    other = translator.localize_violations(german, rules)
+    assert other[0]["ruleName"] == (
+        "[xx-XX] First letter of objects must be capitalized"
+    )
+    assert other[0]["categoryKey"] == "Formatting"
+    assert "First letter of objects must be capitalized" in machine_calls[0]
+
+    translator.language = None
+    assert translator.localize_violations(other, rules) == english
+
+
+def test_language_options_list_english_and_bundled_languages():
+    from sempy_labs.semantic_model._bpa import _language_options
+
+    options = _language_options()
+    values = [o["value"] for o in options]
+
+    assert options[0] == {"value": "", "label": "English"}
+    assert {"value": "it-IT", "label": "Italian (it-IT)"} in options
+    assert set(values[1:]) == set(engine.supported_languages())
+    assert _language_options("xx-XX")[-1] == {"value": "xx-XX", "label": "xx-XX"}
+    assert _language_options("it-IT") == options
+
+
+def test_translator_gives_every_rule_of_a_category_the_same_translation(monkeypatch):
+    rules = _rules()
+    rules.loc[1, "Category"] = "Formatting"
+    # Only one of the two Formatting rules has a bundled category translation.
+    monkeypatch.setattr(
+        engine,
+        "_po_translations",
+        lambda language: {
+            ("Category", "First letter of objects must be capitalized"): "Formato"
+        },
+    )
+    translator = engine.RuleTranslator("it-IT")
+
+    payload = translator.localize_payload(engine.rules_payload(rules), rules)
+
+    assert {p["category"] for p in payload} == {"Formato"}
+
+
+def test_ui_strings_cover_every_supported_language():
+    from sempy_labs.semantic_model._bpa_ui_strings import _KEYS, ui_strings
+
+    for language in engine.supported_languages():
+        strings = ui_strings(language)
+        assert set(strings) == set(_KEYS), language
+        assert all(strings.values()), language
+    assert ui_strings(None) == {}
+    assert ui_strings("xx-XX") == {}
