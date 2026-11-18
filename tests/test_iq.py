@@ -16,7 +16,7 @@ def _mock_base_api(monkeypatch, response_json):
     return calls
 
 
-def test_retrieve_context_sends_payload_and_flattens_results(monkeypatch):
+def test_retrieve_sends_payload_and_flattens_results(monkeypatch):
     calls = _mock_base_api(
         monkeypatch,
         {
@@ -49,7 +49,7 @@ def test_retrieve_context_sends_payload_and_flattens_results(monkeypatch):
         },
     )
 
-    df = iq_items.retrieve_context("How do I onboard?", token_budget=100)
+    df = iq_items.retrieve("How do I onboard?", token_budget=100)
 
     assert calls[0]["request"] == "/v1/microsoftIQ/retrieve"
     assert calls[0]["method"] == "post"
@@ -64,10 +64,10 @@ def test_retrieve_context_sends_payload_and_flattens_results(monkeypatch):
     assert df.loc[1, "Reference"] is None
 
 
-def test_retrieve_context_empty_results_returns_empty_dataframe(monkeypatch):
+def test_retrieve_empty_results_returns_empty_dataframe(monkeypatch):
     _mock_base_api(monkeypatch, {"results": []})
 
-    df = iq_items.retrieve_context("anything")
+    df = iq_items.retrieve("anything")
 
     assert df.empty
     assert "Summary" in df.columns
@@ -76,11 +76,11 @@ def test_retrieve_context_empty_results_returns_empty_dataframe(monkeypatch):
 @pytest.mark.parametrize(
     "query, token_budget", [("", 10), ("   ", 10), ("q", 0), ("q", True)]
 )
-def test_retrieve_context_rejects_invalid_input(monkeypatch, query, token_budget):
+def test_retrieve_rejects_invalid_input(monkeypatch, query, token_budget):
     calls = _mock_base_api(monkeypatch, {})
 
     with pytest.raises(ValueError):
-        iq_items.retrieve_context(query, token_budget=token_budget)
+        iq_items.retrieve(query, token_budget=token_budget)
 
     assert calls == []
 

@@ -101,7 +101,7 @@ def am_i_in_scope() -> bool:
     """
     Checks whether Microsoft IQ holds organizational context that the caller is entitled to see.
 
-    Use this to skip a :meth:`sempy_labs.iq.retrieve_context` call that would return no context. A value of True doesn't
+    Use this to skip a :meth:`sempy_labs.iq.retrieve` call that would return no context. A value of True doesn't
     guarantee that a particular query will match anything.
 
     This is a wrapper function for the following API: `Microsoft IQ - Am I In Scope <https://learn.microsoft.com/rest/api/fabric/core/microsoft-iq/am-i-in-scope>`_.
