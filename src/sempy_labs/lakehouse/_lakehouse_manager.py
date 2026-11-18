@@ -476,7 +476,16 @@ _LHM_CSS = (
 .slls-lhm-head { flex: 0 0 auto; padding: 20px 22px 16px; }
 .slls-lhm-body { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 14px; padding: 0 22px 20px; }
 .slls-lhm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.slls-lhm-card { padding: 12px 14px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary); }
+.slls-lhm-card {
+    display: flex; align-items: center; gap: 12px; min-width: 0; padding: 12px 14px;
+    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg-secondary);
+}
+.slls-lhm-card-icon {
+    display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 8px; background: var(--ui-accent-soft); color: var(--ui-accent);
+}
+.slls-lhm-card-icon svg { display: block; width: 18px; height: 18px; }
+.slls-lhm-card-text { min-width: 0; }
 .slls-lhm-card-label { color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .slls-lhm-card-value { margin-top: 6px; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .slls-lhm-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -547,15 +556,28 @@ _LHM_CSS = (
 }
 .slls-lhm-node-more { color: var(--ui-text-tertiary); font-size: 12px; font-style: italic; }
 /* Capped so the list scrolls itself and its column headers stay in view. */
-.slls-lhm-list {
-    flex: 1 1 auto; min-height: 220px; max-height: min(640px, calc(100vh - 160px));
-    border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg); overflow: auto;
+.slls-lhm-listframe {
+    position: relative; z-index: 0; display: flex; flex: 1 1 auto; flex-direction: column;
+    min-height: 220px; max-height: min(640px, calc(100vh - 160px));
 }
-.slls-lhm.slls-lhm-fullscreen .slls-lhm-list, .slls-lhm:fullscreen .slls-lhm-list { max-height: none; }
+.slls-lhm.slls-lhm-fullscreen .slls-lhm-listframe, .slls-lhm:fullscreen .slls-lhm-listframe { max-height: none; }
+.slls-lhm-list {
+    flex: 1 1 auto; min-height: 0;
+    border: 1px solid transparent; border-radius: 10px; background: var(--ui-bg); overflow: auto;
+}
+/* At fractional display scaling the browser can paint a pixel row of scrolled
+   rows just outside the sticky table header, over or above the list's top
+   border. The frame covers that edge with a solid strip and redraws the border
+   on top, and the header sticks a pixel high to cover the inside edge. */
+.slls-lhm-listframe::before, .slls-lhm-listframe::after {
+    content: ""; position: absolute; z-index: 5; pointer-events: none;
+}
+.slls-lhm-listframe::before { inset: -2px 0 auto 0; height: 3px; background: var(--ui-bg); }
+.slls-lhm-listframe::after { inset: 0; border: 1px solid var(--ui-border); border-radius: 10px; }
 .slls-lhm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 /* A collapsed border scrolls away from a sticky header, so it is drawn as a shadow. */
 .slls-lhm-table th {
-    position: sticky; top: 0; z-index: 1; padding: 9px 12px;
+    position: sticky; top: -1px; z-index: 1; padding: 10px 12px 9px;
     border-bottom: none; box-shadow: inset 0 -1px 0 var(--ui-border); background: var(--ui-bg-secondary);
     color: var(--ui-text-tertiary); font-size: 11px; font-weight: 600; text-align: left;
     text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
@@ -637,6 +659,35 @@ _LHM_CSS = (
 .slls-lhm-sort:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; border-radius: 3px; }
 .slls-lhm-table th[aria-sort="ascending"] .slls-lhm-sort, .slls-lhm-table th[aria-sort="descending"] .slls-lhm-sort { color: var(--ui-accent); }
 .slls-lhm-sort-icon svg { display: block; width: 12px; height: 12px; }
+/* A table's columns, shown in a popup from the table view. */
+.slls-lhm-dialog.slls-lhm-cols-dialog { width: min(620px, 100%); }
+.slls-lhm-table .slls-lhm-iconbtn.slls-lhm-colsbtn { margin-left: auto; }
+.slls-lhm-cols-state { display: flex; align-items: center; gap: 10px; padding: 18px 4px; color: var(--ui-text-secondary); font-size: 13px; }
+.slls-lhm-cols-state.slls-lhm-failed { color: var(--ui-danger-text); }
+.slls-lhm-cols-state .slls-lhm-ghost { flex: 0 0 auto; padding: 4px 14px; font-size: 12px; }
+.slls-lhm-cols-scroll {
+    max-height: min(440px, 60vh); overflow: auto; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-bg);
+}
+.slls-lhm-cols { display: grid; grid-template-columns: 44px minmax(180px, 1.5fr) minmax(150px, 1fr) 64px; font-size: 12.5px; }
+.slls-lhm-cols-row { display: contents; }
+.slls-lhm-cols-cell {
+    display: flex; align-items: center; min-width: 0; padding: 4px 10px;
+    border-bottom: 1px solid var(--ui-border); overflow: hidden; white-space: nowrap;
+}
+.slls-lhm-cols-cell.slls-lhm-num { justify-content: flex-end; }
+.slls-lhm-cols-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slls-lhm-cols-row:last-child .slls-lhm-cols-cell { border-bottom: none; }
+.slls-lhm-cols-head .slls-lhm-cols-cell {
+    position: sticky; top: 0; z-index: 1; padding-top: 6px; padding-bottom: 6px;
+    background: var(--ui-bg-secondary); color: var(--ui-text-tertiary);
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+}
+.slls-lhm-cols-head .slls-lhm-cols-cell[aria-sort="ascending"] .slls-lhm-sort,
+.slls-lhm-cols-head .slls-lhm-cols-cell[aria-sort="descending"] .slls-lhm-sort { color: var(--ui-accent); }
+.slls-lhm-cols-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slls-lhm-type-icon { display: inline-flex; flex: 0 0 auto; color: var(--ui-text-tertiary); }
+.slls-lhm-type-icon svg { display: block; width: 14px; height: 14px; }
+.slls-lhm-cols .slls-lhm-bar { display: block; width: 100%; height: 18px; }
 .slls-lhm-badge {
     display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
     border: 1px solid var(--ui-border); border-radius: 999px;
@@ -828,11 +879,17 @@ function render({ model, el }) {
     const body = document.createElement("div"); body.className = "slls-lhm-body";
     const cards = document.createElement("div"); cards.className = "slls-lhm-cards";
     const cardValues = {};
-    for (const [key, label] of [["tables", "Tables"], ["files", "Files"], ["deleted", "Deleted"], ["size_label", "Size"]]) {
+    const CARDS = [
+        ["tables", "Tables", `__ICON_TABLE__`], ["files", "Files", `__ICON_FILE__`],
+        ["deleted", "Deleted", `__ICON_TRASH__`], ["size_label", "Size", `__ICON_SCHEMA__`],
+    ];
+    for (const [key, label, iconSvg] of CARDS) {
         const card = document.createElement("div"); card.className = "slls-lhm-card";
+        const icon = document.createElement("span"); icon.className = "slls-lhm-card-icon"; icon.innerHTML = iconSvg;
+        const text = document.createElement("div"); text.className = "slls-lhm-card-text";
         const lab = document.createElement("div"); lab.className = "slls-lhm-card-label"; lab.textContent = label;
         const val = document.createElement("div"); val.className = "slls-lhm-card-value"; val.textContent = "—";
-        card.append(lab, val); cards.appendChild(card); cardValues[key] = val;
+        text.append(lab, val); card.append(icon, text); cards.appendChild(card); cardValues[key] = val;
     }
     const toolbar = document.createElement("div"); toolbar.className = "slls-lhm-toolbar";
     const search = document.createElement("input"); search.type = "search"; search.className = "slls-lhm-search";
@@ -888,6 +945,8 @@ function render({ model, el }) {
     });
     toolbar.append(search, selection, pills, tableSelection, segment);
     const listWrap = document.createElement("div"); listWrap.className = "slls-lhm-list";
+    const listFrame = document.createElement("div"); listFrame.className = "slls-lhm-listframe";
+    listFrame.appendChild(listWrap);
     const note = document.createElement("div"); note.className = "slls-lhm-note";
     const noteIcon = document.createElement("span"); const noteText = document.createElement("span");
     note.append(noteIcon, noteText);
@@ -899,7 +958,7 @@ function render({ model, el }) {
     const batchCancel = document.createElement("button"); batchCancel.type = "button";
     batchCancel.className = "slls-lhm-ghost"; batchCancel.textContent = "Cancel";
     batchBar.append(batchText, batchCancel);
-    body.append(cards, toolbar, batchBar, listWrap, note);
+    body.append(cards, toolbar, batchBar, listFrame, note);
 
     const attribution = document.createElement("div"); attribution.className = "slls-lhm-attr";
     attribution.innerHTML = `__ATTRIBUTION__`;
@@ -1189,6 +1248,11 @@ function render({ model, el }) {
         const listKey = [view, filter, search.value.trim().toLowerCase(), model.get("loaded_lakehouse_id") || ""].join("|");
         const scrollTop = listKey === renderedList ? listWrap.scrollTop : 0;
         renderedList = listKey;
+        // A re-render (e.g. when stats arrive) keeps the focus on the caret or
+        // checkbox which had it.
+        const active = document.activeElement;
+        const refocus = active && listWrap.contains(active) && active.dataset.path
+            ? { kind: active.classList[0], path: active.dataset.path } : null;
         listWrap.innerHTML = "";
         if (!(model.get("objects") || []).length) {
             listWrap.appendChild(emptyState(model.get("loading")
@@ -1197,6 +1261,11 @@ function render({ model, el }) {
         }
         if (view === "Tree") renderTree(); else renderTable();
         listWrap.scrollTop = scrollTop;
+        if (refocus) {
+            for (const el of listWrap.querySelectorAll("." + refocus.kind)) {
+                if (el.dataset.path === refocus.path) { el.focus({ preventScroll: true }); break; }
+            }
+        }
     }
 
     // Selectable: everything the user can act on, so not the containers
@@ -1634,6 +1703,229 @@ function render({ model, el }) {
         return cell;
     }
 
+    // ---------------- Table columns ----------------
+    // A table's columns are read with its stats, so showing the columns of a
+    // table whose stats were not collected yet collects them, once the kernel
+    // is free. They are asked for once while the popup shows the table.
+    let columnsTarget = null;
+    const columnRequests = new Set();
+    const colsOverlay = document.createElement("div"); colsOverlay.className = "slls-lhm-overlay";
+    colsOverlay.style.display = "none";
+    const colsDialog = document.createElement("div"); colsDialog.className = "slls-lhm-dialog slls-lhm-cols-dialog";
+    colsDialog.setAttribute("role", "dialog"); colsDialog.tabIndex = -1;
+    const colsHead = document.createElement("div"); colsHead.className = "slls-lhm-panel-head";
+    const colsTitle = document.createElement("div");
+    colsTitle.innerHTML = '<h2 class="slls-lhm-panel-title">Columns</h2><div class="slls-lhm-panel-sub"></div>';
+    const colsClose = document.createElement("button"); colsClose.type = "button"; colsClose.className = "slls-lhm-close";
+    colsClose.innerHTML = `__ICON_CLOSE__`; colsClose.title = "Close";
+    colsClose.setAttribute("aria-label", "Close the columns");
+    colsHead.append(colsTitle, colsClose);
+    const colsBody = document.createElement("div");
+    colsDialog.append(colsHead, colsBody);
+    colsOverlay.appendChild(colsDialog); root.appendChild(colsOverlay);
+
+    function openColumns(row) {
+        columnsTarget = row.path;
+        colsTitle.querySelector(".slls-lhm-panel-sub").textContent = row.path;
+        colsDialog.setAttribute("aria-label", "Columns of " + row.path);
+        colsOverlay.style.display = "flex";
+        colsDialog.focus({ preventScroll: true });
+        renderColumns();
+        requestColumns();
+    }
+    function closeColumns() {
+        const path = columnsTarget;
+        columnsTarget = null; colsOverlay.style.display = "none";
+        if (!path) return;
+        columnRequests.delete(path);
+        for (const button of listWrap.querySelectorAll(".slls-lhm-colsbtn")) {
+            if (button.dataset.path === path) { button.focus({ preventScroll: true }); break; }
+        }
+    }
+    colsClose.addEventListener("click", closeColumns);
+    colsOverlay.addEventListener("click", (event) => { if (event.target === colsOverlay) closeColumns(); });
+
+    function requestColumns() {
+        const path = columnsTarget;
+        if (!path || busy() || (model.get("action_done") || 0) < (model.get("action_trigger") || 0)) return;
+        const pending = (model.get("stats_pending") || []).indexOf(path) >= 0;
+        if ((model.get("table_stats") || {})[path] || pending || columnRequests.has(path)) return;
+        columnRequests.add(path);
+        act("stats", { paths: [path] });
+    }
+
+    // Each data type's icon and description, from its Spark type name.
+    const TYPE_ICONS = {
+        text: `__ICON_TYPE_TEXT__`, integer: `__ICON_TYPE_INTEGER__`, decimal: `__ICON_TYPE_DECIMAL__`,
+        boolean: `__ICON_TYPE_BOOLEAN__`, date: `__ICON_TYPE_DATE__`, timestamp: `__ICON_TYPE_TIMESTAMP__`,
+        binary: `__ICON_TYPE_BINARY__`, struct: `__ICON_TYPE_STRUCT__`, array: `__ICON_TYPE_ARRAY__`,
+        map: `__ICON_TYPE_MAP__`, other: `__ICON_COLUMN__`,
+    };
+    const INTEGER_BITS = { tinyint: 8, smallint: 16, int: 32, bigint: 64 };
+    function typeInfo(type) {
+        const name = String(type || "").trim().toLowerCase();
+        const base = name.replace(/[<(].*$/, "");
+        if (INTEGER_BITS[base]) return { icon: "integer", label: `Whole number (${INTEGER_BITS[base]}-bit)` };
+        if (base === "float") return { icon: "decimal", label: "Decimal number (32-bit floating point)" };
+        if (base === "double") return { icon: "decimal", label: "Decimal number (64-bit floating point)" };
+        if (base === "decimal") {
+            const m = name.match(/^decimal\((\d+),\s*(\d+)\)/);
+            return { icon: "decimal", label: m
+                ? `Fixed-point decimal (${m[1]} digits, ${m[2]} after the decimal point)` : "Fixed-point decimal" };
+        }
+        if (base === "string" || base === "varchar" || base === "char") return { icon: "text", label: "Text" };
+        if (base === "boolean") return { icon: "boolean", label: "True or false" };
+        if (base === "date") return { icon: "date", label: "Date" };
+        if (base === "timestamp") return { icon: "timestamp", label: "Date and time" };
+        if (base === "timestamp_ntz") return { icon: "timestamp", label: "Date and time, without a time zone" };
+        if (base === "binary") return { icon: "binary", label: "Binary data" };
+        if (base === "struct") return { icon: "struct", label: "Struct (a group of named fields)" };
+        if (base === "array") return { icon: "array", label: "Array (a list of values)" };
+        if (base === "map") return { icon: "map", label: "Map (keys and their values)" };
+        return { icon: "other", label: "Data type" };
+    }
+
+    // Shared by every table: "order" keeps the table's column order.
+    let columnSort = { key: "order", dir: 1 };
+    const COLUMN_FIELDS = [
+        { key: "order", label: "#", num: true, title: "Sort by the table's column order" },
+        { key: "name", label: "Column", text: true },
+        { key: "size", label: "Size", num: true,
+          title: "Sort by the column's compressed size in the table's data files" },
+        { key: "share", label: "Share", num: true,
+          title: "Sort by the column's share of the table's data size" },
+    ];
+
+    function columnsState(text, bad, retryLabel) {
+        const state = document.createElement("div");
+        state.className = "slls-lhm-cols-state" + (bad ? " slls-lhm-failed" : "");
+        const message = document.createElement("span"); message.textContent = text;
+        state.appendChild(message);
+        if (retryLabel) {
+            const path = columnsTarget;
+            const retry = document.createElement("button"); retry.type = "button";
+            retry.className = "slls-lhm-ghost"; retry.textContent = retryLabel;
+            retry.disabled = busy();
+            retry.addEventListener("click", () => act("stats", { paths: [path] }));
+            state.appendChild(retry);
+        }
+        colsBody.appendChild(state);
+    }
+
+    function renderColumns() {
+        if (!columnsTarget) return;
+        const path = columnsTarget;
+        colsBody.innerHTML = "";
+        const stats = (model.get("table_stats") || {})[path];
+        const pending = (model.get("stats_pending") || []).indexOf(path) >= 0;
+        if (pending || !stats) {
+            columnsState(!pending && busy()
+                ? "The columns are read once the current operation finishes…"
+                : "Reading the table's columns…");
+            return;
+        }
+        if (stats.error) { columnsState("Could not read the columns: " + stats.error, true, "Retry"); return; }
+        const list = stats.column_details;
+        if (!Array.isArray(list)) {
+            columnsState("Collect the table's stats again to see its columns.", false, "Collect stats");
+            return;
+        }
+        if (!list.length) { columnsState("The table has no columns."); return; }
+
+        const total = list.reduce((sum, column) => sum + (column.size || 0), 0);
+        const largest = list.reduce((max, column) => Math.max(max, column.size || 0), 0) || 1;
+        const entries = list.map((column, index) => ({
+            order: index + 1, name: column.name, size: column.size,
+            share: total && column.size != null ? column.size / total : null,
+            column: column,
+        }));
+        const key = columnSort.key;
+        const field = COLUMN_FIELDS.find((f) => f.key === key) || COLUMN_FIELDS[0];
+        entries.sort((a, b) => {
+            const order = field.text
+                ? String(a[key] || "").toLowerCase().localeCompare(String(b[key] || "").toLowerCase())
+                : (a[key] == null ? -1 : a[key]) - (b[key] == null ? -1 : b[key]);
+            return order * columnSort.dir || a.order - b.order;
+        });
+
+        const scroll = document.createElement("div"); scroll.className = "slls-lhm-cols-scroll";
+        const grid = document.createElement("div"); grid.className = "slls-lhm-cols";
+        grid.setAttribute("role", "table");
+        grid.setAttribute("aria-label", "Columns of " + path);
+        const cell = (content, className, title) => {
+            const div = document.createElement("div");
+            div.className = "slls-lhm-cols-cell" + (className ? " " + className : "");
+            if (content instanceof Node) div.appendChild(content);
+            else {
+                const text = document.createElement("span"); text.className = "slls-lhm-cols-text";
+                text.textContent = content; div.appendChild(text);
+            }
+            if (title) div.title = title;
+            return div;
+        };
+        const head = document.createElement("div"); head.className = "slls-lhm-cols-row slls-lhm-cols-head";
+        head.setAttribute("role", "row");
+        for (const f of COLUMN_FIELDS) {
+            const active = key === f.key;
+            const sortBtn = document.createElement("button"); sortBtn.type = "button"; sortBtn.className = "slls-lhm-sort";
+            sortBtn.textContent = f.label;
+            sortBtn.title = f.title || ("Sort by " + f.label.toLowerCase());
+            sortBtn.dataset.sort = f.key;
+            if (active) {
+                const arrow = document.createElement("span"); arrow.className = "slls-lhm-sort-icon";
+                arrow.innerHTML = columnSort.dir > 0 ? `__ICON_SORT_ASC__` : `__ICON_SORT_DESC__`;
+                sortBtn.appendChild(arrow);
+            }
+            sortBtn.addEventListener("click", () => {
+                // Names start A to Z; sizes with the largest.
+                if (active) columnSort = { key: f.key, dir: -columnSort.dir };
+                else columnSort = { key: f.key, dir: f.text || f.key === "order" ? 1 : -1 };
+                renderColumns();
+                const again = colsBody.querySelector(`.slls-lhm-sort[data-sort="${f.key}"]`);
+                if (again) again.focus({ preventScroll: true });
+            });
+            const th = cell(sortBtn, f.num ? "slls-lhm-num" : "");
+            th.setAttribute("role", "columnheader");
+            th.setAttribute("aria-sort", active ? (columnSort.dir > 0 ? "ascending" : "descending") : "none");
+            head.appendChild(th);
+        }
+        grid.appendChild(head);
+        for (const entry of entries) {
+            const column = entry.column;
+            const line = document.createElement("div"); line.className = "slls-lhm-cols-row";
+            line.setAttribute("role", "row");
+            const info = typeInfo(column.type);
+            const nameWrap = document.createElement("span"); nameWrap.className = "slls-lhm-cols-name";
+            const typeIcon = document.createElement("span"); typeIcon.className = "slls-lhm-type-icon";
+            typeIcon.innerHTML = TYPE_ICONS[info.icon];
+            typeIcon.title = column.type ? `${info.label}\n${column.type}` : info.label;
+            typeIcon.setAttribute("role", "img");
+            typeIcon.setAttribute("aria-label", column.type ? `${info.label} (${column.type})` : info.label);
+            const nameText = document.createElement("span"); nameText.className = "slls-lhm-cols-text";
+            nameText.textContent = column.name; nameText.title = column.name;
+            nameWrap.append(typeIcon, nameText);
+            const bar = document.createElement("span"); bar.className = "slls-lhm-bar";
+            const fill = document.createElement("span"); fill.className = "slls-lhm-bar-fill";
+            fill.style.width = Math.min(100, ((column.size || 0) / largest) * 100) + "%";
+            const text = document.createElement("span"); text.className = "slls-lhm-bar-text";
+            text.textContent = column.size == null ? "—" : column.size_label;
+            bar.append(fill, text);
+            const sizeTitle = column.size == null
+                ? "Not found in the table's data files"
+                : `Compressed: ${column.size_label}\nUncompressed: ${column.uncompressed_label}`;
+            const cells = [
+                cell(String(entry.order), "slls-lhm-num slls-lhm-muted"),
+                cell(nameWrap),
+                cell(bar, "", sizeTitle),
+                cell(entry.share == null ? "—" : (entry.share * 100).toFixed(1) + "%",
+                    "slls-lhm-num" + (entry.share == null ? " slls-lhm-muted" : "")),
+            ];
+            for (const c of cells) { c.setAttribute("role", "cell"); line.appendChild(c); }
+            grid.appendChild(line);
+        }
+        scroll.appendChild(grid); colsBody.appendChild(scroll);
+    }
+
     function renderTable() {
         const term = search.value.trim().toLowerCase();
         const tables = (model.get("objects") || []).filter((row) => row.type === "Table");
@@ -1736,6 +2028,17 @@ function render({ model, el }) {
             name.append(icon, label);
             if (row.deleted) name.appendChild(badge("Deleted", `__ICON_TRASH__`, true));
             else if (row.deleted_files) name.appendChild(badge(row.deleted_files + " deleted", `__ICON_TRASH__`, true));
+            if (maintainable(row)) {
+                const colsBtn = document.createElement("button"); colsBtn.type = "button";
+                colsBtn.className = "slls-lhm-iconbtn slls-lhm-cellbtn slls-lhm-colsbtn";
+                colsBtn.innerHTML = `__ICON_COLUMNS__`;
+                colsBtn.dataset.path = row.path;
+                colsBtn.title = "Show the table's columns";
+                colsBtn.setAttribute("aria-label", "Show the columns of " + row.path);
+                colsBtn.setAttribute("aria-haspopup", "dialog");
+                colsBtn.addEventListener("click", () => openColumns(row));
+                name.appendChild(colsBtn);
+            }
             nameCell.appendChild(name); tr.appendChild(nameCell);
 
             tr.appendChild(sizeCell(row, largest));
@@ -1857,6 +2160,7 @@ function render({ model, el }) {
     root.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         if (confirmOverlay.style.display !== "none") closeConfirm();
+        else if (colsOverlay.style.display !== "none") closeColumns();
         else if (clusterOverlay.style.display !== "none") closeClustering();
         else if (overlay.style.display !== "none") closeDialog();
         else if (backdrop.classList.contains("slls-lhm-modal")) { pickerOpen = false; renderState(); }
@@ -1886,16 +2190,29 @@ function render({ model, el }) {
     }
     model.on("change:cluster_info", renderClustering);
     model.on("change:busy", renderClustering);
+    // Columns asked for while the kernel was busy are read once it is free.
+    model.on("change:busy", () => { renderColumns(); requestColumns(); });
+    model.on("change:stats_pending", renderColumns);
+    model.on("change:table_stats", () => {
+        // Read: if the stats are later cleared (e.g. by a reload), they are
+        // read again while the popup shows the table.
+        const stats = model.get("table_stats") || {};
+        for (const path of Array.from(columnRequests)) if (stats[path]) columnRequests.delete(path);
+        renderColumns();
+        requestColumns();
+    });
     // A different lakehouse was loaded: selections made in the previous one
     // must never carry over to it.
     model.on("change:loaded_lakehouse_id", () => {
         selected.clear(); tableSelected.clear();
+        columnsTarget = null; colsOverlay.style.display = "none"; columnRequests.clear();
         expanded.clear(); expanded.add("Tables"); expanded.add("Files");
         renderState(); renderRows();
     });
     model.on("change:action_done", () => {
         renderClustering();
         pumpBatch();
+        requestColumns();
         if (!clearTablesAfter || (model.get("action_done") || 0) < clearTablesAfter) return;
         // A batch's first request finishes with its first table.
         if (batchActive()) return;
@@ -1964,6 +2281,18 @@ export default { render };
     .replace("__ICON_PENCIL__", _UI_ICONS["pencil"])
     .replace("__ICON_ALERT__", _UI_ICONS["alert"])
     .replace("__ICON_CHECK__", _UI_ICONS["check_circle"])
+    .replace("__ICON_COLUMNS__", _UI_ICONS["columns"])
+    .replace("__ICON_COLUMN__", _UI_ICONS["column"])
+    .replace("__ICON_TYPE_TEXT__", _UI_ICONS["text_type"])
+    .replace("__ICON_TYPE_INTEGER__", _UI_ICONS["type_integer"])
+    .replace("__ICON_TYPE_DECIMAL__", _UI_ICONS["type_decimal"])
+    .replace("__ICON_TYPE_BOOLEAN__", _UI_ICONS["type_boolean"])
+    .replace("__ICON_TYPE_DATE__", _UI_ICONS["date_table"])
+    .replace("__ICON_TYPE_TIMESTAMP__", _UI_ICONS["type_timestamp"])
+    .replace("__ICON_TYPE_BINARY__", _UI_ICONS["type_binary"])
+    .replace("__ICON_TYPE_STRUCT__", _UI_ICONS["type_struct"])
+    .replace("__ICON_TYPE_ARRAY__", _UI_ICONS["type_array"])
+    .replace("__ICON_TYPE_MAP__", _UI_ICONS["type_map"])
     .replace("__ATTRIBUTION__", _ui_render_attribution_html())
     .replace(
         "__FILE_SIZE_BANDS__",
@@ -2180,11 +2509,17 @@ def _job_status(result: Any) -> str:
         return ""
 
 
-def _footer_stats(table_dir: str, files: List[str]) -> Tuple[int, int, bool, int]:
+def _footer_stats(
+    table_dir: str,
+    files: List[str],
+    column_sizes: Optional[Dict[str, List[int]]] = None,
+) -> Tuple[int, int, bool, int]:
     """Read the parquet footers of a table's live data files.
 
     Returns ``(row_groups, rows, v_ordered, unread_files)``. A file is V-Ordered
-    when its footer carries a ``vorder`` key.
+    when its footer carries a ``vorder`` key. When ``column_sizes`` is given,
+    it is filled with each parquet column's ``[compressed, uncompressed]``
+    bytes, keyed by the column's path in the file's schema.
     """
 
     import os
@@ -2201,11 +2536,113 @@ def _footer_stats(table_dir: str, files: List[str]) -> Tuple[int, int, bool, int
             continue
         row_groups += metadata.num_row_groups
         rows += metadata.num_rows
+        if column_sizes is not None:
+            for index in range(metadata.num_row_groups):
+                group = metadata.row_group(index)
+                for position in range(group.num_columns):
+                    chunk = group.column(position)
+                    sizes = column_sizes.setdefault(chunk.path_in_schema, [0, 0])
+                    sizes[0] += int(chunk.total_compressed_size or 0)
+                    sizes[1] += int(chunk.total_uncompressed_size or 0)
         if not v_ordered:
             v_ordered = any(
                 b"vorder" in key.lower() for key in (metadata.metadata or {})
             )
     return row_groups, rows, v_ordered, unread
+
+
+# The delta log's names for the primitive types Spark spells differently, so a
+# Python notebook shows the same type names as a PySpark one.
+_SPARK_TYPE_NAMES = {
+    "long": "bigint",
+    "integer": "int",
+    "short": "smallint",
+    "byte": "tinyint",
+}
+
+
+def _type_name(data_type: Any) -> str:
+    """A delta log schema type in Spark's ``simpleString`` form."""
+
+    if isinstance(data_type, str):
+        return _SPARK_TYPE_NAMES.get(data_type, data_type)
+    if not isinstance(data_type, dict):
+        return str(data_type or "")
+    kind = data_type.get("type")
+    if kind == "struct":
+        return (
+            "struct<"
+            + ",".join(
+                f"{field.get('name')}:{_type_name(field.get('type'))}"
+                for field in data_type.get("fields") or []
+            )
+            + ">"
+        )
+    if kind == "array":
+        return f"array<{_type_name(data_type.get('elementType'))}>"
+    if kind == "map":
+        return (
+            f"map<{_type_name(data_type.get('keyType'))},"
+            f"{_type_name(data_type.get('valueType'))}>"
+        )
+    return str(kind or "")
+
+
+def _schema_fields(schema: dict) -> List[dict]:
+    """A delta log schema's top-level columns: name, type and physical name."""
+
+    return [
+        {
+            "name": str(field.get("name")),
+            "type": _type_name(field.get("type")),
+            "physical": (field.get("metadata") or {}).get(
+                "delta.columnMapping.physicalName"
+            ),
+        }
+        for field in schema.get("fields") or []
+    ]
+
+
+def _column_details(
+    fields: List[dict], column_sizes: Dict[str, List[int]]
+) -> List[dict]:
+    """Each column's name, type and size, in the table's column order.
+
+    ``column_sizes`` holds the parquet column chunks' bytes by their path in
+    the files' schema; a nested column's leaves count towards its top-level
+    column. The files name columns by their physical name when the table uses
+    column mapping. A column found in no data file has no size.
+    """
+
+    sizes: Dict[int, List[int]] = {}
+    # The longest name first, so "a.b" is not taken for a leaf of column "a".
+    order = sorted(
+        range(len(fields)),
+        key=lambda i: -len(fields[i].get("physical") or fields[i]["name"]),
+    )
+    for path, (compressed, uncompressed) in column_sizes.items():
+        for i in order:
+            name = fields[i].get("physical") or fields[i]["name"]
+            if path == name or path.startswith(name + "."):
+                total = sizes.setdefault(i, [0, 0])
+                total[0] += compressed
+                total[1] += uncompressed
+                break
+
+    details = []
+    for i, field in enumerate(fields):
+        size, uncompressed = sizes.get(i, (None, None))
+        details.append(
+            {
+                "name": field["name"],
+                "type": field["type"],
+                "size": size,
+                "size_label": _format_bytes(size),
+                "uncompressed_size": uncompressed,
+                "uncompressed_label": _format_bytes(uncompressed),
+            }
+        )
+    return details
 
 
 def _delta_details_spark(path: str, table_rel: str) -> dict:
@@ -2218,6 +2655,16 @@ def _delta_details_spark(path: str, table_rel: str) -> dict:
     df = delta_table.toDF()
     return {
         "columns": len(df.columns),
+        "fields": [
+            {
+                "name": field.name,
+                "type": field.dataType.simpleString(),
+                "physical": (field.metadata or {}).get(
+                    "delta.columnMapping.physicalName"
+                ),
+            }
+            for field in df.schema.fields
+        ],
         # Counted by Spark, so rows removed by deletion vectors are excluded.
         "rows": int(df.count()),
         "files": [
@@ -2543,6 +2990,7 @@ def _delta_log_details(table_dir: str) -> dict:
 
     return {
         "columns": len(schema.get("fields") or []),
+        "fields": _schema_fields(schema),
         # Rows marked deleted by deletion vectors are still in the files.
         "rows": None if rows is None else rows - deleted_rows,
         "deleted_rows": deleted_rows,
@@ -2559,9 +3007,9 @@ def _table_stats(
     """Collect a delta table's stats.
 
     ``local_root`` is the lakehouse mounted on the notebook, from which the
-    data files' parquet footers are read for the row groups and V-Order. A
-    PySpark notebook reads the table with Spark; a Python notebook reads its
-    delta log directly.
+    data files' parquet footers are read for the row groups, V-Order and
+    column sizes. A PySpark notebook reads the table with Spark; a Python
+    notebook reads its delta log directly.
     """
 
     import os
@@ -2588,18 +3036,38 @@ def _table_stats(
         if details["clustering"] is None:
             details["clustering"] = _history_clustering(history)
 
+    column_sizes: Dict[str, List[int]] = {}
     row_groups, footer_rows, v_ordered, unread = _footer_stats(
-        table_dir, details["files"]
+        table_dir, details["files"], column_sizes
     )
     properties = details["properties"]
     if not details["files"]:
         v_ordered = _is_true(properties.get("delta.parquet.vorder.enabled"))
+
+    fields = [dict(field) for field in details.get("fields") or []]
+    mapped = str(properties.get("delta.columnMapping.mode") or "").lower() in (
+        "name",
+        "id",
+    )
+    if mapped and not all(field.get("physical") for field in fields):
+        # Spark's schema can leave out the physical names a column-mapped
+        # table's data files use; its delta log has them.
+        try:
+            physical = {
+                field["name"]: field["physical"]
+                for field in _delta_log_details(table_dir)["fields"]
+            }
+        except Exception:
+            physical = {}
+        for field in fields:
+            field["physical"] = field.get("physical") or physical.get(field["name"])
 
     rows = details["rows"]
     if rows is None:
         rows = footer_rows - int(details.get("deleted_rows") or 0)
     return {
         "columns": int(details["columns"]),
+        "column_details": _column_details(fields, column_sizes),
         "rows": int(rows),
         "row_groups": int(row_groups),
         "z_order": list(details["z_order"]),
@@ -2639,9 +3107,11 @@ def lakehouse_manager(
     objects, recovers those deleted objects, runs table maintenance
     (optimize, V-Order, vacuum) on one or more tables, collects table stats
     (columns, rows, row groups, Z-Order, liquid clustering, auto-compaction and
-    V-Order), turns auto-compaction on or off, and changes a table's liquid
-    clustering columns. Changing auto-compaction or liquid clustering runs
-    Spark SQL, so it requires a PySpark notebook.
+    V-Order), shows each table's columns with their data types and sizes in a
+    popup from the table view, turns auto-compaction on or off,
+    and changes a table's liquid clustering columns. Stats and columns are read
+    in both PySpark and Python notebooks. Changing auto-compaction or liquid
+    clustering runs Spark SQL, so it requires a PySpark notebook.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 

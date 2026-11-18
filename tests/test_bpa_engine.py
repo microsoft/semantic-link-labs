@@ -377,3 +377,331 @@ def test_validate_rules_json_reports_every_problem_it_finds():
     assert any("'Enabled'" in w for w in warnings)
     assert any("no 'ID' or 'Name'" in w for w in warnings)
     assert any("not a rule object" in w for w in warnings)
+
+
+def _fake_translations(monkeypatch):
+    po = {
+        ("Category", "First letter of objects must be capitalized"): "Formattazione",
+        (
+            "Rule Name",
+            "First letter of objects must be capitalized",
+        ): "Iniziale maiuscola",
+        (
+            "Description",
+            "First letter of objects must be capitalized",
+        ): "Descrizione tradotta.",
+    }
+    machine_calls = []
+
+    def fake_spark(texts, language):
+        machine_calls.append(list(texts))
+        return {t: f"[{language}] {t}" for t in texts}
+
+    monkeypatch.setattr(engine, "_po_translations", lambda language: po)
+    monkeypatch.setattr(engine, "_spark_translations", fake_spark)
+    return machine_calls
+
+
+def test_translator_localizes_violations_and_maps_fixes_back(monkeypatch):
+    machine_calls = _fake_translations(monkeypatch)
+    rules = _rules().iloc[[0]].reset_index(drop=True)
+    translator = engine.RuleTranslator("it-IT")
+
+    violations = translator.localize_violations(
+        engine.scan_model(_FakeTom(), rules), rules
+    )
+
+    assert machine_calls == []
+    assert [v["objectName"] for v in violations] == ["date"]
+    for v in violations:
+        assert v["ruleName"] == "Iniziale maiuscola"
+        assert v["category"] == "Formattazione"
+        assert v["categoryKey"] == "Formatting"
+        assert v["description"] == "Descrizione tradotta."
+        assert v["ruleId"] == "first_letter_of_objects_must_be_capitalized"
+        assert v["fixable"] is True
+
+    source = translator.source_rule_name("Iniziale maiuscola")
+    assert source == "First letter of objects must be capitalized"
+    assert engine.preview_fixes(_FakeTom(), rules, source)
+
+
+def test_translator_machine_translates_text_changed_from_the_built_in(monkeypatch):
+    machine_calls = _fake_translations(monkeypatch)
+    defaults = _rules()
+    custom = defaults.copy()
+    custom.loc[0, "Description"] = "My own description."
+    translator = engine.RuleTranslator("it-IT")
+
+    payload = translator.localize_payload(engine.rules_payload(custom), defaults)
+
+    by_id = {p["id"]: p for p in payload}
+    first = by_id["first_letter_of_objects_must_be_capitalized"]
+    assert first["name"] == "Iniziale maiuscola"
+    assert first["description"] == "[it-IT] My own description."
+    assert first["source"] == {
+        "name": "First letter of objects must be capitalized",
+        "category": "Formatting",
+        "description": "My own description.",
+    }
+    # Built-in text without a bundled translation stays as-is.
+    assert by_id["rule_that_raises"]["name"] == "Rule that raises"
+    assert machine_calls == [["My own description."]]
+
+
+def test_translator_switches_language_and_back_to_english(monkeypatch):
+    machine_calls = _fake_translations(monkeypatch)
+    rules = _rules().iloc[[0]].reset_index(drop=True)
+    english = engine.scan_model(_FakeTom(), rules)
+    monkeypatch.setattr(
+        engine,
+        "_po_translations",
+        lambda language: {
+            ("Rule Name", "First letter of objects must be capitalized"): language
+        },
+    )
+    translator = engine.RuleTranslator("it-IT")
+    italian = translator.localize_violations(english, rules)
+    assert italian[0]["ruleName"] == "it-IT"
+
+    translator.language = "de-DE"
+    german = translator.localize_violations(italian, rules)
+    assert german[0]["ruleName"] == "de-DE"
+
+    # An unsupported language machine-translates the English text, not the
+    # German text on screen.
+    translator.language = "xx-XX"
+    other = translator.localize_violations(german, rules)
+    assert other[0]["ruleName"] == (
+        "[xx-XX] First letter of objects must be capitalized"
+    )
+    assert other[0]["categoryKey"] == "Formatting"
+    assert "First letter of objects must be capitalized" in machine_calls[0]
+
+    translator.language = None
+    assert translator.localize_violations(other, rules) == english
+
+
+def test_language_options_list_english_and_bundled_languages():
+    from sempy_labs.semantic_model._bpa import _language_options
+
+    options = _language_options()
+    values = [o["value"] for o in options]
+
+    assert options[0] == {"value": "", "label": "English"}
+    assert {"value": "it-IT", "label": "Italian (it-IT)"} in options
+    assert set(values[1:]) == set(engine.supported_languages())
+    assert _language_options("xx-XX")[-1] == {"value": "xx-XX", "label": "xx-XX"}
+    assert _language_options("it-IT") == options
+
+
+def test_translator_gives_every_rule_of_a_category_the_same_translation(monkeypatch):
+    rules = _rules()
+    rules.loc[1, "Category"] = "Formatting"
+    # Only one of the two Formatting rules has a bundled category translation.
+    monkeypatch.setattr(
+        engine,
+        "_po_translations",
+        lambda language: {
+            ("Category", "First letter of objects must be capitalized"): "Formato"
+        },
+    )
+    translator = engine.RuleTranslator("it-IT")
+
+    payload = translator.localize_payload(engine.rules_payload(rules), rules)
+
+    assert {p["category"] for p in payload} == {"Formato"}
+
+
+def test_ui_strings_cover_every_supported_language():
+    from sempy_labs.semantic_model._bpa_ui_strings import _KEYS, ui_strings
+
+    for language in engine.supported_languages():
+        strings = ui_strings(language)
+        assert set(strings) == set(_KEYS), language
+        assert all(strings.values()), language
+    assert ui_strings(None) == {}
+    assert ui_strings("xx-XX") == {}
+
+
+def test_every_built_in_rule_has_bundled_translations():
+    import ast
+
+    # The rules module needs the Analysis Services client to run, so the rule
+    # names and descriptions are read from its source.
+    with open(engine._RULES_MODULE, "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    rules = {}
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Tuple)
+            and len(node.elts) >= 5
+            and isinstance(node.elts[2], ast.Constant)
+            and node.elts[2].value in ("Error", "Warning", "Info")
+            and isinstance(node.elts[3], ast.Constant)
+        ):
+            has_description = len(node.elts) > 5 and isinstance(
+                node.elts[5], ast.Constant
+            )
+            rules[node.elts[3].value] = has_description
+
+    for language in engine.supported_languages():
+        po = engine._po_translations(language)
+        for name, has_description in rules.items():
+            assert ("Rule Name", name) in po, (language, name)
+            assert ("Category", name) in po, (language, name)
+            if has_description:
+                description = po.get(("Description", name), "")
+                assert description and not description.startswith("http"), (
+                    language,
+                    name,
+                )
+
+
+def _offline_bpa(monkeypatch, tom):
+    """Lets bpa() run against a fake model, without Fabric."""
+
+    import contextlib
+    from sempy_labs import _helper_functions, _model_bpa_rules
+    import sempy_labs.tom
+
+    # The built-in rules load the Analysis Services client (.NET).
+    monkeypatch.setattr(
+        _model_bpa_rules, "model_bpa_rules", lambda dependencies=None: _rules()
+    )
+    monkeypatch.setattr(
+        _helper_functions, "resolve_workspace_name_and_id", lambda w: ("WS", "ws-id")
+    )
+    monkeypatch.setattr(
+        _helper_functions,
+        "resolve_dataset_name_and_id",
+        lambda dataset, workspace=None: ("Sales Model", "ds-id"),
+    )
+    monkeypatch.setattr(
+        sempy_labs.tom,
+        "connect_semantic_model",
+        lambda dataset, workspace, readonly: contextlib.nullcontext(tom),
+    )
+
+
+class _AnnotatedTom(_FakeTom):
+    def __init__(self):
+        super().__init__()
+        self.annotated = False
+
+    def set_vertipaq_annotations(self):
+        self.annotated = True
+
+
+def test_bpa_returns_text_severities_and_collects_vertipaq_stats_when_extended(
+    monkeypatch,
+):
+    import sempy_labs._icons as icons
+    from sempy_labs.semantic_model._bpa import bpa
+
+    tom = _AnnotatedTom()
+    _offline_bpa(monkeypatch, tom)
+    rules = _rules()
+    # A rules dataframe may carry the severity icons.
+    rules.loc[0, "Severity"] = icons.info
+
+    df = bpa(
+        dataset="Sales Model",
+        rules=rules,
+        check_dependencies=False,
+        return_dataframe=True,
+        extended=True,
+    )
+
+    assert tom.annotated
+    assert list(df["Object Name"]) == ["date"]
+    assert list(df["Severity"]) == ["Info"]
+
+    tom = _AnnotatedTom()
+    _offline_bpa(monkeypatch, tom)
+    bpa(
+        dataset="Sales Model",
+        rules=_rules(),
+        check_dependencies=False,
+        return_dataframe=True,
+    )
+    assert not tom.annotated
+
+
+def test_bpa_exports_and_returns_the_violations_when_both_are_requested(monkeypatch):
+    import sempy.fabric as fabric
+    from sempy_labs import _helper_functions
+    from sempy_labs.lakehouse import _get_lakehouse_tables
+    from sempy_labs.semantic_model._bpa import bpa
+
+    _offline_bpa(monkeypatch, _FakeTom())
+    saved = {}
+    monkeypatch.setattr(
+        _get_lakehouse_tables,
+        "get_lakehouse_tables",
+        lambda lakehouse=None, workspace=None: pd.DataFrame({"Table Name": []}),
+    )
+    monkeypatch.setattr(
+        fabric,
+        "list_datasets",
+        lambda workspace=None, mode=None: pd.DataFrame(
+            {"Dataset Id": ["ds-id"], "Configured By": ["owner@contoso.com"]}
+        ),
+    )
+    monkeypatch.setattr(
+        _helper_functions, "resolve_workspace_capacity", lambda workspace: ("c", "C")
+    )
+    monkeypatch.setattr(
+        _helper_functions,
+        "save_as_delta_table",
+        lambda dataframe, delta_table_name, **kwargs: saved.update(
+            df=dataframe, table=delta_table_name
+        ),
+    )
+
+    df = bpa(
+        dataset="Sales Model",
+        rules=_rules(),
+        check_dependencies=False,
+        return_dataframe=True,
+        export=True,
+    )
+
+    assert list(df["Object Name"]) == ["date"]
+    assert saved["table"] == "modelbparesults"
+    assert list(saved["df"]["Severity"]) == ["Info"]
+    assert list(saved["df"]["RunId"]) == [1]
+
+
+def test_run_model_bpa_runs_the_analyzer(monkeypatch):
+    from sempy_labs import run_model_bpa
+    from sempy_labs.semantic_model import _bpa
+
+    calls = []
+    monkeypatch.setattr(_bpa, "bpa", lambda **kwargs: calls.append(kwargs) or "df")
+    rules = _rules()
+
+    result = run_model_bpa(
+        "Sales Model",
+        rules=rules,
+        workspace="WS",
+        return_dataframe=True,
+        extended=True,
+        language="it-IT",
+        check_dependencies=False,
+        extend=True,
+    )
+
+    assert result == "df"
+    assert calls == [
+        {
+            "dataset": "Sales Model",
+            "workspace": "WS",
+            "rules": rules,
+            "check_dependencies": False,
+            "return_dataframe": True,
+            "export": False,
+            "language": "it-IT",
+            "extended": True,
+        }
+    ]

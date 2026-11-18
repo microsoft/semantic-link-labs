@@ -266,6 +266,27 @@ msgstr "Huruf pertama objek harus dikapitalisasi"
 msgid "Object names must not contain special characters"
 msgstr "Nama objek tidak boleh mengandung karakter khusus"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Hindari penggunaan SUM atau AVERAGE pada kolom teks"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Pastikan tabel sumber Direct Lake menggunakan V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Pastikan tabel Direct Lake tidak bersumber dari tampilan SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Nama partisi harus sama dengan nama tabel untuk tabel dengan satu partisi"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Berikan string format untuk kolom 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Performa"
@@ -518,6 +539,26 @@ msgstr "Format"
 msgid "Object names must not contain special characters"
 msgstr "Konvensi Penamaan"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Ekspresi DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Performa"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Performa"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Konvensi Penamaan"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Format"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -538,8 +579,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Hubungan dua arah dan banyak-ke-banyak dapat menyebabkan penurunan performa "
+"atau bahkan konsekuensi yang tidak diinginkan. Pastikan untuk memeriksa "
+"hubungan-hubungan ini guna memastikan bahwa hubungan tersebut berfungsi "
+"sesuai rancangan dan memang diperlukan."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -944,3 +987,39 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "Nama objek tidak boleh menyertakan tab, jeda baris, dll."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Fungsi SUM dan AVERAGE tidak dapat mengagregasi kolom teks (string) dan akan"
+" menimbulkan kesalahan. Pastikan fungsi-fungsi ini diterapkan pada kolom "
+"numerik, atau gunakan agregasi lain (misalnya COUNT atau DISTINCTCOUNT) "
+"untuk kolom teks."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Untuk performa Direct Lake terbaik, tabel delta yang dibaca oleh model "
+"Direct Lake harus ditulis dengan V-Order. Aturan ini menandai partisi Direct"
+" Lake yang tabel sumber lakehouse-nya tidak menggunakan V-Order; tulis ulang"
+" atau jalankan OPTIMIZE pada tabel sumber dengan V-Order diaktifkan."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Tabel Direct Lake yang sumbernya adalah tampilan SQL (bukan tabel) akan "
+"selalu beralih ke DirectQuery, yang lebih lambat dan menggagalkan tujuan "
+"Direct Lake. Arahkan tabel ke tabel lakehouse/warehouse, atau "
+"materialisasikan tampilan tersebut sebagai tabel delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Untuk tabel dengan satu partisi, nama partisi harus sama dengan nama tabel "
+"agar jelas dan konsisten."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Kolom bertipe \"DateTime\" yang namanya mengandung \"Month\" harus diformat "
+"sebagai \"MMMM yyyy\"."

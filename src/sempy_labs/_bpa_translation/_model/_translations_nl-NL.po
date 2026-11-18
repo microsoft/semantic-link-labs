@@ -280,6 +280,29 @@ msgstr ""
 msgid "Object names must not contain special characters"
 msgstr "Objectnamen mogen geen speciale tekens bevatten"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Vermijd het gebruik van SUM of AVERAGE op een tekstkolom"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Zorg ervoor dat Direct Lake-brontabellen V-Order gebruiken"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Zorg ervoor dat Direct Lake-tabellen geen SQL-weergave als bron hebben"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"De partitienaam moet overeenkomen met de tabelnaam voor tabellen met één "
+"partitie"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Geef een opmaaktekenreeks op voor 'Month'-kolommen"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Voorstelling"
@@ -532,6 +555,26 @@ msgstr "Opmaak"
 msgid "Object names must not contain special characters"
 msgstr "Naamgevingsconventies"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX-expressies"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Voorstelling"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Voorstelling"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Naamgevingsconventies"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Opmaak"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -553,8 +596,9 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Bidirectionele en veel-op-veel-relaties kunnen de prestaties verminderen of "
+"zelfs onbedoelde gevolgen hebben. Controleer deze specifieke relaties om "
+"ervoor te zorgen dat ze werken zoals bedoeld en echt nodig zijn."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -976,3 +1020,39 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "Objectnamen mogen geen tabs, regeleinden, enz. bevatten."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"De functies SUM en AVERAGE kunnen een tekstkolom (string) niet aggregeren en"
+" veroorzaken een fout. Zorg ervoor dat deze functies worden toegepast op "
+"numerieke kolommen, of gebruik een andere aggregatie (bijvoorbeeld COUNT of "
+"DISTINCTCOUNT) voor tekstkolommen."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Voor de beste Direct Lake-prestaties moeten de delta-tabellen waaruit een "
+"Direct Lake-model leest met V-Order worden geschreven. Deze regel markeert "
+"Direct Lake-partities waarvan de lakehouse-brontabel geen V-Order gebruikt; "
+"herschrijf de brontabel of voer OPTIMIZE uit met V-Order ingeschakeld."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Een Direct Lake-tabel waarvan de bron een SQL-weergave is (in plaats van een"
+" tabel) valt altijd terug op DirectQuery, wat trager is en het doel van "
+"Direct Lake tenietdoet. Laat de tabel verwijzen naar een "
+"lakehouse-/warehouse-tabel of materialiseer de weergave als delta-tabel."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Voor een tabel met één partitie moet de partitienaam overeenkomen met de "
+"tabelnaam, voor duidelijkheid en consistentie."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Kolommen van het type \"DateTime\" met \"Month\" in de naam moeten worden "
+"opgemaakt als \"MMMM yyyy\"."

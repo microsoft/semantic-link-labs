@@ -261,6 +261,26 @@ msgstr "オブジェクトの最初の文字は大文字にする必要があり
 msgid "Object names must not contain special characters"
 msgstr "オブジェクト名に特殊文字を含めることはできません"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "文字列列に SUM または AVERAGE を使用しない"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Direct Lake のソース テーブルが V-Order 化されていることを確認する"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Direct Lake テーブルのソースが SQL ビューでないことを確認する"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr "パーティションが 1 つのテーブルでは、パーティション名をテーブル名と一致させる"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "'Month' 列に書式指定文字列を設定する"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "パフォーマンス"
@@ -513,6 +533,26 @@ msgstr "フォーマッティング"
 msgid "Object names must not contain special characters"
 msgstr "命名規則"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX 式"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "パフォーマンス"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "パフォーマンス"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "命名規則"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "フォーマッティング"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -530,8 +570,7 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"双方向リレーションシップと多対多リレーションシップは、パフォーマンスの低下や予期しない結果を引き起こす可能性があります。これらのリレーションシップが設計どおりに機能し、本当に必要であることを確認してください。"
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -844,3 +883,32 @@ msgstr "オブジェクト名の最初の文字は、プロフェッショナル
 # description
 msgid "Object names must not contain special characters"
 msgstr "オブジェクト名には、タブや改行などを含めないでください。"
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"SUM 関数と AVERAGE 関数はテキスト (string) "
+"列を集計できず、エラーが発生します。これらの関数が数値列に適用されていることを確認するか、テキスト列には別の集計 (たとえば COUNT や "
+"DISTINCTCOUNT) を使用してください。"
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Direct Lake のパフォーマンスを最大限に高めるには、Direct Lake モデルが読み取る delta テーブルを V-Order "
+"で書き込む必要があります。このルールは、lakehouse のソース テーブルが V-Order 化されていない Direct Lake "
+"パーティションを検出します。V-Order を有効にしてソース テーブルを再書き込みするか、OPTIMIZE を実行してください。"
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"ソースが (テーブルではなく) SQL ビューである Direct Lake テーブルは常に DirectQuery "
+"にフォールバックします。これは低速であり、Direct Lake の目的が損なわれます。テーブルの参照先を lakehouse/warehouse "
+"のテーブルにするか、ビューを delta テーブルとして具体化してください。"
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr "パーティションが 1 つだけのテーブルでは、わかりやすさと一貫性のために、パーティション名をテーブル名と一致させる必要があります。"
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr "名前に \"Month\" を含む \"DateTime\" 型の列は、\"MMMM yyyy\" として書式設定する必要があります。"

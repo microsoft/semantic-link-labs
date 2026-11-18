@@ -273,6 +273,26 @@ msgstr "వస్తువుల యొక్క మొదటి అక్షర
 msgid "Object names must not contain special characters"
 msgstr "ఆబ్జెక్ట్ పేర్లలో ప్రత్యేక అక్షరాలు ఉండరాదు."
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "టెక్స్ట్ కాలమ్‌పై SUM లేదా AVERAGE ఉపయోగించడం మానుకోండి"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Direct Lake మూల పట్టికలు V-Order చేయబడ్డాయని నిర్ధారించుకోండి"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Direct Lake పట్టికల మూలం SQL వీక్షణ కాదని నిర్ధారించుకోండి"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr "ఒకే విభజన ఉన్న పట్టికలలో విభజన పేరు పట్టిక పేరుతో సరిపోలాలి"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "'Month' కాలమ్‌ల కోసం ఫార్మాట్ స్ట్రింగ్‌ను అందించండి"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "పనితీరు"
@@ -525,6 +545,26 @@ msgstr "Formatting"
 msgid "Object names must not contain special characters"
 msgstr "నామకరణ సమావేశాలు[మార్చు]"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX వ్యక్తీకరణలు"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "పనితీరు"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "పనితీరు"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "నామకరణ సమావేశాలు[మార్చు]"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Formatting"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -544,8 +584,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"ద్వి-దిశాత్మక మరియు అనేక-నుండి-అనేక సంబంధాలు పనితీరు తగ్గుదలకు లేదా అనుకోని "
+"పరిణామాలకు కూడా కారణం కావచ్చు. ఈ సంబంధాలు రూపొందించిన విధంగా "
+"పనిచేస్తున్నాయని మరియు నిజంగా అవసరమని నిర్ధారించుకోవడానికి వాటిని తనిఖీ "
+"చేయండి."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -945,3 +987,37 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "ఆబ్జెక్ట్ పేర్లలో ట్యాబ్ లు, లైన్ బ్రేక్ లు మొదలైనవి ఉండకూడదు."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"SUM మరియు AVERAGE ఫంక్షన్‌లు టెక్స్ట్ (string) కాలమ్‌ను సమీకరించలేవు మరియు "
+"లోపాన్ని కలిగిస్తాయి. ఈ ఫంక్షన్‌లు సంఖ్యా కాలమ్‌లకు వర్తింపజేయబడుతున్నాయని "
+"నిర్ధారించుకోండి, లేదా టెక్స్ట్ కాలమ్‌ల కోసం వేరే సమీకరణను (ఉదాహరణకు COUNT "
+"లేదా DISTINCTCOUNT) ఉపయోగించండి."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"ఉత్తమ Direct Lake పనితీరు కోసం, Direct Lake మోడల్ చదివే delta పట్టికలు "
+"V-Orderతో వ్రాయబడాలి. lakehouse మూల పట్టిక V-Order చేయబడని Direct Lake "
+"విభజనలను ఈ నియమం గుర్తిస్తుంది; V-Order ప్రారంభించి మూల పట్టికను మళ్లీ "
+"వ్రాయండి లేదా OPTIMIZE చేయండి."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"మూలం (పట్టికకు బదులుగా) SQL వీక్షణ అయిన Direct Lake పట్టిక ఎల్లప్పుడూ "
+"DirectQueryకి మారుతుంది, ఇది నెమ్మదిగా ఉంటుంది మరియు Direct Lake ఉద్దేశాన్ని"
+" దెబ్బతీస్తుంది. పట్టికను lakehouse/warehouse పట్టికకు సూచించండి, లేదా "
+"వీక్షణను delta పట్టికగా రూపొందించండి."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"ఒకే ఒక విభజన ఉన్న పట్టికలో, స్పష్టత మరియు స్థిరత్వం కోసం విభజన పేరు పట్టిక "
+"పేరుతో సరిపోలాలి."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr "పేరులో \"Month\" ఉన్న \"DateTime\" రకం కాలమ్‌లను \"MMMM yyyy\"గా ఫార్మాట్ చేయాలి."

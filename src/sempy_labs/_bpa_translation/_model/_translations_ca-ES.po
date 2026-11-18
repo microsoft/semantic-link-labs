@@ -276,6 +276,29 @@ msgstr "La primera lletra dels objectes s'ha d'escriure en majúscula"
 msgid "Object names must not contain special characters"
 msgstr "Els noms d'objecte no han de contenir caràcters especials"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Eviteu utilitzar SUM o AVERAGE en una columna de text"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Assegureu-vos que les taules d'origen de Direct Lake tenen V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Assegureu-vos que les taules de Direct Lake no provenen d'una vista SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"El nom de la partició ha de coincidir amb el nom de la taula en les taules "
+"amb una sola partició"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Proporcioneu una cadena de format per a les columnes 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Actuació"
@@ -528,6 +551,26 @@ msgstr "Format"
 msgid "Object names must not contain special characters"
 msgstr "Convencions de nomenclatura"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX Expressions"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Actuació"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Actuació"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Convencions de nomenclatura"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Format"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -549,8 +592,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Les relacions bidireccionals i de molts a molts poden provocar una "
+"degradació del rendiment o fins i tot tenir conseqüències no desitjades. "
+"Assegureu-vos de revisar aquestes relacions concretes per garantir que "
+"funcionen tal com s'han dissenyat i que realment són necessàries."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -961,3 +1006,40 @@ msgstr ""
 msgid "Object names must not contain special characters"
 msgstr ""
 "Els noms d'objecte no han d'incloure tabulacions, salts de línia, etc."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Les funcions SUM i AVERAGE no poden agregar una columna de text (string) i "
+"generaran un error. Assegureu-vos que aquestes funcions s'apliquen a "
+"columnes numèriques, o utilitzeu una altra agregació (per exemple COUNT o "
+"DISTINCTCOUNT) per a les columnes de text."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Per obtenir el millor rendiment de Direct Lake, les taules delta que llegeix"
+" un model de Direct Lake s'han d'escriure amb V-Order. Aquesta regla marca "
+"les particions de Direct Lake la taula d'origen de les quals al lakehouse no"
+" té V-Order; torneu a escriure la taula d'origen o executeu-hi OPTIMIZE amb "
+"V-Order activat."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Una taula de Direct Lake l'origen de la qual és una vista SQL (en lloc d'una"
+" taula) sempre recorrerà a DirectQuery, que és més lent i anul·la la "
+"finalitat de Direct Lake. Apunteu la taula a una taula del "
+"lakehouse/warehouse o materialitzeu la vista com a taula delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"En una taula amb una sola partició, el nom de la partició ha de coincidir "
+"amb el nom de la taula per claredat i coherència."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Les columnes de tipus \"DateTime\" que tenen \"Month\" al nom s'han de "
+"formatar com a \"MMMM yyyy\"."

@@ -278,6 +278,31 @@ msgstr "A primeira letra dos objetos deve ser maiúscula"
 msgid "Object names must not contain special characters"
 msgstr "Os nomes dos objetos não devem conter caracteres especiais"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Evite usar SUM ou AVERAGE em uma coluna de texto"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Certifique-se de que as tabelas de origem do Direct Lake tenham V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Certifique-se de que as tabelas do Direct Lake não tenham uma exibição SQL "
+"como origem"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"O nome da partição deve corresponder ao nome da tabela em tabelas com uma "
+"única partição"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Forneça uma cadeia de caracteres de formato para colunas 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Desempenho"
@@ -530,6 +555,26 @@ msgstr "Formatação"
 msgid "Object names must not contain special characters"
 msgstr "Convenções de nomenclatura"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Expressões DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Desempenho"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Desempenho"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Convenções de nomenclatura"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Formatação"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -550,8 +595,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Relações bidirecionais e muitos-para-muitos podem causar degradação do "
+"desempenho ou até mesmo ter consequências indesejadas. Verifique essas "
+"relações específicas para garantir que estejam funcionando conforme o "
+"planejado e que sejam realmente necessárias."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -960,3 +1007,39 @@ msgstr ""
 msgid "Object names must not contain special characters"
 msgstr ""
 "Os nomes dos objetos não devem incluir tabulações, quebras de linha, etc."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"As funções SUM e AVERAGE não podem agregar uma coluna de texto (string) e "
+"gerarão um erro. Certifique-se de que essas funções sejam aplicadas a "
+"colunas numéricas ou use uma agregação diferente (por exemplo, COUNT ou "
+"DISTINCTCOUNT) para colunas de texto."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Para obter o melhor desempenho do Direct Lake, as tabelas delta lidas por um"
+" modelo Direct Lake devem ser gravadas com V-Order. Esta regra sinaliza "
+"partições do Direct Lake cuja tabela de origem no lakehouse não tem V-Order;"
+" regrave a tabela de origem ou execute OPTIMIZE com o V-Order habilitado."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Uma tabela do Direct Lake cuja origem é uma exibição SQL (em vez de uma "
+"tabela) sempre fará fallback para DirectQuery, que é mais lento e anula o "
+"propósito do Direct Lake. Aponte a tabela para uma tabela de "
+"lakehouse/warehouse ou materialize a exibição como uma tabela delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Em uma tabela com uma única partição, o nome da partição deve corresponder "
+"ao nome da tabela para maior clareza e consistência."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Colunas do tipo \"DateTime\" que têm \"Month\" no nome devem ser formatadas "
+"como \"MMMM yyyy\"."

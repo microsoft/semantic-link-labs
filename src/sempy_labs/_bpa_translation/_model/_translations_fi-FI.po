@@ -269,6 +269,26 @@ msgstr "Objektien ensimmäinen kirjain on kirjoitettava isolla alkukirjaimella"
 msgid "Object names must not contain special characters"
 msgstr "Objektien nimet eivät saa sisältää erikoismerkkejä"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Vältä SUM- tai AVERAGE-funktion käyttöä tekstisarakkeessa"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Varmista, että Direct Lake -lähdetaulut on V-järjestetty"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Varmista, että Direct Lake -taulujen lähde ei ole SQL-näkymä"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr "Osion nimen tulee vastata taulun nimeä tauluissa, joissa on yksi osio"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Määritä muotoilumerkkijono 'Month'-sarakkeille"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Suorituskyky"
@@ -521,6 +541,26 @@ msgstr "Alustaminen"
 msgid "Object names must not contain special characters"
 msgstr "Nimeämiskäytännöt"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "DAX-lausekkeet"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Suorituskyky"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Suorituskyky"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Nimeämiskäytännöt"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Alustaminen"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -540,8 +580,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Kaksisuuntaiset ja monta-moneen-suhteet voivat heikentää suorituskykyä tai "
+"jopa aiheuttaa odottamattomia seurauksia. Tarkista nämä suhteet "
+"varmistaaksesi, että ne toimivat suunnitellusti ja ovat todella "
+"tarpeellisia."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -940,3 +982,39 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "Objektien nimet eivät saa sisältää välilehtiä, rivinvaihtoja jne."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"SUM- ja AVERAGE-funktiot eivät voi koostaa tekstisaraketta (string), ja ne "
+"aiheuttavat virheen. Varmista, että näitä funktioita käytetään numeerisiin "
+"sarakkeisiin, tai käytä tekstisarakkeille toista koostetta (esimerkiksi "
+"COUNT tai DISTINCTCOUNT)."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Parhaan Direct Lake -suorituskyvyn saavuttamiseksi delta-taulut, joista "
+"Direct Lake -malli lukee, tulisi kirjoittaa V-Order-järjestyksellä. Tämä "
+"sääntö merkitsee Direct Lake -osiot, joiden lakehouse-lähdetaulua ei ole "
+"V-järjestetty; kirjoita lähdetaulu uudelleen tai suorita sille OPTIMIZE "
+"V-Order käytössä."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Direct Lake -taulu, jonka lähde on SQL-näkymä (taulun sijaan), siirtyy aina "
+"DirectQuery-tilaan, joka on hitaampi ja vie Direct Laken hyödyn. Osoita "
+"taulu lakehouse-/warehouse-tauluun tai materialisoi näkymä delta-tauluksi."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Taulussa, jossa on vain yksi osio, osion nimen tulee selkeyden ja "
+"johdonmukaisuuden vuoksi vastata taulun nimeä."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"\"DateTime\"-tyyppiset sarakkeet, joiden nimessä on \"Month\", tulee "
+"muotoilla muotoon \"MMMM yyyy\"."

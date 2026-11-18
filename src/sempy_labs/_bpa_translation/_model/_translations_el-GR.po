@@ -287,6 +287,29 @@ msgstr "Το πρώτο γράμμα των αντικειμένων πρέπε�
 msgid "Object names must not contain special characters"
 msgstr "Τα ονόματα αντικειμένων δεν πρέπει να περιέχουν ειδικούς χαρακτήρες"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Αποφύγετε τη χρήση SUM ή AVERAGE σε στήλη κειμένου"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Βεβαιωθείτε ότι οι πίνακες προέλευσης του Direct Lake έχουν V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Βεβαιωθείτε ότι οι πίνακες Direct Lake δεν προέρχονται από προβολή SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Το όνομα του διαμερίσματος πρέπει να ταιριάζει με το όνομα του πίνακα σε "
+"πίνακες με ένα διαμέρισμα"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Ορίστε συμβολοσειρά μορφοποίησης για στήλες 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Εκτέλεση"
@@ -539,6 +562,26 @@ msgstr "Μορφοποίηση"
 msgid "Object names must not contain special characters"
 msgstr "Συμβάσεις ονοματοδοσίας"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Παραστάσεις DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Εκτέλεση"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Συμβάσεις ονοματοδοσίας"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Μορφοποίηση"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -560,8 +603,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Οι αμφίδρομες σχέσεις και οι σχέσεις πολλά-προς-πολλά μπορεί να προκαλέσουν "
+"μείωση της απόδοσης ή ακόμη και ανεπιθύμητες συνέπειες. Ελέγξτε αυτές τις "
+"συγκεκριμένες σχέσεις για να βεβαιωθείτε ότι λειτουργούν όπως σχεδιάστηκαν "
+"και ότι είναι πράγματι απαραίτητες."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -991,3 +1036,40 @@ msgid "Object names must not contain special characters"
 msgstr ""
 "Τα ονόματα αντικειμένων δεν πρέπει να περιλαμβάνουν στηλοθέτες, αλλαγές "
 "γραμμών κ.λπ."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Οι συναρτήσεις SUM και AVERAGE δεν μπορούν να συναθροίσουν μια στήλη "
+"κειμένου (string) και θα προκαλέσουν σφάλμα. Βεβαιωθείτε ότι οι συναρτήσεις "
+"αυτές εφαρμόζονται σε αριθμητικές στήλες ή χρησιμοποιήστε διαφορετική "
+"συνάθροιση (για παράδειγμα COUNT ή DISTINCTCOUNT) για στήλες κειμένου."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Για την καλύτερη απόδοση του Direct Lake, οι πίνακες delta από τους οποίους "
+"διαβάζει ένα μοντέλο Direct Lake πρέπει να είναι γραμμένοι με V-Order. Αυτός"
+" ο κανόνας επισημαίνει διαμερίσματα Direct Lake των οποίων ο πίνακας "
+"προέλευσης στο lakehouse δεν έχει V-Order· ξαναγράψτε τον πίνακα προέλευσης "
+"ή εκτελέστε OPTIMIZE με ενεργοποιημένο το V-Order."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Ένας πίνακας Direct Lake του οποίου η προέλευση είναι προβολή SQL (αντί για "
+"πίνακα) θα επιστρέφει πάντα σε DirectQuery, το οποίο είναι πιο αργό και "
+"αναιρεί τον σκοπό του Direct Lake. Συνδέστε τον πίνακα με έναν πίνακα "
+"lakehouse/warehouse ή υλοποιήστε την προβολή ως πίνακα delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Σε έναν πίνακα με ένα μόνο διαμέρισμα, το όνομα του διαμερίσματος πρέπει να "
+"ταιριάζει με το όνομα του πίνακα για λόγους σαφήνειας και συνέπειας."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Οι στήλες τύπου \"DateTime\" που περιέχουν \"Month\" στο όνομά τους πρέπει "
+"να μορφοποιούνται ως \"MMMM yyyy\"."

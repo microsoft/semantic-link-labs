@@ -275,6 +275,28 @@ msgstr "L-ewwel ittra ta' oġġetti għandha tiġi kapitalizzata"
 msgid "Object names must not contain special characters"
 msgstr "L-ismijiet tal-oġġetti ma għandux ikun fihom karattri speċjali"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Evita l-użu ta' SUM jew AVERAGE fuq kolonna tat-test"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Kun żgur li t-tabelli tas-sors ta' Direct Lake għandhom V-Order"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Kun żgur li t-tabelli ta' Direct Lake ma jiġux minn veduta SQL"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"L-isem tal-partizzjoni għandu jaqbel mal-isem tat-tabella għal tabelli "
+"b'partizzjoni waħda"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Ipprovdi string tal-format għall-kolonni 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Twettieq"
@@ -527,6 +549,26 @@ msgstr "Ifformattjar"
 msgid "Object names must not contain special characters"
 msgstr "Konvenzjonijiet tal-ismijiet"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Espressjonijiet DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Twettieq"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Twettieq"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Konvenzjonijiet tal-ismijiet"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Ifformattjar"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -548,8 +590,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"Ir-relazzjonijiet bidirezzjonali u dawk ta' ħafna għal ħafna jistgħu "
+"jikkawżaw tnaqqis fil-prestazzjoni jew saħansitra konsegwenzi mhux "
+"intenzjonati. Kun żgur li tiċċekkja dawn ir-relazzjonijiet biex tiżgura li "
+"qed jaħdmu kif iddisinjati u li huma verament meħtieġa."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -965,3 +1009,40 @@ msgstr ""
 # description
 msgid "Object names must not contain special characters"
 msgstr "L-ismijiet tal-oġġetti m'għandhomx jinkludu tabs, line breaks, eċċ."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Il-funzjonijiet SUM u AVERAGE ma jistgħux jaggregaw kolonna tat-test "
+"(string) u jagħtu żball. Kun żgur li dawn il-funzjonijiet jiġu applikati fuq"
+" kolonni numeriċi, jew uża aggregazzjoni differenti (pereżempju COUNT jew "
+"DISTINCTCOUNT) għall-kolonni tat-test."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Għall-aħjar prestazzjoni ta' Direct Lake, it-tabelli delta li minnhom jaqra "
+"mudell Direct Lake għandhom jinkitbu b'V-Order. Din ir-regola timmarka "
+"l-partizzjonijiet ta' Direct Lake li t-tabella tas-sors tagħhom fil-"
+"lakehouse m'għandhiex V-Order; erġa' ikteb it-tabella tas-sors jew agħmel "
+"OPTIMIZE b'V-Order attivat."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Tabella ta' Direct Lake li s-sors tagħha huwa veduta SQL (minflok tabella) "
+"dejjem taqa' lura għal DirectQuery, li huwa aktar bil-mod u jxejjen l-għan "
+"ta' Direct Lake. Ipponta t-tabella lejn tabella tal-lakehouse/warehouse, jew"
+" immaterjalizza l-veduta bħala tabella delta."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Għal tabella b'partizzjoni waħda, l-isem tal-partizzjoni għandu jaqbel mal-"
+"isem tat-tabella għaċ-ċarezza u l-konsistenza."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Il-kolonni tat-tip \"DateTime\" li għandhom \"Month\" f'isimhom għandhom "
+"jiġu fformattjati bħala \"MMMM yyyy\"."

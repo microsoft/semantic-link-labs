@@ -171,6 +171,11 @@ _WIDGET_CSS = (
 .slls-bpa-btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 50%; }
 .slls-bpa-btn-sm { font-size: 12.5px; padding: 4px 11px; border-radius: 7px; }
 .slls-bpa-btn-sm.slls-bpa-btn-icon-sm { width: 30px; height: 30px; padding: 0; justify-content: center; border-radius: 7px; }
+.slls-bpa-lang { display: inline-flex; align-items: center; gap: 6px; color: var(--ui-text-tertiary); }
+.slls-bpa-lang-icon { display: inline-flex; }
+.slls-bpa-lang .slls-bpa-ss { width: 190px; }
+.slls-bpa-lang .slls-bpa-ss-btn { padding: 5px 10px 5px 12px; font-size: 12.5px; }
+.slls-bpa-lang .slls-bpa-ss-panel { left: auto; right: 0; }
 .slls-bpa-main-rule-count { padding: 4px 10px; border: 1px solid var(--ui-border); border-radius: 999px;
     background: var(--ui-bg-secondary); color: var(--ui-text-secondary); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Anything that offers or advertises an automatic fix. */
@@ -579,6 +584,7 @@ function render({ model, el }) {
     // Icons injected from sempy_labs._ui_components.ICONS (single source of truth).
     const ICON = {
         shield: `__SLLS_ICON_SHIELD_CHECK__`,
+        globe: `__SLLS_ICON_GLOBE__`,
         sun: `__SLLS_ICON_SUN__`,
         moon: `__SLLS_ICON_MOON__`,
         swap: `__SLLS_ICON_SWAP__`,
@@ -751,6 +757,11 @@ function render({ model, el }) {
     // Multi-select dropdown filter. `options` are `{ value, label, icon, iconClass }`
     // descriptors; an empty selection means "all".
     const openDropdowns = new Set();
+    // Translated user interface text for the selected language (see ui_strings).
+    function tr(key, fallback) {
+        return (model.get("ui_strings") || {})[key] || fallback;
+    }
+
     function createMultiSelect(allLabel, ariaLabel, onChange) {
         const wrap = document.createElement("div");
         wrap.className = "slls-bpa-ms";
@@ -788,8 +799,11 @@ function render({ model, el }) {
 
         function renderLabel() {
             if (selected.size === 0) label.textContent = allLabel;
-            else if (selected.size === 1) label.textContent = [...selected][0];
-            else label.textContent = `${selected.size} selected`;
+            else if (selected.size === 1) {
+                const only = [...selected][0];
+                const option = options.find((o) => o.value === only);
+                label.textContent = option ? option.label : only;
+            } else label.textContent = `${selected.size} selected`;
             btn.classList.toggle("filtered", selected.size > 0);
         }
 
@@ -858,18 +872,21 @@ function render({ model, el }) {
             el: wrap,
             selected,
             close,
+            setAllLabel(text) {
+                allLabel = text;
+                renderLabel();
+            },
             setOptions(next) {
-                const nextSignature = next.map((o) => o.value).join("\u0000");
+                const nextSignature = next.map((o) => `${o.value}\u0001${o.label}`).join("\u0000");
                 if (nextSignature === signature) return;
                 signature = nextSignature;
                 options = next;
                 // Drop selections whose option no longer exists.
                 const valid = new Set(next.map((o) => o.value));
-                let changed = false;
                 for (const value of [...selected]) {
-                    if (!valid.has(value)) { selected.delete(value); changed = true; }
+                    if (!valid.has(value)) selected.delete(value);
                 }
-                if (changed) renderLabel();
+                renderLabel();
                 renderPanel();
             },
             reset() {
@@ -1121,6 +1138,25 @@ function render({ model, el }) {
     const headSpacer = document.createElement("div");
     headSpacer.className = "slls-bpa-head-spacer";
     header.appendChild(headSpacer);
+
+    // Optional language of the rule names, categories and descriptions.
+    const langWrap = document.createElement("div");
+    langWrap.className = "slls-bpa-lang";
+    langWrap.title = "Language of the rule names, categories and descriptions";
+    langWrap.appendChild(iconSpan(ICON.globe, "slls-bpa-lang-icon"));
+    const langSelect = createSearchSelect(
+        "English", "Search languages", "Rule language", "English",
+        (option) => runAction("set_language", { language: option.value }),
+    );
+    langWrap.appendChild(langSelect.el);
+    header.appendChild(langWrap);
+    function renderLanguage() {
+        langSelect.setOptions(model.get("languages") || [], model.get("language") || "");
+    }
+    renderLanguage();
+    model.on("change:languages", renderLanguage);
+    // A switch the backend rejected leaves the picker on the language in effect.
+    model.on("change:busy", () => { if (!model.get("busy")) renderLanguage(); });
 
     const mainRuleCount = document.createElement("span");
     mainRuleCount.className = "slls-bpa-main-rule-count";
@@ -1812,21 +1848,29 @@ function render({ model, el }) {
     const searchInput = document.createElement("input");
     searchInput.className = "slls-bpa-input";
     searchInput.type = "search";
-    searchInput.placeholder = "Filter rules or objects\u2026";
-    searchInput.setAttribute("aria-label", "Filter rules or objects");
     searchWrap.appendChild(searchInput);
     filterBar.appendChild(searchWrap);
 
     const severityFilterSelect = createMultiSelect(
         "All severities", "Severity", () => renderResults());
-    severityFilterSelect.setOptions(SEVERITIES.map((sev) => ({
-        value: sev,
-        label: sev,
-        icon: severityIcon(sev),
-        iconClass: severityClass(sev),
-        title: severityTitle(sev),
-    })));
     filterBar.appendChild(severityFilterSelect.el);
+
+    function renderToolbarText() {
+        const filterText = tr("filter_placeholder", "Filter rules or objects\u2026");
+        searchInput.placeholder = filterText;
+        searchInput.setAttribute("aria-label", filterText.replace(/\u2026$/, ""));
+        severityFilterSelect.setAllLabel(tr("all_severities", "All severities"));
+        severityFilterSelect.el.querySelector("button").setAttribute("aria-label", tr("severity", "Severity"));
+        severityFilterSelect.setOptions(SEVERITIES.map((sev) => ({
+            value: sev,
+            label: tr(sev, sev),
+            icon: severityIcon(sev),
+            iconClass: severityClass(sev),
+            title: severityTitle(sev),
+        })));
+    }
+    renderToolbarText();
+    model.on("change:ui_strings", renderToolbarText);
 
     const expandBtn = makeButton("", "slls-bpa-btn-icon", ICON.expand);
     expandBtn.title = "Expand all rules";
@@ -2299,6 +2343,12 @@ function render({ model, el }) {
     // ------------------------------------------------------------------
     // Results rendering
     // ------------------------------------------------------------------
+    // Categories are grouped and filtered by their English name, which stays the
+    // same whatever language the (translated) category label is shown in.
+    function categoryKeyOf(v) {
+        return v.categoryKey || v.category;
+    }
+
     function visibleViolations() {
         const term = searchInput.value.trim().toLowerCase();
         const severities = severityFilterSelect.selected;
@@ -2306,7 +2356,7 @@ function render({ model, el }) {
             // A staged fix removes its violation optimistically; it comes back
             // if the fix is unstaged.
             if (isStaged(v.ruleName, v.objectName)) return false;
-            if (categoryFilter && v.category !== categoryFilter) return false;
+            if (categoryFilter && categoryKeyOf(v) !== categoryFilter) return false;
             if (severities.size > 0 && !severities.has(v.severity)) return false;
             if (term
                 && !String(v.ruleName).toLowerCase().includes(term)
@@ -2321,19 +2371,21 @@ function render({ model, el }) {
         clear(container);
         const map = new Map();
         for (const v of violations) {
-            const entry = map.get(v.category) || { total: 0, Error: 0, Warning: 0, Info: 0 };
+            const key = categoryKeyOf(v);
+            const entry = map.get(key) || { total: 0, Error: 0, Warning: 0, Info: 0, label: v.category };
             entry.total += 1;
             if (entry[v.severity] !== undefined) entry[v.severity] += 1;
-            map.set(v.category, entry);
+            map.set(key, entry);
         }
         const rows = [...map.entries()].sort(
-            (a, b) => categoryRank(a[0]) - categoryRank(b[0]) || a[0].localeCompare(b[0]));
-        for (const [category, counts] of rows) {
+            (a, b) => categoryRank(a[0]) - categoryRank(b[0]) || a[1].label.localeCompare(b[1].label));
+        for (const [key, counts] of rows) {
+            const category = counts.label;
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.className = "slls-bpa-cat" + (categoryFilter === category ? " active" : "");
+            btn.className = "slls-bpa-cat" + (categoryFilter === key ? " active" : "");
             btn.title = `${category}: ${plural(counts.Error, "error")}, ${plural(counts.Warning, "warning")}, ${counts.Info} info`;
-            btn.appendChild(iconSpan(CATEGORY_ICON[category] || ICON.info, "slls-bpa-cat-icon"));
+            btn.appendChild(iconSpan(CATEGORY_ICON[key] || ICON.info, "slls-bpa-cat-icon"));
             const body = document.createElement("div");
             body.className = "slls-bpa-cat-body";
             const name = document.createElement("div");
@@ -2354,7 +2406,7 @@ function render({ model, el }) {
             body.appendChild(countsEl);
             btn.appendChild(body);
             btn.addEventListener("click", () => {
-                categoryFilter = categoryFilter === category ? null : category;
+                categoryFilter = categoryFilter === key ? null : key;
                 onSelect();
             });
             container.appendChild(btn);
@@ -2371,24 +2423,28 @@ function render({ model, el }) {
     function buildGroups(violations) {
         const byRule = new Map();
         for (const v of violations) {
-            let g = byRule.get(v.ruleName);
+            const key = v.ruleId || v.ruleName;
+            let g = byRule.get(key);
             if (!g) {
                 g = {
+                    key,
                     ruleName: v.ruleName,
                     severity: v.severity,
                     category: v.category,
+                    categoryKey: v.categoryKey || v.category,
+                    ruleId: v.ruleId,
                     description: v.description,
                     url: v.url,
                     fixable: v.fixable,
                     violations: [],
                 };
-                byRule.set(v.ruleName, g);
+                byRule.set(key, g);
             }
             g.violations.push(v);
         }
         return [...byRule.values()].sort((a, b) =>
             (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
-            || categoryRank(a.category) - categoryRank(b.category)
+            || categoryRank(a.categoryKey) - categoryRank(b.categoryKey)
             || a.ruleName.localeCompare(b.ruleName));
     }
 
@@ -2487,6 +2543,7 @@ function render({ model, el }) {
                         dataset_id: target.dataset_id,
                         dataset_name: target.dataset_name,
                         rule_name: group.ruleName,
+                        rule_id: group.ruleId,
                         object_name: item.objectName,
                         before: item.before,
                         after: item.after,
@@ -2528,20 +2585,20 @@ function render({ model, el }) {
             const toggle = document.createElement("button");
             toggle.type = "button";
             toggle.className = "slls-bpa-group-toggle";
-            const isOpen = expandedRules.has(group.ruleName);
+            const isOpen = expandedRules.has(group.key);
             toggle.setAttribute("aria-expanded", String(isOpen));
             toggle.appendChild(iconSpan(ICON.caret, `slls-bpa-caret${isOpen ? " open" : ""}`));
             toggle.appendChild(iconSpan(
                 severityIcon(group.severity), severityClass(group.severity), severityTitle(group.severity)));
             toggle.appendChild(iconSpan(
-                CATEGORY_ICON[group.category] || ICON.info, "slls-bpa-cat-icon", `Category: ${group.category}`));
+                CATEGORY_ICON[group.categoryKey] || ICON.info, "slls-bpa-cat-icon", `Category: ${group.category}`));
             const name = document.createElement("span");
             name.className = "slls-bpa-group-name";
             name.textContent = group.ruleName;
             toggle.appendChild(name);
             toggle.addEventListener("click", () => {
-                if (expandedRules.has(group.ruleName)) expandedRules.delete(group.ruleName);
-                else expandedRules.add(group.ruleName);
+                if (expandedRules.has(group.key)) expandedRules.delete(group.key);
+                else expandedRules.add(group.key);
                 renderResults();
             });
             head.appendChild(toggle);
@@ -2549,7 +2606,7 @@ function render({ model, el }) {
             // "Apply fix" sits to the left of the violation count so the rule
             // name, its action and its count read left-to-right.
             if (group.fixable) {
-                const fixBtn = makeButton("Apply fix", "slls-bpa-btn-sm slls-bpa-btn-fix", ICON.wand);
+                const fixBtn = makeButton(tr("apply_fix", "Apply fix"), "slls-bpa-btn-sm slls-bpa-btn-fix", ICON.wand);
                 fixBtn.title = "Preview and stage the automatic fix for this rule";
                 fixBtn.addEventListener("click", () => {
                     fixRule = group.ruleName;
@@ -2627,7 +2684,7 @@ function render({ model, el }) {
 
     searchInput.addEventListener("input", () => renderResults());
     expandBtn.addEventListener("click", () => {
-        for (const g of buildGroups(visibleViolations())) expandedRules.add(g.ruleName);
+        for (const g of buildGroups(visibleViolations())) expandedRules.add(g.key);
         renderResults();
     });
     collapseBtn.addEventListener("click", () => {
@@ -2674,7 +2731,7 @@ function render({ model, el }) {
         clear(bulkList);
         // Selecting a category narrows the per-model totals as well.
         const forModel = (result) => (result.violations || []).filter(
-            (v) => !categoryFilter || v.category === categoryFilter);
+            (v) => !categoryFilter || categoryKeyOf(v) === categoryFilter);
         const maxTotal = Math.max(1, ...results.map((r) => forModel(r).length));
         for (const result of results) {
             const violations = forModel(result);
@@ -3056,11 +3113,13 @@ function render({ model, el }) {
     const SEVERITY_CODE = { Error: 3, Warning: 2, Info: 1 };
     function rulesetEntries(rules = model.get("rules") || []) {
         return rules.map((r) => {
+            // Translated rules carry their original text, which is what is exported.
+            const text = r.source || r;
             const entry = {
                 ID: String(r.id || "").toUpperCase(),
-                Name: r.name,
-                Category: r.category,
-                Description: r.description || "",
+                Name: text.name,
+                Category: text.category,
+                Description: text.description || "",
                 Severity: SEVERITY_CODE[r.severity] || 2,
                 Scope: (r.scopes || []).join(", "),
                 Expression: r.expression || "",
@@ -3390,7 +3449,7 @@ function render({ model, el }) {
                     badge.className = "slls-bpa-fix-badge";
                     badge.appendChild(iconSpan(ICON.wand));
                     const badgeText = document.createElement("span");
-                    badgeText.textContent = "Apply fix";
+                    badgeText.textContent = tr("apply_fix", "Apply fix");
                     badge.appendChild(badgeText);
                     badge.title = "This rule can be fixed automatically";
                     name.appendChild(badge);
@@ -3398,7 +3457,7 @@ function render({ model, el }) {
                 body.appendChild(name);
                 const meta = document.createElement("div");
                 meta.className = "slls-bpa-rule-meta";
-                meta.textContent = `${rule.category} \u2022 ${rule.severity} \u2022 ${rule.scopes.join(", ")}`;
+                meta.textContent = `${rule.category} \u2022 ${tr(rule.severity, rule.severity)} \u2022 ${rule.scopes.join(", ")}`;
                 body.appendChild(meta);
                 if (rule.description) {
                     const desc = document.createElement("div");
@@ -3546,6 +3605,37 @@ function render({ model, el }) {
         }[c]));
     }
 
+    // Expanded rules and the category filter are keyed by rule id / English
+    // category, so they survive a language switch as-is. Staged fixes are keyed
+    // by the displayed rule name and are relabelled with the new translation.
+    function allViolations() {
+        const all = [...(model.get("violations") || [])];
+        for (const r of (model.get("bulk_results") || [])) all.push(...(r.violations || []));
+        return all;
+    }
+    function relabelAfterLanguageChange() {
+        const nameOf = new Map();
+        for (const rule of (model.get("rules") || [])) nameOf.set(rule.id, rule.name);
+        for (const v of allViolations()) nameOf.set(v.ruleId, v.ruleName);
+        fixRule = null;
+        fixSelected.clear();
+        if (stagedFixes.size > 0) {
+            const staged = [...stagedFixes.values()];
+            stagedFixes.clear();
+            for (const fix of staged) {
+                if (fix.rule_id && nameOf.has(fix.rule_id)) fix.rule_name = nameOf.get(fix.rule_id);
+                stagedFixes.set(stagedKey(fix.dataset_id, fix.rule_name, fix.object_name), fix);
+            }
+            renderStaged();
+        }
+        if (model.get("screen") !== "bulk") activeViolations = model.get("violations") || [];
+        renderScreen();
+    }
+    model.on("change:language", () => {
+        renderLanguage();
+        relabelAfterLanguageChange();
+    });
+
     model.on("change:violations", () => {
         if (model.get("screen") !== "bulk") {
             activeViolations = model.get("violations") || [];
@@ -3618,6 +3708,7 @@ _WIDGET_JS = (
         ),
     )
     .replace("__SLLS_ICON_SHIELD_CHECK__", _UI_ICONS["shield_check"])
+    .replace("__SLLS_ICON_GLOBE__", _UI_ICONS["globe"])
     .replace("__SLLS_ICON_SUN__", _UI_ICONS["sun"])
     .replace("__SLLS_ICON_MOON__", _UI_ICONS["moon"])
     .replace("__SLLS_ICON_SWAP__", _UI_ICONS["swap"])
@@ -3656,6 +3747,27 @@ _WIDGET_JS = (
 )
 
 
+def _language_options(current: Optional[str] = None) -> list[dict]:
+    """
+    The options of the language picker: English followed by the languages with
+    bundled rule translations. A language passed to :func:`bpa` which is not one of
+    them is listed too, so the picker reflects the text on screen.
+    """
+
+    from sempy_labs.semantic_model._bpa_engine import supported_languages
+
+    languages = supported_languages()
+    options = [{"value": "", "label": "English"}]
+    options.extend(
+        {"value": code, "label": f"{name} ({code})"}
+        for code, name in sorted(languages.items(), key=lambda x: (x[1], x[0]))
+    )
+    if current and current not in languages:
+        options.append({"value": current, "label": current})
+
+    return options
+
+
 @log
 def bpa(
     dataset: Optional[str | UUID] = None,
@@ -3668,6 +3780,8 @@ def bpa(
     export_table: str = "modelbparesults",
     export_lakehouse: Optional[str | UUID] = None,
     export_workspace: Optional[str | UUID] = None,
+    language: Optional[str] = None,
+    extended: bool = False,
 ):
     """
     Generates an interactive Best Practice Analyzer for semantic models.
@@ -3731,6 +3845,9 @@ def bpa(
     return_dataframe : bool, default=False
         If True, no user interface is shown; the rule violations of the semantic model
         given by the 'dataset' parameter are returned as a pandas dataframe instead.
+        The dataframe has the Category, Rule Name, Severity, Object Type, Object Name,
+        Description and URL columns. Severity is given as text: 'Error', 'Warning' or
+        'Info'. If 'export' is also True, the violations are exported as well.
     export : bool, default=False
         If True, no user interface is shown; the rule violations of the semantic model
         given by the 'dataset' parameter are saved to a delta table in a lakehouse
@@ -3746,6 +3863,20 @@ def bpa(
         The Fabric workspace name or ID of the lakehouse to export to.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    language : str, default=None
+        Specifying a language name or code (i.e. 'it-IT' for Italian) will
+        auto-translate the Category, Rule Name and Description into the specified
+        language.
+        Defaults to None which resolves to English. The language can also be
+        changed in the analyzer, which lists English and the languages with
+        built-in translations.
+    extended : bool, default=False
+        If True, collects the Vertipaq Analyzer statistics of each semantic model
+        before it is scanned (see :meth:`sempy_labs.tom.TOMWrapper.set_vertipaq_annotations`),
+        so the rules which rely on them (such as 'Large tables should be partitioned',
+        which reads the tables' row counts) can be evaluated. The statistics are only
+        used for the scan and are not saved to the semantic model. This makes each
+        scan slower.
 
     Returns
     -------
@@ -3763,14 +3894,20 @@ def bpa(
         resolve_dataset_name_and_id,
     )
     from sempy_labs.semantic_model._bpa_engine import (
+        RuleTranslator,
         apply_fixes,
         normalize_rules,
         parse_rules_json,
         preview_fixes,
+        resolve_language,
         rules_payload,
         scan_model,
         validate_rules_json,
     )
+
+    from sempy_labs.semantic_model._bpa_ui_strings import ui_strings
+
+    translator = RuleTranslator(resolve_language(language))
 
     # `sempy_labs.tom`, the rules module and the dependency graph all pull in the
     # Analysis Services client, which is slow to initialize. They are imported at
@@ -3879,10 +4016,36 @@ def bpa(
         widget = _widget_ref.get("value")
         return bool(widget is not None and widget.cancel_requested)
 
+    def _translation_defaults(rules=None):
+        """
+        The built-in rules whose bundled translations may be used. ``rules`` are the
+        rules in effect; when they are the built-in rules they are used directly
+        instead of building the catalog.
+        """
+
+        import sempy_labs._icons as icons
+
+        if translator.language not in icons.language_map:
+            return None
+        if ruleset["custom"] is None and rules is not None:
+            return rules
+        return _catalog()
+
+    def _rules_payload(rules):
+        return translator.localize_payload(
+            rules_payload(rules), _translation_defaults(rules)
+        )
+
     def _scan(workspace_id, dataset_id, disabled_rules):
         rules = _rules_for(workspace_id, dataset_id)
         with _connect(dataset_id, workspace_id, True) as tom:
-            return scan_model(tom, rules, disabled_rules, should_cancel=_cancelled)
+            # The connection is read-only, so the annotations are never saved.
+            if extended:
+                tom.set_vertipaq_annotations()
+            violations = scan_model(
+                tom, rules, disabled_rules, should_cancel=_cancelled
+            )
+        return translator.localize_violations(violations, _translation_defaults(rules))
 
     # Set once the widget exists; the dataframe path below runs without one.
     _widget_ref = {}
@@ -3898,12 +4061,17 @@ def bpa(
     ]
 
     def _violations_dataframe(violations):
+        import sempy_labs._icons as icons
+
+        # Severity is text; a rules dataframe may carry the severity icons.
         return pd.DataFrame(
             [
                 {
                     "Category": v["category"],
                     "Rule Name": v["ruleName"],
-                    "Severity": v["severity"],
+                    "Severity": icons.severity_mapping.get(
+                        v["severity"], v["severity"]
+                    ),
                     "Object Type": v["objectType"],
                     "Object Name": v["objectName"],
                     "Description": v["description"],
@@ -3977,16 +4145,12 @@ def bpa(
             workspace=export_workspace,
         )
 
-    if return_dataframe:
-        _require_dataset("return_dataframe")
-        return _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
-
-    if export:
-        _require_dataset("export")
-        _export_violations(
-            _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
-        )
-        return
+    if return_dataframe or export:
+        _require_dataset("return_dataframe" if return_dataframe else "export")
+        df = _violations_dataframe(_scan(initial_ws_id, initial_ds_id, None))
+        if export:
+            _export_violations(df)
+        return df if return_dataframe else None
 
     try:
         import anywidget
@@ -4026,6 +4190,9 @@ def bpa(
         busy = traitlets.Bool(False).tag(sync=True)
         cancel_requested = traitlets.Bool(False).tag(sync=True)
         dark_mode = traitlets.Bool(False).tag(sync=True)
+        language = traitlets.Unicode("").tag(sync=True)
+        languages = traitlets.List().tag(sync=True)
+        ui_strings = traitlets.Dict().tag(sync=True)
 
     # Rule metadata for the editor. When the defaults are used it is loaded on
     # demand (see the "load_rules" action) so that nothing expensive happens before
@@ -4034,7 +4201,7 @@ def bpa(
     if rules is None:
         _initial_rules = []
     elif isinstance(rules, pd.DataFrame):
-        _initial_rules = rules_payload(rules)
+        _initial_rules = _rules_payload(rules)
     else:
         # A custom ruleset has to be matched against the built-in rules up front,
         # otherwise the rules it disables would not be known to the first scan.
@@ -4049,7 +4216,7 @@ def bpa(
                 "was not used:\n- " + "\n- ".join(_problems)
             )
         _, _initial_disabled = parse_rules_json(_entries, _catalog())
-        _initial_rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
+        _initial_rules = _rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
     # Nothing is fetched before the widget is displayed: the workspace / semantic
     # model lists are requested by the frontend right after the first render, so
@@ -4062,19 +4229,22 @@ def bpa(
         rules=_initial_rules,
         disabled_rules=_initial_disabled,
         dark_mode=bool(dark_mode),
+        language=translator.language or "",
+        languages=_language_options(translator.language),
+        ui_strings=ui_strings(translator.language),
     )
     _widget_ref["value"] = widget
 
     def _handle_load_rules(payload):
         if widget.rules:
             return
-        widget.rules = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
+        widget.rules = _rules_payload(normalize_rules(ruleset["custom"], _catalog()))
 
     def _warm_rule_editor_rules():
         """Builds and publishes rule metadata without blocking initial display."""
 
         try:
-            payload = rules_payload(normalize_rules(ruleset["custom"], _catalog()))
+            payload = _rules_payload(normalize_rules(ruleset["custom"], _catalog()))
             if not widget.rules:
                 widget.rules = payload
         except Exception:
@@ -4221,7 +4391,9 @@ def bpa(
         try:
             rules = _rules_for(workspace_id, dataset_id)
             with _connect(dataset_id, workspace_id, True) as tom:
-                items = preview_fixes(tom, rules, rule_name)
+                items = preview_fixes(
+                    tom, rules, translator.source_rule_name(rule_name)
+                )
         except Exception as e:
             widget.status = {
                 "message": f"Could not compute the fix: {e}",
@@ -4259,7 +4431,12 @@ def bpa(
                 rules = _rules_for(workspace_id, dataset_id)
                 with _connect(dataset_id, workspace_id, False) as tom:
                     for rule_name, object_names in by_rule.items():
-                        applied += apply_fixes(tom, rules, rule_name, object_names)
+                        applied += apply_fixes(
+                            tom,
+                            rules,
+                            translator.source_rule_name(rule_name),
+                            object_names,
+                        )
             except Exception as e:
                 failures.append(str(e))
             finally:
@@ -4338,7 +4515,7 @@ def bpa(
         parsed, disabled = parse_rules_json(entries, catalog)
         ruleset["custom"] = entries
         rules_cache.clear()
-        widget.rules = rules_payload(parsed)
+        widget.rules = _rules_payload(parsed)
         widget.disabled_rules = disabled
         widget.import_issues = {}
         widget.status = {
@@ -4364,7 +4541,7 @@ def bpa(
 
         ruleset["custom"] = entries
         rules_cache.clear()
-        widget.rules = rules_payload(normalize_rules(entries, _catalog()))
+        widget.rules = _rules_payload(normalize_rules(entries, _catalog()))
         widget.disabled_rules = [str(r) for r in (payload.get("disabled_rules") or [])]
         widget.import_issues = {}
         if not payload.get("silent"):
@@ -4373,7 +4550,41 @@ def bpa(
                 "kind": "success",
             }
 
+    def _handle_set_language(payload):
+        """Translates the rules and violations on screen into another language."""
+
+        previous = translator.language
+        translator.language = str(payload.get("language") or "") or None
+        try:
+            defaults = _translation_defaults()
+            rules = translator.localize_payload(list(widget.rules), defaults)
+            violations = translator.localize_violations(
+                list(widget.violations), defaults
+            )
+            bulk_results = [
+                {
+                    **r,
+                    "violations": translator.localize_violations(
+                        list(r.get("violations") or []), defaults
+                    ),
+                }
+                for r in widget.bulk_results
+            ]
+        except Exception:
+            translator.language = previous
+            widget.language = previous or ""
+            raise
+
+        widget.rules = rules
+        widget.violations = violations
+        widget.bulk_results = bulk_results
+        widget.fix_preview = {}
+        widget.ui_strings = ui_strings(translator.language)
+        # Published last: the frontend re-renders once everything is translated.
+        widget.language = translator.language or ""
+
     handlers = {
+        "set_language": _handle_set_language,
         "list_datasets": _handle_list_datasets,
         "load_lists": _handle_load_lists,
         "load_workspace_datasets": _handle_load_workspace_datasets,

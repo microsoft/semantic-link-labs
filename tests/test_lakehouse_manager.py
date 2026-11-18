@@ -424,7 +424,16 @@ def test_the_table_view_selects_tables_for_bulk_maintenance():
     assert "paths: maintenanceTargets.map((row) => row.path)," in js
     # The list scrolls itself, so its sticky headers stay in view.
     assert "max-height: min(640px, calc(100vh - 160px));" in css
-    assert ".slls-lhm:fullscreen .slls-lhm-list { max-height: none; }" in css
+    assert ".slls-lhm:fullscreen .slls-lhm-listframe { max-height: none; }" in css
+    # At fractional display scaling scrolled rows must not peek above the
+    # sticky header: the frame covers the list's top edge and redraws its
+    # border, and the header sticks a pixel high.
+    assert "listFrame.appendChild(listWrap);" in js
+    assert (
+        ".slls-lhm-listframe::before { inset: -2px 0 auto 0; height: 3px; background: var(--ui-bg); }"
+        in css
+    )
+    assert "position: sticky; top: -1px; z-index: 1; padding: 10px 12px 9px;" in css
 
 
 def test_only_live_tables_which_are_not_shortcuts_can_be_maintained():
@@ -728,13 +737,25 @@ def test_table_stats_combine_the_delta_metadata_footers_and_history(
 
     table_dir = tmp_path / "Tables" / "dbo" / "sales"
     table_dir.mkdir(parents=True)
-    pq.write_table(pa.table({"id": [1, 2, 3]}), table_dir / "part-0.parquet")
+    data = pa.table(
+        {
+            "id": [1, 2, 3],
+            "address": [{"city": "Oslo"}, {"city": "Rome"}, {"city": "Lima"}],
+        }
+    )
+    pq.write_table(data, table_dir / "part-0.parquet")
     seen = {}
 
     def fake_details(path, table_rel):
         seen["path"], seen["table_rel"] = path, table_rel
         return {
             "columns": 4,
+            "fields": [
+                {"name": "id", "type": "bigint", "physical": None},
+                {"name": "address", "type": "struct<city:string>", "physical": None},
+                # Added after the data files were written.
+                {"name": "notes", "type": "string", "physical": None},
+            ],
             "rows": 2,
             "files": ["part-0.parquet"],
             "properties": {"delta.autoOptimize.autoCompact": "true"},
@@ -766,6 +787,18 @@ def test_table_stats_combine_the_delta_metadata_footers_and_history(
 
     assert seen["table_rel"] == "Tables/dbo/sales"
     assert seen["path"].endswith("/lh-a/Tables/dbo/sales")
+    footer = pq.read_metadata(table_dir / "part-0.parquet").row_group(0)
+    id_size = footer.column(0).total_compressed_size
+    city_size = footer.column(1).total_compressed_size
+    # A nested column's leaves count towards it; a column in no file has no size.
+    assert [
+        (column["name"], column["type"], column["size"])
+        for column in stats.pop("column_details")
+    ] == [
+        ("id", "bigint", id_size),
+        ("address", "struct<city:string>", city_size),
+        ("notes", "string", None),
+    ]
     assert stats == {
         "columns": 4,
         # Spark's count, which leaves out rows removed by deletion vectors.
@@ -1044,6 +1077,110 @@ def test_python_notebooks_read_table_stats_from_the_delta_log(monkeypatch, tmp_p
 
     # Without file stats in the log, the rows come from the parquet footers.
     assert (stats["columns"], stats["rows"], stats["row_groups"]) == (1, 4, 1)
+
+
+def _mapped_table(table_dir):
+    """A column-mapped table: its data files name columns by physical name."""
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    pq.write_table(
+        pa.table({"col-a": [1, 2], "col-b": [{"x": 1.5}, {"x": 2.5}]}),
+        _mkfile(table_dir / "part-0.parquet"),
+    )
+    schema = {
+        "type": "struct",
+        "fields": [
+            {
+                "name": "id",
+                "type": "long",
+                "nullable": True,
+                "metadata": {"delta.columnMapping.physicalName": "col-a"},
+            },
+            {
+                "name": "point",
+                "type": {
+                    "type": "struct",
+                    "fields": [{"name": "x", "type": "double", "metadata": {}}],
+                },
+                "nullable": True,
+                "metadata": {"delta.columnMapping.physicalName": "col-b"},
+            },
+            {
+                "name": "price",
+                "type": "decimal(10,2)",
+                "nullable": True,
+                "metadata": {"delta.columnMapping.physicalName": "col-c"},
+            },
+        ],
+    }
+    _commit(
+        table_dir / "_delta_log",
+        0,
+        {
+            "metaData": {
+                "schemaString": json.dumps(schema),
+                "configuration": {"delta.columnMapping.mode": "name"},
+            }
+        },
+        _add("part-0.parquet", 2),
+    )
+    footer = pq.read_metadata(table_dir / "part-0.parquet").row_group(0)
+    return [footer.column(i).total_compressed_size for i in range(2)]
+
+
+def test_python_notebooks_read_each_columns_type_and_size(monkeypatch, tmp_path):
+    from sempy_labs import _helper_functions
+
+    sizes = _mapped_table(tmp_path / "Tables" / "sales")
+    monkeypatch.setattr(_helper_functions, "_pure_python_notebook", lambda: True)
+
+    stats = lhm._table_stats("ws-1", "lh-a", "", "sales", str(tmp_path))
+
+    # Types read the same as Spark's; sizes are matched by physical name.
+    assert [
+        (column["name"], column["type"], column["size"])
+        for column in stats["column_details"]
+    ] == [
+        ("id", "bigint", sizes[0]),
+        ("point", "struct<x:double>", sizes[1]),
+        ("price", "decimal(10,2)", None),
+    ]
+
+
+def test_pyspark_notebooks_find_a_mapped_tables_physical_names_in_its_log(
+    monkeypatch, tmp_path
+):
+    from sempy_labs import _helper_functions
+
+    sizes = _mapped_table(tmp_path / "Tables" / "sales")
+    monkeypatch.setattr(_helper_functions, "_pure_python_notebook", lambda: False)
+    monkeypatch.setattr(
+        _helper_functions, "create_abfss_path", lambda *args, **kwargs: "abfss://t"
+    )
+    monkeypatch.setattr(_helper_functions, "_read_delta_table_history", lambda p: [])
+    # Spark's schema leaves out the column mapping metadata.
+    monkeypatch.setattr(
+        lhm,
+        "_delta_details_spark",
+        lambda path, table_rel: {
+            "columns": 3,
+            "fields": [
+                {"name": "id", "type": "bigint", "physical": None},
+                {"name": "point", "type": "struct<x:double>", "physical": None},
+                {"name": "price", "type": "decimal(10,2)", "physical": None},
+            ],
+            "rows": 2,
+            "files": ["part-0.parquet"],
+            "properties": {"delta.columnMapping.mode": "name"},
+            "clustering": [],
+        },
+    )
+
+    stats = lhm._table_stats("ws-1", "lh-a", "", "sales", str(tmp_path))
+
+    assert [column["size"] for column in stats["column_details"]] == sizes + [None]
 
 
 def _mkfile(path):
@@ -1332,7 +1469,7 @@ def test_the_mount_is_reused_across_stats_runs(manager, monkeypatch):
 def test_bulk_table_actions_can_be_cancelled_between_tables():
     js = lhm._LHM_JS
 
-    assert "body.append(cards, toolbar, batchBar, listWrap, note);" in js
+    assert "body.append(cards, toolbar, batchBar, listFrame, note);" in js
     assert 'act(cancelRequested ? "batch_cancel" : "batch_next");' in js
     # The next table is only asked for once the kernel is idle.
     assert (

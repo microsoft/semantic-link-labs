@@ -13,7 +13,6 @@ from sempy_labs.lakehouse import (
     get_lakehouse_tables,
     lakehouse_attached,
 )
-from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -32,6 +31,7 @@ def run_model_bpa_bulk(
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
     Saves (appends) the results to the 'modelbparesults' delta table in the lakehouse attached to the notebook.
+    The Severity column is saved as text: 'Error', 'Warning' or 'Info'.
     Default semantic models are skipped in this analysis.
 
     Parameters
@@ -56,6 +56,7 @@ def run_model_bpa_bulk(
         }
     """
     from sempy_labs.lakehouse._schemas import is_schema_enabled
+    from sempy_labs.semantic_model._bpa import bpa
 
     if not lakehouse_attached():
         raise ValueError(
@@ -127,9 +128,9 @@ def run_model_bpa_bulk(
                         f"{icons.in_progress} Collecting Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                     )
                     try:
-                        bpa_df = run_model_bpa(
+                        bpa_df = bpa(
                             dataset=dataset_id,
-                            workspace=wksp,
+                            workspace=wksp_id,
                             language=language,
                             return_dataframe=True,
                             rules=rules,
@@ -166,8 +167,6 @@ def run_model_bpa_bulk(
                         f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace."
                     )
                 else:
-                    df["Severity"].replace(icons.severity_mapping, inplace=True)
-
                     # Append save results individually for each workspace (so as not to create a giant dataframe)
                     print(
                         f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the lakehouse attached to this notebook..."

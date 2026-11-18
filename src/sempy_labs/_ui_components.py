@@ -862,6 +862,14 @@ ICONS: dict[str, str] = {
         'aria-hidden="true"><path d="M3.5 8h9"/></svg>'
     ),
     # Two branches with opposing arrows: the "compare these two things" mark.
+    "globe": (
+        '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
+        'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="8" cy="8" r="6"/><path d="M2 8h12"/>'
+        '<path d="M8 2c1.7 1.7 2.5 3.7 2.5 6S9.7 12.3 8 14'
+        'C6.3 12.3 5.5 10.3 5.5 8S6.3 3.7 8 2Z"/></svg>'
+    ),
     "git_compare": (
         '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" '
         'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
@@ -943,6 +951,71 @@ ICONS: dict[str, str] = {
         'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true">'
         '<path d="M19.5 12H4.5"/><path d="m11 19-7-7 7-7"/></svg>'
+    ),
+    # A table's columns, e.g. a button which lists them.
+    "columns": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="2.5" width="12" height="11" rx="1.8"/>'
+        '<path d="M6 2.5v11M10 2.5v11"/></svg>'
+    ),
+    # Column data types (e.g. a lakehouse table's columns). Text and date reuse
+    # ``text_type`` and ``date_table``.
+    "type_integer": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M6.2 2.5 5 13.5M11 2.5l-1.2 11M2.5 5.8h11M2 10.2h11"/></svg>'
+    ),
+    "type_decimal": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M2.5 4.6 4.6 3v10"/><path d="M7.6 12.9h.01"/>'
+        '<rect x="10" y="3" width="4" height="10" rx="2"/></svg>'
+    ),
+    "type_boolean": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="1.5" y="4.5" width="13" height="7" rx="3.5"/>'
+        '<circle cx="11" cy="8" r="1.7"/></svg>'
+    ),
+    "type_timestamp": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<circle cx="8" cy="8" r="5.8"/><path d="M8 4.8V8l2.2 1.4"/></svg>'
+    ),
+    "type_binary": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<rect x="2" y="3" width="4.2" height="10" rx="2.1"/>'
+        '<path d="M9.8 4.6 11.9 3v10"/></svg>'
+    ),
+    "type_struct": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M5.8 2.5c-1.3 0-1.9.6-1.9 1.9v1.7c0 .9-.5 1.5-1.4 1.9.9.4 '
+        '1.4 1 1.4 1.9v1.7c0 1.3.6 1.9 1.9 1.9"/>'
+        '<path d="M10.2 2.5c1.3 0 1.9.6 1.9 1.9v1.7c0 .9.5 1.5 1.4 1.9-.9.4'
+        '-1.4 1-1.4 1.9v1.7c0 1.3-.6 1.9-1.9 1.9"/></svg>'
+    ),
+    "type_array": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<path d="M5.5 2.5H3v11h2.5M10.5 2.5H13v11h-2.5"/>'
+        '<path d="M6.5 8h.01M9.5 8h.01"/></svg>'
+    ),
+    "type_map": (
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true">'
+        '<circle cx="4" cy="8" r="2"/><path d="M6.5 8h7M11.3 5.8 13.5 8l-2.2 2.2"/></svg>'
     ),
 }
 

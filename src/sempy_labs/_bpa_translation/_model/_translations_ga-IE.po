@@ -275,6 +275,28 @@ msgstr "Ní mór an chéad litir rudaí a chaipitliú"
 msgid "Object names must not contain special characters"
 msgstr "Ní ceadmhach carachtair speisialta a bheith in ainmneacha réada"
 
+# rule_name
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Seachain SUM nó AVERAGE a úsáid ar cholún téacs"
+
+# rule_name
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Cinntigh go bhfuil V-Order ar fhoinsetháblaí Direct Lake"
+
+# rule_name
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Cinntigh nach as amharc SQL a thagann táblaí Direct Lake"
+
+# rule_name
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"Ba cheart go mbeadh ainm na deighilte mar an gcéanna le hainm an tábla i "
+"dtáblaí le deighilt amháin"
+
+# rule_name
+msgid "Provide format string for 'Month' columns"
+msgstr "Sonraigh teaghrán formáide do cholúin 'Month'"
+
 # category
 msgid "Do not use floating point data types"
 msgstr "Feidhmíocht"
@@ -527,6 +549,26 @@ msgstr "Formáidiú"
 msgid "Object names must not contain special characters"
 msgstr "Coinbhinsiúin Ainmniúcháin"
 
+# category
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr "Nathanna DAX"
+
+# category
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr "Feidhmíocht"
+
+# category
+msgid "Partition name should match table name for single partition tables"
+msgstr "Coinbhinsiúin Ainmniúcháin"
+
+# category
+msgid "Provide format string for 'Month' columns"
+msgstr "Formáidiú"
+
 # description
 msgid "Do not use floating point data types"
 msgstr ""
@@ -547,8 +589,10 @@ msgstr ""
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
 msgstr ""
-"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
-"dax"
+"D'fhéadfadh caidrimh dhéthreocha agus caidrimh iomad-le-iomad feidhmíocht a "
+"laghdú nó fiú iarmhairtí neamhbheartaithe a bheith acu. Seiceáil na caidrimh"
+" seo chun a chinntiú go n-oibríonn siad mar a ceapadh iad agus go bhfuil gá "
+"leo i ndáiríre."
 
 # description
 msgid "Check if dynamic row level security (RLS) is necessary"
@@ -965,3 +1009,40 @@ msgid "Object names must not contain special characters"
 msgstr ""
 "Níor chóir go mbeadh cluaisíní, sosanna líne, etc. san áireamh in ainmneacha"
 " réada."
+
+# description
+msgid "Avoid using SUM or AVERAGE on a string column"
+msgstr ""
+"Ní féidir leis na feidhmeanna SUM agus AVERAGE colún téacs (string) a "
+"chomhiomlánú agus tarlóidh earráid. Cinntigh go gcuirtear na feidhmeanna seo"
+" i bhfeidhm ar cholúin uimhriúla, nó úsáid comhiomlánú eile (mar shampla "
+"COUNT nó DISTINCTCOUNT) do cholúin téacs."
+
+# description
+msgid "Ensure Direct Lake source tables are V-Ordered"
+msgstr ""
+"Chun an fheidhmíocht Direct Lake is fearr a fháil, ba cheart na táblaí delta"
+" óna léann samhail Direct Lake a scríobh le V-Order. Marcálann an riail seo "
+"deighiltí Direct Lake nach bhfuil V-Order ar a bhfoinsethábla lakehouse; "
+"athscríobh an foinsethábla nó rith OPTIMIZE air le V-Order cumasaithe."
+
+# description
+msgid "Ensure Direct Lake tables do not source from a SQL view"
+msgstr ""
+"Rachaidh tábla Direct Lake a bhfuil amharc SQL (seachas tábla) mar fhoinse "
+"aige ar ais go DirectQuery i gcónaí, rud atá níos moille agus a chuireann "
+"cuspóir Direct Lake ó mhaith. Dírigh an tábla ar thábla lakehouse/warehouse,"
+" nó déan tábla delta den amharc."
+
+# description
+msgid "Partition name should match table name for single partition tables"
+msgstr ""
+"I gcás tábla le deighilt amháin, ba cheart go mbeadh ainm na deighilte mar "
+"an gcéanna le hainm an tábla ar mhaithe le soiléireacht agus "
+"comhsheasmhacht."
+
+# description
+msgid "Provide format string for 'Month' columns"
+msgstr ""
+"Ba cheart colúin den chineál \"DateTime\" a bhfuil \"Month\" ina n-ainm a "
+"fhormáidiú mar \"MMMM yyyy\"."
