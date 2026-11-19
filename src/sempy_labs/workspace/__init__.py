@@ -24,6 +24,7 @@ from ._relations import (
     create_workspace_relation,
     delete_workspace_relation,
 )
+from ._user_access_manager import user_access_manager
 
 __all__ = [
     "list_workspace_users",
@@ -46,4 +47,5 @@ __all__ = [
     "list_workspace_relations",
     "create_workspace_relation",
     "delete_workspace_relation",
+    "user_access_manager",
 ]
